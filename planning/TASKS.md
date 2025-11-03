@@ -116,15 +116,17 @@ The MVP is divided into 4 phases:
 
 ### Backend API Setup (Day 2-3)
 
-- [ ] Initialize FastAPI project
+- [x] Initialize FastAPI project
   ```bash
   cd backend
   python -m venv venv
   source venv/bin/activate  # or venv\Scripts\activate on Windows
-  pip install fastapi uvicorn python-dotenv supabase anthropic langchain-anthropic docling
+  pip install fastapi uvicorn python-dotenv supabase openai langchain-openai docling
   ```
+  - **Completed**: 2025-11-03
+  - **Note**: Updated to use OpenRouter (openai + langchain-openai) instead of Anthropic for model flexibility
 
-- [ ] Create project structure
+- [x] Create project structure
   ```
   backend/
     app/
@@ -146,8 +148,10 @@ The MVP is divided into 4 phases:
     requirements.txt
     .env
   ```
+  - **Completed**: 2025-11-03
+  - **Note**: All files created with placeholder structure, ready for implementation
 
-- [ ] Set up Supabase client with config
+- [x] Set up Supabase client with config
   ```python
   # database.py
   from supabase import create_client, Client
@@ -155,8 +159,10 @@ The MVP is divided into 4 phases:
 
   supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
   ```
+  - **Completed**: 2025-11-03
+  - **Note**: Using cached get_supabase_client() function with lru_cache
 
-- [ ] Configure CORS for Next.js
+- [x] Configure CORS for Next.js
   ```python
   # main.py
   from fastapi.middleware.cors import CORSMiddleware
@@ -169,16 +175,20 @@ The MVP is divided into 4 phases:
       allow_headers=["*"],
   )
   ```
+  - **Completed**: 2025-11-03
+  - **Note**: CORS origins configurable via ALLOWED_ORIGINS in .env
 
-- [ ] Create base API endpoints (no logic yet, just routes)
-  - `GET /health` - Health check
-  - `POST /api/upload` - Upload document
-  - `GET /api/documents` - List user's documents
-  - `GET /api/documents/{document_id}` - Get document details
-  - `DELETE /api/documents/{document_id}` - Delete document
-  - `GET /api/extractions/{extraction_id}` - Get extraction results
-  - `PUT /api/extractions/{extraction_id}` - Update extraction
-  - `GET /api/usage/current` - Get user's current usage
+- [x] Create base API endpoints (no logic yet, just routes)
+  - `GET /health` - Health check ✅
+  - `POST /api/upload` - Upload document (placeholder)
+  - `GET /api/documents` - List user's documents (placeholder)
+  - `GET /api/documents/{document_id}` - Get document details (placeholder)
+  - `DELETE /api/documents/{document_id}` - Delete document (placeholder)
+  - `GET /api/extractions/{extraction_id}` - Get extraction results (placeholder)
+  - `PUT /api/extractions/{extraction_id}` - Update extraction (placeholder)
+  - `GET /api/usage/current` - Get user's current usage (placeholder)
+  - **Completed**: 2025-11-03
+  - **Note**: Health check working, tested via Swagger. Route modules created with TODO comments for implementation
 
 - [ ] Deploy backend to Railway/Render staging
   - Connect GitHub repo

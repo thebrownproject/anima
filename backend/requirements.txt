@@ -1,0 +1,19 @@
+# Web Framework
+fastapi==0.120.2
+uvicorn[standard]==0.38.0
+pydantic==2.12.2
+pydantic-settings==2.11.0
+
+# Database & Storage
+supabase==2.23.0
+
+# AI & LLM (OpenRouter via OpenAI SDK)
+openai==2.6.1
+langchain-openai==1.0.1
+
+# Document Processing (OCR)
+docling==2.60.0
+
+# Utilities
+python-dotenv==1.1.1
+python-multipart==0.0.20

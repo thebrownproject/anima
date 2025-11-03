@@ -393,3 +393,193 @@ All infrastructure tasks finished:
 - Anthropic API key placeholder in `.env` (user will add actual key later)
 
 ---
+
+## Session 4 - 2025-11-03 - FastAPI Backend Initialization ✅
+
+**Week**: Week 1 - Infrastructure Setup
+**Phase**: Backend API Setup (Day 2-3)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Initialize FastAPI project with virtual environment
+  - Created venv and installed all dependencies with pinned versions from PyPI
+  - Installed: fastapi 0.120.2, uvicorn 0.38.0, pydantic 2.12.2, pydantic-settings 2.11.0, supabase 2.23.0, openai 2.6.1, langchain-openai 1.0.1, docling 2.60.0, python-dotenv 1.1.1, python-multipart 0.0.20
+
+- [x] Create complete project structure
+  - `app/main.py` - FastAPI app with CORS middleware and health check endpoint
+  - `app/config.py` - Type-safe settings using Pydantic BaseSettings with .env loading
+  - `app/database.py` - Supabase client setup with lru_cache
+  - `app/models.py` - Pydantic response models (DocumentUploadResponse, ExtractionResponse, UsageResponse, HealthResponse)
+  - `app/routes/` - documents.py, extractions.py, usage.py (placeholder structure)
+  - `app/services/` - storage.py, extractor.py, usage.py (placeholder structure)
+  - `requirements.txt` - All dependencies with exact versions
+
+- [x] Configure FastAPI app with best practices
+  - CORS middleware configured for frontend (localhost:3000)
+  - Health check endpoint (`GET /health`) working and tested
+  - Settings pattern using lru_cache for performance
+  - Type-safe configuration with Pydantic v2 (SettingsConfigDict)
+
+- [x] Update planning docs for OpenRouter
+  - Updated CLAUDE.md LangChain integration examples
+  - Updated ARCHITECTURE.md tech stack section
+  - Updated .env.example with OpenRouter configuration
+
+### Decisions Made
+
+1. **OpenRouter instead of Anthropic Direct:**
+   - **Reasoning**: Provides model flexibility - can use Claude, GPT-4, Gemini, or any other model
+   - **Impact**: User can switch models via env variable without code changes
+   - **Implementation**: Uses OpenAI SDK with custom base URL (https://openrouter.ai/api/v1)
+   - Updated dependencies: `openai==2.6.1`, `langchain-openai==1.0.1` (instead of anthropic packages)
+
+2. **Pydantic Settings Pattern:**
+   - **Pattern**: BaseSettings class with SettingsConfigDict + lru_cache wrapper
+   - **Benefits**: Type-safe config, auto .env loading, cached instance, validation at startup
+   - **Type checker fixes**: Added `# pyright: ignore[reportCallIssue]` and `# pyright: ignore[reportUnannotatedClassAttribute]` for known Pydantic/basedpyright friction
+
+3. **Project Structure:**
+   - Follows FastAPI best practices: routes/ for endpoints, services/ for business logic
+   - All imports use relative imports (`.config`, `.models`) for proper module resolution
+   - Placeholder files with TODO comments for future implementation
+
+4. **Documentation Before Code:**
+   - Used `docs` agent to fetch FastAPI and Pydantic documentation before writing code
+   - Followed latest Pydantic v2 patterns (SettingsConfigDict, not deprecated Config class)
+   - Verified all patterns match current best practices
+
+### Issues Encountered
+
+1. **basedpyright Type Checker Strictness:**
+   - **Issue**: Type checker errors on `Settings()` call (missing required args) and `model_config` annotation
+   - **Root cause**: Static type checkers don't understand BaseSettings auto-loads from env vars
+   - **Solution**: Added targeted `# pyright: ignore[...]` comments with specific rule names
+   - **Learning**: basedpyright requires explicit rule names in ignore comments (can't use blanket `# type: ignore`)
+
+2. **Import Resolution:**
+   - **Issue**: IDE showed import errors initially (fastapi not found)
+   - **Cause**: Packages not installed yet when files created
+   - **Resolution**: Cleared after pip install completed
+
+3. **User Interrupted Initial Config Write:**
+   - **Context**: Started writing config.py before fetching docs
+   - **Correction**: Stopped, fetched FastAPI/Pydantic docs first, then wrote code following best practices
+   - **Learning**: Always use `docs` agent before writing code (as per workflow instructions)
+
+### Technical Implementation
+
+**Config Pattern (app/config.py):**
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
+
+class Settings(BaseSettings):
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
+    OPENROUTER_API_KEY: str
+    OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet"
+    # ... other fields
+
+    model_config = SettingsConfigDict(  # pyright: ignore[reportUnannotatedClassAttribute]
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True
+    )
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()  # pyright: ignore[reportCallIssue]
+```
+
+**FastAPI App (app/main.py):**
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="StackDocs MVP", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS.split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "app_name": "StackDocs MVP"}
+```
+
+**Testing Results:**
+- ✅ Server starts successfully with `uvicorn app.main:app`
+- ✅ Health check endpoint tested via Swagger UI
+- ✅ CORS headers properly configured
+- ✅ All type errors resolved
+
+### Files Created
+
+- `backend/app/__init__.py`
+- `backend/app/main.py`
+- `backend/app/config.py`
+- `backend/app/database.py`
+- `backend/app/models.py`
+- `backend/app/routes/__init__.py`
+- `backend/app/routes/documents.py`
+- `backend/app/routes/extractions.py`
+- `backend/app/routes/usage.py`
+- `backend/app/services/__init__.py`
+- `backend/app/services/storage.py`
+- `backend/app/services/extractor.py`
+- `backend/app/services/usage.py`
+- `backend/requirements.txt`
+
+### Files Modified
+
+- `backend/.env.example` - Updated for OpenRouter configuration
+- `planning/ARCHITECTURE.md` - Updated LangChain examples and tech stack
+- `planning/CLAUDE.md` - Updated LangChain integration patterns
+- `planning/TASKS.md` - Marked completed tasks
+
+### Git Commits
+
+- Pending: Backend initialization commit (to be done in wrap-up)
+
+### Current Status
+
+**Week 1, Day 2-3 Backend API Setup: ✅ COMPLETE**
+
+All backend initialization tasks finished:
+- ✅ FastAPI project initialized with latest dependencies
+- ✅ Project structure created following best practices
+- ✅ Supabase client configured
+- ✅ CORS middleware configured
+- ✅ Health check endpoint working
+- ✅ Type-safe configuration pattern implemented
+- ✅ Server tested and verified working
+
+**Ready for:** Week 1, Day 2-3 (continued) - Implement API endpoint logic
+
+### Next Session
+
+**Task**: Implement document upload endpoint
+
+**Subtasks:**
+1. Implement file upload validation (size, MIME type)
+2. Add Supabase Storage upload logic in `services/storage.py`
+3. Create document database record in `documents` table
+4. Return document_id and trigger background extraction
+5. Test upload flow end-to-end
+
+**Preparation needed:**
+- Ensure `.env` file has valid Supabase credentials
+- Ensure OpenRouter API key is set (for future extraction testing)
+- Have a test PDF/image ready for upload testing
+
+**Technical context:**
+- File validation should match bucket config (10MB max, PDF/JPG/PNG only)
+- Use `UploadFile` type from FastAPI (requires python-multipart)
+- File path structure: `documents/{user_id}/{document_id}_{filename}`
+- Background extraction will be implemented in later session
+
+---

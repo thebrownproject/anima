@@ -552,10 +552,15 @@ LIMIT 1;
 
 **Implementation:**
 ```python
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
-llm = ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0)
+llm = ChatOpenAI(
+    model=settings.OPENROUTER_MODEL,
+    temperature=0,
+    openai_api_key=settings.OPENROUTER_API_KEY,
+    openai_api_base="https://openrouter.ai/api/v1"
+)
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are an expert document data extraction system..."),
@@ -609,7 +614,7 @@ useEffect(() => {
 
 ### Phase 2: Extraction Engine (Week 1-2)
 1. Docling integration (OCR)
-2. LangChain + Anthropic setup (Claude 3.5 Sonnet)
+2. LangChain + OpenRouter setup (configurable LLM model)
 3. Extraction logic (auto mode)
 4. Custom fields mode (user-specified fields)
 5. BackgroundTasks implementation
@@ -656,7 +661,7 @@ useEffect(() => {
 
 **Backend:**
 - FastAPI (Python 3.11+)
-- LangChain (Anthropic integration)
+- LangChain (OpenRouter integration)
 - Docling (OCR)
 - Deployed on Railway/Render/Fly.io
 
@@ -666,7 +671,8 @@ useEffect(() => {
 - Supabase Auth (JWT tokens)
 
 **AI/LLM:**
-- Anthropic Claude 3.5 Sonnet
+- OpenRouter (model-agnostic: Claude, GPT-4, Gemini, etc.)
+- Default: anthropic/claude-3.5-sonnet (configurable via env)
 - Docling (IBM Research OCR library)
 
 ---
