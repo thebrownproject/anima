@@ -116,8 +116,8 @@ CREATE INDEX idx_documents_user_status ON documents(user_id, status);
 - **`user_id`**: Who owns this document (FK to users.id)
 - **`filename`**: Original filename (e.g., "invoice_acme_nov_2025.pdf")
 - **`file_path`**: Supabase Storage path (e.g., "documents/{user_id}/{doc_id}.pdf")
-- **`file_size_bytes`**: File size for storage tracking
-- **`mime_type`**: File type for validation and display
+- **`file_size_bytes`**: File size for display and analytics (bucket enforces 10MB limit)
+- **`mime_type`**: File type for display icons (bucket restricts to PDF/JPG/PNG)
   - `"application/pdf"` - PDF documents
   - `"image/jpeg"` - JPEG images
   - `"image/png"` - PNG images
@@ -454,7 +454,7 @@ WHERE NOW() >= usage_reset_date;
 **Kept:**
 - ✅ `confidence_scores` → Useful for UX
 - ✅ `updated_at` → Needed if users edit extractions
-- ✅ `file_size_bytes`, `mime_type` → Useful for validation
+- ✅ `file_size_bytes`, `mime_type` → Useful for display/analytics (validation at bucket level)
 
 **Result:**
 - 3 tables instead of 4

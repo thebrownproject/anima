@@ -381,6 +381,44 @@ See `planning/SCHEMA.md` for full table definitions.
 
 ---
 
+## Supabase Storage Configuration
+
+**Bucket Name:** `documents`
+
+**Bucket Type:** Standard bucket (S3-compatible)
+
+**Access Control:** Private (requires authentication)
+
+**File Size Limit:** 10 MB (10,485,760 bytes)
+- **Reasoning:** PDFs/invoices are typically 100KB-2MB. 10MB provides headroom for scanned documents without allowing abuse.
+- **Enforcement:** Bucket-level restriction (no code-level validation needed)
+
+**Allowed MIME Types:**
+- `application/pdf` - PDF documents (primary use case)
+- `image/png` - Scanned receipts
+- `image/jpeg` - Scanned receipts
+- `image/jpg` - Alternative JPEG extension
+
+**File Path Structure:**
+```
+documents/
+  {user_id}/
+    {document_id}_{filename}.pdf
+```
+
+**Row-Level Security (RLS) Policies:**
+- **SELECT:** Users can only view their own files (`user_id = auth.uid()`)
+- **INSERT:** Users can only upload to their own folder (`user_id = auth.uid()`)
+- **UPDATE:** Not allowed (files are immutable)
+- **DELETE:** Users can only delete their own files (`user_id = auth.uid()`)
+
+**Benefits of Bucket-Level Validation:**
+- Defense in depth (enforced even if application code has bugs)
+- Simpler FastAPI code (no need to validate file size/type)
+- Clearer error messages (Supabase rejects invalid uploads directly)
+
+---
+
 ## Key Design Decisions
 
 ### ✅ Monolith Architecture (FastAPI + Docling bundled)
@@ -501,35 +539,6 @@ LIMIT 1;
 
 ---
 
-### ✅ Supabase Storage for Document Files
-
-**Choice:** Store PDFs/images in Supabase Storage (S3-backed) instead of database blobs
-
-**Rationale:**
-- **Scalable:** S3 handles large files efficiently
-- **Access control:** Supabase Storage has built-in RLS (row-level security)
-- **CDN:** Fast file delivery via Supabase CDN
-- **Cost:** Cheaper than storing in PostgreSQL
-
-**File path structure:**
-```
-documents/
-  {user_id}/
-    {document_id}.pdf
-    {document_id}.jpg
-    ...
-```
-
-**Access pattern:**
-```python
-# Generate signed URL (expires in 1 hour)
-signed_url = supabase.storage.from_('documents').create_signed_url(
-    f'{user_id}/{document_id}.pdf',
-    expires_in=3600
-)
-```
-
----
 
 ### ✅ LangChain for LLM Abstraction
 

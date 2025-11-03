@@ -61,10 +61,11 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-03
   - **Project**: stackdocs (Sydney region, ap-southeast-2)
 
-- [ ] Set up deployment platforms
+- [~] Set up deployment platforms
   - Create Vercel account/project (frontend)
   - Create Railway/Render account (backend)
   - Configure GitHub integration for auto-deploy
+  - **Note**: Skipping for now - will set up in Week 3 before soft launch
 
 - [x] Environment variables setup
   - Backend `.env`:
@@ -213,8 +214,7 @@ The MVP is divided into 4 phases:
 
 - [ ] Implement POST /api/upload endpoint
   - Accept multipart/form-data (file + mode)
-  - Validate file type (PDF, JPG, PNG only)
-  - Validate file size (<10MB)
+  - File validation enforced by Supabase Storage bucket (10MB limit, PDF/JPG/PNG only)
   - Upload file to Supabase Storage
   - Insert document record into database (status='processing')
   - Return document_id to frontend
