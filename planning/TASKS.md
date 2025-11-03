@@ -84,11 +84,13 @@ The MVP is divided into 4 phases:
 
 ### Database Setup (Day 1-2)
 
-- [ ] Run database migration SQL in Supabase SQL Editor
+- [x] Run database migration SQL in Supabase SQL Editor
   - Copy SQL from `planning/SCHEMA.md`
-  - Execute to create tables: documents, extractions, usage_tracking
+  - Execute to create tables: users, documents, extractions (simplified to 3 tables)
   - Verify all indexes created
   - Enable Row-Level Security policies
+  - **Completed**: 2025-11-03
+  - **Note**: Created backend/migrations/001_initial_schema.sql and applied via MCP
 
 - [ ] Set up Supabase Storage bucket
   - Create `documents` bucket
