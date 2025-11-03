@@ -1,0 +1,1264 @@
+# Development Tasks & Timeline
+
+**Product:** StackDocs MVP - Document Data Extractor
+**Version:** 1.0
+**Timeline:** 3-4 weeks to launch (soft launch Week 3, Stripe Week 4)
+**Estimated Effort:** 90-120 hours total (30-40 hours/week)
+
+---
+
+## Document Purpose
+
+This document breaks down the 3-4 week build plan into actionable tasks organized by development phase.
+
+---
+
+## Overview
+
+The MVP is divided into 4 phases:
+
+1. **Foundation** (Week 1) - Backend core + database setup
+2. **Extraction Engine** (Week 1-2) - OCR + LLM extraction logic
+3. **Frontend MVP** (Week 2-3) - User interface + document library
+4. **Launch & Iteration** (Week 3-4) - Soft launch, then add Stripe
+
+**P0 Features (Must Have):**
+- Document upload + storage
+- Auto extraction + custom fields modes
+- Document library (grid view)
+- Edit extraction results
+- CSV/JSON export
+- Usage limits (5 free docs/month)
+
+**P1 Features (Post-MVP):**
+- Stripe integration (Week 4)
+- Batch upload
+- Saved templates
+- API access
+
+---
+
+## Phase 1: Foundation (Week 1, Days 1-3)
+
+**Goal:** Set up infrastructure, database, and basic API skeleton. Nothing user-facing yet.
+
+**Deliverable:** Backend API deployed, database live, file upload working.
+
+### Infrastructure Setup (Day 1)
+
+- [ ] Create GitHub repository with monorepo structure
+  - `/backend` (FastAPI)
+  - `/frontend` (Next.js)
+  - `/planning` (documentation)
+  - `.gitignore` (exclude venv, .env, node_modules)
+
+- [ ] Set up Supabase project
+  - Create new project in Supabase dashboard
+  - Enable authentication (email/password)
+  - Get project URL and anon key
+  - Get service role key (for backend)
+
+- [ ] Set up deployment platforms
+  - Create Vercel account/project (frontend)
+  - Create Railway/Render account (backend)
+  - Configure GitHub integration for auto-deploy
+
+- [ ] Environment variables setup
+  - Backend `.env`:
+    ```
+    SUPABASE_URL=https://xxx.supabase.co
+    SUPABASE_KEY=your_service_role_key
+    ANTHROPIC_API_KEY=sk-ant-xxx
+    ```
+  - Frontend `.env.local`:
+    ```
+    NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+    NEXT_PUBLIC_API_URL=http://localhost:8000
+    ```
+
+### Database Setup (Day 1-2)
+
+- [ ] Run database migration SQL in Supabase SQL Editor
+  - Copy SQL from `planning/SCHEMA.md`
+  - Execute to create tables: documents, extractions, usage_tracking
+  - Verify all indexes created
+  - Enable Row-Level Security policies
+
+- [ ] Set up Supabase Storage bucket
+  - Create `documents` bucket
+  - Configure bucket as private (require auth)
+  - Set up storage policies (users can only access their own files)
+
+- [ ] Test RLS policies
+  - Create test user in Supabase Auth
+  - Insert test document as that user
+  - Verify can't access documents from other users
+
+- [ ] Set up usage tracking trigger
+  - Create trigger to auto-create usage_tracking record on user signup
+  - Test by creating new user and verifying record created
+
+### Backend API Setup (Day 2-3)
+
+- [ ] Initialize FastAPI project
+  ```bash
+  cd backend
+  python -m venv venv
+  source venv/bin/activate  # or venv\Scripts\activate on Windows
+  pip install fastapi uvicorn python-dotenv supabase anthropic langchain-anthropic docling
+  ```
+
+- [ ] Create project structure
+  ```
+  backend/
+    app/
+      __init__.py
+      main.py           # FastAPI app entry point
+      config.py         # Environment variables
+      database.py       # Supabase client setup
+      models.py         # Pydantic models
+      routes/
+        __init__.py
+        documents.py    # Document endpoints
+        extractions.py  # Extraction endpoints
+        usage.py        # Usage tracking endpoints
+      services/
+        __init__.py
+        storage.py      # Supabase Storage operations
+        extractor.py    # OCR + LLM extraction logic
+        usage.py        # Usage limit checking
+    requirements.txt
+    .env
+  ```
+
+- [ ] Set up Supabase client with config
+  ```python
+  # database.py
+  from supabase import create_client, Client
+  from app.config import settings
+
+  supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+  ```
+
+- [ ] Configure CORS for Next.js
+  ```python
+  # main.py
+  from fastapi.middleware.cors import CORSMiddleware
+
+  app.add_middleware(
+      CORSMiddleware,
+      allow_origins=["http://localhost:3000"],  # Next.js dev server
+      allow_credentials=True,
+      allow_methods=["*"],
+      allow_headers=["*"],
+  )
+  ```
+
+- [ ] Create base API endpoints (no logic yet, just routes)
+  - `GET /health` - Health check
+  - `POST /api/upload` - Upload document
+  - `GET /api/documents` - List user's documents
+  - `GET /api/documents/{document_id}` - Get document details
+  - `DELETE /api/documents/{document_id}` - Delete document
+  - `GET /api/extractions/{extraction_id}` - Get extraction results
+  - `PUT /api/extractions/{extraction_id}` - Update extraction
+  - `GET /api/usage/current` - Get user's current usage
+
+- [ ] Deploy backend to Railway/Render staging
+  - Connect GitHub repo
+  - Set environment variables
+  - Deploy and verify `/health` endpoint works
+
+**Week 1 Checkpoint:**
+✅ Database schema live in Supabase
+✅ Supabase Storage bucket created
+✅ Backend API skeleton deployed
+✅ CORS configured for local development
+
+---
+
+## Phase 2: Extraction Engine (Week 1-2, Days 4-10)
+
+**Goal:** Build core extraction logic - OCR + LLM integration, file upload, background processing.
+
+**Deliverable:** Upload document → extraction completes → results saved to database.
+
+### File Upload Service (Day 4)
+
+- [ ] Implement Supabase Storage service
+  ```python
+  # services/storage.py
+  async def upload_document(user_id: str, file: UploadFile) -> dict:
+      """Upload file to Supabase Storage, return file_path and public URL"""
+      document_id = str(uuid.uuid4())
+      file_path = f"{user_id}/{document_id}_{file.filename}"
+
+      # Upload to Supabase Storage
+      supabase.storage.from_('documents').upload(file_path, file.file)
+
+      return {
+          "document_id": document_id,
+          "file_path": file_path,
+          "filename": file.filename
+      }
+  ```
+
+- [ ] Implement POST /api/upload endpoint
+  - Accept multipart/form-data (file + mode)
+  - Validate file type (PDF, JPG, PNG only)
+  - Validate file size (<10MB)
+  - Upload file to Supabase Storage
+  - Insert document record into database (status='processing')
+  - Return document_id to frontend
+
+- [ ] Add usage limit check
+  ```python
+  # services/usage.py
+  async def check_usage_limit(user_id: str) -> bool:
+      """Return True if user can upload, False if limit reached"""
+      current_month = datetime.now().replace(day=1)
+      usage = supabase.table('usage_tracking').select('*').eq('user_id', user_id).eq('month', current_month).execute()
+
+      if not usage.data:
+          return False  # No usage record
+
+      return usage.data[0]['documents_processed'] < usage.data[0]['limit']
+  ```
+
+- [ ] Test file upload flow
+  - Upload PDF via Postman
+  - Verify file appears in Supabase Storage bucket
+  - Verify document record created in database
+  - Test usage limit enforcement
+
+### Docling OCR Integration (Day 5)
+
+- [ ] Install Docling
+  ```bash
+  pip install docling
+  ```
+
+- [ ] Create OCR service
+  ```python
+  # services/extractor.py
+  from docling.document_converter import DocumentConverter
+
+  def extract_text_from_document(file_path: str) -> str:
+      """Use Docling to extract text from PDF/image"""
+      converter = DocumentConverter()
+      result = converter.convert(file_path)
+      text = result.document.export_to_markdown()
+      return text
+  ```
+
+- [ ] Test OCR with sample documents
+  - Test with PDF invoice
+  - Test with JPG receipt
+  - Test with PNG image
+  - Verify text extraction quality
+  - Measure processing time (<30 seconds)
+
+### LangChain + Claude Integration (Day 6-7)
+
+- [ ] Set up LangChain with Anthropic
+  ```python
+  from langchain_anthropic import ChatAnthropic
+  from langchain_core.prompts import ChatPromptTemplate
+  from pydantic import BaseModel, Field
+
+  # Define extraction schema
+  class ExtractedData(BaseModel):
+      extracted_fields: dict = Field(description="Extracted data as key-value pairs")
+      confidence_scores: dict = Field(description="Confidence scores per field (0.0-1.0)")
+
+  llm = ChatAnthropic(
+      model="claude-3-5-sonnet-20241022",
+      temperature=0,
+      anthropic_api_key=settings.ANTHROPIC_API_KEY
+  )
+  ```
+
+- [ ] Implement auto extraction mode
+  ```python
+  async def extract_auto_mode(text: str) -> dict:
+      """AI extracts all relevant fields automatically"""
+      prompt = ChatPromptTemplate.from_messages([
+          ("system", """You are an expert document data extraction system.
+          Analyze the document and extract ALL relevant structured data.
+          Return data as a dictionary with descriptive field names.
+          Include confidence scores for each field (0.0 to 1.0)."""),
+          ("user", "{text}")
+      ])
+
+      chain = prompt | llm.with_structured_output(ExtractedData)
+      result = chain.invoke({"text": text})
+
+      return {
+          "extracted_fields": result.extracted_fields,
+          "confidence_scores": result.confidence_scores
+      }
+  ```
+
+- [ ] Implement custom fields mode
+  ```python
+  async def extract_custom_fields(text: str, custom_fields: list[str]) -> dict:
+      """AI extracts only specified fields"""
+      fields_str = ", ".join(custom_fields)
+
+      prompt = ChatPromptTemplate.from_messages([
+          ("system", f"""You are an expert document data extraction system.
+          Extract ONLY these specific fields from the document: {fields_str}
+          Return data as a dictionary with exactly these field names.
+          Include confidence scores for each field."""),
+          ("user", "{text}")
+      ])
+
+      chain = prompt | llm.with_structured_output(ExtractedData)
+      result = chain.invoke({"text": text})
+
+      return {
+          "extracted_fields": result.extracted_fields,
+          "confidence_scores": result.confidence_scores
+      }
+  ```
+
+- [ ] Test extraction with sample documents
+  - Test auto mode on invoice → should extract vendor, date, amount, line_items
+  - Test custom mode with ["vendor_name", "total_amount"] → should extract only those
+  - Verify confidence scores are reasonable (>0.8 for clear fields)
+  - Test error handling (empty document, corrupted PDF)
+
+### Background Processing (Day 8)
+
+- [ ] Implement extraction background task
+  ```python
+  # services/extractor.py
+  async def extract_document(document_id: str, user_id: str, mode: str, custom_fields: list[str] = None):
+      """Full extraction pipeline (OCR → LLM → save results)"""
+      start_time = time.time()
+
+      try:
+          # 1. Fetch document from database
+          doc = supabase.table('documents').select('*').eq('id', document_id).single().execute()
+
+          # 2. Download file from Supabase Storage
+          file_bytes = supabase.storage.from_('documents').download(doc.data['file_path'])
+
+          # 3. OCR with Docling
+          text = extract_text_from_document(file_bytes)
+
+          # 4. LLM extraction
+          if mode == 'auto':
+              extraction_result = await extract_auto_mode(text)
+          else:
+              extraction_result = await extract_custom_fields(text, custom_fields)
+
+          # 5. Save extraction to database
+          processing_time = int((time.time() - start_time) * 1000)  # milliseconds
+
+          supabase.table('extractions').insert({
+              'document_id': document_id,
+              'user_id': user_id,
+              'extracted_fields': extraction_result['extracted_fields'],
+              'confidence_scores': extraction_result['confidence_scores'],
+              'mode': mode,
+              'custom_fields': custom_fields,
+              'is_latest': True,
+              'processing_time_ms': processing_time
+          }).execute()
+
+          # 6. Update document status
+          supabase.table('documents').update({
+              'status': 'completed',
+              'processed_at': datetime.now().isoformat()
+          }).eq('id', document_id).execute()
+
+          # 7. Increment usage counter
+          supabase.rpc('increment_usage', {'user_id': user_id}).execute()
+
+      except Exception as e:
+          # Update document status to failed
+          supabase.table('documents').update({
+              'status': 'failed',
+              'error_message': str(e)
+          }).eq('id', document_id).execute()
+  ```
+
+- [ ] Update upload endpoint to trigger background task
+  ```python
+  from fastapi import BackgroundTasks
+
+  @app.post("/api/upload")
+  async def upload_document(
+      file: UploadFile,
+      mode: str,
+      custom_fields: list[str] = None,
+      background_tasks: BackgroundTasks,
+      user_id: str = Depends(get_current_user)
+  ):
+      # Check usage limit
+      if not await check_usage_limit(user_id):
+          raise HTTPException(403, "Monthly limit reached")
+
+      # Upload file
+      upload_result = await upload_document_to_storage(user_id, file)
+
+      # Trigger extraction in background
+      background_tasks.add_task(
+          extract_document,
+          upload_result['document_id'],
+          user_id,
+          mode,
+          custom_fields
+      )
+
+      return {
+          "document_id": upload_result['document_id'],
+          "status": "processing"
+      }
+  ```
+
+- [ ] Test end-to-end extraction flow
+  - Upload document via API
+  - Wait for background task to complete
+  - Query database to verify extraction saved
+  - Verify document status updated to 'completed'
+  - Verify usage counter incremented
+
+### Extraction Endpoints (Day 9)
+
+- [ ] Implement GET /api/extractions/{extraction_id}
+  ```python
+  @app.get("/api/extractions/{extraction_id}")
+  async def get_extraction(extraction_id: str, user_id: str = Depends(get_current_user)):
+      extraction = supabase.table('extractions').select('*').eq('id', extraction_id).eq('user_id', user_id).single().execute()
+      return extraction.data
+  ```
+
+- [ ] Implement PUT /api/extractions/{extraction_id} (edit fields)
+  ```python
+  @app.put("/api/extractions/{extraction_id}")
+  async def update_extraction(
+      extraction_id: str,
+      updated_fields: dict,
+      user_id: str = Depends(get_current_user)
+  ):
+      supabase.table('extractions').update({
+          'extracted_fields': updated_fields,
+          'updated_at': datetime.now().isoformat()
+      }).eq('id', extraction_id).eq('user_id', user_id).execute()
+
+      return {"success": True}
+  ```
+
+- [ ] Implement GET /api/extractions/{extraction_id}/status (for polling)
+  ```python
+  @app.get("/api/extractions/{extraction_id}/status")
+  async def get_extraction_status(extraction_id: str):
+      doc = supabase.table('documents').select('status').eq('id', extraction_id).single().execute()
+      return {"status": doc.data['status']}
+  ```
+
+- [ ] Implement CSV/JSON export endpoint
+  ```python
+  @app.get("/api/extractions/{extraction_id}/export")
+  async def export_extraction(
+      extraction_id: str,
+      format: str = 'csv',
+      user_id: str = Depends(get_current_user)
+  ):
+      extraction = supabase.table('extractions').select('*').eq('id', extraction_id).single().execute()
+
+      if format == 'csv':
+          csv_data = convert_to_csv(extraction.data['extracted_fields'])
+          return Response(content=csv_data, media_type='text/csv')
+      else:
+          return extraction.data['extracted_fields']
+  ```
+
+### Document Endpoints (Day 10)
+
+- [ ] Implement GET /api/documents (list with pagination)
+  ```python
+  @app.get("/api/documents")
+  async def list_documents(
+      limit: int = 20,
+      offset: int = 0,
+      status: str = None,
+      user_id: str = Depends(get_current_user)
+  ):
+      query = supabase.table('documents').select('''
+          id, filename, status, uploaded_at, mode,
+          extractions!inner(extracted_fields, confidence_scores)
+      ''').eq('user_id', user_id)
+
+      if status:
+          query = query.eq('status', status)
+
+      result = query.order('uploaded_at', desc=True).range(offset, offset + limit - 1).execute()
+      return result.data
+  ```
+
+- [ ] Implement GET /api/documents/{document_id}
+- [ ] Implement DELETE /api/documents/{document_id}
+
+**Week 2 Checkpoint:**
+✅ File upload to Supabase Storage working
+✅ Docling OCR extracting text from PDFs/images
+✅ Claude extracting structured data (auto + custom modes)
+✅ Background processing working
+✅ Extractions saved to database
+✅ All backend endpoints implemented
+
+---
+
+## Phase 3: Frontend MVP (Week 2-3, Days 11-18)
+
+**Goal:** Build Next.js frontend with document library, upload flow, and extraction results display.
+
+**Deliverable:** User can sign up, upload documents, see extraction results, edit, and download CSV.
+
+### Project Setup (Day 11)
+
+- [ ] Initialize Next.js project
+  ```bash
+  npx create-next-app@latest frontend --typescript --tailwind --app
+  cd frontend
+  npm install @supabase/supabase-js @supabase/auth-helpers-nextjs
+  ```
+
+- [ ] Create project structure
+  ```
+  frontend/
+    app/
+      (auth)/
+        login/
+          page.tsx
+        signup/
+          page.tsx
+      dashboard/
+        page.tsx          # Document library
+        [documentId]/
+          page.tsx        # Document detail view
+      layout.tsx
+      page.tsx            # Landing page
+    components/
+      DocumentCard.tsx
+      DocumentGrid.tsx
+      UploadModal.tsx
+      EditModal.tsx
+      Header.tsx
+    lib/
+      supabase.ts         # Supabase client
+      api.ts              # Backend API client
+    .env.local
+  ```
+
+- [ ] Set up Supabase client
+  ```typescript
+  // lib/supabase.ts
+  import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+  export const supabase = createClientComponentClient();
+  ```
+
+- [ ] Create API client wrapper
+  ```typescript
+  // lib/api.ts
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  export async function uploadDocument(file: File, mode: string, customFields?: string[]) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mode', mode);
+      if (customFields) {
+          formData.append('custom_fields', JSON.stringify(customFields));
+      }
+
+      const response = await fetch(`${API_URL}/api/upload`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+              'Authorization': `Bearer ${await getSessionToken()}`
+          }
+      });
+
+      return response.json();
+  }
+  ```
+
+### Authentication (Day 11-12)
+
+- [ ] Build login page
+  - Email/password form
+  - Call Supabase Auth signInWithPassword()
+  - Redirect to /dashboard on success
+  - Show error messages
+
+- [ ] Build signup page
+  - Email/password form
+  - Call Supabase Auth signUp()
+  - Auto-login after signup
+  - Redirect to /dashboard
+
+- [ ] Add protected route middleware
+  ```typescript
+  // middleware.ts
+  export async function middleware(request: NextRequest) {
+      const supabase = createMiddlewareClient({ req: request });
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
+          return NextResponse.redirect(new URL('/login', request.url));
+      }
+
+      return NextResponse.next();
+  }
+  ```
+
+- [ ] Add logout button in header
+- [ ] Test auth flow (signup → login → logout → redirect)
+
+### Upload Flow (Day 12-13)
+
+- [ ] Build mode selection screen
+  ```typescript
+  // components/ModeSelection.tsx
+  type Mode = 'auto' | 'custom';
+
+  function ModeSelection({ onSelect }: { onSelect: (mode: Mode) => void }) {
+      return (
+          <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => onSelect('auto')}>
+                  Auto Extract
+                  <p>Let AI extract all relevant fields</p>
+              </button>
+              <button onClick={() => onSelect('custom')}>
+                  Custom Fields
+                  <p>Specify which fields to extract</p>
+              </button>
+          </div>
+      );
+  }
+  ```
+
+- [ ] Build custom fields input form
+  ```typescript
+  // components/CustomFieldsForm.tsx
+  function CustomFieldsForm({ onSubmit }: { onSubmit: (fields: string[]) => void }) {
+      const [fields, setFields] = useState<string[]>(['']);
+
+      const addField = () => setFields([...fields, '']);
+      const removeField = (index: number) => setFields(fields.filter((_, i) => i !== index));
+      const updateField = (index: number, value: string) => {
+          const newFields = [...fields];
+          newFields[index] = value;
+          setFields(newFields);
+      };
+
+      return (
+          <div>
+              {fields.map((field, index) => (
+                  <div key={index}>
+                      <input
+                          value={field}
+                          onChange={(e) => updateField(index, e.target.value)}
+                          placeholder="Field name (e.g., vendor_name)"
+                      />
+                      <button onClick={() => removeField(index)}>Remove</button>
+                  </div>
+              ))}
+              <button onClick={addField}>+ Add Field</button>
+              <button onClick={() => onSubmit(fields.filter(f => f.trim()))}>
+                  Continue to Upload
+              </button>
+          </div>
+      );
+  }
+  ```
+
+- [ ] Build file upload component
+  ```typescript
+  // components/UploadModal.tsx
+  function UploadModal({ mode, customFields }: { mode: Mode; customFields?: string[] }) {
+      const [file, setFile] = useState<File | null>(null);
+      const [uploading, setUploading] = useState(false);
+
+      const handleUpload = async () => {
+          if (!file) return;
+          setUploading(true);
+
+          try {
+              const result = await uploadDocument(file, mode, customFields);
+              // Redirect to document page or start polling
+              router.push(`/dashboard/${result.document_id}`);
+          } catch (error) {
+              alert('Upload failed');
+          } finally {
+              setUploading(false);
+          }
+      };
+
+      return (
+          <div>
+              <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setFile(e.target.files?.[0])}
+              />
+              {/* Or drag-and-drop zone */}
+              <button onClick={handleUpload} disabled={!file || uploading}>
+                  {uploading ? 'Uploading...' : 'Upload & Extract'}
+              </button>
+          </div>
+      );
+  }
+  ```
+
+- [ ] Test upload flow
+  - Select auto mode → upload file → verify redirects
+  - Select custom mode → enter fields → upload → verify custom_fields sent
+
+### Document Library (Day 14-15)
+
+- [ ] Build document grid component
+  ```typescript
+  // components/DocumentGrid.tsx
+  function DocumentGrid({ documents }: { documents: Document[] }) {
+      return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {documents.map(doc => (
+                  <DocumentCard key={doc.id} document={doc} />
+              ))}
+          </div>
+      );
+  }
+  ```
+
+- [ ] Build document card component
+  ```typescript
+  // components/DocumentCard.tsx
+  function DocumentCard({ document }: { document: Document }) {
+      const extraction = document.extractions?.[0]; // Latest extraction
+
+      return (
+          <Link href={`/dashboard/${document.id}`}>
+              <div className="border rounded-lg p-4 hover:shadow-lg">
+                  {/* Thumbnail */}
+                  <img src={document.thumbnail_url} alt={document.filename} />
+
+                  {/* Filename */}
+                  <h3>{document.filename}</h3>
+
+                  {/* Status badge */}
+                  <span className={`badge ${document.status}`}>
+                      {document.status}
+                  </span>
+
+                  {/* Preview fields */}
+                  {extraction && (
+                      <div className="mt-2 text-sm text-gray-600">
+                          <p>Vendor: {extraction.extracted_fields.vendor_name}</p>
+                          <p>Amount: {extraction.extracted_fields.total_amount}</p>
+                          <p>Date: {extraction.extracted_fields.invoice_date}</p>
+                      </div>
+                  )}
+
+                  {/* Upload date */}
+                  <p className="text-xs text-gray-400">
+                      {new Date(document.uploaded_at).toLocaleDateString()}
+                  </p>
+              </div>
+          </Link>
+      );
+  }
+  ```
+
+- [ ] Build dashboard page
+  ```typescript
+  // app/dashboard/page.tsx
+  export default async function DashboardPage() {
+      const supabase = createServerComponentClient({ cookies });
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Fetch documents from backend
+      const documents = await fetch(`${API_URL}/api/documents`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+      }).then(res => res.json());
+
+      return (
+          <div>
+              <Header />
+              <button onClick={() => setShowUploadModal(true)}>
+                  + Upload Document
+              </button>
+              <DocumentGrid documents={documents} />
+          </div>
+      );
+  }
+  ```
+
+- [ ] Add filters and search
+  - Filter by status (all/processing/completed/failed)
+  - Search by filename
+  - Pagination controls
+
+- [ ] Add usage indicator
+  ```typescript
+  // components/UsageIndicator.tsx
+  function UsageIndicator() {
+      const { data: usage } = useSWR('/api/usage/current');
+
+      return (
+          <div>
+              <p>{usage.documents_processed} / {usage.limit} documents used</p>
+              <progress value={usage.documents_processed} max={usage.limit} />
+              {usage.documents_processed >= usage.limit && (
+                  <p>Limit reached. Upgrade to process more documents.</p>
+              )}
+          </div>
+      );
+  }
+  ```
+
+### Document Detail View (Day 16-17)
+
+- [ ] Build document detail page
+  ```typescript
+  // app/dashboard/[documentId]/page.tsx
+  export default async function DocumentPage({ params }: { params: { documentId: string } }) {
+      const document = await fetchDocument(params.documentId);
+      const extraction = document.extractions.find(e => e.is_latest);
+
+      // If status is 'processing', poll for completion
+      if (document.status === 'processing') {
+          return <ProcessingView documentId={params.documentId} />;
+      }
+
+      return (
+          <div>
+              {/* Document info */}
+              <h1>{document.filename}</h1>
+              <p>Uploaded: {document.uploaded_at}</p>
+              <p>Mode: {document.mode}</p>
+
+              {/* Extraction results */}
+              <ExtractionResults extraction={extraction} />
+
+              {/* Actions */}
+              <button onClick={() => setShowEditModal(true)}>Edit</button>
+              <button onClick={downloadCSV}>Download CSV</button>
+              <button onClick={downloadJSON}>Download JSON</button>
+              <button onClick={() => setShowReExtractModal(true)}>Re-extract</button>
+          </div>
+      );
+  }
+  ```
+
+- [ ] Build extraction results display
+  ```typescript
+  // components/ExtractionResults.tsx
+  function ExtractionResults({ extraction }: { extraction: Extraction }) {
+      return (
+          <div className="space-y-4">
+              {Object.entries(extraction.extracted_fields).map(([key, value]) => (
+                  <div key={key} className="border-b pb-2">
+                      <label className="font-semibold">{formatFieldName(key)}</label>
+                      <p>{formatFieldValue(value)}</p>
+
+                      {/* Confidence indicator */}
+                      {extraction.confidence_scores[key] && (
+                          <div className="flex items-center gap-2">
+                              <progress value={extraction.confidence_scores[key]} max={1} />
+                              <span>{(extraction.confidence_scores[key] * 100).toFixed(0)}%</span>
+                          </div>
+                      )}
+                  </div>
+              ))}
+          </div>
+      );
+  }
+  ```
+
+- [ ] Build processing/polling view
+  ```typescript
+  // components/ProcessingView.tsx
+  function ProcessingView({ documentId }: { documentId: string }) {
+      const [status, setStatus] = useState('processing');
+
+      useEffect(() => {
+          const interval = setInterval(async () => {
+              const { status: newStatus } = await fetch(
+                  `/api/extractions/${documentId}/status`
+              ).then(res => res.json());
+
+              setStatus(newStatus);
+
+              if (newStatus === 'completed' || newStatus === 'failed') {
+                  clearInterval(interval);
+                  router.refresh(); // Reload page with results
+              }
+          }, 2000); // Poll every 2 seconds
+
+          return () => clearInterval(interval);
+      }, [documentId]);
+
+      return (
+          <div className="text-center">
+              <Spinner />
+              <p>Extracting data from your document...</p>
+              <p className="text-sm text-gray-500">This usually takes 20-30 seconds</p>
+          </div>
+      );
+  }
+  ```
+
+### Edit & Export (Day 17-18)
+
+- [ ] Build edit modal
+  ```typescript
+  // components/EditModal.tsx
+  function EditModal({ extraction, onSave }: { extraction: Extraction; onSave: (fields: any) => void }) {
+      const [fields, setFields] = useState(extraction.extracted_fields);
+
+      const handleSave = async () => {
+          await fetch(`/api/extractions/${extraction.id}`, {
+              method: 'PUT',
+              body: JSON.stringify(fields)
+          });
+          onSave(fields);
+      };
+
+      return (
+          <Modal>
+              <h2>Edit Extraction</h2>
+              <form>
+                  {Object.entries(fields).map(([key, value]) => (
+                      <div key={key}>
+                          <label>{formatFieldName(key)}</label>
+                          <input
+                              value={value as string}
+                              onChange={(e) => setFields({ ...fields, [key]: e.target.value })}
+                          />
+                      </div>
+                  ))}
+              </form>
+              <button onClick={handleSave}>Save Changes</button>
+          </Modal>
+      );
+  }
+  ```
+
+- [ ] Implement CSV download
+  ```typescript
+  async function downloadCSV(extractionId: string) {
+      const response = await fetch(`${API_URL}/api/extractions/${extractionId}/export?format=csv`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `extraction_${extractionId}.csv`;
+      a.click();
+  }
+  ```
+
+- [ ] Implement JSON download
+- [ ] Add re-extract modal (select new mode, trigger new extraction)
+
+### Polish & Testing (Day 18)
+
+- [ ] Add loading states everywhere (skeletons, spinners)
+- [ ] Add error states (failed extractions, network errors)
+- [ ] Add empty states ("No documents yet")
+- [ ] Mobile responsive design (test on phone)
+- [ ] Add confirmation dialogs (delete document)
+- [ ] Test full user flow end-to-end
+
+**Week 3 Checkpoint:**
+✅ User can sign up and log in
+✅ User can upload documents (auto + custom modes)
+✅ Document library displays all documents in grid
+✅ User can view extraction results
+✅ User can edit extracted fields
+✅ User can download CSV/JSON
+✅ Usage limits enforced (5 free docs)
+
+---
+
+## Phase 4: Launch & Stripe Integration (Week 3-4, Days 19-25)
+
+**Goal:** Soft launch free beta, collect feedback, then add Stripe for paid tiers.
+
+**Deliverable:** 10 beta users using product, Stripe integration live, paid customers.
+
+### Soft Launch Prep (Day 19-20)
+
+- [ ] Deploy to production
+  - Backend: Railway/Render production environment
+  - Frontend: Vercel production deployment
+  - Set production environment variables
+  - Test production deployment
+
+- [ ] Set up error tracking
+  - Add Sentry (or similar) to backend
+  - Add Sentry to frontend
+  - Test error reporting
+
+- [ ] Set up analytics
+  - Add Plausible or Google Analytics
+  - Track key events: signup, upload, extraction_complete, download
+
+- [ ] Create simple landing page
+  - Value proposition
+  - Screenshot/demo GIF
+  - Sign up CTA
+
+- [ ] Write launch announcement
+  - Twitter thread
+  - Reddit post (r/smallbusiness, r/SideProject)
+  - Email to small business owners you know
+
+### Beta Launch (Day 20-21)
+
+- [ ] Recruit 5-10 beta testers
+  - Post on Reddit
+  - Post on Twitter
+  - Email small business owners
+  - Personal network
+
+- [ ] Send onboarding emails
+  - Welcome email with quick start guide
+  - Offer personal onboarding call
+
+- [ ] Collect feedback
+  - Set up feedback form (Typeform or Google Form)
+  - Schedule 1:1 calls with 3-5 users
+  - Ask:
+    - What documents are you processing?
+    - How accurate is the extraction?
+    - What would make this more useful?
+    - Would you pay for this? How much?
+
+- [ ] Monitor usage and errors
+  - Check Sentry for errors
+  - Watch analytics for drop-off points
+  - Track extraction accuracy (manual review)
+
+### Iterate Based on Feedback (Day 21-22)
+
+- [ ] Fix top 3 bugs reported by users
+- [ ] Improve extraction accuracy if needed
+  - Adjust prompts
+  - Test different confidence thresholds
+  - Add retry logic for low-confidence fields
+
+- [ ] Add quick wins from feedback
+  - "Can you add X field to auto extraction?"
+  - "CSV format doesn't import to Xero correctly"
+  - "Add keyboard shortcut for upload"
+
+### Stripe Integration (Day 23-25)
+
+- [ ] Set up Stripe account
+  - Create Stripe account
+  - Get API keys (test + live)
+  - Create products:
+    - Starter: $20/month, 1000 docs
+    - Professional: $50/month, 5000 docs
+
+- [ ] Add Stripe to backend
+  ```bash
+  pip install stripe
+  ```
+
+- [ ] Create checkout session endpoint
+  ```python
+  import stripe
+
+  @app.post("/api/create-checkout-session")
+  async def create_checkout_session(
+      tier: str,
+      user_id: str = Depends(get_current_user)
+  ):
+      session = stripe.checkout.Session.create(
+          customer_email=user.email,
+          payment_method_types=['card'],
+          line_items=[{
+              'price': PRICE_IDS[tier],  # Stripe price ID
+              'quantity': 1,
+          }],
+          mode='subscription',
+          success_url=f'{FRONTEND_URL}/dashboard?payment=success',
+          cancel_url=f'{FRONTEND_URL}/dashboard?payment=cancelled',
+      )
+
+      return {"checkout_url": session.url}
+  ```
+
+- [ ] Add webhook handler for subscription events
+  ```python
+  @app.post("/api/webhooks/stripe")
+  async def stripe_webhook(request: Request):
+      payload = await request.body()
+      sig_header = request.headers.get('stripe-signature')
+
+      event = stripe.Webhook.construct_event(
+          payload, sig_header, STRIPE_WEBHOOK_SECRET
+      )
+
+      if event['type'] == 'checkout.session.completed':
+          # Update user's tier in usage_tracking
+          session = event['data']['object']
+          customer_email = session['customer_email']
+          # Find user by email, update tier to 'starter' or 'professional'
+
+      return {"received": True}
+  ```
+
+- [ ] Build upgrade flow in frontend
+  ```typescript
+  // components/UpgradeModal.tsx
+  function UpgradeModal() {
+      const handleUpgrade = async (tier: string) => {
+          const { checkout_url } = await fetch('/api/create-checkout-session', {
+              method: 'POST',
+              body: JSON.stringify({ tier })
+          }).then(res => res.json());
+
+          // Redirect to Stripe Checkout
+          window.location.href = checkout_url;
+      };
+
+      return (
+          <div>
+              <h2>Upgrade Your Plan</h2>
+              <div className="grid grid-cols-2 gap-4">
+                  <div className="border p-4">
+                      <h3>Starter</h3>
+                      <p>$20/month</p>
+                      <p>1,000 documents</p>
+                      <button onClick={() => handleUpgrade('starter')}>
+                          Upgrade to Starter
+                      </button>
+                  </div>
+                  <div className="border p-4">
+                      <h3>Professional</h3>
+                      <p>$50/month</p>
+                      <p>5,000 documents</p>
+                      <button onClick={() => handleUpgrade('professional')}>
+                          Upgrade to Professional
+                      </button>
+                  </div>
+              </div>
+          </div>
+      );
+  }
+  ```
+
+- [ ] Show upgrade prompt when limit reached
+  - Intercept upload when usage >= limit
+  - Show modal: "You've used all 5 free documents. Upgrade to continue."
+
+- [ ] Add billing dashboard page
+  - Show current plan
+  - Show usage this month
+  - Button to manage subscription (Stripe customer portal)
+
+- [ ] Test Stripe flow end-to-end
+  - Use Stripe test mode
+  - Complete checkout
+  - Verify tier updated in database
+  - Verify limit increased
+  - Test cancellation
+
+**Week 4 Checkpoint:**
+✅ 10 beta users have used the product
+✅ Collected feedback and fixed top issues
+✅ Stripe integration working
+✅ Paid upgrade flow tested
+✅ Ready for public launch
+
+---
+
+## Success Criteria
+
+**Week 3 (Soft Launch):**
+- [ ] 10 signups
+- [ ] 50 documents processed
+- [ ] >80% extraction accuracy (measured via user edits)
+- [ ] 5+ users return within 7 days
+
+**Week 4 (Stripe Launch):**
+- [ ] 2-3 paid customers
+- [ ] $40-150 MRR
+- [ ] Positive feedback (users say it saves them time)
+- [ ] No P0 bugs in production
+
+**Month 2 (Post-Launch):**
+- [ ] 25 active users
+- [ ] $100-500 MRR
+- [ ] 10%+ free → paid conversion
+- [ ] Clear feature requests from users
+
+---
+
+## Risk Mitigation
+
+**Common Risks:**
+
+1. **Docling fails on certain PDFs**
+   - Mitigation: Add fallback to Claude Vision (send image directly)
+   - Test with wide variety of document types
+
+2. **Extraction accuracy too low (<80%)**
+   - Mitigation: Iterate on prompts, test different models
+   - Add confidence thresholding (flag low-confidence fields)
+   - Collect user feedback on errors
+
+3. **Takes longer than 3 weeks**
+   - Mitigation: Cut P1 features (batch upload, saved templates)
+   - Launch with just auto mode (skip custom fields)
+   - Add Stripe later (free beta first)
+
+4. **No users sign up**
+   - Mitigation: Interview beta users before launch
+   - Validate CSV export fits their workflow
+   - Consider adding Xero integration earlier
+
+5. **Backend processing too slow (>30 seconds)**
+   - Mitigation: Optimize Docling (use faster model)
+   - Cache OCR results
+   - Move to Celery if BackgroundTasks insufficient
+
+---
+
+## Post-MVP Roadmap (Month 2+)
+
+**If MVP succeeds (paying customers, positive feedback):**
+
+### Priority 1 Features (Month 2)
+- [ ] Batch upload (process 50 documents at once)
+- [ ] Saved templates (reusable custom field configs)
+- [ ] Improved CSV format (match Xero import specs)
+- [ ] Email forwarding (forward invoices → auto-process)
+
+### Priority 2 Features (Month 3)
+- [ ] Xero integration (OAuth + push data directly)
+- [ ] QuickBooks integration
+- [ ] API access (programmatic extraction)
+- [ ] Webhook notifications (extraction complete)
+
+### Priority 3 Features (Month 4+)
+- [ ] Team accounts (share document library)
+- [ ] Schema learning system (from spike)
+- [ ] AI-suggested templates based on document type
+- [ ] Advanced analytics dashboard
+
+---
+
+## Related Documentation
+
+- **Functional requirements**: `planning/PRD.md`
+- **Architecture & data flow**: `planning/ARCHITECTURE.md`
+- **Database schema**: `planning/SCHEMA.md`
