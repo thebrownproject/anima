@@ -1,93 +1,108 @@
 # Database Schema
 
 **Product:** StackDocs MVP - Document Data Extractor
-**Version:** 1.0
+**Version:** 1.0 (Simplified)
+**Last Updated:** 2025-11-03
 **Database:** Supabase PostgreSQL
-**Date:** November 2025
 
 ---
 
-## Document Purpose
+## Overview
 
-This document defines the complete database schema for StackDocs MVP. The schema is designed to support flexible document data extraction with multiple extraction attempts per document, user isolation, and usage tracking.
+This document describes the database schema for StackDocs MVP. The design prioritizes simplicity for rapid MVP development.
 
-**Note:** User authentication tables are managed by Supabase Auth and not documented here. We reference `auth.users` via foreign keys but don't define those tables.
+**Key Principles:**
+1. **Lean schema**: 3 tables total (users, documents, extractions)
+2. **Current state only**: Track current month usage, not historical data
+3. **Date-based sorting**: Latest extraction = most recent by timestamp
+4. **JSONB flexibility**: `extracted_fields` supports any document type
+5. **Security first**: Row-Level Security (RLS) on all tables
 
 ---
 
-## Entity Relationship Diagram
+## Tables
 
-```
-┌─────────────────┐
-│   auth.users    │ (Managed by Supabase Auth)
-│                 │
-│ - id (UUID)     │
-│ - email         │
-│ - created_at    │
-└────────┬────────┘
-         │
-         │ 1:N
-         │
-         ├───────────────────────────────────────┐
-         │                                       │
-         ↓                                       ↓
-┌──────────────────┐                  ┌──────────────────┐
-│   documents      │                  │ usage_tracking   │
-│                  │                  │                  │
-│ - id (PK)        │                  │ - id (PK)        │
-│ - user_id (FK)   │                  │ - user_id (FK)   │
-│ - filename       │                  │ - month          │
-│ - file_path      │                  │ - documents_used │
-│ - status         │                  │ - limit          │
-│ - mode           │                  │ - reset_date     │
-│ - uploaded_at    │                  └──────────────────┘
-└────────┬─────────┘
-         │
-         │ 1:N
-         │
-         ↓
-┌──────────────────┐
-│   extractions    │
-│                  │
-│ - id (PK)        │
-│ - document_id(FK)│
-│ - user_id (FK)   │
-│ - extracted_fields (JSONB) │
-│ - confidence_scores (JSONB)│
-│ - mode           │
-│ - custom_fields  │
-│ - is_latest      │
-│ - processing_time│
-│ - created_at     │
-└──────────────────┘
+1. **`users`** - User profiles with integrated usage tracking
+2. **`documents`** - Uploaded file metadata and processing status
+3. **`extractions`** - AI-extracted structured data (multiple per document)
+
+---
+
+## Table: `users`
+
+User profiles linked to Supabase Auth, with current month usage tracking integrated.
+
+### Schema
+
+```sql
+CREATE TABLE public.users (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+
+    -- Usage tracking (current month only)
+    documents_processed_this_month INTEGER DEFAULT 0,
+    usage_reset_date DATE DEFAULT DATE_TRUNC('month', NOW() + INTERVAL '1 month'),
+
+    -- Subscription
+    subscription_tier VARCHAR(20) DEFAULT 'free',
+    documents_limit INTEGER DEFAULT 5,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_email ON public.users(email);
+CREATE INDEX idx_users_reset_date ON public.users(usage_reset_date);
 ```
 
-**Key Relationships:**
-- `auth.users` → `documents` (1:N) - Users upload many documents
-- `auth.users` → `usage_tracking` (1:1) - Each user has monthly usage counter
-- `documents` → `extractions` (1:N) - Each document can have multiple extractions (re-extract with different modes)
-- `auth.users` → `extractions` (1:N) - Track which user created each extraction
+### Column Descriptions
+
+- **`id`**: UUID linked to `auth.users(id)` - Supabase Auth manages authentication
+- **`email`**: User's email address (copied from auth.users for convenience)
+- **`documents_processed_this_month`**: Counter for current month (resets monthly)
+- **`usage_reset_date`**: When to reset the counter (1st of next month)
+- **`subscription_tier`**: Current subscription level
+  - `'free'` - 5 documents/month (default)
+  - `'starter'` - 1000 documents/month ($20/month)
+  - `'professional'` - 5000 documents/month ($50/month)
+- **`documents_limit`**: How many documents allowed this month (based on tier)
+- **`created_at`**: Account creation timestamp
+
+### Design Decisions
+
+**Why merge usage tracking into users table?**
+- MVP only needs current month data, not historical analytics
+- Simplifies queries (no JOIN needed)
+- Can always add separate `usage_history` table later if needed
+- Faster to implement and understand
+
+**Usage reset logic:**
+```sql
+-- Check on each upload or via cron job
+UPDATE users
+SET documents_processed_this_month = 0,
+    usage_reset_date = DATE_TRUNC('month', NOW() + INTERVAL '1 month')
+WHERE NOW() >= usage_reset_date;
+```
 
 ---
 
-## Table Definitions
+## Table: `documents`
 
-### documents
+Metadata about uploaded documents and their processing status.
 
-Stores metadata about uploaded documents (PDFs, images). Files themselves are stored in Supabase Storage.
+### Schema
 
 ```sql
 CREATE TABLE documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     filename VARCHAR(255) NOT NULL,
     file_path TEXT NOT NULL,
     file_size_bytes INTEGER NOT NULL,
     mime_type VARCHAR(100) NOT NULL,
     mode VARCHAR(20) NOT NULL,
     status VARCHAR(20) DEFAULT 'processing',
-    uploaded_at TIMESTAMP DEFAULT NOW(),
-    processed_at TIMESTAMP
+    uploaded_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_documents_user_id ON documents(user_id, uploaded_at DESC);
@@ -95,61 +110,81 @@ CREATE INDEX idx_documents_status ON documents(status);
 CREATE INDEX idx_documents_user_status ON documents(user_id, status);
 ```
 
-**Column Descriptions:**
+### Column Descriptions
 
-- `id`: Unique document identifier (UUID)
-- `user_id`: Owner of the document (references Supabase auth.users)
-- `filename`: Original filename (e.g., "invoice_acme.pdf")
-- `file_path`: Storage path in Supabase Storage (e.g., "documents/user_456/doc_123.pdf")
-- `file_size_bytes`: File size for storage tracking
-- `mime_type`: File MIME type (e.g., "application/pdf", "image/jpeg", "image/png")
-- `mode`: Extraction mode selected at upload ("auto" or "custom")
-- `status`: Processing status
-  - `'processing'` - Extraction in progress
-  - `'completed'` - Extraction successful
-  - `'failed'` - Extraction failed (OCR error, LLM timeout, etc.)
-- `uploaded_at`: When user uploaded the file
-- `processed_at`: When extraction completed (NULL if still processing)
+- **`id`**: Unique document identifier
+- **`user_id`**: Who owns this document (FK to users.id)
+- **`filename`**: Original filename (e.g., "invoice_acme_nov_2025.pdf")
+- **`file_path`**: Supabase Storage path (e.g., "documents/{user_id}/{doc_id}.pdf")
+- **`file_size_bytes`**: File size for storage tracking
+- **`mime_type`**: File type for validation and display
+  - `"application/pdf"` - PDF documents
+  - `"image/jpeg"` - JPEG images
+  - `"image/png"` - PNG images
+- **`mode`**: Extraction mode selected at upload
+  - `"auto"` - AI decides what fields to extract
+  - `"custom"` - User specified field names
+- **`status`**: Processing state
+  - `"processing"` - Extraction in progress (background task running)
+  - `"completed"` - Extraction finished successfully
+  - `"failed"` - Extraction failed (OCR error, LLM timeout, etc.)
+- **`uploaded_at`**: Upload timestamp (for sorting)
 
-**Usage Notes:**
-- CASCADE delete: Deleting user deletes all their documents
-- When document deleted, also delete file from Supabase Storage (application logic)
-- Status transitions: processing → completed/failed
+### Common Queries
+
+**Get user's documents (document library):**
+```sql
+SELECT d.*,
+       e.extracted_fields
+FROM documents d
+LEFT JOIN LATERAL (
+    SELECT extracted_fields, confidence_scores
+    FROM extractions
+    WHERE document_id = d.id
+    ORDER BY created_at DESC
+    LIMIT 1
+) e ON true
+WHERE d.user_id = $1
+ORDER BY d.uploaded_at DESC;
+```
+
+**Check if document still processing:**
+```sql
+SELECT status FROM documents WHERE id = $1;
+```
 
 ---
 
-### extractions
+## Table: `extractions`
 
-Stores extraction results. Multiple extractions can exist per document (re-extraction support).
+AI-extracted structured data from documents. Multiple extractions per document supported (re-extraction).
+
+### Schema
 
 ```sql
 CREATE TABLE extractions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     extracted_fields JSONB NOT NULL,
     confidence_scores JSONB,
     mode VARCHAR(20) NOT NULL,
     custom_fields TEXT[],
-    is_latest BOOLEAN DEFAULT false,
-    processing_time_ms INTEGER,
-    error_message TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_extractions_document_id ON extractions(document_id, created_at DESC);
 CREATE INDEX idx_extractions_user_id ON extractions(user_id, created_at DESC);
-CREATE INDEX idx_extractions_latest ON extractions(document_id) WHERE is_latest = true;
 CREATE INDEX idx_extractions_fields ON extractions USING GIN (extracted_fields);
 ```
 
-**Column Descriptions:**
+### Column Descriptions
 
-- `id`: Unique extraction identifier (UUID)
-- `document_id`: Which document was extracted (references documents.id)
-- `user_id`: Who performed the extraction (denormalized for faster queries)
-- `extracted_fields`: Structured data extracted by AI (JSONB for flexibility)
+- **`id`**: Unique extraction identifier
+- **`document_id`**: Which document this extraction is for (FK to documents.id)
+- **`user_id`**: Who owns this extraction (denormalized for faster queries)
+- **`extracted_fields`**: The structured data extracted by AI (JSONB)
   - Example (invoice):
     ```json
     {
@@ -157,16 +192,7 @@ CREATE INDEX idx_extractions_fields ON extractions USING GIN (extracted_fields);
       "invoice_number": "INV-2025-001",
       "invoice_date": "2025-11-01",
       "total_amount": 1250.00,
-      "currency": "AUD",
-      "payment_terms": "Net 30",
-      "line_items": [
-        {
-          "description": "Widget A",
-          "quantity": 10,
-          "unit_price": 125.00,
-          "total": 1250.00
-        }
-      ]
+      "currency": "AUD"
     }
     ```
   - Example (receipt):
@@ -175,352 +201,126 @@ CREATE INDEX idx_extractions_fields ON extractions USING GIN (extracted_fields);
       "merchant_name": "Coffee Shop",
       "date": "2025-11-02",
       "total": 8.50,
-      "payment_method": "Credit Card",
-      "items": [
-        {"item": "Latte", "price": 5.00},
-        {"item": "Muffin", "price": 3.50}
-      ]
+      "items": ["Latte", "Muffin"]
     }
     ```
-
-- `confidence_scores`: Per-field confidence from AI (JSONB)
+- **`confidence_scores`**: AI confidence per field (0.0-1.0)
   - Example:
     ```json
     {
       "vendor_name": 0.95,
       "invoice_date": 0.98,
-      "total_amount": 0.92,
-      "line_items": 0.87
+      "total_amount": 0.92
     }
     ```
-  - Range: 0.0 - 1.0 (higher = more confident)
-
-- `mode`: Extraction mode used ("auto" or "custom")
-- `custom_fields`: Array of field names if mode='custom' (NULL for auto mode)
+  - Use for UI: Show "High confidence" (green) vs "Low confidence" (yellow)
+- **`mode`**: Which extraction mode was used (`"auto"` or `"custom"`)
+- **`custom_fields`**: Array of field names if mode='custom', NULL otherwise
   - Example: `["vendor_name", "invoice_date", "total_amount"]`
+- **`created_at`**: When extraction was performed
+- **`updated_at`**: Last time user edited the extracted data
 
-- `is_latest`: Boolean flag - only ONE extraction per document should have is_latest=true
-  - Used to display "current" extraction in UI
-  - When re-extracting, set previous is_latest=false, new is_latest=true
+### Design Decisions
 
-- `processing_time_ms`: How long extraction took (milliseconds)
-- `error_message`: Error details if extraction failed (NULL if successful)
-- `created_at`: When extraction was performed
-- `updated_at`: Last time fields were edited by user
+**Why no `is_latest` flag?**
+- For MVP, "latest extraction" = most recent by `created_at`
+- Simpler than managing boolean flag
+- Query: `ORDER BY created_at DESC LIMIT 1`
+- Can add "pin extraction" feature later if users request it
 
-**Usage Notes:**
-- Multiple extractions per document supported (history)
-- GIN index on extracted_fields enables fast JSON queries (e.g., find all invoices from "Acme Corp")
-- CASCADE delete: Deleting document deletes all its extractions
-- User can edit extracted_fields after creation (via PUT /api/extractions/{id})
+**Why denormalize `user_id`?**
+- Faster queries (no JOIN through documents table)
+- RLS policies can enforce directly on extractions table
 
----
+### Common Queries
 
-### usage_tracking
-
-Tracks monthly usage per user for free tier limits (5 docs/month).
-
+**Get latest extraction for document:**
 ```sql
-CREATE TABLE usage_tracking (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    month DATE NOT NULL,
-    documents_processed INTEGER DEFAULT 0,
-    tier VARCHAR(20) DEFAULT 'free',
-    limit INTEGER DEFAULT 5,
-    reset_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, month)
-);
-
-CREATE INDEX idx_usage_tracking_user_month ON usage_tracking(user_id, month DESC);
-CREATE INDEX idx_usage_tracking_reset ON usage_tracking(reset_date) WHERE tier = 'free';
+SELECT *
+FROM extractions
+WHERE document_id = $1
+ORDER BY created_at DESC
+LIMIT 1;
 ```
 
-**Column Descriptions:**
-
-- `id`: Unique tracking record identifier
-- `user_id`: User being tracked
-- `month`: Month this record tracks (e.g., "2025-11-01" for November 2025)
-- `documents_processed`: Count of documents processed this month
-- `tier`: User's subscription tier
-  - `'free'` - Free tier (5 docs/month)
-  - `'starter'` - Starter plan ($20/month, 1000 docs)
-  - `'professional'` - Professional plan ($50/month, 5000 docs)
-
-- `limit`: How many documents allowed this month (based on tier)
-- `reset_date`: When counter resets (1st of next month)
-- `created_at`: When record created
-- `updated_at`: When counter last incremented
-
-**Usage Flow:**
-
-1. User uploads document:
-   ```sql
-   -- Check if user has capacity
-   SELECT documents_processed, limit
-   FROM usage_tracking
-   WHERE user_id = 'user_456' AND month = '2025-11-01';
-
-   -- If documents_processed < limit, allow upload and increment:
-   UPDATE usage_tracking
-   SET documents_processed = documents_processed + 1,
-       updated_at = NOW()
-   WHERE user_id = 'user_456' AND month = '2025-11-01';
-   ```
-
-2. Monthly reset (cron job):
-   ```sql
-   -- Create new record for next month for all users
-   INSERT INTO usage_tracking (user_id, month, tier, limit, reset_date)
-   SELECT user_id,
-          DATE_TRUNC('month', NOW() + INTERVAL '1 month') as month,
-          tier,
-          CASE tier
-            WHEN 'free' THEN 5
-            WHEN 'starter' THEN 1000
-            WHEN 'professional' THEN 5000
-          END as limit,
-          DATE_TRUNC('month', NOW() + INTERVAL '2 months') as reset_date
-   FROM usage_tracking
-   WHERE month = DATE_TRUNC('month', NOW());
-   ```
-
-**UNIQUE constraint:** Prevents duplicate tracking records for same user+month
-
----
-
-## Indexes Summary
-
-**Performance-Critical Indexes:**
-
-- `documents.user_id, uploaded_at DESC` - Fast lookup of user's documents (document library view)
-- `extractions.document_id, created_at DESC` - Fast retrieval of extraction history
-- `extractions.is_latest WHERE is_latest=true` - Quick fetch of current extraction
-- `extractions.extracted_fields GIN` - Fast JSON field searches
-
-**Filtering Indexes:**
-
-- `documents.status` - Filter by processing status
-- `documents.user_id, status` - User's documents by status
-- `usage_tracking.user_id, month DESC` - Current month usage
-
----
-
-## Data Access Patterns
-
-### Pattern 1: Display Document Library (Most Common)
-
+**Get extraction history for document:**
 ```sql
--- Get user's documents with latest extraction preview
-SELECT
-    d.id as document_id,
-    d.filename,
-    d.status,
-    d.uploaded_at,
-    d.mode,
-    e.extracted_fields->>'vendor_name' as vendor,
-    e.extracted_fields->>'total_amount' as amount,
-    e.extracted_fields->>'invoice_date' as date,
-    e.confidence_scores
-FROM documents d
-LEFT JOIN extractions e ON e.document_id = d.id AND e.is_latest = true
-WHERE d.user_id = $1
-ORDER BY d.uploaded_at DESC
-LIMIT 20 OFFSET $2;
+SELECT *
+FROM extractions
+WHERE document_id = $1
+ORDER BY created_at DESC;
 ```
 
-**Performance:** Uses `idx_documents_user_id` + `idx_extractions_latest`
-
----
-
-### Pattern 2: Get Full Extraction Details
-
+**User edits extracted data:**
 ```sql
--- Get extraction with all fields
-SELECT
-    e.id,
-    e.document_id,
-    e.extracted_fields,
-    e.confidence_scores,
-    e.mode,
-    e.custom_fields,
-    e.processing_time_ms,
-    e.created_at,
-    d.filename,
-    d.file_path
-FROM extractions e
-JOIN documents d ON d.id = e.document_id
-WHERE e.id = $1 AND e.user_id = $2;
+UPDATE extractions
+SET extracted_fields = $2,
+    updated_at = NOW()
+WHERE id = $1 AND user_id = $3;
 ```
 
-**Performance:** Primary key lookup + JOIN
-
 ---
 
-### Pattern 3: Check Usage Limit Before Upload
+## Row-Level Security (RLS)
+
+All tables have RLS enabled to ensure users can only access their own data.
+
+### RLS Policies
 
 ```sql
--- Check if user can upload
-SELECT
-    documents_processed,
-    limit,
-    (limit - documents_processed) as remaining
-FROM usage_tracking
-WHERE user_id = $1
-  AND month = DATE_TRUNC('month', NOW());
-```
-
-**Performance:** Uses `idx_usage_tracking_user_month`
-
----
-
-### Pattern 4: Search Across Extracted Fields
-
-```sql
--- Find all documents from specific vendor
-SELECT
-    d.id,
-    d.filename,
-    e.extracted_fields->>'vendor_name' as vendor,
-    e.extracted_fields->>'total_amount' as amount
-FROM documents d
-JOIN extractions e ON e.document_id = d.id AND e.is_latest = true
-WHERE d.user_id = $1
-  AND e.extracted_fields->>'vendor_name' ILIKE '%Acme%';
-```
-
-**Performance:** Uses GIN index on `extracted_fields`
-
----
-
-## Row-Level Security (Supabase RLS)
-
-Enable RLS to ensure users can only access their own data:
-
-```sql
--- Enable RLS on all tables
+-- Enable RLS
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE extractions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE usage_tracking ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own documents
+-- Users can only see their own profile
+CREATE POLICY users_user_isolation ON public.users
+    FOR ALL USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+-- Users can only see their own documents
 CREATE POLICY documents_user_isolation ON documents
-    FOR ALL
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- Policy: Users can only see their own extractions
+-- Users can only see their own extractions
 CREATE POLICY extractions_user_isolation ON extractions
-    FOR ALL
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
--- Policy: Users can only see their own usage
-CREATE POLICY usage_user_isolation ON usage_tracking
-    FOR ALL
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 ```
 
 **Security Benefits:**
-- Even if JWT token is compromised, user can't access other users' data
-- Backend doesn't need to manually filter by user_id in queries
 - Database-level enforcement (impossible to bypass)
+- Even if JWT token is compromised, user can't access other users' data
+- Backend doesn't need to manually filter by `user_id` in queries
 
 ---
 
-## Migrations
+## Indexes
 
-### Initial Schema Migration
+### Performance-Critical
+
+- **`documents(user_id, uploaded_at DESC)`** - Document library sorted by date
+- **`extractions(document_id, created_at DESC)`** - Latest extraction lookup
+- **`extractions.extracted_fields (GIN)`** - Fast JSON field searches
+
+### Supporting Indexes
+
+- **`documents(status)`** - Filter by processing status
+- **`documents(user_id, status)`** - User's processing documents
+- **`users(usage_reset_date)`** - Monthly reset cron job
+
+---
+
+## Triggers
+
+### Auto-create User Profile
+
+When new user signs up via Supabase Auth, automatically create their profile:
 
 ```sql
--- Run this SQL in Supabase SQL Editor to create all tables
-
--- 1. Documents table
-CREATE TABLE documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    filename VARCHAR(255) NOT NULL,
-    file_path TEXT NOT NULL,
-    file_size_bytes INTEGER NOT NULL,
-    mime_type VARCHAR(100) NOT NULL,
-    mode VARCHAR(20) NOT NULL,
-    status VARCHAR(20) DEFAULT 'processing',
-    uploaded_at TIMESTAMP DEFAULT NOW(),
-    processed_at TIMESTAMP
-);
-
-CREATE INDEX idx_documents_user_id ON documents(user_id, uploaded_at DESC);
-CREATE INDEX idx_documents_status ON documents(status);
-CREATE INDEX idx_documents_user_status ON documents(user_id, status);
-
--- 2. Extractions table
-CREATE TABLE extractions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    extracted_fields JSONB NOT NULL,
-    confidence_scores JSONB,
-    mode VARCHAR(20) NOT NULL,
-    custom_fields TEXT[],
-    is_latest BOOLEAN DEFAULT false,
-    processing_time_ms INTEGER,
-    error_message TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_extractions_document_id ON extractions(document_id, created_at DESC);
-CREATE INDEX idx_extractions_user_id ON extractions(user_id, created_at DESC);
-CREATE INDEX idx_extractions_latest ON extractions(document_id) WHERE is_latest = true;
-CREATE INDEX idx_extractions_fields ON extractions USING GIN (extracted_fields);
-
--- 3. Usage tracking table
-CREATE TABLE usage_tracking (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    month DATE NOT NULL,
-    documents_processed INTEGER DEFAULT 0,
-    tier VARCHAR(20) DEFAULT 'free',
-    limit INTEGER DEFAULT 5,
-    reset_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, month)
-);
-
-CREATE INDEX idx_usage_tracking_user_month ON usage_tracking(user_id, month DESC);
-CREATE INDEX idx_usage_tracking_reset ON usage_tracking(reset_date) WHERE tier = 'free';
-
--- 4. Enable Row-Level Security
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE extractions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE usage_tracking ENABLE ROW LEVEL SECURITY;
-
--- 5. RLS Policies
-CREATE POLICY documents_user_isolation ON documents
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY extractions_user_isolation ON extractions
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY usage_user_isolation ON usage_tracking
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
--- 6. Function to auto-create usage tracking for new users
-CREATE OR REPLACE FUNCTION create_usage_tracking_for_new_user()
+CREATE OR REPLACE FUNCTION create_public_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO usage_tracking (user_id, month, tier, limit, reset_date)
-    VALUES (
-        NEW.id,
-        DATE_TRUNC('month', NOW()),
-        'free',
-        5,
-        DATE_TRUNC('month', NOW() + INTERVAL '1 month')
-    );
+    INSERT INTO public.users (id, email)
+    VALUES (NEW.id, NEW.email);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -528,113 +328,151 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW
-    EXECUTE FUNCTION create_usage_tracking_for_new_user();
+    EXECUTE FUNCTION create_public_user();
 ```
+
+**Why:**
+- Users table stays in sync with auth.users automatically
+- No need to manually create user profiles in application code
+- New users start with default free tier (5 docs/month)
 
 ---
 
-## Seed Data (Development/Testing)
+## Migrations
+
+### Initial Schema (001)
+
+Complete migration SQL is in `backend/migrations/001_initial_schema.sql`.
+
+To apply:
+1. Via MCP: `supabase.apply_migration(project_id, name, query)`
+2. Via Supabase Dashboard: Copy SQL to SQL Editor and run
+3. Via Supabase CLI: `supabase db push`
+
+---
+
+## Data Access Patterns
+
+### Pattern 1: Check Usage Limit (Before Upload)
 
 ```sql
--- Insert test documents (after authenticating as test user)
-INSERT INTO documents (id, user_id, filename, file_path, file_size_bytes, mime_type, mode, status, processed_at)
-VALUES
-    ('doc_001', auth.uid(), 'invoice_acme.pdf', 'documents/test/doc_001.pdf', 245670, 'application/pdf', 'auto', 'completed', NOW()),
-    ('doc_002', auth.uid(), 'receipt_coffee.jpg', 'documents/test/doc_002.jpg', 123456, 'image/jpeg', 'auto', 'completed', NOW()),
-    ('doc_003', auth.uid(), 'contract_services.pdf', 'documents/test/doc_003.pdf', 567890, 'application/pdf', 'custom', 'processing', NULL);
-
--- Insert test extractions
-INSERT INTO extractions (document_id, user_id, extracted_fields, confidence_scores, mode, is_latest, processing_time_ms)
-VALUES
-    (
-        'doc_001',
-        auth.uid(),
-        '{"vendor_name": "Acme Corp", "invoice_date": "2025-11-01", "total_amount": 1250.00, "currency": "AUD"}',
-        '{"vendor_name": 0.95, "invoice_date": 0.98, "total_amount": 0.92}',
-        'auto',
-        true,
-        8500
-    ),
-    (
-        'doc_002',
-        auth.uid(),
-        '{"merchant_name": "Coffee Shop", "date": "2025-11-02", "total": 8.50}',
-        '{"merchant_name": 0.88, "date": 0.99, "total": 0.94}',
-        'auto',
-        true,
-        5200
-    );
+SELECT
+    documents_processed_this_month,
+    documents_limit,
+    usage_reset_date
+FROM users
+WHERE id = $1;
 ```
 
----
+**Logic:**
+- If `documents_processed_this_month >= documents_limit`: Block upload, show upgrade prompt
+- If `NOW() >= usage_reset_date`: Reset counter first, then allow upload
+- Else: Allow upload, increment counter
 
-## Future Schema Enhancements (Post-MVP)
-
-### Saved Templates Table (P1)
+### Pattern 2: Display Document Library
 
 ```sql
-CREATE TABLE extraction_templates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    template_name VARCHAR(100) NOT NULL,
-    field_definitions TEXT[] NOT NULL,
-    description TEXT,
-    usage_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+SELECT
+    d.id,
+    d.filename,
+    d.status,
+    d.uploaded_at,
+    d.mode,
+    (SELECT extracted_fields
+     FROM extractions
+     WHERE document_id = d.id
+     ORDER BY created_at DESC
+     LIMIT 1) as latest_extraction
+FROM documents d
+WHERE d.user_id = $1
+ORDER BY d.uploaded_at DESC;
 ```
 
-**Purpose:** Users save custom field configurations as reusable templates
-
----
-
-### Batch Jobs Table (P1)
+### Pattern 3: Re-extraction Workflow
 
 ```sql
-CREATE TABLE batch_jobs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    template_id UUID REFERENCES extraction_templates(id),
-    status VARCHAR(20) DEFAULT 'pending',
-    total_documents INTEGER NOT NULL,
-    processed_documents INTEGER DEFAULT 0,
-    failed_documents INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP
-);
+-- Create new extraction (keeps old ones for history)
+INSERT INTO extractions (
+    document_id,
+    user_id,
+    extracted_fields,
+    confidence_scores,
+    mode,
+    custom_fields
+)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id;
 
-CREATE TABLE batch_job_documents (
-    batch_job_id UUID REFERENCES batch_jobs(id) ON DELETE CASCADE,
-    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
-    PRIMARY KEY (batch_job_id, document_id)
-);
+-- Latest extraction is automatically the newest by created_at
 ```
 
-**Purpose:** Track bulk document processing jobs
-
----
-
-### Document Schemas Table (Post-MVP - Schema Learning)
+### Pattern 4: Monthly Usage Reset (Cron Job)
 
 ```sql
-CREATE TABLE document_schemas (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    document_type VARCHAR(100) NOT NULL,
-    field_definitions JSONB NOT NULL,
-    example_count INTEGER DEFAULT 0,
-    last_updated TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, document_type)
-);
+-- Reset all users whose usage_reset_date has passed
+UPDATE users
+SET documents_processed_this_month = 0,
+    usage_reset_date = DATE_TRUNC('month', NOW() + INTERVAL '1 month')
+WHERE NOW() >= usage_reset_date;
 ```
-
-**Purpose:** Port schema learning system from spike (AI learns field names over time)
 
 ---
 
-## Related Documentation
+## Future Considerations
 
-- **Functional requirements**: `planning/PRD.md`
-- **Architecture & data flow**: `planning/ARCHITECTURE.md`
-- **Development tasks**: `planning/TASKS.md`
+### Post-MVP Enhancements
+
+**If you need usage analytics:**
+- Add `usage_history` table to track monthly stats
+- Keep current `users.documents_processed_this_month` for limits
+
+**If you need "pin extraction" feature:**
+- Add `is_latest BOOLEAN` to extractions table
+- Update queries to use `WHERE is_latest = true` instead of date sorting
+
+**If you scale beyond free tier tracking:**
+- Add `stripe_customer_id`, `stripe_subscription_id` to users table
+- Add `subscription_status` (`'active'`, `'canceled'`, `'past_due'`)
+
+**If you need detailed error tracking:**
+- Add `error_logs` table with extraction failures, stack traces
+- Helps debug OCR/LLM issues
+
+---
+
+## Schema Comparison: Original vs Simplified
+
+### What Changed
+
+**Removed:**
+- ❌ Separate `usage_tracking` table → Merged into `users`
+- ❌ `is_latest` flag → Use date sorting
+- ❌ `processed_at` → Use `extractions.created_at`
+- ❌ `processing_time_ms` → Not needed for MVP
+- ❌ `error_message` → Not needed for MVP
+
+**Kept:**
+- ✅ `confidence_scores` → Useful for UX
+- ✅ `updated_at` → Needed if users edit extractions
+- ✅ `file_size_bytes`, `mime_type` → Useful for validation
+
+**Result:**
+- 3 tables instead of 4
+- Simpler queries (fewer JOINs)
+- Faster to implement
+- Still supports all P0 MVP features
+
+---
+
+## Testing Checklist
+
+- [ ] Create test user via Supabase Auth → Verify `public.users` row created automatically
+- [ ] Upload document → Verify `documents_processed_this_month` increments
+- [ ] Try to exceed limit (5 docs) → Verify upload blocked
+- [ ] Create extraction → Verify RLS prevents access from other user
+- [ ] Re-extract document → Verify latest extraction returned by date sort
+- [ ] Edit extraction → Verify `updated_at` timestamp changes
+
+---
+
+**End of Schema Documentation**
