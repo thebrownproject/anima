@@ -263,3 +263,133 @@ A running diary of development decisions, important context, and session-to-sess
 4. Install dependencies (FastAPI, Supabase client, LangChain, Docling)
 
 ---
+
+## Session 3 - 2025-11-03 - Storage & Documentation Updates ✅
+
+**Week**: Week 1 - Infrastructure Setup
+**Phase**: Database & Storage Configuration
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Documented bucket-level file validation approach
+  - Updated TASKS.md to clarify validation is bucket-enforced (10MB, PDF/JPG/PNG)
+  - Updated SCHEMA.md column descriptions for file_size_bytes and mime_type
+  - Added comprehensive Supabase Storage Configuration section to ARCHITECTURE.md
+  - Removed duplicate storage section from ARCHITECTURE.md
+
+- [x] Set up Supabase Storage bucket
+  - Created `documents` bucket with 10MB file size limit
+  - Configured allowed MIME types (PDF, JPG, PNG) at bucket level
+  - Created RLS policies for storage.objects table (SELECT, INSERT, DELETE)
+  - File path structure: `documents/{user_id}/{document_id}_{filename}`
+
+- [x] Test RLS policies
+  - Created two test users via MCP (User A, User B)
+  - Uploaded test file to User A's folder
+  - Verified User A can view their file, User B cannot (storage RLS)
+  - Verified User A can view their documents, User B cannot (database RLS)
+  - Cleaned up test data after verification
+
+- [x] Verify usage tracking trigger
+  - Confirmed trigger `on_auth_user_created` exists and is active
+  - Tested trigger creates public.users record automatically
+  - Verified default values (free tier, 5 docs limit, usage reset date)
+  - Trigger already implemented in 001_initial_schema.sql
+
+### Decisions Made
+
+1. **Bucket-Level Validation Strategy:**
+   - File size (10MB) and MIME type restrictions enforced at bucket level
+   - **Reasoning**: Defense in depth, simpler application code, clearer error messages
+   - **Impact**: FastAPI upload endpoint doesn't need validation logic
+
+2. **Storage RLS Policy Pattern:**
+   - Uses `(storage.foldername(name))[1] = auth.uid()::text` to enforce folder-based access
+   - Folder structure embeds user_id: `documents/{user_id}/...`
+   - Policies applied for SELECT, INSERT, DELETE (UPDATE not allowed - files immutable)
+
+3. **Documentation Updates:**
+   - Consolidated storage configuration into single comprehensive section
+   - Removed old duplicate section from ARCHITECTURE.md
+   - Clarified that file_size_bytes/mime_type columns are for display/analytics, not validation
+
+### Issues Encountered
+
+1. **Test File Upload Path:**
+   - Initial test file uploaded to bucket root (no folder structure)
+   - **Solution**: Updated file path via SQL to move into user-specific folder
+   - **Learning**: Supabase Storage UI doesn't enforce folder structure, must be done programmatically
+
+2. **Usage Tracking Trigger Already Existed:**
+   - Task asked to "set up" trigger, but it was already in initial migration
+   - **Solution**: Verified trigger is working correctly, marked task complete
+   - **Note**: Initial schema was well-designed to include all necessary triggers
+
+### Technical Implementation
+
+**Storage RLS Policies Created:**
+```sql
+-- SELECT: Users can view only their own files
+CREATE POLICY "Users can view their own documents"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- INSERT: Users can upload only to their own folder
+CREATE POLICY "Users can upload to their own folder"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- DELETE: Users can delete only their own files
+CREATE POLICY "Users can delete their own documents"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+```
+
+**RLS Testing Results:**
+- ✅ Storage: User A can view their files, User B cannot
+- ✅ Database: User A can query their documents, User B cannot
+- ✅ Cross-user access blocked at infrastructure level
+
+### Files Modified
+
+- `planning/TASKS.md` - Marked 3 tasks complete, updated validation notes
+- `planning/SCHEMA.md` - Updated column descriptions (file_size_bytes, mime_type)
+- `planning/ARCHITECTURE.md` - Added storage config section, removed duplicate
+
+### Git Commits
+
+1. `bf7bacb` - Document bucket-level file validation in planning docs
+2. `77720e7` - Mark Supabase Storage bucket setup as complete
+3. `03cd488` - Mark RLS policy testing as complete - all policies verified
+4. `148d39c` - Mark usage tracking trigger as complete - already implemented in migration
+
+### Current Status
+
+**Week 1, Day 1 Infrastructure Setup: ✅ COMPLETE**
+
+All infrastructure tasks finished:
+- ✅ Supabase project (Sydney region)
+- ✅ Database schema (3 tables with RLS)
+- ✅ Storage bucket (10MB, PDF/JPG/PNG, RLS policies)
+- ✅ RLS policies tested and verified
+- ✅ Usage tracking trigger verified
+
+**Ready for:** Week 1, Day 2-3 - Backend API Setup
+
+### Next Session
+
+**Task**: Initialize FastAPI project
+
+**Subtasks:**
+1. Create FastAPI project structure
+2. Set up virtual environment
+3. Install dependencies (FastAPI, Supabase, LangChain, Docling, Anthropic)
+4. Create basic app structure (`app/main.py`, routes, services)
+5. Test basic API endpoint
+
+**Preparation needed:**
+- None - infrastructure is ready
+- Anthropic API key placeholder in `.env` (user will add actual key later)
+
+---
