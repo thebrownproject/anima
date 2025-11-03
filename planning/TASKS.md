@@ -53,18 +53,20 @@ The MVP is divided into 4 phases:
   - `.gitignore` (exclude venv, .env, node_modules)
   - **Completed**: 2025-11-03
 
-- [ ] Set up Supabase project
+- [x] Set up Supabase project
   - Create new project in Supabase dashboard
   - Enable authentication (email/password)
   - Get project URL and anon key
   - Get service role key (for backend)
+  - **Completed**: 2025-11-03
+  - **Project**: stackdocs (Sydney region, ap-southeast-2)
 
 - [ ] Set up deployment platforms
   - Create Vercel account/project (frontend)
   - Create Railway/Render account (backend)
   - Configure GitHub integration for auto-deploy
 
-- [ ] Environment variables setup
+- [x] Environment variables setup
   - Backend `.env`:
     ```
     SUPABASE_URL=https://xxx.supabase.co
@@ -77,6 +79,8 @@ The MVP is divided into 4 phases:
     NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
     NEXT_PUBLIC_API_URL=http://localhost:8000
     ```
+  - **Completed**: 2025-11-03
+  - **Note**: Created .env.example templates (committed) and actual .env files (gitignored)
 
 ### Database Setup (Day 1-2)
 
