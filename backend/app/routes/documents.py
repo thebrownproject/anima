@@ -4,9 +4,13 @@ from typing import cast
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from uuid import UUID
 from ..models import DocumentUploadResponse
-from ..services.storage import upload_document
+from ..services.storage import upload_document, download_document
 from ..services.usage import check_usage_limit, increment_usage
+from ..services.extractor import extract_text_ocr
 from ..database import get_supabase_client
+
+# Type alias for document data from database
+DocumentData = dict[str, str | int | bool | None]
 
 router = APIRouter()
 
@@ -73,3 +77,76 @@ async def upload_document_endpoint(
             status_code=500,
             detail=f"Failed to create document record: {str(e)}"
         )
+
+
+@router.post("/test-ocr/{document_id}")
+async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dict[str, str | int | list[str] | dict[str, str]]:  # pyright: ignore[reportCallInDefaultInitializer]
+    """
+    **TEST ENDPOINT** - Extract text from an already uploaded document.
+
+    This endpoint is for testing OCR functionality during development.
+    It downloads a document from Supabase Storage and runs OCR extraction.
+
+    Args:
+        document_id: UUID of the document to extract text from
+        user_id: User ID (to verify ownership via RLS)
+
+    Returns:
+        OCR extraction result with text preview
+    """
+    import tempfile
+    import os
+
+    # Get document metadata from database
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table("documents").select("*").eq("id", document_id).eq("user_id", user_id).execute()
+
+        if not response.data or len(response.data) == 0:
+            raise HTTPException(status_code=404, detail="Document not found or access denied")
+
+        document = cast(DocumentData, response.data[0])
+        file_path = cast(str, document["file_path"])
+        filename = cast(str, document["filename"])
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch document: {str(e)}")
+
+    # Download document from Supabase Storage
+    try:
+        file_content = await download_document(file_path)
+
+        # Get file extension from filename
+        _, ext = os.path.splitext(filename)
+
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
+            _ = tmp_file.write(file_content)
+            tmp_path = tmp_file.name
+
+        try:
+            # Run OCR extraction
+            ocr_result = await extract_text_ocr(tmp_path)
+
+            # Return result with preview
+            return {
+                "document_id": document_id,
+                "filename": filename,
+                "ocr_status": ocr_result["status"],
+                "page_count": ocr_result["page_count"],
+                "text_length": len(ocr_result["text"]),
+                "errors": ocr_result["errors"],
+                "text_preview": {
+                    "first_300_chars": ocr_result["text"][:300],
+                    "last_300_chars": ocr_result["text"][-300:] if len(ocr_result["text"]) > 300 else ocr_result["text"]
+                },
+                "full_text": ocr_result["text"]  # Include full text for inspection
+            }
+        finally:
+            # Clean up temporary file
+            os.unlink(tmp_path)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR extraction failed: {str(e)}")

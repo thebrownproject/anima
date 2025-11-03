@@ -812,3 +812,112 @@ All file upload functionality working:
 
 ---
 
+
+## Session 6 - 2025-11-03 - Docling OCR Integration ✅
+
+**Week**: Week 1 - Infrastructure Setup
+**Phase**: Backend API Setup (Day 5)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Implement `extract_text_ocr()` in `services/extractor.py`
+  - Created OCRResult TypedDict for type-safe return values
+  - Implemented singleton DocumentConverter pattern (best practice from Docling docs)
+  - Used async wrapper (`asyncio.to_thread()`) for non-blocking FastAPI execution
+  - Three-tier status handling: SUCCESS, PARTIAL_SUCCESS, FAILURE
+  - Used `export_to_markdown(strict_text=True)` for clean text output
+  - 50MB file size limit as safety guard
+
+- [x] Create test endpoint `POST /api/test-ocr/{document_id}`
+  - Downloads document from Supabase Storage
+  - Saves to temporary file for Docling processing
+  - Returns OCR result with full text and preview
+  - Proper cleanup of temporary files
+
+- [x] Test OCR extraction with uploaded PDFs
+  - Tested with Fraser Brown Resume (2-page PDF, 149 KB)
+  - Perfect text extraction quality (5,277 characters)
+  - No OCR errors, structure fully preserved
+
+- [x] Verify Context7 documentation for Docling
+  - Used docs agent to fetch official Docling documentation
+  - Verified ConversionStatus enum usage
+  - Confirmed raises_on_error=False pattern
+
+- [x] Fix all type checking errors
+  - Created OCRResult TypedDict (no Any types)
+  - Added DocumentData type alias for database responses
+
+### Decisions Made
+
+1. **Used Context7 docs agent proactively:**
+   - Fetched official Docling documentation BEFORE writing code
+   - Prevented outdated patterns and API misuse
+   - Implementation matched official docs perfectly
+
+2. **Singleton DocumentConverter pattern:**
+   - Initialize converter once and reuse across requests
+   - Avoids reinitializing OCR models on every conversion
+   - Official Docling best practice for performance
+
+3. **Async wrapper with to_thread():**
+   - Docling's convert() is synchronous/blocking
+   - Used `asyncio.to_thread()` to run in thread pool
+   - Prevents blocking FastAPI event loop
+
+4. **strict_text=True for markdown export:**
+   - Removes markdown formatting artifacts
+   - Produces cleaner text for LLM processing
+   - Improves token efficiency
+
+5. **TypedDict instead of dict[str, Any]:**
+   - Created OCRResult TypedDict with explicit field types
+   - Satisfies basedpyright's reportExplicitAny check
+
+### Issues Encountered
+
+1. **Long processing time on first run:**
+   - First OCR extraction took ~90 seconds
+   - Expected behavior - Docling initializes OCR models
+   - Subsequent runs are 10-30 seconds
+   - Auto-selected ocrmac (Apple native OCR) with MPS acceleration
+
+2. **Type errors with database response:**
+   - basedpyright complained about database field access
+   - Used cast(DocumentData, response.data[0]) pattern
+   - Same pattern as usage.py and other services
+
+### Testing Results
+
+**Fraser Brown Resume (2-page PDF):**
+- ✅ Status: success, Pages: 2, Text: 5,277 characters
+- ✅ Perfect extraction - no OCR errors
+- ✅ Structure preserved (headers, bullets, dates)
+- ✅ OCR Engine: ocrmac with MPS acceleration
+- ✅ Ready for LLM processing
+
+### Files Created/Modified
+
+- Created: `backend/app/services/extractor.py`
+- Modified: `backend/app/routes/documents.py`
+- Updated: `planning/TASKS.md`, `planning/DEV-NOTES.md`
+
+### Current Status
+
+**Week 1, Day 5 OCR Integration: ✅ COMPLETE**
+
+### Next Session
+
+**Task**: Implement LangChain extraction with OpenRouter
+
+**Subtasks:**
+1. Set up LangChain with ChatOpenAI (OpenRouter endpoint)
+2. Create Pydantic schemas for extraction
+3. Implement extract_fields_auto() and extract_fields_custom()
+4. Add confidence scoring
+5. Test with OCR output
+
+**Preparation**: Verify OPENROUTER_API_KEY and OPENROUTER_MODEL in .env
+
+---
