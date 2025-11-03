@@ -93,10 +93,12 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-03
   - **Note**: Created backend/migrations/001_initial_schema.sql and applied via MCP
 
-- [ ] Set up Supabase Storage bucket
+- [x] Set up Supabase Storage bucket
   - Create `documents` bucket
   - Configure bucket as private (require auth)
   - Set up storage policies (users can only access their own files)
+  - **Started**: 2025-11-03
+  - **Completed**: 2025-11-03
 
 - [ ] Test RLS policies
   - Create test user in Supabase Auth
