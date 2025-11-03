@@ -583,3 +583,232 @@ All backend initialization tasks finished:
 - Background extraction will be implemented in later session
 
 ---
+
+## Session 5 - 2025-11-03 - Document Upload Implementation ✅
+
+**Week**: Week 1 - Infrastructure Setup
+**Phase**: Backend API Setup (Day 4)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Implement Supabase Storage service (services/storage.py)
+  - Created upload_document(), download_document(), create_signed_url(), delete_document()
+  - Verified against official Supabase Python docs
+  - Used proper named parameters (path=, file=, file_options=)
+  - All functions use exception-based error handling
+
+- [x] Implement usage tracking service (services/usage.py)
+  - Created check_usage_limit(), increment_usage(), reset_usage(), get_usage_stats()
+  - Reads from users table (documents_processed_this_month, documents_limit)
+  - Auto-resets monthly counter when usage_reset_date passes
+  - Returns 403 when limit exceeded
+
+- [x] Implement POST /api/upload endpoint (routes/documents.py)
+  - Accepts multipart/form-data (file, mode, user_id)
+  - Full flow: check limit → upload storage → create DB record → increment usage
+  - Returns DocumentUploadResponse with document_id and status
+  - Integrated with Pydantic models for type safety
+
+- [x] Test upload flow end-to-end
+  - Tested via Swagger UI (http://localhost:8000/docs)
+  - Uploaded 2 test PDFs successfully
+  - Verified files in Supabase Storage bucket
+  - Confirmed document records in database
+  - Validated usage counter increments (0 → 1 → 2)
+
+- [x] Fix all type checking errors
+  - Resolved basedpyright reportExplicitAny warnings (replaced Any with specific types)
+  - Fixed reportCallInDefaultInitializer for FastAPI File()/Form() params
+  - Added cast() for dict values to satisfy strict type checking
+  - All files pass type checking with zero errors
+
+- [x] Update CLAUDE.md with infrastructure status
+  - Added "Supabase Infrastructure Setup Status" section
+  - Documented all 3 test users with IDs and passwords
+  - Clarified database, storage, and auth are fully configured
+  - Updated project status from "planning phase" to "in progress"
+
+### Decisions Made
+
+1. **Official Supabase Docs Verification:**
+   - Used Supabase MCP search_docs to fetch official Python client patterns
+   - Corrected storage.upload() to use named parameters (path=, file=, file_options=)
+   - Confirmed exception-based error handling (not dict error checking)
+   - Pattern: `supabase.storage.from_("bucket").upload(path=..., file=..., file_options={...})`
+
+2. **Type Safety with UserData Alias:**
+   - Created `UserData = dict[str, str | int | bool | None]` type alias
+   - Avoided `Any` type to satisfy basedpyright's reportExplicitAny
+   - Used cast() for database response data to provide type hints
+   - Pattern ensures type safety without suppressing checks
+
+3. **Service Layer Returns Plain Dicts:**
+   - storage.py returns dict[str, str | int] (not Pydantic models)
+   - Allows flexibility - API layer transforms to Pydantic models
+   - Separation: services handle business logic, routes handle HTTP
+   - Pattern: `upload_result = await upload_document()` → transform → `DocumentUploadResponse(...)`
+
+4. **Test Users for MVP:**
+   - Created 3 test users in auth.users and public.users
+   - Supabase trigger auto-creates public.users record when auth user created
+   - All have free tier limits (5 docs/month, 0 processed)
+   - IDs documented in CLAUDE.md for future sessions
+
+### Issues Encountered
+
+1. **Initial Supabase Setup Confusion:**
+   - **Issue**: Agent didn't realize database/storage/auth already existed
+   - **Cause**: CLAUDE.md didn't clearly state infrastructure status
+   - **Resolution**: Added prominent "Supabase Infrastructure Setup Status" section
+   - **Learning**: Always document what's already configured to prevent wasted time
+
+2. **Type Checker Strictness (basedpyright):**
+   - **Issue**: Strict mode disallows `Any`, flags FastAPI patterns as errors
+   - **Resolution**: Created type aliases (UserData, FieldValue), used cast()
+   - **FastAPI params**: Added `# pyright: ignore[reportCallInDefaultInitializer]` for File()/Form()
+   - **Learning**: basedpyright requires explicit types everywhere - use aliases for flexibility
+
+3. **Supabase Client Method Naming:**
+   - **Issue**: Called `get_supabase()` but function is `get_supabase_client()`
+   - **Resolution**: Fixed all imports and calls
+   - **Learning**: Check actual function names in codebase before writing code
+
+4. **Storage Upload Parameter Format:**
+   - **Issue**: Used positional args, but docs show named parameters
+   - **Resolution**: Changed to `upload(path=..., file=..., file_options=...)`
+   - **Learning**: Always verify against official docs, not assumptions
+
+### Technical Implementation
+
+**Storage Service Pattern:**
+```python
+# Clean, exception-based pattern
+async def upload_document(user_id: str, file: UploadFile) -> dict[str, str | int]:
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+    
+    try:
+        supabase = get_supabase_client()
+        _ = supabase.storage.from_("documents").upload(
+            path=file_path,
+            file=file_content,
+            file_options={"content-type": mime_type, "cache-control": "3600"},
+        )
+        return {"document_id": document_id, "file_path": file_path, ...}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+```
+
+**Usage Tracking Pattern:**
+```python
+# Type-safe database queries with cast()
+async def check_usage_limit(user_id: str) -> bool:
+    response = supabase.table("users").select("*").eq("id", user_id).execute()
+    user = cast(UserData, response.data[0])
+    
+    # Auto-reset if needed
+    if datetime.now() >= usage_reset_date:
+        _ = await reset_usage(user_id)
+        return True
+    
+    return cast(int, user["documents_processed_this_month"]) < cast(int, user["documents_limit"])
+```
+
+**Upload Endpoint Pattern:**
+```python
+# Full integration: storage + database + usage
+@router.post("/upload", response_model=DocumentUploadResponse)
+async def upload_document_endpoint(
+    file: UploadFile = File(...),  # pyright: ignore
+    mode: str = Form(...),  # pyright: ignore
+    user_id: str = Form(...),  # pyright: ignore
+) -> DocumentUploadResponse:
+    # Check limit FIRST
+    if not await check_usage_limit(user_id):
+        raise HTTPException(status_code=403, detail="Upload limit reached")
+    
+    # Upload → Create record → Increment usage
+    upload_result = await upload_document(user_id, file)
+    _ = supabase.table("documents").insert(document_data).execute()
+    _ = await increment_usage(user_id)
+    
+    return DocumentUploadResponse(...)
+```
+
+### Testing Results
+
+**Upload Test 1:**
+- File: Ubuntu Server CLI cheat sheet 2024 v6.pdf (189 KB)
+- Document ID: 1b21d412-fe4b-4d58-bf23-efd1a8c302cc
+- Status: processing
+- Usage: 0 → 1 ✅
+
+**Upload Test 2:**
+- File: Fraser-Brown-FlowCV-Resume-20251026 (1).pdf (149 KB)
+- Document ID: 751a466b-b2bb-4b94-946e-1d8c37c94ff8
+- Status: processing
+- Usage: 1 → 2 ✅
+
+**Database Verification:**
+- ✅ Files exist in Supabase Storage bucket 'documents'
+- ✅ Document records created with correct metadata
+- ✅ Usage counter increments properly
+- ✅ File paths follow pattern: {user_id}/{document_id}_{filename}
+
+### Files Created
+
+- `backend/app/services/storage.py` - Supabase Storage operations
+- `backend/app/services/usage.py` - Usage limit tracking and enforcement
+
+### Files Modified
+
+- `backend/app/routes/documents.py` - Added POST /api/upload endpoint
+- `backend/app/main.py` - Registered documents router
+- `backend/app/models.py` - Fixed type errors (removed Any, Optional deprecated syntax)
+- `CLAUDE.md` - Added infrastructure status, updated project status
+- `planning/TASKS.md` - Marked upload tasks complete
+- `planning/DEV-NOTES.md` - This entry
+
+### Git Commits
+
+- Pending: Document upload implementation commit
+
+### Current Status
+
+**Week 1, Day 4 File Upload: ✅ COMPLETE**
+
+All file upload functionality working:
+- ✅ Supabase Storage integration
+- ✅ Usage limit enforcement
+- ✅ Document upload endpoint
+- ✅ Database record creation
+- ✅ End-to-end testing verified
+- ✅ Type safety (zero basedpyright errors)
+- ✅ Code matches official Supabase docs
+
+**Ready for:** Week 1, Day 5 - Docling OCR Integration
+
+### Next Session
+
+**Task**: Implement Docling OCR integration
+
+**Subtasks:**
+1. Install Docling and verify dependencies (Poppler, etc.)
+2. Create extract_text_from_document() in services/ocr.py
+3. Test OCR extraction with sample PDFs
+4. Handle multi-page documents and layout preservation
+
+**Preparation needed:**
+- Docling may require system dependencies (Poppler for PDF)
+- Have test documents ready (PDFs with text, tables, mixed content)
+- Research Docling export formats (markdown, JSON, etc.)
+
+**Technical context:**
+- Docling runs in same FastAPI process (monolith architecture)
+- Extract to markdown format for LLM processing
+- Background task will call OCR → LLM extraction pipeline
+- Store extracted text temporarily for LangChain processing
+
+---
+

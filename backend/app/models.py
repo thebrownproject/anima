@@ -1,9 +1,12 @@
 """Pydantic models for request/response validation"""
 
-from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from pydantic import BaseModel
+from typing import Literal
 from datetime import datetime
 from uuid import UUID
+
+# Type alias for extracted field values
+FieldValue = str | int | float | bool | None
 
 
 # Document Models
@@ -31,8 +34,8 @@ class ExtractionResponse(BaseModel):
     """Response containing extraction results"""
     extraction_id: UUID
     document_id: UUID
-    extracted_fields: dict
-    confidence_scores: Optional[dict] = None
+    extracted_fields: dict[str, FieldValue]
+    confidence_scores: dict[str, float] | None = None
     mode: Literal["auto", "custom"]
     created_at: datetime
 

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .models import HealthResponse
+from .routes import documents
 
 # Initialize settings
 settings = get_settings()
@@ -48,8 +49,5 @@ async def root():
     }
 
 
-# TODO: Import and include routers when created
-# from app.routes import documents, extractions, usage
-# app.include_router(documents.router, prefix="/api", tags=["documents"])
-# app.include_router(extractions.router, prefix="/api", tags=["extractions"])
-# app.include_router(usage.router, prefix="/api", tags=["usage"])
+# Include routers
+app.include_router(documents.router, prefix="/api", tags=["documents"])
