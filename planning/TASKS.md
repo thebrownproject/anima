@@ -108,9 +108,11 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-03
   - **Result**: All RLS policies verified working (storage + database tables)
 
-- [ ] Set up usage tracking trigger
+- [x] Set up usage tracking trigger
   - Create trigger to auto-create usage_tracking record on user signup
   - Test by creating new user and verifying record created
+  - **Completed**: 2025-11-03
+  - **Note**: Trigger already created in 001_initial_schema.sql, verified working
 
 ### Backend API Setup (Day 2-3)
 
