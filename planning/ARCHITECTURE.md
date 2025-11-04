@@ -34,10 +34,11 @@
 │  │    Background Task: Extract Document                 │   │
 │  │                                                      │   │
 │  │  1. Fetch file from Supabase Storage                │   │
-│  │  2. Docling: OCR text extraction                    │   │
-│  │  3. LangChain + Claude: Structured extraction       │   │
-│  │  4. Save results → Supabase PostgreSQL              │   │
-│  │  5. Update document status → completed/failed       │   │
+│  │  2. DeepSeek-OCR: Text extraction (DeepInfra API)  │   │
+│  │  3. Save raw OCR → ocr_results table                │   │
+│  │  4. LangChain + Claude: Structured extraction       │   │
+│  │  5. Save results → extractions table                │   │
+│  │  6. Update document status → completed/failed       │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                              │
 └────────────┬───────────────────────────────┬────────────────┘
@@ -51,8 +52,8 @@
 │  Tables:                │     │  Buckets:                  │
 │  • users (auth.users)   │     │  • documents/              │
 │  • documents            │     │    - {user_id}/{doc_id}.pdf│
-│  • extractions          │     │    - Access controlled     │
-│  • usage_tracking       │     │    - Signed URLs           │
+│  • ocr_results          │     │    - Access controlled     │
+│  • extractions          │     │    - Signed URLs           │
 └─────────────────────────┘     └────────────────────────────┘
              ↑                               ↑
              │                               │
@@ -101,9 +102,17 @@ Task starts (async, non-blocking)
 1. Fetch file from Supabase Storage
    GET https://supabase.co/storage/v1/object/sign/documents/user_456/doc_123.pdf
     ↓
-2. Docling: Extract text + layout
-   result = DocumentConverter().convert(file_path)
-   text = result.document.export_to_markdown()
+2. DeepSeek-OCR: Extract text via DeepInfra API
+   - Encode PDF/image as base64
+   - Send to DeepSeek-OCR API
+   response = openai.chat.completions.create(
+       model="deepseek-ai/DeepSeek-OCR",
+       messages=[{"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:application/pdf;base64,{pdf_base64}"}}]}]
+   )
+   text = response.choices[0].message.content
+    ↓
+2a. Save OCR result to database
+   INSERT INTO ocr_results (document_id, user_id, raw_text, page_count, token_usage, processing_time_ms)
     ↓
 3. Build LangChain prompt based on mode:
 
@@ -421,21 +430,22 @@ documents/
 
 ## Key Design Decisions
 
-### ✅ Monolith Architecture (FastAPI + Docling bundled)
+### ✅ DeepSeek-OCR via DeepInfra API
 
-**Choice:** Run Docling in same process as FastAPI backend
+**Choice:** Use DeepSeek-OCR through DeepInfra API instead of self-hosted OCR
 
 **Rationale:**
-- Simpler deployment (one service instead of two)
-- No HTTP overhead between OCR and API
-- Docling dependencies in same requirements.txt
-- Easier debugging (single codebase)
+- **Fast processing:** 5-10s per document (vs 10-90s with Docling)
+- **No infrastructure overhead:** No GPU/Poppler dependencies to manage
+- **Cost-effective:** $0.03 input / $0.10 output per 1M tokens
+- **Scales automatically:** DeepInfra handles infrastructure
+- **Simpler deployment:** Smaller Docker images, fewer system dependencies
 
 **Trade-off:**
-- Can't scale OCR independently from API
-- Docling is CPU-intensive, may slow down API if overloaded
-- **Mitigation:** Use FastAPI BackgroundTasks to avoid blocking API responses
-- **Future:** Can extract to separate service if needed (microservice pattern)
+- API dependency (requires internet, subject to rate limits)
+- Per-request costs (vs free self-hosted OCR)
+- **Mitigation:** Cache OCR results in `ocr_results` table for re-extraction
+- **Cost savings:** Re-extraction uses cached text (only LLM cost, no OCR cost)
 
 ---
 
@@ -613,13 +623,14 @@ useEffect(() => {
 6. Deploy to Railway/Render staging
 
 ### Phase 2: Extraction Engine (Week 1-2)
-1. Docling integration (OCR)
-2. LangChain + OpenRouter setup (configurable LLM model)
-3. Extraction logic (auto mode)
-4. Custom fields mode (user-specified fields)
-5. BackgroundTasks implementation
-6. Extraction model + API endpoints
-7. Test with 10 sample documents
+1. DeepSeek-OCR integration (DeepInfra API)
+2. OCR results caching (ocr_results table)
+3. LangChain + OpenRouter setup (configurable LLM model)
+4. Extraction logic (auto mode)
+5. Custom fields mode (user-specified fields)
+6. BackgroundTasks implementation
+7. Extraction model + API endpoints
+8. Test with 10 sample documents
 
 ### Phase 3: Frontend MVP (Week 2)
 1. Next.js project setup (App Router)
@@ -662,7 +673,7 @@ useEffect(() => {
 **Backend:**
 - FastAPI (Python 3.11+)
 - LangChain (OpenRouter integration)
-- Docling (OCR)
+- DeepSeek-OCR (DeepInfra API)
 - Deployed on Railway/Render/Fly.io
 
 **Database:**
@@ -673,7 +684,7 @@ useEffect(() => {
 **AI/LLM:**
 - OpenRouter (model-agnostic: Claude, GPT-4, Gemini, etc.)
 - Default: anthropic/claude-3.5-sonnet (configurable via env)
-- Docling (IBM Research OCR library)
+- DeepSeek-OCR via DeepInfra ($0.03/$0.10 per 1M tokens)
 
 ---
 

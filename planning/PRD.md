@@ -14,7 +14,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 **Pain Points:**
 - Spend 5-10 hours/week manually typing data from invoices, receipts, contracts into Excel/systems
-- Existing OCR tools produce messy text, not structured data
+- Existing OCR tools produce messy text, not structured data automatically
 - Need data in specific format (CSV) for importing into accounting/CRM software
 - Processing 50-200 documents/month across various document types
 
@@ -32,7 +32,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 2. User selects "Auto Extract" mode
 3. User uploads document (PDF/image - drag & drop or file picker)
 4. System processes document:
-   - Docling extracts text/layout (OCR)
+   - DeepSeek-OCR extracts text via DeepInfra API
    - Claude analyzes and extracts all relevant fields automatically
 5. User sees document in library with extraction results displayed
 6. User can:
@@ -48,7 +48,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
    - Example: vendor_name, invoice_date, total_amount, line_items
 4. User uploads document
 5. System processes document:
-   - Docling extracts text/layout
+   - DeepSeek-OCR extracts text/layout
    - Claude extracts ONLY the specified fields
 6. User sees document with extraction results
 7. User can edit, download, or re-extract
@@ -80,10 +80,11 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - **Auto mode**: AI extracts all relevant fields from document
 - **Custom fields mode**: User specifies exact fields to extract via form inputs
 - Mode selected BEFORE upload
-- Both modes use same backend extraction logic (Docling + Claude)
+- Both modes use same backend extraction logic (DeepSeek-OCR + Claude via OpenRouter)
 
 **Data Extraction (FR3):**
-- Docling performs OCR on document (bundled with FastAPI backend)
+- DeepSeek-OCR performs text extraction via DeepInfra API ($0.03/$0.10 per 1M tokens)
+- OCR results cached in `ocr_results` table for cost-efficient re-extraction
 - Claude (Anthropic) extracts structured data with confidence scores
 - Processing time: <30 seconds per document
 - FastAPI BackgroundTasks for async processing (non-blocking)
@@ -151,7 +152,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - ❌ Mobile apps
 - ❌ Real-time collaboration
 - ❌ Document versioning
-- ❌ OCR quality comparison (Docling vs DeepSeek)
+- ❌ OCR quality comparison (multiple OCR engines)
 
 ---
 
@@ -203,7 +204,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 **Backend:**
 - FastAPI (Python 3.11+)
 - LangChain with Anthropic integration (Claude 3.5 Sonnet)
-- Docling (OCR - bundled in same service)
+- DeepSeek-OCR via DeepInfra API
 - FastAPI BackgroundTasks for async processing
 - Deployed on Railway/Render/Fly.io
 
@@ -213,7 +214,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 **AI/LLM:**
 - Anthropic Claude 3.5 Sonnet (via LangChain)
-- Docling for OCR (IBM Research library)
+- DeepSeek-OCR for text extraction (via DeepInfra API)
 
 ---
 
@@ -285,7 +286,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 **Technical Decisions:**
 - How to handle very large PDFs (50+ pages)? Chunk or reject?
 - Should confidence scores be per-field or per-document?
-- What's the fallback if Docling fails? Use Claude Vision directly?
+- What's the fallback if DeepSeek-OCR API fails? Retry logic with exponential backoff + user notification
 
 **UX Decisions:**
 - Should we show document preview (PDF viewer) or just thumbnail?
@@ -350,7 +351,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 **LEAN & FOCUSED - Ship working product in 2-3 weeks**
 
-- **Start with monolith**: FastAPI backend with Docling bundled (no microservices yet)
+- **Start with monolith**: FastAPI backend calling DeepSeek-OCR API (no microservices, simpler deployment)
 - **Simplicity over cleverness**: Straightforward extraction logic, no premature optimization
 - **User feedback first**: Ship basic version, iterate based on real usage patterns
 - **No feature creep**: Stick to PRD, track "nice to have" ideas for post-MVP

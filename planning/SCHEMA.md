@@ -24,7 +24,8 @@ This document describes the database schema for StackDocs MVP. The design priori
 
 1. **`users`** - User profiles with integrated usage tracking
 2. **`documents`** - Uploaded file metadata and processing status
-3. **`extractions`** - AI-extracted structured data (multiple per document)
+3. **`ocr_results`** - Raw OCR text and layout data from DeepSeek-OCR
+4. **`extractions`** - AI-extracted structured data (multiple per document)
 
 ---
 
@@ -155,6 +156,108 @@ SELECT status FROM documents WHERE id = $1;
 
 ---
 
+## Table: `ocr_results`
+
+Raw OCR text and layout data extracted from documents using DeepSeek-OCR. One OCR result per document, cached for re-extraction without additional API costs.
+
+### Schema
+
+```sql
+CREATE TABLE ocr_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+
+    -- OCR output
+    raw_text TEXT NOT NULL,
+    layout_data JSONB,
+    page_count INTEGER NOT NULL,
+
+    -- Performance tracking
+    processing_time_ms INTEGER,
+    deepinfra_request_id TEXT,
+    token_usage JSONB,
+
+    -- Metadata
+    ocr_engine VARCHAR(20) DEFAULT 'deepseek',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_ocr_results_document_id ON ocr_results(document_id);
+CREATE INDEX idx_ocr_results_user_id ON ocr_results(user_id, created_at DESC);
+```
+
+### Column Descriptions
+
+- **`id`**: Unique OCR result identifier
+- **`document_id`**: Which document this OCR is for (FK to documents.id, UNIQUE constraint - one OCR per document)
+- **`user_id`**: Who owns this OCR result (denormalized for RLS and faster queries)
+- **`raw_text`**: Full text extracted by DeepSeek-OCR (markdown format)
+- **`layout_data`**: Optional JSONB containing layout information, bounding boxes, or structured output from DeepSeek
+- **`page_count`**: Number of pages in the document
+- **`processing_time_ms`**: How long OCR took (milliseconds) - for performance monitoring
+- **`deepinfra_request_id`**: DeepInfra API request ID for support/debugging
+- **`token_usage`**: JSONB tracking tokens used
+  - Example: `{"prompt_tokens": 1234, "completion_tokens": 5678, "total_cost": 0.0345}`
+- **`ocr_engine`**: Which OCR engine was used (default: 'deepseek', future-proofing for other engines)
+- **`created_at`**: When OCR was performed
+
+### Design Decisions
+
+**Why separate table instead of embedding in documents?**
+- Keeps documents table focused on file metadata only
+- Enables efficient queries for re-extraction (fetch ocr_results without document metadata)
+- Raw text can be large (5-50KB per document) - better normalized
+- Clear separation: documents = upload metadata, ocr_results = extracted text, extractions = structured data
+
+**Why UNIQUE constraint on document_id?**
+- One OCR result per document (OCR is deterministic - no need to re-run)
+- Re-extraction uses cached ocr_results.raw_text (saves API costs)
+- If document is re-uploaded, cascade delete removes old OCR result
+
+**Why denormalize user_id?**
+- Faster RLS enforcement (no JOIN through documents table)
+- Enables direct user-based queries on ocr_results
+- Same pattern as extractions table
+
+**Why store token_usage as JSONB?**
+- Track actual costs per document
+- Calculate monthly DeepInfra spend
+- Optimize cost per document type (invoices vs receipts)
+- Build usage analytics for pricing tiers
+
+### Common Queries
+
+**Get OCR result for document (for re-extraction):**
+```sql
+SELECT raw_text, page_count, token_usage
+FROM ocr_results
+WHERE document_id = $1;
+```
+
+**Calculate user's total OCR costs this month:**
+```sql
+SELECT
+    COUNT(*) as documents_processed,
+    SUM((token_usage->>'prompt_tokens')::int) as total_prompt_tokens,
+    SUM((token_usage->>'completion_tokens')::int) as total_completion_tokens,
+    SUM((token_usage->>'total_cost')::float) as total_cost
+FROM ocr_results
+WHERE user_id = $1
+  AND created_at >= DATE_TRUNC('month', NOW());
+```
+
+**Find slow OCR documents (performance monitoring):**
+```sql
+SELECT document_id, processing_time_ms, page_count
+FROM ocr_results
+WHERE processing_time_ms > 10000  -- >10 seconds
+ORDER BY processing_time_ms DESC
+LIMIT 10;
+```
+
+---
+
 ## Table: `extractions`
 
 AI-extracted structured data from documents. Multiple extractions per document supported (re-extraction).
@@ -271,6 +374,7 @@ All tables have RLS enabled to ensure users can only access their own data.
 -- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ocr_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE extractions ENABLE ROW LEVEL SECURITY;
 
 -- Users can only see their own profile
@@ -279,6 +383,10 @@ CREATE POLICY users_user_isolation ON public.users
 
 -- Users can only see their own documents
 CREATE POLICY documents_user_isolation ON documents
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- Users can only see their own OCR results
+CREATE POLICY ocr_results_user_isolation ON ocr_results
     FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Users can only see their own extractions
@@ -298,6 +406,7 @@ CREATE POLICY extractions_user_isolation ON extractions
 ### Performance-Critical
 
 - **`documents(user_id, uploaded_at DESC)`** - Document library sorted by date
+- **`ocr_results(document_id)`** - Fast OCR lookup for re-extraction
 - **`extractions(document_id, created_at DESC)`** - Latest extraction lookup
 - **`extractions.extracted_fields (GIN)`** - Fast JSON field searches
 
@@ -378,12 +487,14 @@ SELECT
     d.status,
     d.uploaded_at,
     d.mode,
+    o.page_count,
     (SELECT extracted_fields
      FROM extractions
      WHERE document_id = d.id
      ORDER BY created_at DESC
      LIMIT 1) as latest_extraction
 FROM documents d
+LEFT JOIN ocr_results o ON o.document_id = d.id
 WHERE d.user_id = $1
 ORDER BY d.uploaded_at DESC;
 ```
@@ -391,7 +502,15 @@ ORDER BY d.uploaded_at DESC;
 ### Pattern 3: Re-extraction Workflow
 
 ```sql
--- Create new extraction (keeps old ones for history)
+-- Step 1: Fetch cached OCR result (avoid re-OCR)
+SELECT raw_text
+FROM ocr_results
+WHERE document_id = $1;
+
+-- Step 2: Run LangChain extraction with cached text
+-- (happens in application layer)
+
+-- Step 3: Create new extraction (keeps old ones for history)
 INSERT INTO extractions (
     document_id,
     user_id,
@@ -404,6 +523,7 @@ VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id;
 
 -- Latest extraction is automatically the newest by created_at
+-- Cost savings: Only LangChain API cost, no OCR cost
 ```
 
 ### Pattern 4: Monthly Usage Reset (Cron Job)
@@ -448,18 +568,22 @@ WHERE NOW() >= usage_reset_date;
 - ❌ Separate `usage_tracking` table → Merged into `users`
 - ❌ `is_latest` flag → Use date sorting
 - ❌ `processed_at` → Use `extractions.created_at`
-- ❌ `processing_time_ms` → Not needed for MVP
 - ❌ `error_message` → Not needed for MVP
+
+**Added:**
+- ✅ `ocr_results` table → Store raw OCR text separately for re-extraction efficiency
 
 **Kept:**
 - ✅ `confidence_scores` → Useful for UX
 - ✅ `updated_at` → Needed if users edit extractions
 - ✅ `file_size_bytes`, `mime_type` → Useful for display/analytics (validation at bucket level)
+- ✅ `processing_time_ms` → Moved to ocr_results for performance monitoring
 
 **Result:**
-- 3 tables instead of 4
-- Simpler queries (fewer JOINs)
-- Faster to implement
+- 4 tables (users, documents, ocr_results, extractions)
+- Clear separation: upload → OCR → extraction
+- Re-extraction is cheap (cached OCR text)
+- Cost tracking built-in (token_usage)
 - Still supports all P0 MVP features
 
 ---
@@ -468,10 +592,13 @@ WHERE NOW() >= usage_reset_date;
 
 - [ ] Create test user via Supabase Auth → Verify `public.users` row created automatically
 - [ ] Upload document → Verify `documents_processed_this_month` increments
+- [ ] Upload document → Verify `ocr_results` row created with raw_text
 - [ ] Try to exceed limit (5 docs) → Verify upload blocked
 - [ ] Create extraction → Verify RLS prevents access from other user
+- [ ] Re-extract document → Verify cached ocr_results used (no duplicate DeepInfra API call)
 - [ ] Re-extract document → Verify latest extraction returned by date sort
 - [ ] Edit extraction → Verify `updated_at` timestamp changes
+- [ ] Check token_usage → Verify costs calculated correctly
 
 ---
 

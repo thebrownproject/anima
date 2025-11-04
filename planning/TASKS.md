@@ -256,41 +256,68 @@ The MVP is divided into 4 phases:
   - Verified document records in database
   - Confirmed usage counter increments correctly (0 → 1 → 2)
 
-### Docling OCR Integration (Day 5)
+### ~~Docling~~ DeepSeek-OCR Integration (Day 5)  **[MIGRATED]**
 
-- [x] Install Docling
-  - **Started**: 2025-11-03
-  - **Completed**: 2025-11-03
+- [x] ~~Install Docling~~ → Migrated to DeepSeek-OCR via DeepInfra API
+  - **Original completion**: 2025-11-03
+  - **Migration decision**: 2025-11-04 (Docling too slow: 10-90s per document)
+  - **Reason**: DeepSeek-OCR faster (5-10s), cheaper ($0.03/$0.10 per 1M tokens), no infrastructure overhead
 
-  ```bash
-  pip install docling
-  ```
-
-  **Status**: Already installed (docling==2.60.0 in requirements.txt)
-
-- [x] Create OCR service
-  - **Started**: 2025-11-03
-  - **Completed**: 2025-11-03
-
-  ```python
-  # services/extractor.py
-  from docling.document_converter import DocumentConverter
-
-  def extract_text_from_document(file_path: str) -> str:
-      """Use Docling to extract text from PDF/image"""
-      converter = DocumentConverter()
-      result = converter.convert(file_path)
-      text = result.document.export_to_markdown()
-      return text
-  ```
+- [x] ~~Create Docling OCR service~~ → Replaced with DeepSeek-OCR service
+  - **Original completion**: 2025-11-03
+  - See migration tasks below for DeepSeek implementation
 
 - [x] Test OCR with sample documents
-  - **Completed**: 2025-11-03
+  - **Completed with Docling**: 2025-11-03
   - Tested with 2-page PDF resume (Fraser Brown Resume)
   - Perfect text extraction quality (5,277 characters)
-  - OCR engine: ocrmac (Apple native OCR with MPS acceleration)
-  - Processing time: ~90 seconds first run (model initialization), 10-30s subsequent runs
-  - Text structure preserved perfectly for LLM processing
+  - Processing time: ~90 seconds first run, 10-30s subsequent (too slow)
+  - **Will retest with DeepSeek-OCR after migration**
+
+---
+
+### DeepSeek-OCR Migration Tasks (Day 5-6)
+
+- [ ] Create database migration for `ocr_results` table
+  - File: `backend/migrations/002_add_ocr_results.sql`
+  - Table stores raw OCR text, token_usage, processing_time_ms
+  - Enables re-extraction without duplicate OCR API calls
+
+- [ ] Apply migration to Supabase database
+  - Run migration via Supabase Dashboard SQL Editor
+  - Verify table created with correct indexes and RLS policies
+
+- [ ] Update `backend/app/config.py` with DeepInfra settings
+  - Add `DEEPINFRA_API_KEY` and `DEEPSEEK_OCR_MODEL` env vars
+  - Update `.env.example` with new variables
+
+- [ ] Create `backend/app/services/ocr_deepseek.py`
+  - Use OpenAI client with DeepInfra endpoint
+  - Encode PDF/image as base64
+  - Send to DeepSeek-OCR API
+  - Save results to `ocr_results` table
+  - Return OCRResult dict matching existing interface
+
+- [ ] Update `backend/app/services/extractor.py`
+  - Remove Docling imports and code
+  - Import and use `ocr_deepseek` service
+  - Fetch cached OCR from `ocr_results` table for re-extraction
+
+- [ ] Update `backend/requirements.txt`
+  - Remove `docling==2.60.0`
+  - Keep `openai` (already present for OpenRouter)
+  - No additional dependencies needed (DeepSeek uses OpenAI client)
+
+- [ ] Test DeepSeek-OCR extraction with uploaded document
+  - Reuse Fraser Brown Resume test
+  - Verify OCR quality matches or exceeds Docling
+  - Measure processing time (expect <10s)
+  - Verify `ocr_results` table populated correctly
+
+- [ ] Test re-extraction flow with cached OCR
+  - Upload document → OCR runs
+  - Re-extract with different mode → OCR fetched from cache
+  - Verify no duplicate DeepInfra API calls (check request_id)
 
 ### LangChain + Claude Integration (Day 6-7)
 

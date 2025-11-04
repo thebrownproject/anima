@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .models import HealthResponse
 from .routes import documents
+from .spike import routes as spike_routes
 
 # Initialize settings
 settings = get_settings()
@@ -51,3 +52,4 @@ async def root():
 
 # Include routers
 app.include_router(documents.router, prefix="/api", tags=["documents"])
+app.include_router(spike_routes.router, prefix="/api", tags=["spike"])
