@@ -256,27 +256,27 @@ The MVP is divided into 4 phases:
   - Verified document records in database
   - Confirmed usage counter increments correctly (0 → 1 → 2)
 
-### ~~Docling~~ DeepSeek-OCR Integration (Day 5)  **[MIGRATED]**
+### ~~Docling~~ Mistral OCR Integration (Day 5)  **[MIGRATED]**
 
-- [x] ~~Install Docling~~ → Migrated to DeepSeek-OCR via DeepInfra API
+- [x] ~~Install Docling~~ → Migrated to Mistral OCR Direct API
   - **Original completion**: 2025-11-03
   - **Migration decision**: 2025-11-04 (Docling too slow: 10-90s per document)
-  - **Reason**: DeepSeek-OCR faster (5-10s), cheaper ($0.03/$0.10 per 1M tokens), no infrastructure overhead
+  - **Reason**: Mistral OCR faster (5-10s), cost-effective (~$2 per 1,000 pages), 128K context window, 98.96% accuracy
 
-- [x] ~~Create Docling OCR service~~ → Replaced with DeepSeek-OCR service
+- [x] ~~Create Docling OCR service~~ → Replaced with Mistral OCR service
   - **Original completion**: 2025-11-03
-  - See migration tasks below for DeepSeek implementation
+  - See migration tasks below for Mistral OCR implementation
 
 - [x] Test OCR with sample documents
   - **Completed with Docling**: 2025-11-03
   - Tested with 2-page PDF resume (Fraser Brown Resume)
   - Perfect text extraction quality (5,277 characters)
   - Processing time: ~90 seconds first run, 10-30s subsequent (too slow)
-  - **Will retest with DeepSeek-OCR after migration**
+  - **Will retest with Mistral OCR after migration**
 
 ---
 
-### DeepSeek-OCR Migration Tasks (Day 5-6)
+### Mistral OCR Migration Tasks (Day 5-6)
 
 - [ ] Create database migration for `ocr_results` table
   - File: `backend/migrations/002_add_ocr_results.sql`
@@ -287,37 +287,42 @@ The MVP is divided into 4 phases:
   - Run migration via Supabase Dashboard SQL Editor
   - Verify table created with correct indexes and RLS policies
 
-- [ ] Update `backend/app/config.py` with DeepInfra settings
-  - Add `DEEPINFRA_API_KEY` and `DEEPSEEK_OCR_MODEL` env vars
-  - Update `.env.example` with new variables
+- [x] Update `backend/app/config.py` with Mistral API settings
+  - Add `MISTRAL_API_KEY` env var
+  - Update `.env.example` with new variable
+  - **Completed**: 2025-11-05
 
-- [ ] Create `backend/app/services/ocr_deepseek.py`
-  - Use OpenAI client with DeepInfra endpoint
+- [x] Create `backend/app/services/ocr.py` (renamed from ocr_mistral for flexibility)
+  - Use Mistral Python SDK (`client.ocr.process()`)
+  - Model: `mistral-ocr-latest`
   - Encode PDF/image as base64
-  - Send to DeepSeek-OCR API
-  - Save results to `ocr_results` table
-  - Return OCRResult dict matching existing interface
+  - Send to Mistral OCR API
+  - Enhanced to capture usage_info, processing_time_ms, layout_data
+  - Return OCRResult dict with full metadata
+  - **Completed**: 2025-11-05
 
-- [ ] Update `backend/app/services/extractor.py`
+- [x] Update `backend/app/services/extractor.py`
   - Remove Docling imports and code
-  - Import and use `ocr_deepseek` service
-  - Fetch cached OCR from `ocr_results` table for re-extraction
+  - Converted to placeholder for LangChain implementation (Day 6-7)
+  - **Completed**: 2025-11-05
 
-- [ ] Update `backend/requirements.txt`
+- [x] Update `backend/requirements.txt`
   - Remove `docling==2.60.0`
-  - Keep `openai` (already present for OpenRouter)
-  - No additional dependencies needed (DeepSeek uses OpenAI client)
+  - Kept `mistralai==1.9.11` (already installed)
+  - **Completed**: 2025-11-05
 
-- [ ] Test DeepSeek-OCR extraction with uploaded document
-  - Reuse Fraser Brown Resume test
-  - Verify OCR quality matches or exceeds Docling
-  - Measure processing time (expect <10s)
-  - Verify `ocr_results` table populated correctly
+- [x] Test Mistral OCR extraction with uploaded document
+  - Tested with Ubuntu CLI cheat sheet (3 pages) - SUCCESS
+  - Tested with Fraser Brown Resume (2 pages) - SUCCESS
+  - OCR quality excellent (markdown formatting preserved)
+  - Processing time: <5s per document
+  - Test endpoint working: `POST /api/test-ocr/{document_id}`
+  - **Completed**: 2025-11-05
 
 - [ ] Test re-extraction flow with cached OCR
   - Upload document → OCR runs
   - Re-extract with different mode → OCR fetched from cache
-  - Verify no duplicate DeepInfra API calls (check request_id)
+  - Verify no duplicate Mistral API calls (check request_id)
 
 ### LangChain + Claude Integration (Day 6-7)
 

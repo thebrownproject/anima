@@ -6,7 +6,7 @@ from uuid import UUID
 from ..models import DocumentUploadResponse
 from ..services.storage import upload_document, download_document
 from ..services.usage import check_usage_limit, increment_usage
-from ..services.extractor import extract_text_ocr
+from ..services.ocr import extract_text_ocr
 from ..database import get_supabase_client
 
 # Type alias for document data from database
@@ -130,13 +130,16 @@ async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dic
             # Run OCR extraction
             ocr_result = await extract_text_ocr(tmp_path)
 
-            # Return result with preview
+            # Return result with preview and metadata
             return {
                 "document_id": document_id,
                 "filename": filename,
                 "ocr_status": ocr_result["status"],
                 "page_count": ocr_result["page_count"],
                 "text_length": len(ocr_result["text"]),
+                "processing_time_ms": ocr_result["processing_time_ms"],  # NEW
+                "usage_info": ocr_result["usage_info"],  # NEW
+                "layout_data": ocr_result["layout_data"],  # NEW
                 "errors": ocr_result["errors"],
                 "text_preview": {
                     "first_300_chars": ocr_result["text"][:300],

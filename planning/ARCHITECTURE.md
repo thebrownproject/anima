@@ -34,7 +34,7 @@
 │  │    Background Task: Extract Document                 │   │
 │  │                                                      │   │
 │  │  1. Fetch file from Supabase Storage                │   │
-│  │  2. DeepSeek-OCR: Text extraction (DeepInfra API)  │   │
+│  │  2. Mistral OCR: Text extraction (mistral-ocr-latest) │   │
 │  │  3. Save raw OCR → ocr_results table                │   │
 │  │  4. LangChain + Claude: Structured extraction       │   │
 │  │  5. Save results → extractions table                │   │
@@ -102,14 +102,14 @@ Task starts (async, non-blocking)
 1. Fetch file from Supabase Storage
    GET https://supabase.co/storage/v1/object/sign/documents/user_456/doc_123.pdf
     ↓
-2. DeepSeek-OCR: Extract text via DeepInfra API
+2. Mistral OCR: Extract text via Mistral Direct API
    - Encode PDF/image as base64
-   - Send to DeepSeek-OCR API
-   response = openai.chat.completions.create(
-       model="deepseek-ai/DeepSeek-OCR",
-       messages=[{"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:application/pdf;base64,{pdf_base64}"}}]}]
+   - Send to Mistral OCR API
+   ocr_response = client.ocr.process(
+       model="mistral-ocr-latest",
+       document={"type": "document_base64", "document_base64": pdf_base64}
    )
-   text = response.choices[0].message.content
+   text = ocr_response.text
     ↓
 2a. Save OCR result to database
    INSERT INTO ocr_results (document_id, user_id, raw_text, page_count, token_usage, processing_time_ms)
@@ -430,16 +430,18 @@ documents/
 
 ## Key Design Decisions
 
-### ✅ DeepSeek-OCR via DeepInfra API
+### ✅ Mistral OCR Direct API
 
-**Choice:** Use DeepSeek-OCR through DeepInfra API instead of self-hosted OCR
+**Choice:** Use Mistral OCR (`mistral-ocr-latest`) through Mistral Direct API instead of self-hosted OCR
 
 **Rationale:**
-- **Fast processing:** 5-10s per document (vs 10-90s with Docling)
-- **No infrastructure overhead:** No GPU/Poppler dependencies to manage
-- **Cost-effective:** $0.03 input / $0.10 output per 1M tokens
-- **Scales automatically:** DeepInfra handles infrastructure
-- **Simpler deployment:** Smaller Docker images, fewer system dependencies
+- **Fast processing:** 5-10s per document
+- **No infrastructure overhead:** No GPU dependencies to manage
+- **Cost-effective:** ~$2 per 1,000 pages
+- **Large context window:** 128K tokens, handles up to 1000 pages
+- **High accuracy:** 98.96% accuracy on scanned documents
+- **Scales automatically:** Mistral handles infrastructure
+- **Simpler deployment:** Pure API integration, minimal dependencies
 
 **Trade-off:**
 - API dependency (requires internet, subject to rate limits)
@@ -623,7 +625,7 @@ useEffect(() => {
 6. Deploy to Railway/Render staging
 
 ### Phase 2: Extraction Engine (Week 1-2)
-1. DeepSeek-OCR integration (DeepInfra API)
+1. Mistral OCR integration (`mistral-ocr-latest` via Mistral Python SDK)
 2. OCR results caching (ocr_results table)
 3. LangChain + OpenRouter setup (configurable LLM model)
 4. Extraction logic (auto mode)
@@ -673,7 +675,7 @@ useEffect(() => {
 **Backend:**
 - FastAPI (Python 3.11+)
 - LangChain (OpenRouter integration)
-- DeepSeek-OCR (DeepInfra API)
+- Mistral OCR (`mistral-ocr-latest` via Mistral Python SDK)
 - Deployed on Railway/Render/Fly.io
 
 **Database:**
@@ -684,7 +686,7 @@ useEffect(() => {
 **AI/LLM:**
 - OpenRouter (model-agnostic: Claude, GPT-4, Gemini, etc.)
 - Default: anthropic/claude-3.5-sonnet (configurable via env)
-- DeepSeek-OCR via DeepInfra ($0.03/$0.10 per 1M tokens)
+- Mistral OCR via Mistral Direct API (~$2 per 1,000 pages)
 
 ---
 

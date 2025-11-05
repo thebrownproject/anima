@@ -12,7 +12,7 @@ openai==2.6.1
 langchain-openai==1.0.1
 
 # Document Processing (OCR)
-docling==2.60.0
+mistralai==1.9.11
 
 # Utilities
 python-dotenv==1.1.1

@@ -24,7 +24,7 @@ This document describes the database schema for StackDocs MVP. The design priori
 
 1. **`users`** - User profiles with integrated usage tracking
 2. **`documents`** - Uploaded file metadata and processing status
-3. **`ocr_results`** - Raw OCR text and layout data from DeepSeek-OCR
+3. **`ocr_results`** - Raw OCR text and layout data from Mistral OCR
 4. **`extractions`** - AI-extracted structured data (multiple per document)
 
 ---
@@ -158,7 +158,7 @@ SELECT status FROM documents WHERE id = $1;
 
 ## Table: `ocr_results`
 
-Raw OCR text and layout data extracted from documents using DeepSeek-OCR. One OCR result per document, cached for re-extraction without additional API costs.
+Raw OCR text and layout data extracted from documents using Mistral OCR (`mistral-ocr-latest`). One OCR result per document, cached for re-extraction without additional API costs.
 
 ### Schema
 
@@ -173,13 +173,12 @@ CREATE TABLE ocr_results (
     layout_data JSONB,
     page_count INTEGER NOT NULL,
 
-    -- Performance tracking
-    processing_time_ms INTEGER,
-    deepinfra_request_id TEXT,
-    token_usage JSONB,
+    -- Performance & usage tracking
+    processing_time_ms INTEGER NOT NULL,
+    usage_info JSONB NOT NULL,
 
     -- Metadata
-    ocr_engine VARCHAR(20) DEFAULT 'deepseek',
+    ocr_engine VARCHAR(20) DEFAULT 'mistral',
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -192,14 +191,16 @@ CREATE INDEX idx_ocr_results_user_id ON ocr_results(user_id, created_at DESC);
 - **`id`**: Unique OCR result identifier
 - **`document_id`**: Which document this OCR is for (FK to documents.id, UNIQUE constraint - one OCR per document)
 - **`user_id`**: Who owns this OCR result (denormalized for RLS and faster queries)
-- **`raw_text`**: Full text extracted by DeepSeek-OCR (markdown format)
-- **`layout_data`**: Optional JSONB containing layout information, bounding boxes, or structured output from DeepSeek
+- **`raw_text`**: Full text extracted by Mistral OCR (markdown format)
+- **`layout_data`**: Optional JSONB containing page-level layout information
+  - Example: `{"pages": [{"index": 0, "images": [{"top_left_x": 10, "top_left_y": 20, ...}], "dimensions": {"dpi": 72, "height": 1024, "width": 768}}]}`
+  - Stores image bounding boxes and page dimensions for each page
 - **`page_count`**: Number of pages in the document
 - **`processing_time_ms`**: How long OCR took (milliseconds) - for performance monitoring
-- **`deepinfra_request_id`**: DeepInfra API request ID for support/debugging
-- **`token_usage`**: JSONB tracking tokens used
-  - Example: `{"prompt_tokens": 1234, "completion_tokens": 5678, "total_cost": 0.0345}`
-- **`ocr_engine`**: Which OCR engine was used (default: 'deepseek', future-proofing for other engines)
+- **`usage_info`**: JSONB tracking Mistral API usage (NOT NULL)
+  - Example: `{"pages_processed": 3, "doc_size_bytes": 524288}`
+  - Used for cost tracking and analytics
+- **`ocr_engine`**: Which OCR engine was used (default: 'mistral', future-proofing for other engines)
 - **`created_at`**: When OCR was performed
 
 ### Design Decisions
@@ -220,11 +221,18 @@ CREATE INDEX idx_ocr_results_user_id ON ocr_results(user_id, created_at DESC);
 - Enables direct user-based queries on ocr_results
 - Same pattern as extractions table
 
-**Why store token_usage as JSONB?**
-- Track actual costs per document
-- Calculate monthly DeepInfra spend
+**Why store usage_info as JSONB?**
+- Track actual usage per document (pages_processed, doc_size_bytes)
+- Calculate monthly Mistral OCR spend
 - Optimize cost per document type (invoices vs receipts)
 - Build usage analytics for pricing tiers
+- Identify documents that consume excessive resources
+
+**Why store layout_data as JSONB?**
+- Preserve image bounding box coordinates for future features
+- Track page dimensions for layout analysis
+- Enable image extraction features post-MVP
+- Flexible schema supports different OCR provider outputs
 
 ### Common Queries
 
@@ -595,7 +603,7 @@ WHERE NOW() >= usage_reset_date;
 - [ ] Upload document → Verify `ocr_results` row created with raw_text
 - [ ] Try to exceed limit (5 docs) → Verify upload blocked
 - [ ] Create extraction → Verify RLS prevents access from other user
-- [ ] Re-extract document → Verify cached ocr_results used (no duplicate DeepInfra API call)
+- [ ] Re-extract document → Verify cached ocr_results used (no duplicate Mistral API call)
 - [ ] Re-extract document → Verify latest extraction returned by date sort
 - [ ] Edit extraction → Verify `updated_at` timestamp changes
 - [ ] Check token_usage → Verify costs calculated correctly

@@ -1067,3 +1067,153 @@ All file upload functionality working:
 **Critical Decision Validated**: Mistral OCR Direct API is the right choice for scalable, cost-effective OCR.
 
 ---
+
+## Session 8 - 2025-11-05 - Mistral OCR Integration & Code Review ✅
+
+**Week**: Week 1 - Infrastructure Setup (Day 7)
+**Phase**: Backend API Setup
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Updated all planning documentation from DeepSeek → Mistral OCR
+  - Updated CLAUDE.md with Mistral OCR integration details and model name (`mistral-ocr-latest`)
+  - Added comprehensive DRY, KISS, YAGNI coding principles (adapted for Python/TypeScript)
+  - Updated planning/ARCHITECTURE.md with Mistral OCR Direct API references
+  - Updated planning/SCHEMA.md with improved `ocr_results` table design
+  - Updated planning/PRD.md with Mistral OCR cost and integration details
+  - Updated planning/TASKS.md with Mistral OCR migration tasks
+
+- [x] Implemented `backend/app/services/ocr.py` with Mistral OCR integration
+  - Created OCR service using Mistral Python SDK (`client.ocr.process()`)
+  - Model: `mistral-ocr-latest`
+  - Integrated with Pydantic settings for centralized config
+  - Enhanced `OCRResult` TypedDict with `processing_time_ms`, `usage_info`, `layout_data`
+  - Captures full metadata from Mistral API response (pages_processed, doc_size_bytes, image bounding boxes, page dimensions)
+  - Supports PDF, JPEG, PNG, AVIF, DOCX, PPTX file types
+  - Returns markdown-formatted text
+  
+- [x] Refactored `backend/app/services/extractor.py` to placeholder
+  - Removed all Docling code
+  - Created placeholder structure for LangChain implementation (Day 6-7)
+  - Defined `ExtractionResult` TypedDict for future use
+  - Added comprehensive TODO comments explaining planned architecture
+
+- [x] Updated `backend/requirements.txt`
+  - Removed `docling==2.60.0`
+  - Kept `mistralai==1.9.11` (already installed)
+
+- [x] Updated `backend/app/routes/documents.py`
+  - Changed import to use new `ocr` service
+  - Enhanced `/api/test-ocr/{document_id}` endpoint to return new metadata fields
+  
+- [x] Cleaned up `backend/app/main.py`
+  - Removed spike routes import (spike files were deleted)
+
+- [x] Code review and schema optimization
+  - Reviewed OCR service against Mistral docs
+  - Updated schema: removed `mistral_request_id` (not in API response)
+  - Renamed `token_usage` → `usage_info` (matches Mistral API)
+  - Made `processing_time_ms` and `usage_info` NOT NULL
+  - Added detailed column descriptions with examples
+  
+- [x] Tested Mistral OCR with real documents
+  - Ubuntu CLI cheat sheet (3 pages, 8,714 chars) - ✅ SUCCESS
+  - Fraser Brown Resume (2 pages, 5,306 chars) - ✅ SUCCESS
+  - OCR quality excellent (markdown formatting preserved)
+  - Processing time: <5s per document
+
+### Decisions Made
+
+1. **OCR service naming**: Named `ocr.py` instead of `ocr_mistral.py` for provider-agnostic flexibility
+
+2. **Enhanced metadata capture**: Decided to capture full Mistral API metadata including:
+   - `usage_info`: pages_processed, doc_size_bytes (for cost tracking)
+   - `layout_data`: Image bounding boxes, page dimensions (for future features)
+   - `processing_time_ms`: Performance monitoring
+
+3. **Schema improvements**:
+   - Removed `mistral_request_id` (not provided in Mistral API response)
+   - Renamed `token_usage` → `usage_info` to match Mistral's field name
+   - Made tracking fields NOT NULL (always available from API)
+
+4. **Separation of concerns**: 
+   - `ocr.py` handles pure OCR extraction
+   - `extractor.py` will handle LangChain/LLM structured extraction (Day 6-7)
+   - Clean architecture following DRY/KISS principles
+
+5. **Added coding principles to CLAUDE.md**:
+   - DRY (Don't Repeat Yourself) - Extract reusable patterns
+   - KISS (Keep It Simple, Stupid) - Use built-in solutions
+   - YAGNI (You Aren't Gonna Need It) - Only build what's needed now
+   - Adapted for Python/TypeScript with StackDocs-specific examples
+
+### Issues Encountered
+
+1. **Config integration issue**: Initially tried reading `MISTRAL_API_KEY` directly from `os.environ`
+   - **Solution**: Updated to use centralized Pydantic settings (`get_settings()`)
+   
+2. **Response attribute mismatch**: Expected `.result` but Mistral returns `.pages`
+   - **Solution**: Iterate through `ocr_response.pages` and extract `.markdown` from each page
+   
+3. **Test endpoint not showing new fields**: Updated `ocr.py` but endpoint response unchanged
+   - **Solution**: Updated `/api/test-ocr` endpoint to include new metadata fields in response
+
+4. **Mistral API 500 error during testing**: Service unavailable (error code 3700)
+   - **Issue**: Temporary Mistral API outage (not our code)
+   - **Note**: Should add retry logic for production use
+
+### Files Created/Modified
+
+**Created:**
+- `backend/app/services/ocr.py` (new OCR service)
+
+**Modified:**
+- `CLAUDE.md` (Mistral OCR references + DRY/KISS/YAGNI principles)
+- `planning/ARCHITECTURE.md` (Mistral OCR Direct API)
+- `planning/SCHEMA.md` (improved ocr_results table)
+- `planning/PRD.md` (Mistral OCR details)
+- `planning/TASKS.md` (marked completed tasks)
+- `backend/app/services/extractor.py` (converted to placeholder)
+- `backend/app/routes/documents.py` (updated imports and test endpoint)
+- `backend/app/main.py` (removed spike routes)
+- `backend/requirements.txt` (removed docling)
+
+### Current Status
+
+**Week 1, Day 7 Mistral OCR Integration: ✅ COMPLETE**
+
+**OCR Service: ✅ FULLY WORKING**
+- Mistral OCR integration complete with full metadata capture
+- Test endpoint validated with real documents
+- Markdown output quality excellent
+- Processing time <5s per document
+
+**Documentation: ✅ COMPLETE**
+- All planning docs updated for Mistral OCR
+- Schema optimized based on actual Mistral API response
+- Coding principles added to CLAUDE.md
+
+**Next Steps Needed:**
+1. Create `002_add_ocr_results.sql` migration
+2. Apply migration to Supabase
+3. Update `ocr.py` to save results to database (caching)
+4. Test re-extraction flow with cached OCR
+
+### Next Session
+
+**Task**: Create and apply `ocr_results` table migration
+
+**Immediate Next Steps:**
+1. Create `backend/migrations/002_add_ocr_results.sql` with updated schema
+2. Apply migration to Supabase via SQL Editor
+3. Add database save logic to `ocr.py` (insert into ocr_results after successful OCR)
+4. Test full flow: upload → OCR → save to database
+5. Test re-extraction: verify cached OCR is used (no duplicate API calls)
+
+**Preparation Needed:**
+- None - ready to proceed with migration creation
+
+**Critical Decision Validated**: Mistral OCR Direct API is working excellently for the MVP - fast, accurate, and cost-effective.
+
+---

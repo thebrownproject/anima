@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str
     OPENROUTER_MODEL: str = "anthropic/claude-4.5-sonnet"  # Default model
 
+    # Mistral API Configuration (for OCR)
+    MISTRAL_API_KEY: str
+
     # Application Configuration
     APP_NAME: str = "StackDocs MVP"
     APP_VERSION: str = "0.1.0"
