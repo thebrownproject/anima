@@ -1,6 +1,5 @@
 """OCR service for extracting text from documents using Mistral OCR."""
 
-import base64
 import logging
 import time
 from typing import TypedDict
@@ -39,12 +38,12 @@ def _get_client() -> Mistral:
     return _client
 
 
-async def extract_text_ocr(file_path: str) -> OCRResult:
+async def extract_text_ocr(document_url: str) -> OCRResult:
     """
     Extract text from document using Mistral OCR.
 
     Args:
-        file_path: Absolute path to document file (PDF/image)
+        document_url: Signed URL to document file (from Supabase Storage)
 
     Returns:
         OCRResult dict with keys:
@@ -68,41 +67,15 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
     try:
         client = _get_client()
 
-        # Read and encode file as base64
-        def _encode_file() -> tuple[str, str]:
-            """Read file and return (base64_string, mime_type)."""
-            with open(file_path, "rb") as f:
-                file_bytes = f.read()
-
-            # Determine MIME type from file extension
-            mime_type = "application/pdf"  # Default to PDF
-            ext_lower = file_path.lower()
-
-            if ext_lower.endswith((".jpg", ".jpeg")):
-                mime_type = "image/jpeg"
-            elif ext_lower.endswith(".png"):
-                mime_type = "image/png"
-            elif ext_lower.endswith(".avif"):
-                mime_type = "image/avif"
-            elif ext_lower.endswith(".docx"):
-                mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            elif ext_lower.endswith(".pptx"):
-                mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-
-            base64_str = base64.b64encode(file_bytes).decode("utf-8")
-            return base64_str, mime_type
-
-        base64_content, mime_type = await to_thread(_encode_file)
-
-        # Call Mistral OCR API
-        logger.info(f"Starting Mistral OCR for file: {file_path}")
+        # Call Mistral OCR API with signed URL directly
+        logger.info(f"Starting Mistral OCR for document URL")
 
         def _call_ocr():
             return client.ocr.process(
                 model="mistral-ocr-latest",
                 document={
                     "type": "document_url",
-                    "document_url": f"data:{mime_type};base64,{base64_content}"
+                    "document_url": document_url
                 },
                 include_image_base64=False  # Don't include images to reduce payload size
             )
@@ -184,7 +157,7 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
             document_annotation = ocr_response.document_annotation
 
         logger.info(
-            f"OCR success for {file_path}. "
+            f"OCR success. "
             f"Model: {model}, "
             f"Pages: {page_count}, "
             f"Text length: {len(extracted_text)} chars, "
@@ -203,13 +176,8 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
             "document_annotation": document_annotation,
         }
 
-    except FileNotFoundError:
-        error_msg = f"File not found: {file_path}"
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-
     except Exception as e:
         processing_time_ms = int((time.time() - start_time) * 1000)
         error_msg = f"OCR processing failed: {str(e)}"
-        logger.error(f"{error_msg} for file {file_path}")
+        logger.error(f"{error_msg} for document URL")
         raise ValueError(error_msg)

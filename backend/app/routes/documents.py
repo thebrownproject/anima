@@ -4,7 +4,7 @@ from typing import cast, Any
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from uuid import UUID
 from ..models import DocumentUploadResponse
-from ..services.storage import upload_document, download_document
+from ..services.storage import upload_document, create_signed_url
 from ..services.usage import check_usage_limit, increment_usage
 from ..services.ocr import extract_text_ocr
 from ..database import get_supabase_client
@@ -85,7 +85,7 @@ async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dic
     **TEST ENDPOINT** - Extract text from an already uploaded document.
 
     This endpoint is for testing OCR functionality during development.
-    It downloads a document from Supabase Storage and runs OCR extraction.
+    It creates a signed URL for the document and sends it directly to Mistral OCR.
 
     Args:
         document_id: UUID of the document to extract text from
@@ -94,9 +94,6 @@ async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dic
     Returns:
         OCR extraction result with text preview
     """
-    import tempfile
-    import os
-
     # Get document metadata from database
     try:
         supabase = get_supabase_client()
@@ -114,44 +111,32 @@ async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dic
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch document: {str(e)}")
 
-    # Download document from Supabase Storage
+    # Create signed URL for document
     try:
-        file_content = await download_document(file_path)
+        signed_url = await create_signed_url(file_path, expires_in=3600)
 
-        # Get file extension from filename
-        _, ext = os.path.splitext(filename)
+        # Run OCR extraction with signed URL
+        ocr_result = await extract_text_ocr(signed_url)
 
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
-            _ = tmp_file.write(file_content)
-            tmp_path = tmp_file.name
-
-        try:
-            # Run OCR extraction
-            ocr_result = await extract_text_ocr(tmp_path)
-
-            # Return result with preview and all metadata
-            return {
-                "document_id": document_id,
-                "filename": filename,
-                "ocr_status": ocr_result["status"],
-                "model": ocr_result["model"],  # Model used
-                "page_count": ocr_result["page_count"],
-                "text_length": len(ocr_result["text"]),
-                "processing_time_ms": ocr_result["processing_time_ms"],
-                "usage_info": ocr_result["usage_info"],  # {pages_processed, doc_size_bytes}
-                "layout_data": ocr_result["layout_data"],  # Pages with images (id, coords, base64, annotation) and dimensions
-                "document_annotation": ocr_result["document_annotation"],  # Structured annotation if available
-                "errors": ocr_result["errors"],
-                "text_preview": {
-                    "first_300_chars": ocr_result["text"][:300],
-                    "last_300_chars": ocr_result["text"][-300:] if len(ocr_result["text"]) > 300 else ocr_result["text"]
-                },
-                "full_text": ocr_result["text"]  # Include full text for inspection
-            }
-        finally:
-            # Clean up temporary file
-            os.unlink(tmp_path)
+        # Return result with preview and all metadata
+        return {
+            "document_id": document_id,
+            "filename": filename,
+            "ocr_status": ocr_result["status"],
+            "model": ocr_result["model"],  # Model used
+            "page_count": ocr_result["page_count"],
+            "text_length": len(ocr_result["text"]),
+            "processing_time_ms": ocr_result["processing_time_ms"],
+            "usage_info": ocr_result["usage_info"],  # {pages_processed, doc_size_bytes}
+            "layout_data": ocr_result["layout_data"],  # Pages with images (id, coords, base64, annotation) and dimensions
+            "document_annotation": ocr_result["document_annotation"],  # Structured annotation if available
+            "errors": ocr_result["errors"],
+            "text_preview": {
+                "first_300_chars": ocr_result["text"][:300],
+                "last_300_chars": ocr_result["text"][-300:] if len(ocr_result["text"]) > 300 else ocr_result["text"]
+            },
+            "full_text": ocr_result["text"]  # Include full text for inspection
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR extraction failed: {str(e)}")
