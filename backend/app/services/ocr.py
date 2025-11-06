@@ -13,15 +13,17 @@ logger = logging.getLogger(__name__)
 
 
 class OCRResult(TypedDict):
-    """Result from OCR text extraction with full metadata."""
+    """Result from OCR text extraction with full metadata from Mistral API."""
 
-    text: str  # Markdown-formatted text
+    text: str  # Markdown-formatted text from Mistral OCR
     status: str  # 'success' or 'failure'
     errors: list[str]
     page_count: int
     processing_time_ms: int  # Time taken for OCR processing
+    model: str  # Model used (e.g., "mistral-ocr-latest")
     usage_info: dict  # {pages_processed, doc_size_bytes}
-    layout_data: dict | None  # Page-level data (images, dimensions)
+    layout_data: dict | None  # Page-level data (images with full metadata, dimensions)
+    document_annotation: str | None  # Structured JSON annotation if available
 
 
 # Singleton client instance
@@ -51,8 +53,10 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
         - errors (list): Any errors encountered
         - page_count (int): Number of pages processed
         - processing_time_ms (int): Time taken for OCR in milliseconds
+        - model (str): Model used (e.g., "mistral-ocr-latest")
         - usage_info (dict): Usage metadata from Mistral API
-        - layout_data (dict|None): Optional page-level data (images, dimensions)
+        - layout_data (dict|None): Page-level data with images (id, coordinates, base64, annotations) and dimensions
+        - document_annotation (str|None): Structured JSON annotation if available
 
     Raises:
         ValueError: If OCR processing completely fails
@@ -117,21 +121,24 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
         layout_pages = []
 
         for page in ocr_response.pages:
-            # Extract markdown text
+            # Extract markdown text (primary), fallback to plain text if needed
             if hasattr(page, 'markdown') and page.markdown:
                 page_texts.append(page.markdown)
             elif hasattr(page, 'text') and page.text:
                 page_texts.append(page.text)
 
-            # Extract layout data (images, dimensions) if available
+            # Extract layout data (images with all fields, dimensions) if available
             page_layout = {}
             if hasattr(page, 'images') and page.images:
                 page_layout['images'] = [
                     {
+                        'id': img.id if hasattr(img, 'id') else None,
                         'top_left_x': img.top_left_x if hasattr(img, 'top_left_x') else None,
                         'top_left_y': img.top_left_y if hasattr(img, 'top_left_y') else None,
                         'bottom_right_x': img.bottom_right_x if hasattr(img, 'bottom_right_x') else None,
                         'bottom_right_y': img.bottom_right_y if hasattr(img, 'bottom_right_y') else None,
+                        'image_base64': img.image_base64 if hasattr(img, 'image_base64') else None,
+                        'image_annotation': img.image_annotation if hasattr(img, 'image_annotation') else None,
                     }
                     for img in page.images
                 ]
@@ -150,6 +157,7 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
             if page_layout:
                 layout_pages.append(page_layout)
 
+        # Combine text from all pages
         extracted_text = "\n\n".join(page_texts)
 
         if not extracted_text:
@@ -167,8 +175,17 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
         page_count = len(ocr_response.pages)
         layout_data = {'pages': layout_pages} if layout_pages else None
 
+        # Extract model name
+        model = ocr_response.model if hasattr(ocr_response, 'model') else "mistral-ocr-latest"
+
+        # Extract document annotation if available
+        document_annotation = None
+        if hasattr(ocr_response, 'document_annotation') and ocr_response.document_annotation:
+            document_annotation = ocr_response.document_annotation
+
         logger.info(
             f"OCR success for {file_path}. "
+            f"Model: {model}, "
             f"Pages: {page_count}, "
             f"Text length: {len(extracted_text)} chars, "
             f"Processing time: {processing_time_ms}ms"
@@ -180,8 +197,10 @@ async def extract_text_ocr(file_path: str) -> OCRResult:
             "errors": [],
             "page_count": page_count,
             "processing_time_ms": processing_time_ms,
+            "model": model,
             "usage_info": usage_info,
             "layout_data": layout_data,
+            "document_annotation": document_annotation,
         }
 
     except FileNotFoundError:

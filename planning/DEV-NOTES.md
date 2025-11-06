@@ -1217,3 +1217,121 @@ All file upload functionality working:
 **Critical Decision Validated**: Mistral OCR Direct API is working excellently for the MVP - fast, accurate, and cost-effective.
 
 ---
+
+## Session 9 - 2025-11-06 - Enhanced OCR Metadata & Migration Creation ✅
+
+**Week**: Week 1 - Infrastructure Setup (Day 7)
+**Phase**: Backend API Setup
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Enhanced OCR service to capture all Mistral API fields
+  - Added `model` field to capture OCR model version (e.g., "mistral-ocr-2505-completion")
+  - Added `document_annotation` field for structured annotations (null for MVP)
+  - Enhanced image metadata: added `id`, `image_base64`, `image_annotation` fields
+  - Updated `OCRResult` TypedDict with all new fields
+
+- [x] Investigated Mistral OCR text output formats
+  - Used Context7 to fetch Mistral OCR documentation
+  - Tested markdown vs plain text output in live API calls
+  - Confirmed: Mistral OCR only returns markdown-formatted text
+  - Plain text field exists in API schema but is never populated
+
+- [x] Created database migration for `ocr_results` table
+  - File: `backend/migrations/002_add_ocr_results.sql`
+  - Added `model` field (VARCHAR(50)) to track OCR model versions
+  - Schema stores: raw_text (markdown), page_count, layout_data (JSONB), processing_time_ms, usage_info (JSONB)
+  - Includes RLS policies for user isolation
+  - Comprehensive column comments for documentation
+
+- [x] Fixed type annotation bug in test endpoint
+  - Changed return type from strict dict to `dict[str, Any]`
+  - Resolved FastAPI validation errors for complex nested JSONB fields
+
+### Decisions Made
+
+1. **Single text field (raw_text) storing markdown**
+   - Mistral OCR only returns markdown, not plain text
+   - Confirmed via real API testing (plain_text_length = 0)
+   - Markdown is better for LLM parsing (preserves structure)
+   - Can strip markdown to plain text on-demand if needed
+   - Saves storage space (no duplication)
+
+2. **Added model field to schema**
+   - Track specific OCR model version used
+   - Important for debugging and A/B testing
+   - Example: "mistral-ocr-2505-completion"
+
+3. **Document annotation out of scope for MVP**
+   - Field captured but always null (not requested from API)
+   - Requires JSON schemas to extract structured data
+   - LangChain layer will handle structured extraction instead
+
+4. **Image metadata captured but not extracted**
+   - `image_base64` and `image_annotation` fields present but null
+   - Would require `include_image_base64=True` parameter
+   - Out of scope for MVP (increases API costs and response size)
+   - Schema ready if needed post-launch
+
+### Issues Encountered
+
+1. **Server restart issue**: Multiple background uvicorn instances running
+   - **Solution**: Killed all instances and started fresh server
+   - Verified clean reload with health check
+
+2. **Pydantic validation errors on test endpoint**
+   - **Issue**: Strict type annotations didn't match complex JSONB structures
+   - **Solution**: Changed return type to `dict[str, Any]` for flexibility
+
+3. **Context7 documentation search**
+   - Initially couldn't find text format options in docs
+   - Thoroughly searched for output format parameters
+   - Confirmed: No parameters exist to request plain text separately
+
+### Files Created/Modified
+
+**Created:**
+- `backend/migrations/002_add_ocr_results.sql` (new migration)
+
+**Modified:**
+- `backend/app/services/ocr.py` (enhanced metadata capture, tested markdown vs plain text, reverted test code)
+- `backend/app/routes/documents.py` (updated test endpoint return type, added new metadata fields, reverted test fields)
+- `planning/TASKS.md` (marked migration task complete)
+
+### Current Status
+
+**Week 1, Day 7 OCR Enhancement: ✅ COMPLETE**
+
+**OCR Service: ✅ FULLY ENHANCED**
+- Captures all available Mistral API metadata
+- Model tracking enabled
+- Image metadata structure ready (though not populated)
+- Markdown-only text confirmed and tested
+
+**Migration: ✅ CREATED, ⏳ PENDING APPLICATION**
+- `002_add_ocr_results.sql` ready to apply
+- Includes complete schema with RLS and indexes
+- Next step: Apply via Supabase SQL Editor
+
+### Next Session
+
+**Task**: Apply `ocr_results` migration to Supabase database
+
+**Immediate Next Steps:**
+1. Open Supabase Dashboard → SQL Editor
+2. Copy contents of `backend/migrations/002_add_ocr_results.sql`
+3. Execute migration in SQL Editor
+4. Verify table created: `SELECT * FROM ocr_results LIMIT 1;`
+5. Verify RLS policies: Check policies in Supabase Dashboard
+6. Update `ocr.py` to save OCR results to database after extraction
+
+**Preparation Needed:**
+- None - migration file ready to apply
+
+**Key Learnings:**
+- Mistral OCR provides comprehensive metadata out-of-the-box
+- Markdown is the only text format available (confirmed via testing)
+- Single source of truth (markdown) is simpler and more efficient than storing duplicate formats
+
+---

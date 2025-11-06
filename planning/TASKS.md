@@ -278,10 +278,12 @@ The MVP is divided into 4 phases:
 
 ### Mistral OCR Migration Tasks (Day 5-6)
 
-- [ ] Create database migration for `ocr_results` table
+- [x] Create database migration for `ocr_results` table
   - File: `backend/migrations/002_add_ocr_results.sql`
-  - Table stores raw OCR text, token_usage, processing_time_ms
+  - Table stores raw OCR text (markdown), model, usage_info, processing_time_ms, layout_data
+  - Added model field for tracking OCR model version
   - Enables re-extraction without duplicate OCR API calls
+  - **Completed**: 2025-11-06
 
 - [ ] Apply migration to Supabase database
   - Run migration via Supabase Dashboard SQL Editor

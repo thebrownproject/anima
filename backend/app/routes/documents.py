@@ -1,6 +1,6 @@
 """Document upload and management endpoints"""
 
-from typing import cast
+from typing import cast, Any
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from uuid import UUID
 from ..models import DocumentUploadResponse
@@ -80,7 +80,7 @@ async def upload_document_endpoint(
 
 
 @router.post("/test-ocr/{document_id}")
-async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dict[str, str | int | list[str] | dict[str, str]]:  # pyright: ignore[reportCallInDefaultInitializer]
+async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dict[str, Any]:  # pyright: ignore[reportCallInDefaultInitializer]
     """
     **TEST ENDPOINT** - Extract text from an already uploaded document.
 
@@ -130,16 +130,18 @@ async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dic
             # Run OCR extraction
             ocr_result = await extract_text_ocr(tmp_path)
 
-            # Return result with preview and metadata
+            # Return result with preview and all metadata
             return {
                 "document_id": document_id,
                 "filename": filename,
                 "ocr_status": ocr_result["status"],
+                "model": ocr_result["model"],  # Model used
                 "page_count": ocr_result["page_count"],
                 "text_length": len(ocr_result["text"]),
-                "processing_time_ms": ocr_result["processing_time_ms"],  # NEW
-                "usage_info": ocr_result["usage_info"],  # NEW
-                "layout_data": ocr_result["layout_data"],  # NEW
+                "processing_time_ms": ocr_result["processing_time_ms"],
+                "usage_info": ocr_result["usage_info"],  # {pages_processed, doc_size_bytes}
+                "layout_data": ocr_result["layout_data"],  # Pages with images (id, coords, base64, annotation) and dimensions
+                "document_annotation": ocr_result["document_annotation"],  # Structured annotation if available
                 "errors": ocr_result["errors"],
                 "text_preview": {
                     "first_300_chars": ocr_result["text"][:300],
