@@ -1658,3 +1658,49 @@ All file upload functionality working:
 
 ---
 
+
+## Notes for Next Session - Schema & Extraction Pipeline
+
+**Immediate Priority**: Integrate extraction into database + schema refinement
+
+### Schema Considerations to Discuss
+
+Current `extractions` table may need adjustments:
+- **Add**: `model` field (track which LLM model was used - e.g., "anthropic/claude-haiku-4.5")
+- **Add**: `processing_time_ms` field (track extraction performance)
+- **Remove?**: `updated_at` field (may not be needed if extractions are immutable)
+- **Keep**: `created_at`, `extracted_fields`, `confidence_scores`, `mode`, `custom_fields`
+
+**Questions to resolve**:
+1. Should extractions be immutable (create-only) or editable (allow updates)?
+2. Do we need `updated_at` if extractions can't be edited after creation?
+3. Should we track both OCR processing time + extraction processing time separately?
+4. What metadata is most useful for debugging/monitoring?
+
+### Next Session Tasks
+
+1. **Brainstorm schema changes**
+   - Review current extractions table structure
+   - Decide on model + processing_time_ms fields
+   - Decide on updated_at field necessity
+   - Plan migration if schema changes needed
+
+2. **Update extraction routes to save to database**
+   - Modify test-extract-auto endpoint to upsert to extractions table
+   - Modify test-extract-custom endpoint to upsert to extractions table
+   - Include model name, processing_time_ms in saved data
+   - Test database integration end-to-end
+
+3. **Consider full pipeline integration**
+   - Link OCR → Extraction → Database save
+   - Background task for async processing
+   - Status polling endpoint
+   - Error handling for each stage
+
+**Current State**:
+- Extraction service working (returns JSON)
+- Database schema defined (may need refinement)
+- Test endpoints functional (but don't save to DB yet)
+
+**Decision Needed**: Finalize schema before implementing database save logic
+
