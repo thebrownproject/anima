@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # OpenRouter API Configuration
     OPENROUTER_API_KEY: str
-    OPENROUTER_MODEL: str = "anthropic/claude-4.5-sonnet"  # Default model
+    OPENROUTER_MODEL: str = "anthropic/claude-haiku-4.5"  # Default model
 
     # Mistral API Configuration (for OCR)
     MISTRAL_API_KEY: str

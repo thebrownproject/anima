@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .models import HealthResponse
-from .routes import documents, ocr
+from .routes import documents, ocr, extractions
 
 # Initialize settings
 settings = get_settings()
@@ -52,3 +52,4 @@ async def root():
 # Include routers
 app.include_router(documents.router, prefix="/api", tags=["documents"])
 app.include_router(ocr.router, prefix="/api", tags=["ocr"])
+app.include_router(extractions.router, prefix="/api", tags=["extractions"])
