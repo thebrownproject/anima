@@ -2,6 +2,7 @@
 
 import logging
 import time
+from asyncio import to_thread
 from typing import TypedDict
 
 from mistralai import Mistral
@@ -60,15 +61,13 @@ async def extract_text_ocr(document_url: str) -> OCRResult:
     Raises:
         ValueError: If OCR processing completely fails
     """
-    from asyncio import to_thread
-
     start_time = time.time()
 
     try:
         client = _get_client()
 
         # Call Mistral OCR API with signed URL directly
-        logger.info(f"Starting Mistral OCR for document URL")
+        logger.info("Starting Mistral OCR for document URL")
 
         def _call_ocr():
             return client.ocr.process(
@@ -95,10 +94,12 @@ async def extract_text_ocr(document_url: str) -> OCRResult:
 
         for page in ocr_response.pages:
             # Extract markdown text (primary), fallback to plain text if needed
-            if hasattr(page, 'markdown') and page.markdown:
-                page_texts.append(page.markdown)
-            elif hasattr(page, 'text') and page.text:
-                page_texts.append(page.text)
+            markdown = getattr(page, 'markdown', None)
+            text = getattr(page, 'text', None)
+            if markdown:
+                page_texts.append(markdown)
+            elif text:
+                page_texts.append(text)
 
             # Extract layout data (images with all fields, dimensions) if available
             page_layout = {}

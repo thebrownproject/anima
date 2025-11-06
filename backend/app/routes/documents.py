@@ -118,6 +118,29 @@ async def test_ocr_extraction(document_id: str, user_id: str = Form(...)) -> dic
         # Run OCR extraction with signed URL
         ocr_result = await extract_text_ocr(signed_url)
 
+        # Save OCR result to database for caching (re-extraction support)
+        try:
+            ocr_data = {
+                "document_id": document_id,
+                "user_id": user_id,
+                "raw_text": ocr_result["text"],
+                "page_count": ocr_result["page_count"],
+                "layout_data": ocr_result["layout_data"],  # JSONB (nullable)
+                "processing_time_ms": ocr_result["processing_time_ms"],
+                "usage_info": ocr_result["usage_info"],  # JSONB
+                "model": ocr_result["model"],
+                "ocr_engine": "mistral",  # Default value
+            }
+
+            # Use upsert to handle re-OCR scenarios (UNIQUE constraint on document_id)
+            _ = supabase.table("ocr_results").upsert(ocr_data).execute()
+
+        except Exception as e:
+            # Log error but don't fail the request - OCR succeeded, DB save is secondary
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to save OCR result for document {document_id}: {str(e)}")
+
         # Return result with preview and all metadata
         return {
             "document_id": document_id,

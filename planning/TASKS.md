@@ -285,9 +285,11 @@ The MVP is divided into 4 phases:
   - Enables re-extraction without duplicate OCR API calls
   - **Completed**: 2025-11-06
 
-- [ ] Apply migration to Supabase database
-  - Run migration via Supabase Dashboard SQL Editor
-  - Verify table created with correct indexes and RLS policies
+- [x] Apply migration to Supabase database
+  - Applied migration via Supabase MCP tool
+  - Verified table created with correct indexes and RLS policies
+  - Tested with 2 documents - OCR results saved successfully
+  - **Completed**: 2025-11-06
 
 - [x] Update `backend/app/config.py` with Mistral API settings
   - Add `MISTRAL_API_KEY` env var
@@ -320,6 +322,29 @@ The MVP is divided into 4 phases:
   - Processing time: <5s per document
   - Test endpoint working: `POST /api/test-ocr/{document_id}`
   - **Completed**: 2025-11-05
+
+- [x] Optimize OCR to use Supabase signed URLs instead of file downloads
+  - Refactored `extract_text_ocr()` to accept signed URLs directly
+  - Eliminated temp file creation and base64 encoding overhead
+  - Reduced code by 47 lines (81 deleted, 34 added)
+  - Improved memory efficiency and scalability
+  - Processing time: ~3.5s per document (acceptable for MVP)
+  - **Completed**: 2025-11-06
+
+- [x] Implement OCR result database caching
+  - Added direct Supabase insert/upsert to test endpoint after OCR
+  - Maps OCRResult fields to ocr_results table columns
+  - Uses upsert for idempotency (one OCR per document)
+  - Graceful error handling (logs errors but returns OCR result)
+  - Tested with 2 documents - both cached successfully
+  - **Completed**: 2025-11-06
+
+- [x] Code cleanup and lint fixes for ocr.py
+  - Moved `to_thread` import to top of file
+  - Removed unnecessary f-string in logger
+  - Improved text extraction with getattr() pattern
+  - Fixed minor lint warnings
+  - **Completed**: 2025-11-06
 
 - [ ] Test re-extraction flow with cached OCR
   - Upload document → OCR runs
