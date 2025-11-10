@@ -354,10 +354,15 @@ The MVP is divided into 4 phases:
   - Endpoint verified working at new location via Swagger
   - **Completed**: 2025-11-06
 
-- [ ] Test re-extraction flow with cached OCR
+- [x] Test re-extraction flow with cached OCR
   - Upload document → OCR runs
   - Re-extract with different mode → OCR fetched from cache
   - Verify no duplicate Mistral API calls (check request_id)
+  - Created migration 003 to add `model` and `processing_time_ms` fields
+  - Updated test endpoints to fetch OCR from cache automatically
+  - Tested with resume PDF: auto extraction (17 fields, 11.3s) + custom extraction (5 fields, 2.5s)
+  - Both extractions saved to database, OCR cached and reused
+  - **Completed**: 2025-11-10
 
 ### LangChain + Claude Integration (Day 6-7)
 

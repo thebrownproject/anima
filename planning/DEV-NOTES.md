@@ -1704,3 +1704,164 @@ Current `extractions` table may need adjustments:
 
 **Decision Needed**: Finalize schema before implementing database save logic
 
+---
+
+## Session 12 - 2025-11-10 - Schema Refinement & Re-Extraction Testing ✅
+
+**Week**: Week 1 - Infrastructure Setup (Day 8+)
+**Phase**: Backend API Setup
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Created and applied migration 003_add_extraction_metadata.sql
+  - Added `model VARCHAR(50) NOT NULL` to track LLM model used (e.g., "anthropic/claude-haiku-4.5")
+  - Added `processing_time_ms INTEGER NOT NULL` to track extraction performance
+  - Added column comments for documentation
+  - Migration applied successfully to Supabase
+
+- [x] Updated extraction test endpoints to fetch cached OCR
+  - Refactored `/api/test-extract-auto` to fetch OCR text from `ocr_results` table
+  - Refactored `/api/test-extract-custom` to fetch OCR text from `ocr_results` table
+  - Endpoints now require only `document_id` and `user_id` (+ `custom_fields` for custom mode)
+  - No longer require manual text input - tests actual re-extraction flow
+  - Added manual timing: measure processing_time_ms by wrapping extraction call
+  - Added manual model tracking: get model name from settings
+  - Save extraction to database with all new fields
+
+- [x] Tested re-extraction flow end-to-end
+  - Test 1: Auto extraction on resume PDF (17 fields, 11.3s, high confidence)
+  - Test 2: Custom extraction on same document (5 specific fields, 2.5s)
+  - Both extractions saved to database successfully
+  - Verified OCR was cached and reused (no duplicate Mistral API call)
+  - Confirmed multiple extractions per document works correctly
+
+### Decisions Made
+
+1. **Keep confidence_scores separate from extracted_fields**
+   - Simpler queries: `extracted_fields->>'field'` vs nested access
+   - Easier CSV export: Just export extracted_fields directly
+   - Better for editing: Users edit extracted_fields, confidence_scores stay immutable
+   - LangChain returns them separately anyway
+
+2. **Add model and processing_time_ms to extractions table**
+   - Mirror ocr_results structure (consistency)
+   - Enable A/B testing different LLM models
+   - Monitor extraction performance (separate from OCR time)
+   - Useful for debugging and cost optimization
+
+3. **Keep updated_at field**
+   - Track when users manually edit extracted fields
+   - Distinguish AI-extracted (created_at) vs user-corrected (updated_at)
+   - UI can show "Edited by user" badge if updated_at > created_at
+
+4. **Endpoint adds metadata, not AI extraction service**
+   - Model name: Retrieved from settings at endpoint level
+   - Processing time: Measured by wrapping extraction call with time.time()
+   - Created timestamp: Database handles with DEFAULT NOW()
+   - Keeps extraction service focused (single responsibility)
+
+5. **Test endpoints fetch cached OCR automatically**
+   - Tests actual re-extraction workflow (production-like)
+   - Simpler to use (no manual text pasting)
+   - Validates OCR caching works correctly
+   - Returns 404 if no OCR exists for document
+
+### Issues Encountered
+
+1. **Initial approach had text as manual input**
+   - Problem: Didn't test real re-extraction flow with cached OCR
+   - Solution: Changed endpoints to fetch OCR from database automatically
+   - Now requires document_id to look up cached text
+
+2. **Type hints warnings in IDE**
+   - Minor basedpyright warnings about Supabase response types
+   - Non-blocking, functionality works correctly
+   - Can be addressed in future cleanup
+
+### Files Created/Modified
+
+**Created:**
+- `backend/migrations/003_add_extraction_metadata.sql` - Migration for new fields
+
+**Modified:**
+- `backend/app/routes/extractions.py` - Refactored both test endpoints to fetch cached OCR
+- `planning/TASKS.md` - Marked re-extraction task complete
+- `planning/DEV-NOTES.md` - Added this session
+
+### Current Status
+
+**Week 1, Day 8+ Schema Refinement: ✅ COMPLETE**
+
+**Extraction System: ✅ PRODUCTION READY**
+- Auto and custom extraction modes working
+- Model and processing time tracking implemented
+- OCR caching working (one Mistral call per document)
+- Re-extraction working (multiple extractions per document)
+- Complex nested data structures supported (arrays, objects)
+- High confidence scores (95-99%)
+
+**What's Working:**
+- Two extractions for same document (history tracking)
+- OCR cached and reused (cost savings)
+- Model tracking (A/B testing ready)
+- Performance monitoring (processing times captured)
+- Custom field extraction with user-specified fields
+
+**What's Next:**
+- Integrate full pipeline (upload → OCR → extract → save) with background tasks
+- Implement status polling endpoint for frontend
+- Test with invoice/receipt documents (simpler than resume)
+- Production extraction endpoints (not just test endpoints)
+
+### Key Learnings
+
+1. **Schema design decisions matter early**
+   - Separate confidence_scores makes queries simpler
+   - Keep updated_at for edit tracking (users will want this)
+   - Adding model/processing_time_ms enables monitoring and optimization
+
+2. **Test endpoints should mirror production flow**
+   - Fetching cached OCR tests actual re-extraction workflow
+   - Closer to production = better testing
+   - Simpler UX (just provide UUIDs)
+
+3. **Endpoint-level metadata vs service-level**
+   - Keeps extraction service focused on extraction only
+   - Endpoint handles infrastructure concerns (timing, model name, DB save)
+   - Better separation of concerns
+
+4. **JSONB flexibility validated**
+   - Resume extraction: 17 top-level fields with nested arrays/objects
+   - Handled complex structures seamlessly
+   - Pydantic + LangChain guarantees valid JSON structure
+
+### Next Session
+
+**Task**: Begin full pipeline integration or implement production extraction endpoints
+
+**Immediate Next Steps:**
+1. Decide: Background task integration vs production endpoint implementation
+2. If background task: Create extract_document() task linking OCR → Extract → DB save
+3. If production endpoints: Implement GET /extractions/{id}, GET /documents/{id}/extractions
+4. Test full workflow: upload → process → poll status → view results
+5. Add extraction status to documents table (processing, completed, failed)
+
+**Preparation Needed:**
+- None - all dependencies ready
+- Extraction service production-ready
+- OCR caching working
+- Database schema finalized
+
+**Week 1 Progress:**
+- ✅ Backend core setup complete
+- ✅ Supabase integration working (database + storage)
+- ✅ Document upload endpoint implemented
+- ✅ Mistral OCR integration complete with caching
+- ✅ LangChain + Claude extraction engine complete
+- ✅ Schema refinement complete (model + processing_time_ms)
+- ✅ Re-extraction flow tested and working
+- ⏭️ Next: Full pipeline integration with background processing
+
+---
+
