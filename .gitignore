@@ -73,6 +73,7 @@ temp/
 # Claude Code (ignore entire directory and project instructions)
 .claude/
 CLAUDE.md
+.kilocode/
 
 # Document uploads (will be in Supabase Storage, not local)
 uploads/
