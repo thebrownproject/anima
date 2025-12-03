@@ -4,6 +4,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white)
 
 > AI-powered document data extraction application for converting invoices and receipts into structured CSV/JSON data using LangChain and Claude Haiku (In Development)
@@ -14,7 +15,7 @@
 
 StackDocs is a startup idea I'm building to automate manual data entry from business documents. Users upload invoices or receipts, and the system uses AI to extract structured data (vendor names, dates, amounts, line items) into downloadable CSV/JSON formats.
 
-**Core Value:** Reduces manual data entry time from 5 minutes per document to 30 seconds of automated extraction.
+**Core Value:** Reduces manual data entry through automated extraction.
 
 **Current Status:** Backend extraction engine complete (OCR + LLM integration working). About to commence Next.js frontend development.
 
@@ -24,7 +25,7 @@ StackDocs is a startup idea I'm building to automate manual data entry from busi
 
 **Frontend:** Next.js · TypeScript · TailwindCSS <br>
 **Backend:** Python · FastAPI · LangChain <br>
-**AI/ML:** Claude Haiku 4.5 (via OpenRouter) · Mistral OCR · Structured Outputs <br>
+**AI/ML:** Claude Haiku 4.5 (via OpenRouter) · Mistral OCR <br>
 **Database:** Supabase (PostgreSQL · Storage · Auth) <br>
 **Infrastructure:** Background Tasks · RLS Policies · Usage Tracking
 
