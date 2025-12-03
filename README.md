@@ -7,7 +7,7 @@
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white)
 
-> AI-powered document data extraction application for converting invoices and receipts into structured CSV/JSON data using LangChain and Claude Haiku (In Development)
+> AI-powered document data extraction application for converting unstructured documents into structured CSV/JSON data using LangChain and Claude Haiku (In Development)
 
 ---
 
