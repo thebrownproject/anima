@@ -1,0 +1,85 @@
+name: Deploy StackDocs API to DigitalOcean
+
+# When should this workflow run?
+on:
+  push:
+    branches: [main]  # Run when pushing to main branch
+    paths:
+      - 'backend/**'       # Only run when files in backend/ folder change
+
+# What jobs should run?
+jobs:
+  deploy:
+    name: Deploy API to Droplet
+    runs-on: ubuntu-latest  # Use Ubuntu runner
+
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Copy backend files to droplet
+      - name: Copy API files to droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "backend/*"
+          target: "/opt/stackdocs-api/"
+          strip_components: 1  # Removes 'backend/' prefix, keeping only contents
+
+      # Step 3: SSH into droplet and deploy
+      - name: Deploy to DigitalOcean
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            echo "🚀 Deploying StackDocs API..."
+            cd /opt/stackdocs-api
+
+            # Verify files exist
+            echo "📁 Checking files..."
+            ls -la
+
+            # Stop existing container
+            docker-compose down 2>/dev/null || true
+
+            # Create production environment file
+            cat > .env.production << 'EOFCONFIG'
+            ENVIRONMENT=production
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+            MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }}
+            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+            CLAUDE_MODEL=claude-sonnet-4-20250514
+            APP_NAME=StackDocs
+            APP_VERSION=1.0.0
+            ALLOWED_ORIGINS=https://your-frontend-domain.com,http://localhost:3000
+            EOFCONFIG
+
+            # Show system resources
+            echo "💻 System resources:"
+            free -m | head -2
+
+            # Build and start
+            echo "🔧 Building container..."
+            docker-compose build --no-cache
+
+            echo "🚀 Starting container..."
+            docker-compose up -d
+
+            # Wait and check
+            sleep 20
+            echo "📊 Container status:"
+            docker-compose ps
+            docker ps -a | grep stackdocs
+
+            echo "📋 Container logs:"
+            docker-compose logs --tail=50
+
+            echo "✅ Deploy script finished"
+            echo "🌐 API: http://${{ secrets.DROPLET_IP }}:8000"

@@ -636,6 +636,56 @@ The MVP is divided into 4 phases:
 
 ---
 
+## Architecture Migration (December 2025) ✅
+
+**Completed**: 2025-12-16
+
+Migrated from LangChain + full FastAPI to hybrid architecture with Anthropic SDK.
+
+### What Changed
+
+| Before | After |
+|--------|-------|
+| LangChain + OpenRouter | Anthropic SDK direct |
+| 10+ FastAPI endpoints | 2 endpoints (`/api/process`, `/api/re-extract`) |
+| Frontend → FastAPI → Supabase | Frontend → Supabase direct |
+| Polling for status | Supabase Realtime |
+
+### Migration Tasks Completed
+
+- [x] **Phase 1**: Dependencies (langchain → anthropic)
+- [x] **Phase 2**: Rewrote `extractor.py` with Anthropic SDK tool use
+- [x] **Phase 3**: Consolidated routes into `process.py`, deleted old route files
+- [x] **Phase 4**: Tested extraction (auto + custom modes), process + re-extract endpoints
+- [x] **Phase 5**: Updated documentation (CLAUDE.md, ARCHITECTURE.md, TASKS.md)
+
+### New API Surface
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Health check |
+| `POST /api/process` | Upload + OCR + Extract (background) |
+| `POST /api/re-extract` | New extraction from cached OCR |
+
+### Key Files Changed
+
+- `backend/requirements.txt` - Removed langchain, added anthropic
+- `backend/app/config.py` - ANTHROPIC_API_KEY, CLAUDE_MODEL
+- `backend/app/services/extractor.py` - Complete rewrite with Anthropic SDK
+- `backend/app/routes/process.py` - New consolidated router
+- `backend/app/main.py` - Updated router registration
+
+### Deleted Files
+
+- `backend/app/routes/documents.py`
+- `backend/app/routes/ocr.py`
+- `backend/app/routes/extractions.py`
+- `backend/app/routes/usage.py`
+
+See `planning/MIGRATION-PLAN.md` for full architecture details.
+
+---
+
 ## Phase 3: Frontend MVP (Week 2-3, Days 11-18)
 
 **Goal:** Build Next.js frontend with document library, upload flow, and extraction results display.

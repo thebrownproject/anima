@@ -24,18 +24,26 @@ class UsageStats(TypedDict):
 
 
 def _parse_reset_date(date_str: str) -> datetime:
-    """Parse reset date string to datetime with timezone."""
-    return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    """Parse reset date string to timezone-aware datetime.
+
+    Handles both old format (date only: 2025-01-01) and
+    new format (full datetime: 2025-01-01T00:00:00+00:00).
+    """
+    parsed = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    # If parsed datetime is naive (no timezone), assume UTC
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def _get_next_reset_date() -> str:
-    """Calculate the first day of next month as ISO date string."""
+    """Calculate the first day of next month as ISO datetime string with timezone."""
     now = datetime.now(timezone.utc)
     if now.month == 12:
-        next_month = now.replace(year=now.year + 1, month=1, day=1)
+        next_month = now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
     else:
-        next_month = now.replace(month=now.month + 1, day=1)
-    return next_month.date().isoformat()
+        next_month = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    return next_month.isoformat()
 
 
 async def _get_user(user_id: str, fields: str = "*") -> dict:

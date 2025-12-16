@@ -1,7 +1,7 @@
 # Migration Tasks: Hybrid Architecture Implementation
 
 **Date**: 2025-12-16
-**Status**: In Progress
+**Status**: ✅ Complete
 **Related**: `MIGRATION-PLAN.md`, `ARCHITECTURE-UPDATE.md`
 **Purpose**: Step-by-step tasks to migrate StackDocs to hybrid architecture
 
@@ -12,27 +12,32 @@
 Use `/resume` command after clearing chat to check status and continue work.
 
 ### Phase 1: Dependencies & Configuration
+
 - [x] **1.1** Update `requirements.txt` (remove langchain, add anthropic)
 - [x] **1.2** Update `app/config.py` (ANTHROPIC_API_KEY, CLAUDE_MODEL)
 - [x] **1.3** Update `.env` and `.env.example`
 
 ### Phase 2: Rewrite Extraction Service
+
 - [x] **2.1** Replace `app/services/extractor.py` with Anthropic SDK
 
 ### Phase 3: Consolidate FastAPI Routes
+
 - [x] **3.1** Create `app/routes/process.py` (new consolidated endpoints)
 - [x] **3.2** Update `app/main.py` (router registration)
 - [x] **3.3** Delete old route files (documents.py, ocr.py, extractions.py, usage.py)
 
 ### Phase 4: Testing & Validation
-- [ ] **4.1** Test extraction service (auto + custom modes)
-- [ ] **4.2** Test `/api/process` endpoint end-to-end
-- [ ] **4.3** Test `/api/re-extract` endpoint
+
+- [x] **4.1** Test extraction service (auto + custom modes)
+- [x] **4.2** Test `/api/process` endpoint end-to-end
+- [x] **4.3** Test `/api/re-extract` endpoint
 
 ### Phase 5: Documentation Updates
-- [x] **5.1** Update `CLAUDE.md` *(completed 2025-12-16)*
-- [ ] **5.2** Update `planning/ARCHITECTURE.md`
-- [ ] **5.3** Update `planning/TASKS.md` with migration section
+
+- [x] **5.1** Update `CLAUDE.md` _(completed 2025-12-16)_
+- [x] **5.2** Update `planning/ARCHITECTURE.md` _(completed 2025-12-16)_
+- [x] **5.3** Update `planning/TASKS.md` with migration section _(completed 2025-12-16)_
 
 ---
 
@@ -41,6 +46,7 @@ Use `/resume` command after clearing chat to check status and continue work.
 This document contains actionable tasks to migrate from LangChain to Anthropic SDK and simplify the FastAPI backend to AI-only operations.
 
 **Key References:**
+
 - `planning/MIGRATION-PLAN.md` - Architecture overview and rationale
 - `planning/ARCHITECTURE-UPDATE.md` - Claude Agent SDK code examples and patterns
 
@@ -53,17 +59,20 @@ This document contains actionable tasks to migrate from LangChain to Anthropic S
 **File:** `backend/requirements.txt`
 
 **Current:**
+
 ```
 openai==2.6.1
 langchain-openai==1.0.1
 ```
 
 **Target:**
+
 ```
 anthropic>=0.40.0
 ```
 
 **Action:**
+
 ```bash
 cd backend
 pip uninstall openai langchain-openai -y
@@ -72,6 +81,7 @@ pip freeze > requirements.txt
 ```
 
 **Verification:**
+
 - [ ] `pip list | grep anthropic` shows version >=0.40.0
 - [ ] `pip list | grep langchain` returns nothing
 
@@ -82,10 +92,12 @@ pip freeze > requirements.txt
 **File:** `backend/app/config.py`
 
 **Changes:**
+
 1. Remove `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`
 2. Add `ANTHROPIC_API_KEY`
 
 **Current:**
+
 ```python
 class Settings(BaseSettings):
     # ...
@@ -94,6 +106,7 @@ class Settings(BaseSettings):
 ```
 
 **Target:**
+
 ```python
 class Settings(BaseSettings):
     # Supabase
@@ -121,12 +134,14 @@ class Settings(BaseSettings):
 **File:** `backend/.env`
 
 **Remove:**
+
 ```
 OPENROUTER_API_KEY=...
 OPENROUTER_MODEL=...
 ```
 
 **Add:**
+
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 CLAUDE_MODEL=claude-sonnet-4-20250514
@@ -145,11 +160,13 @@ Update template to match.
 **File:** `backend/app/services/extractor.py`
 
 **Current implementation uses:**
+
 - LangChain `ChatOpenAI` with OpenRouter
 - `ChatPromptTemplate` for prompts
 - `with_structured_output(method="function_calling")`
 
 **New implementation uses:**
+
 - Anthropic SDK `Anthropic` client
 - Tool use for guaranteed structured output
 - Direct API calls (no LangChain abstraction)
@@ -302,6 +319,7 @@ Document text:
 ```
 
 **Verification:**
+
 - [ ] No LangChain imports remain
 - [ ] Both `extract_auto_mode` and `extract_custom_fields` work
 - [ ] Tool use returns structured output
@@ -584,11 +602,13 @@ async def re_extract_document(
 **File:** `backend/app/main.py`
 
 **Changes:**
+
 1. Remove old router imports (documents, ocr, extractions)
 2. Import new process router
 3. Update router registrations
 
 **Current:**
+
 ```python
 from .routes import documents, ocr, extractions
 
@@ -598,6 +618,7 @@ app.include_router(extractions.router, prefix="/api", tags=["extractions"])
 ```
 
 **Target:**
+
 ```python
 from .routes import process
 
@@ -617,6 +638,7 @@ app.include_router(process.router, prefix="/api", tags=["processing"])
 **Action:** Delete or archive old route files that are no longer needed.
 
 **Files to remove/archive:**
+
 - `backend/app/routes/documents.py` - Merged into process.py
 - `backend/app/routes/ocr.py` - Merged into process.py
 - `backend/app/routes/extractions.py` - Merged into process.py (test endpoints removed)
@@ -678,6 +700,7 @@ async def test_custom_extraction():
 ```
 
 **Run tests:**
+
 ```bash
 cd backend
 pytest tests/test_extractor.py -v
@@ -688,6 +711,7 @@ pytest tests/test_extractor.py -v
 ### Task 4.2: Test Process Endpoint
 
 **Manual testing via Swagger:**
+
 1. Start server: `uvicorn app.main:app --reload`
 2. Open http://localhost:8000/docs
 3. Test `POST /api/process` with a PDF file
@@ -696,6 +720,7 @@ pytest tests/test_extractor.py -v
 6. Verify extraction saved
 
 **Verify in Supabase:**
+
 ```sql
 -- Check document status
 SELECT id, filename, status, uploaded_at
@@ -721,6 +746,7 @@ LIMIT 5;
 ### Task 4.3: Test Re-extract Endpoint
 
 **Test re-extraction flow:**
+
 1. Use document from Task 4.2
 2. Call `POST /api/re-extract` with mode="custom"
 3. Verify new extraction created (different from first)
@@ -735,6 +761,7 @@ LIMIT 5;
 **File:** `CLAUDE.md`
 
 Update the following sections:
+
 1. **Tech Stack** - Remove LangChain, add Anthropic SDK
 2. **Architecture** - Update to hybrid architecture diagram
 3. **API Endpoints** - Document new `/api/process` and `/api/re-extract`
@@ -748,6 +775,7 @@ Update the following sections:
 **File:** `planning/ARCHITECTURE.md`
 
 Major updates:
+
 1. Add hybrid architecture diagram
 2. Document frontend direct Supabase access
 3. Document Supabase Realtime usage
@@ -761,10 +789,12 @@ Major updates:
 **File:** `planning/TASKS.md`
 
 Add new section documenting migration completion:
+
 ```markdown
 ## Architecture Migration (December 2025)
 
 ### Migration Complete
+
 - [x] Phase 1: Dependencies updated (LangChain → Anthropic SDK)
 - [x] Phase 2: Extractor service rewritten
 - [x] Phase 3: FastAPI routes consolidated
@@ -772,6 +802,7 @@ Add new section documenting migration completion:
 - [x] Phase 5: Documentation updated
 
 ### New Architecture
+
 - Backend: 2 endpoints only (`/api/process`, `/api/re-extract`)
 - Frontend: Direct Supabase access for all data operations
 - Status updates: Supabase Realtime (no polling)
@@ -801,6 +832,7 @@ If issues arise:
 3. **Environment toggle** - Could add feature flag to switch between old/new
 
 **Rollback command:**
+
 ```bash
 git checkout main -- backend/app/services/extractor.py
 git checkout main -- backend/app/routes/
@@ -819,12 +851,14 @@ git checkout main -- backend/requirements.txt
 4. **What stays**: Mistral OCR, Supabase, FastAPI framework, background tasks
 
 **Key files to read first:**
+
 - `backend/app/services/extractor.py` - Current LangChain implementation
 - `backend/app/routes/documents.py` - Current upload endpoint
 - `backend/app/routes/extractions.py` - Current test endpoints
 - `planning/ARCHITECTURE-UPDATE.md` - Claude SDK patterns and examples
 
 **Start with:**
+
 1. Read existing extractor.py to understand current implementation
 2. Update requirements.txt
 3. Rewrite extractor.py with Anthropic SDK

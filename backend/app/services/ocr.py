@@ -46,6 +46,16 @@ def _extract_page_text(page: Any) -> str:
     return getattr(page, 'markdown', None) or getattr(page, 'text', '') or ''
 
 
+def _extract_image_annotations(page: Any) -> list[str]:
+    """Extract text annotations from images in a page."""
+    annotations = []
+    if images := getattr(page, 'images', None):
+        for img in images:
+            if annotation := getattr(img, 'image_annotation', None):
+                annotations.append(f"[Image content: {annotation}]")
+    return annotations
+
+
 def _extract_page_layout(page: Any) -> dict[str, Any]:
     """Extract layout data (images, dimensions) from a page."""
     layout: dict[str, Any] = {}
@@ -124,11 +134,15 @@ async def extract_text_ocr(document_url: str) -> OCRResult:
         if not response.pages:
             raise ValueError("OCR returned no pages")
 
-        # Extract text and layout from all pages
+        # Extract text, image annotations, and layout from all pages
         page_texts = [_extract_page_text(page) for page in response.pages]
+        image_annotations = [ann for page in response.pages for ann in _extract_image_annotations(page)]
         layout_pages = [layout for page in response.pages if (layout := _extract_page_layout(page))]
 
+        # Combine page text with image annotations
         extracted_text = "\n\n".join(filter(None, page_texts))
+        if image_annotations:
+            extracted_text += "\n\n--- Image Content ---\n" + "\n".join(image_annotations)
         if not extracted_text:
             raise ValueError("OCR returned empty text from all pages")
 
