@@ -1,104 +1,184 @@
-"""Usage limit checking and tracking"""
+"""
+Usage tracking service for document processing limits.
 
-from datetime import datetime
-from typing import cast
+Handles checking, incrementing, and resetting monthly usage quotas.
+"""
+
+import logging
+from datetime import datetime, timezone
+from typing import TypedDict
+
 from fastapi import HTTPException
+
 from ..database import get_supabase_client
 
-# Type alias for user data from database
-UserData = dict[str, str | int | bool | None]
+logger = logging.getLogger(__name__)
+
+
+class UsageStats(TypedDict):
+    """User's current usage statistics."""
+    documents_processed_this_month: int
+    documents_limit: int
+    subscription_tier: str
+    usage_reset_date: str
+
+
+def _parse_reset_date(date_str: str) -> datetime:
+    """Parse reset date string to datetime with timezone."""
+    return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+
+
+def _get_next_reset_date() -> str:
+    """Calculate the first day of next month as ISO date string."""
+    now = datetime.now(timezone.utc)
+    if now.month == 12:
+        next_month = now.replace(year=now.year + 1, month=1, day=1)
+    else:
+        next_month = now.replace(month=now.month + 1, day=1)
+    return next_month.date().isoformat()
+
+
+async def _get_user(user_id: str, fields: str = "*") -> dict:
+    """
+    Fetch user data from database.
+
+    Raises:
+        HTTPException: If user not found
+    """
+    supabase = get_supabase_client()
+    response = supabase.table("users").select(fields).eq("id", user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return response.data[0]
 
 
 async def check_usage_limit(user_id: str) -> bool:
-    """Check if user can upload another document."""
+    """
+    Check if user can upload another document.
+
+    Automatically resets usage counter if past reset date.
+
+    Args:
+        user_id: User UUID
+
+    Returns:
+        True if user is under their limit, False otherwise
+
+    Raises:
+        HTTPException: If user not found or database error
+    """
     try:
-        supabase = get_supabase_client()
-        response = supabase.table("users").select("*").eq("id", user_id).execute()
-
-        if not response.data:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        user = cast(UserData, response.data[0])
+        user = await _get_user(user_id)
 
         # Check if usage needs reset
-        reset_date_str = cast(str, user["usage_reset_date"])
-        usage_reset_date = datetime.fromisoformat(reset_date_str.replace("Z", "+00:00"))
-        if datetime.now(usage_reset_date.tzinfo) >= usage_reset_date:
-            _ = await reset_usage(user_id)
+        reset_date = _parse_reset_date(user["usage_reset_date"])
+        if datetime.now(timezone.utc) >= reset_date:
+            await reset_usage(user_id)
+            logger.info(f"Reset usage for user {user_id}")
             return True
 
         # Check if under limit
-        processed = cast(int, user["documents_processed_this_month"])
-        limit = cast(int, user["documents_limit"])
-        return processed < limit
+        processed = user["documents_processed_this_month"]
+        limit = user["documents_limit"]
+        can_upload = processed < limit
+
+        if not can_upload:
+            logger.info(f"User {user_id} at limit: {processed}/{limit}")
+
+        return can_upload
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Usage check failed: {str(e)}")
+        logger.error(f"Usage check failed for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Usage check failed: {e}") from e
 
 
-async def increment_usage(user_id: str) -> bool:
-    """Increment user's document count after successful upload."""
+async def increment_usage(user_id: str) -> int:
+    """
+    Increment user's document count after successful processing.
+
+    Args:
+        user_id: User UUID
+
+    Returns:
+        New document count
+
+    Raises:
+        HTTPException: If user not found or database error
+    """
     try:
+        user = await _get_user(user_id, "documents_processed_this_month")
+        new_count = user["documents_processed_this_month"] + 1
+
         supabase = get_supabase_client()
-        response = supabase.table("users").select("documents_processed_this_month").eq("id", user_id).execute()
-
-        if not response.data:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        user_data = cast(UserData, response.data[0])
-        current_count = cast(int, user_data["documents_processed_this_month"])
-
-        _ = supabase.table("users").update({
-            "documents_processed_this_month": current_count + 1
+        supabase.table("users").update({
+            "documents_processed_this_month": new_count
         }).eq("id", user_id).execute()
 
-        return True
+        logger.info(f"Incremented usage for user {user_id}: {new_count}")
+        return new_count
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Usage increment failed: {str(e)}")
+        logger.error(f"Usage increment failed for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Usage increment failed: {e}") from e
 
 
-async def reset_usage(user_id: str) -> bool:
-    """Reset user's monthly usage counter."""
+async def reset_usage(user_id: str) -> None:
+    """
+    Reset user's monthly usage counter and set next reset date.
+
+    Args:
+        user_id: User UUID
+
+    Raises:
+        HTTPException: If database error occurs
+    """
     try:
         supabase = get_supabase_client()
-
-        # Calculate next reset date (1st of next month)
-        now = datetime.now()
-        if now.month == 12:
-            next_month = now.replace(year=now.year + 1, month=1, day=1)
-        else:
-            next_month = now.replace(month=now.month + 1, day=1)
-
-        _ = supabase.table("users").update({
+        supabase.table("users").update({
             "documents_processed_this_month": 0,
-            "usage_reset_date": next_month.date().isoformat()
+            "usage_reset_date": _get_next_reset_date()
         }).eq("id", user_id).execute()
 
-        return True
+        logger.info(f"Reset monthly usage for user {user_id}")
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Usage reset failed: {str(e)}")
+        logger.error(f"Usage reset failed for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Usage reset failed: {e}") from e
 
 
-async def get_usage_stats(user_id: str) -> dict[str, str | int]:
-    """Get user's current usage statistics."""
+async def get_usage_stats(user_id: str) -> UsageStats:
+    """
+    Get user's current usage statistics.
+
+    Args:
+        user_id: User UUID
+
+    Returns:
+        UsageStats with current usage, limit, tier, and reset date
+
+    Raises:
+        HTTPException: If user not found or database error
+    """
     try:
-        supabase = get_supabase_client()
-        response = supabase.table("users").select(
+        user = await _get_user(
+            user_id,
             "documents_processed_this_month, documents_limit, subscription_tier, usage_reset_date"
-        ).eq("id", user_id).execute()
-
-        if not response.data:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        return cast(dict[str, str | int], response.data[0])
+        )
+        return UsageStats(
+            documents_processed_this_month=user["documents_processed_this_month"],
+            documents_limit=user["documents_limit"],
+            subscription_tier=user["subscription_tier"],
+            usage_reset_date=user["usage_reset_date"],
+        )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get usage stats: {str(e)}")
+        logger.error(f"Failed to get usage stats for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get usage stats: {e}") from e

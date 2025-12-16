@@ -1894,3 +1894,47 @@ Current `extractions` table may need adjustments:
 - Then Phase 2: Rewrite extractor.py with Anthropic SDK
 
 ---
+
+
+## Session 14 - 2025-12-16 - Route Consolidation (Tasks 3.2-3.3) ✅
+
+**Phase**: Migration Implementation
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 3.2**: Updated `app/main.py` - replaced old router imports with process router
+- [x] **Task 3.3**: Deleted old route files: `documents.py`, `ocr.py`, `extractions.py`, `usage.py`
+- [x] Verified server starts without import errors
+- [x] Verified routes registered correctly: `/api/process`, `/api/re-extract`, `/health`
+
+### Changes Made
+
+**main.py**:
+- Changed import from `documents, ocr, extractions` to `process`
+- Single router registration: `app.include_router(process.router, prefix="/api", tags=["processing"])`
+
+**Deleted Files**:
+- `backend/app/routes/documents.py` (2.6 KB)
+- `backend/app/routes/ocr.py` (4.2 KB)
+- `backend/app/routes/extractions.py` (5.0 KB)
+- `backend/app/routes/usage.py` (246 B)
+
+**Kept Files** (still needed by process.py):
+- All services: `storage.py`, `ocr.py`, `extractor.py`, `usage.py`
+
+### Final API Surface
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/` | GET | Root info |
+| `/health` | GET | Health check |
+| `/api/process` | POST | Upload + OCR + Extract |
+| `/api/re-extract` | POST | New extraction from cached OCR |
+
+### Next Session
+
+- Continue with Phase 4: Testing & Validation
+- Task 4.1: Test extraction service (auto + custom modes)
+- Task 4.2: Test `/api/process` endpoint end-to-end
+

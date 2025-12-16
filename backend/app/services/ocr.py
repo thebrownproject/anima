@@ -1,9 +1,13 @@
-"""OCR service for extracting text from documents using Mistral OCR."""
+"""
+Mistral OCR service for extracting text from documents.
+
+Uses Mistral's OCR API to process document images and PDFs.
+"""
 
 import logging
 import time
 from asyncio import to_thread
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from mistralai import Mistral
 
@@ -11,32 +15,79 @@ from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
-
-class OCRResult(TypedDict):
-    """Result from OCR text extraction with full metadata from Mistral API."""
-
-    text: str  # Markdown-formatted text from Mistral OCR
-    status: str  # 'success' or 'failure'
-    errors: list[str]
-    page_count: int
-    processing_time_ms: int  # Time taken for OCR processing
-    model: str  # Model used (e.g., "mistral-ocr-latest")
-    usage_info: dict  # {pages_processed, doc_size_bytes}
-    layout_data: dict | None  # Page-level data (images with full metadata, dimensions)
-    document_annotation: str | None  # Structured JSON annotation if available
-
-
-# Singleton client instance
+# Lazy client initialization
 _client: Mistral | None = None
 
 
 def _get_client() -> Mistral:
-    """Get or create Mistral client singleton."""
+    """Get or create Mistral client (lazy initialization)."""
     global _client
     if _client is None:
         settings = get_settings()
         _client = Mistral(api_key=settings.MISTRAL_API_KEY)
     return _client
+
+
+class OCRResult(TypedDict):
+    """Result from OCR text extraction."""
+    text: str
+    status: str
+    errors: list[str]
+    page_count: int
+    processing_time_ms: int
+    model: str
+    usage_info: dict[str, Any]
+    layout_data: dict[str, Any] | None
+    document_annotation: str | None
+
+
+def _extract_page_text(page: Any) -> str:
+    """Extract text content from a page, preferring markdown."""
+    return getattr(page, 'markdown', None) or getattr(page, 'text', '') or ''
+
+
+def _extract_page_layout(page: Any) -> dict[str, Any]:
+    """Extract layout data (images, dimensions) from a page."""
+    layout: dict[str, Any] = {}
+
+    # Extract image data if present
+    if images := getattr(page, 'images', None):
+        layout['images'] = [
+            {
+                'id': getattr(img, 'id', None),
+                'top_left_x': getattr(img, 'top_left_x', None),
+                'top_left_y': getattr(img, 'top_left_y', None),
+                'bottom_right_x': getattr(img, 'bottom_right_x', None),
+                'bottom_right_y': getattr(img, 'bottom_right_y', None),
+                'image_base64': getattr(img, 'image_base64', None),
+                'image_annotation': getattr(img, 'image_annotation', None),
+            }
+            for img in images
+        ]
+
+    # Extract dimensions if present
+    if dims := getattr(page, 'dimensions', None):
+        layout['dimensions'] = {
+            'dpi': getattr(dims, 'dpi', None),
+            'height': getattr(dims, 'height', None),
+            'width': getattr(dims, 'width', None),
+        }
+
+    # Extract page index
+    if (index := getattr(page, 'index', None)) is not None:
+        layout['index'] = index
+
+    return layout
+
+
+def _extract_usage_info(response: Any) -> dict[str, Any]:
+    """Extract usage information from OCR response."""
+    if usage := getattr(response, 'usage_info', None):
+        return {
+            'pages_processed': getattr(usage, 'pages_processed', None),
+            'doc_size_bytes': getattr(usage, 'doc_size_bytes', None),
+        }
+    return {}
 
 
 async def extract_text_ocr(document_url: str) -> OCRResult:
@@ -47,122 +98,46 @@ async def extract_text_ocr(document_url: str) -> OCRResult:
         document_url: Signed URL to document file (from Supabase Storage)
 
     Returns:
-        OCRResult dict with keys:
-        - text (str): Extracted markdown-formatted text
-        - status (str): 'success' or 'failure'
-        - errors (list): Any errors encountered
-        - page_count (int): Number of pages processed
-        - processing_time_ms (int): Time taken for OCR in milliseconds
-        - model (str): Model used (e.g., "mistral-ocr-latest")
-        - usage_info (dict): Usage metadata from Mistral API
-        - layout_data (dict|None): Page-level data with images (id, coordinates, base64, annotations) and dimensions
-        - document_annotation (str|None): Structured JSON annotation if available
+        OCRResult with extracted text, metadata, and optional layout data
 
     Raises:
-        ValueError: If OCR processing completely fails
+        ValueError: If OCR processing fails or returns no text
     """
     start_time = time.time()
 
     try:
         client = _get_client()
+        logger.info("Starting Mistral OCR processing")
 
-        # Call Mistral OCR API with signed URL directly
-        logger.info("Starting Mistral OCR for document URL")
-
+        # Call Mistral OCR API (sync client, run in thread)
         def _call_ocr():
             return client.ocr.process(
                 model="mistral-ocr-latest",
-                document={
-                    "type": "document_url",
-                    "document_url": document_url
-                },
-                include_image_base64=False  # Don't include images to reduce payload size
+                document={"type": "document_url", "document_url": document_url},
+                include_image_base64=False
             )
 
-        ocr_response = await to_thread(_call_ocr)
-
-        # Calculate processing time
+        response = await to_thread(_call_ocr)
         processing_time_ms = int((time.time() - start_time) * 1000)
 
-        # Extract pages data
-        if not ocr_response.pages:
+        # Validate response
+        if not response.pages:
             raise ValueError("OCR returned no pages")
 
-        # Combine text from all pages
-        page_texts = []
-        layout_pages = []
+        # Extract text and layout from all pages
+        page_texts = [_extract_page_text(page) for page in response.pages]
+        layout_pages = [layout for page in response.pages if (layout := _extract_page_layout(page))]
 
-        for page in ocr_response.pages:
-            # Extract markdown text (primary), fallback to plain text if needed
-            markdown = getattr(page, 'markdown', None)
-            text = getattr(page, 'text', None)
-            if markdown:
-                page_texts.append(markdown)
-            elif text:
-                page_texts.append(text)
-
-            # Extract layout data (images with all fields, dimensions) if available
-            page_layout = {}
-            if hasattr(page, 'images') and page.images:
-                page_layout['images'] = [
-                    {
-                        'id': img.id if hasattr(img, 'id') else None,
-                        'top_left_x': img.top_left_x if hasattr(img, 'top_left_x') else None,
-                        'top_left_y': img.top_left_y if hasattr(img, 'top_left_y') else None,
-                        'bottom_right_x': img.bottom_right_x if hasattr(img, 'bottom_right_x') else None,
-                        'bottom_right_y': img.bottom_right_y if hasattr(img, 'bottom_right_y') else None,
-                        'image_base64': img.image_base64 if hasattr(img, 'image_base64') else None,
-                        'image_annotation': img.image_annotation if hasattr(img, 'image_annotation') else None,
-                    }
-                    for img in page.images
-                ]
-
-            if hasattr(page, 'dimensions'):
-                dims = page.dimensions
-                page_layout['dimensions'] = {
-                    'dpi': dims.dpi if hasattr(dims, 'dpi') else None,
-                    'height': dims.height if hasattr(dims, 'height') else None,
-                    'width': dims.width if hasattr(dims, 'width') else None,
-                }
-
-            if hasattr(page, 'index'):
-                page_layout['index'] = page.index
-
-            if page_layout:
-                layout_pages.append(page_layout)
-
-        # Combine text from all pages
-        extracted_text = "\n\n".join(page_texts)
-
+        extracted_text = "\n\n".join(filter(None, page_texts))
         if not extracted_text:
             raise ValueError("OCR returned empty text from all pages")
 
-        # Extract usage information
-        usage_info = {}
-        if hasattr(ocr_response, 'usage_info') and ocr_response.usage_info:
-            usage = ocr_response.usage_info
-            usage_info = {
-                'pages_processed': usage.pages_processed if hasattr(usage, 'pages_processed') else None,
-                'doc_size_bytes': usage.doc_size_bytes if hasattr(usage, 'doc_size_bytes') else None,
-            }
-
-        page_count = len(ocr_response.pages)
-        layout_data = {'pages': layout_pages} if layout_pages else None
-
-        # Extract model name
-        model = ocr_response.model if hasattr(ocr_response, 'model') else "mistral-ocr-latest"
-
-        # Extract document annotation if available
-        document_annotation = None
-        if hasattr(ocr_response, 'document_annotation') and ocr_response.document_annotation:
-            document_annotation = ocr_response.document_annotation
+        # Build result
+        page_count = len(response.pages)
+        model = getattr(response, 'model', 'mistral-ocr-latest')
 
         logger.info(
-            f"OCR success. "
-            f"Model: {model}, "
-            f"Pages: {page_count}, "
-            f"Text length: {len(extracted_text)} chars, "
-            f"Processing time: {processing_time_ms}ms"
+            f"OCR complete: {page_count} pages, {len(extracted_text)} chars, {processing_time_ms}ms"
         )
 
         return {
@@ -172,13 +147,13 @@ async def extract_text_ocr(document_url: str) -> OCRResult:
             "page_count": page_count,
             "processing_time_ms": processing_time_ms,
             "model": model,
-            "usage_info": usage_info,
-            "layout_data": layout_data,
-            "document_annotation": document_annotation,
+            "usage_info": _extract_usage_info(response),
+            "layout_data": {"pages": layout_pages} if layout_pages else None,
+            "document_annotation": getattr(response, 'document_annotation', None),
         }
 
     except Exception as e:
         processing_time_ms = int((time.time() - start_time) * 1000)
-        error_msg = f"OCR processing failed: {str(e)}"
-        logger.error(f"{error_msg} for document URL")
-        raise ValueError(error_msg)
+        error_msg = f"OCR processing failed: {e}"
+        logger.error(error_msg)
+        raise ValueError(error_msg) from e
