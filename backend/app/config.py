@@ -11,16 +11,16 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_KEY: str  # Service role key for backend operations
 
-    # OpenRouter API Configuration
-    OPENROUTER_API_KEY: str
-    OPENROUTER_MODEL: str = "anthropic/claude-haiku-4.5"  # Default model
+    # Anthropic API Configuration (for extraction)
+    ANTHROPIC_API_KEY: str
+    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
 
     # Mistral API Configuration (for OCR)
     MISTRAL_API_KEY: str
 
     # Application Configuration
     APP_NAME: str = "StackDocs MVP"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "0.2.0"  # Bumped for hybrid architecture migration
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
 

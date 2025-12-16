@@ -1865,3 +1865,32 @@ Current `extractions` table may need adjustments:
 
 ---
 
+
+## Session 13 - 2025-12-16 - Architecture Migration Planning ✅
+
+**Phase**: Migration Planning
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Analyzed AGENT-NATIVE-ARCHITECTURE.md for migration direction
+- [x] Created `planning/MIGRATION-PLAN.md` - architecture overview
+- [x] Created `planning/MIGRATION-TASKS.md` - task checklist with 12 tasks
+- [x] Updated `CLAUDE.md` - condensed from 477 to 215 lines, reflects hybrid architecture
+- [x] Created `.claude/commands/resume.md` - slash command for resuming work
+
+### Decisions Made
+
+1. **Hybrid Architecture**: Frontend connects directly to Supabase for data, FastAPI only for AI processing
+2. **LangChain → Anthropic SDK**: Simpler, direct API calls with tool use for structured output
+3. **Simplified Endpoints**: Only 2 FastAPI endpoints (`/api/process`, `/api/re-extract`)
+4. **Keep Supabase Auth**: Not migrating to Clerk - keeps everything in Supabase ecosystem
+5. **Realtime over Polling**: Use Supabase Realtime for status updates
+
+### Next Session
+
+- Start with `/resume` command
+- Begin Phase 1: Update dependencies (requirements.txt, config.py, .env)
+- Then Phase 2: Rewrite extractor.py with Anthropic SDK
+
+---

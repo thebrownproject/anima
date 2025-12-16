@@ -1,171 +1,150 @@
-"""Extraction result endpoints"""
+"""Test extraction endpoints for validating OCR → extraction pipeline."""
 
-import time
 import logging
-from typing import Any
-from fastapi import APIRouter, HTTPException, Form
-from ..services.extractor import extract_auto_mode, extract_custom_fields
+import time
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Form, HTTPException
+from pydantic import BaseModel
+
 from ..config import get_settings
 from ..database import get_supabase_client
+from ..services.extractor import ExtractionResult, extract_auto_mode, extract_custom_fields
 
 router = APIRouter()
-settings = get_settings()
 logger = logging.getLogger(__name__)
 
+# Type aliases for cleaner parameter definitions
+FormStr = Annotated[str, Form()]
 
-@router.post("/test-extract-auto")
-async def test_extract_auto(
-    document_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    user_id: str = Form(...)  # pyright: ignore[reportCallInDefaultInitializer]
-) -> dict[str, Any]:
+
+class ExtractionResponse(BaseModel):
+    """Response model for extraction endpoints."""
+
+    mode: str
+    extracted_fields: dict[str, Any]
+    confidence_scores: dict[str, float]
+    model: str
+    processing_time_ms: int
+    field_count: int
+    requested_fields: list[str] | None = None
+
+
+def _fetch_ocr_text(document_id: str) -> str:
+    """Fetch cached OCR text from database."""
+    supabase = get_supabase_client()
+    response = supabase.table("ocr_results").select("raw_text").eq("document_id", document_id).single().execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail=f"No OCR result found for document_id={document_id}")
+
+    text = response.data["raw_text"]
+    logger.info(f"Fetched OCR: document_id={document_id}, length={len(text)}")
+    return text
+
+
+def _save_extraction(
+    document_id: str,
+    user_id: str,
+    result: ExtractionResult,
+    mode: str,
+    model: str,
+    processing_time_ms: int,
+    custom_fields: list[str] | None = None,
+) -> None:
+    """Save extraction result to database (non-blocking on failure)."""
+    try:
+        supabase = get_supabase_client()
+        supabase.table("extractions").insert({
+            "document_id": document_id,
+            "user_id": user_id,
+            "extracted_fields": result["extracted_fields"],
+            "confidence_scores": result["confidence_scores"],
+            "mode": mode,
+            "custom_fields": custom_fields,
+            "model": model,
+            "processing_time_ms": processing_time_ms
+        }).execute()
+        logger.info(f"Saved extraction: document_id={document_id}, mode={mode}, time={processing_time_ms}ms")
+    except Exception as e:
+        logger.error(f"Failed to save extraction: {e}")
+
+
+def _build_response(
+    mode: str,
+    result: ExtractionResult,
+    model: str,
+    processing_time_ms: int,
+    requested_fields: list[str] | None = None,
+) -> ExtractionResponse:
+    """Build standardized extraction response."""
+    return ExtractionResponse(
+        mode=mode,
+        extracted_fields=result["extracted_fields"],
+        confidence_scores=result["confidence_scores"],
+        model=model,
+        processing_time_ms=processing_time_ms,
+        field_count=len(result["extracted_fields"]),
+        requested_fields=requested_fields,
+    )
+
+
+@router.post("/test-extract-auto", response_model=ExtractionResponse)
+async def test_extract_auto(document_id: FormStr, user_id: FormStr) -> ExtractionResponse:
     """
-    **TEST ENDPOINT** - Test auto extraction mode with cached OCR text.
+    **TEST ENDPOINT** - Auto extraction mode with cached OCR text.
 
-    This endpoint fetches OCR text from the ocr_results table and runs
-    auto extraction. Tests the re-extraction flow using cached OCR.
-
-    Args:
-        document_id: Document UUID to extract from (must have OCR result)
-        user_id: User UUID (for RLS and saving extraction)
-
-    Returns:
-        Extraction result with extracted_fields, confidence_scores, model, and processing_time_ms
+    Fetches OCR text from ocr_results table and runs auto extraction.
     """
     try:
-        # Fetch OCR text from database
-        supabase = get_supabase_client()
-        ocr_response = supabase.table("ocr_results").select("raw_text").eq("document_id", document_id).single().execute()
+        text = _fetch_ocr_text(document_id)
+        settings = get_settings()
 
-        if not ocr_response.data:
-            raise HTTPException(status_code=404, detail=f"No OCR result found for document_id={document_id}")
-
-        text = ocr_response.data["raw_text"]
-        logger.info(f"Fetched cached OCR text: document_id={document_id}, length={len(text)}")
-
-        # Start timing
         start_time = time.time()
-
-        # Run extraction
         result = await extract_auto_mode(text)
-
-        # Calculate processing time (in milliseconds)
         processing_time_ms = int((time.time() - start_time) * 1000)
 
-        # Get model name from settings
-        model = settings.OPENROUTER_MODEL
+        _save_extraction(document_id, user_id, result, "auto", settings.CLAUDE_MODEL, processing_time_ms)
 
-        # Save extraction to database
-        try:
-            supabase.table("extractions").insert({
-                "document_id": document_id,
-                "user_id": user_id,
-                "extracted_fields": result["extracted_fields"],
-                "confidence_scores": result["confidence_scores"],
-                "mode": "auto",
-                "custom_fields": None,
-                "model": model,
-                "processing_time_ms": processing_time_ms
-            }).execute()
-            logger.info(f"Saved auto extraction to database: document_id={document_id}, model={model}, time={processing_time_ms}ms")
-        except Exception as db_error:
-            logger.error(f"Failed to save extraction to database: {db_error}")
-            # Don't fail the request - still return extraction result
+        return _build_response("auto", result, settings.CLAUDE_MODEL, processing_time_ms)
 
-        return {
-            "mode": "auto",
-            "extracted_fields": result["extracted_fields"],
-            "confidence_scores": result["confidence_scores"],
-            "model": model,
-            "processing_time_ms": processing_time_ms,
-            "field_count": len(result["extracted_fields"])
-        }
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {e}")
 
 
-@router.post("/test-extract-custom")
+@router.post("/test-extract-custom", response_model=ExtractionResponse)
 async def test_extract_custom(
-    document_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    user_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    custom_fields: str = Form(...)  # pyright: ignore[reportCallInDefaultInitializer]
-) -> dict[str, Any]:
+    document_id: FormStr,
+    user_id: FormStr,
+    custom_fields: FormStr,
+) -> ExtractionResponse:
     """
-    **TEST ENDPOINT** - Test custom extraction mode with cached OCR text.
+    **TEST ENDPOINT** - Custom extraction mode with cached OCR text.
 
-    This endpoint fetches OCR text from the ocr_results table and runs
-    custom extraction with user-specified fields. Tests re-extraction flow.
-
-    Args:
-        document_id: Document UUID to extract from (must have OCR result)
-        user_id: User UUID (for RLS and saving extraction)
-        custom_fields: Comma-separated list of field names (e.g., "vendor_name,total_amount,invoice_date")
-
-    Returns:
-        Extraction result with extracted_fields, confidence_scores, model, and processing_time_ms
+    Fetches OCR text and extracts only the specified fields.
+    custom_fields: Comma-separated field names (e.g., "vendor_name,total_amount")
     """
     try:
-        # Parse comma-separated field names
-        fields_list = [field.strip() for field in custom_fields.split(",")]
+        fields_list = [f.strip() for f in custom_fields.split(",") if f.strip()]
+        if not fields_list:
+            raise HTTPException(status_code=400, detail="custom_fields cannot be empty")
 
-        # Fetch OCR text from database
-        supabase = get_supabase_client()
-        ocr_response = supabase.table("ocr_results").select("raw_text").eq("document_id", document_id).single().execute()
+        text = _fetch_ocr_text(document_id)
+        settings = get_settings()
 
-        if not ocr_response.data:
-            raise HTTPException(status_code=404, detail=f"No OCR result found for document_id={document_id}")
-
-        text = ocr_response.data["raw_text"]
-        logger.info(f"Fetched cached OCR text: document_id={document_id}, length={len(text)}")
-
-        # Start timing
         start_time = time.time()
-
-        # Run extraction
         result = await extract_custom_fields(text, fields_list)
-
-        # Calculate processing time (in milliseconds)
         processing_time_ms = int((time.time() - start_time) * 1000)
 
-        # Get model name from settings
-        model = settings.OPENROUTER_MODEL
+        _save_extraction(
+            document_id, user_id, result, "custom", settings.CLAUDE_MODEL, processing_time_ms, fields_list
+        )
 
-        # Save extraction to database
-        try:
-            supabase.table("extractions").insert({
-                "document_id": document_id,
-                "user_id": user_id,
-                "extracted_fields": result["extracted_fields"],
-                "confidence_scores": result["confidence_scores"],
-                "mode": "custom",
-                "custom_fields": fields_list,
-                "model": model,
-                "processing_time_ms": processing_time_ms
-            }).execute()
-            logger.info(f"Saved custom extraction to database: document_id={document_id}, model={model}, time={processing_time_ms}ms")
-        except Exception as db_error:
-            logger.error(f"Failed to save extraction to database: {db_error}")
-            # Don't fail the request - still return extraction result
+        return _build_response("custom", result, settings.CLAUDE_MODEL, processing_time_ms, fields_list)
 
-        return {
-            "mode": "custom",
-            "requested_fields": fields_list,
-            "extracted_fields": result["extracted_fields"],
-            "confidence_scores": result["confidence_scores"],
-            "model": model,
-            "processing_time_ms": processing_time_ms,
-            "field_count": len(result["extracted_fields"])
-        }
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
-
-
-# TODO: Implement production extraction endpoints
-# - GET /extractions/{extraction_id} - Get extraction results
-# - GET /extractions/{extraction_id}/status - Poll extraction status
-# - POST /extractions/{extraction_id}/re-extract - Re-extract document
-# - PUT /extractions/{extraction_id} - Update extraction fields (manual edit)
-# - GET /extractions/{extraction_id}/export - Export to CSV/JSON
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {e}")

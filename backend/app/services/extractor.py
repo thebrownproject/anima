@@ -1,163 +1,136 @@
 """
-LangChain-based extraction service for structured data extraction from documents.
+Anthropic SDK extraction service for structured data extraction from documents.
 
-Uses ChatOpenAI with OpenRouter base URL to access Claude models for extraction.
-Supports two modes:
-- Auto mode: AI decides which fields to extract
-- Custom mode: User specifies exact fields to extract
+Uses Claude's tool use feature for guaranteed structured outputs.
 """
 
-from typing import Any
-from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
+from typing import Any, TypedDict
+from anthropic import AsyncAnthropic
+from anthropic.types import Message
+
 from ..config import get_settings
 
-settings = get_settings()
+# Lazy client initialization to avoid import-time errors
+_client: AsyncAnthropic | None = None
 
 
-# Pydantic models for structured output
-class ExtractedData(BaseModel):
-    """Structured data extracted from a document."""
-
-    extracted_fields: dict[str, Any] = Field(
-        description="Extracted data as key-value pairs with descriptive field names"
-    )
-    confidence_scores: dict[str, float] = Field(
-        description="Confidence score (0.0 to 1.0) for each extracted field"
-    )
+def _get_client() -> AsyncAnthropic:
+    """Get or create the Anthropic client (lazy initialization)."""
+    global _client
+    if _client is None:
+        settings = get_settings()
+        _client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    return _client
 
 
-def get_llm() -> ChatOpenAI:
-    """
-    Initialize ChatOpenAI with OpenRouter configuration.
+# Tool definition for structured extraction output
+EXTRACTION_TOOL = {
+    "name": "save_extracted_data",
+    "description": "Save the extracted structured data from the document.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "extracted_fields": {
+                "type": "object",
+                "description": "Field names to extracted values (snake_case).",
+                "additionalProperties": True
+            },
+            "confidence_scores": {
+                "type": "object",
+                "description": "Field names to confidence scores (0.0-1.0).",
+                "additionalProperties": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+            }
+        },
+        "required": ["extracted_fields", "confidence_scores"]
+    }
+}
 
-    Returns:
-        Configured ChatOpenAI instance using OpenRouter as base URL
-    """
-    return ChatOpenAI(
-        model=settings.OPENROUTER_MODEL,
-        temperature=0,  # Deterministic extraction
-        api_key=settings.OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
-    )
+# Extraction prompts
+AUTO_PROMPT = """Analyze this document and extract ALL relevant structured data.
 
-
-async def extract_auto_mode(text: str) -> dict[str, Any]:
-    """
-    Extract all relevant fields automatically from document text.
-
-    The AI decides which fields are relevant and extracts them with confidence scores.
-    Useful for exploratory extraction or when field names are unknown.
-
-    Args:
-        text: Raw text from OCR extraction
-
-    Returns:
-        Dictionary with:
-        - extracted_fields: Dict of field names to values
-        - confidence_scores: Dict of field names to confidence (0.0-1.0)
-
-    Example:
-        >>> result = await extract_auto_mode("Invoice #123...")
-        >>> result["extracted_fields"]
-        {"vendor_name": "Acme Corp", "invoice_number": "123", "total_amount": 150.00}
-        >>> result["confidence_scores"]
-        {"vendor_name": 0.95, "invoice_number": 1.0, "total_amount": 0.90}
-    """
-    llm = get_llm()
-
-    # Define prompt for auto extraction
-    prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """You are an expert document data extraction system.
-
-Your task is to analyze the provided document text and extract ALL relevant structured data.
-Use clear, descriptive field names (e.g., "vendor_name", "invoice_date", "total_amount").
-For each field, provide a confidence score between 0.0 and 1.0 indicating how certain you are.
+Use clear, descriptive field names in snake_case (e.g., vendor_name, invoice_date, total_amount).
+For each field, provide a confidence score between 0.0 and 1.0.
 
 Guidelines:
 - Extract dates in ISO 8601 format (YYYY-MM-DD)
 - Extract monetary amounts as numbers (without currency symbols)
-- Use snake_case for field names
 - Only extract data that is explicitly present in the document
 - If a field value is unclear or missing, omit it rather than guessing
-- Common fields to look for: vendor/company names, dates, amounts, IDs, addresses, line items"""
-        ),
-        ("user", "{text}")
-    ])
+- Common fields to look for: vendor/company names, dates, amounts, IDs, addresses, line items
 
-    # Create chain with structured output using function calling
-    chain = prompt | llm.with_structured_output(ExtractedData, method="function_calling")
+Document text:
+{text}"""
 
-    # Invoke chain
-    result = await chain.ainvoke({"text": text})
+CUSTOM_PROMPT = """Extract ONLY these specific fields from the document: {fields}
 
-    return {
-        "extracted_fields": result.extracted_fields,
-        "confidence_scores": result.confidence_scores
-    }
-
-
-async def extract_custom_fields(text: str, custom_fields: list[str]) -> dict[str, Any]:
-    """
-    Extract only specified fields from document text.
-
-    The AI extracts only the fields requested by the user. Useful when you know
-    exactly which fields you need.
-
-    Args:
-        text: Raw text from OCR extraction
-        custom_fields: List of field names to extract (e.g., ["vendor_name", "total_amount"])
-
-    Returns:
-        Dictionary with:
-        - extracted_fields: Dict of requested field names to values
-        - confidence_scores: Dict of field names to confidence (0.0-1.0)
-
-    Example:
-        >>> result = await extract_custom_fields("Invoice #123...", ["vendor_name", "total_amount"])
-        >>> result["extracted_fields"]
-        {"vendor_name": "Acme Corp", "total_amount": 150.00}
-        >>> result["confidence_scores"]
-        {"vendor_name": 0.95, "total_amount": 0.90}
-    """
-    llm = get_llm()
-
-    # Format field names for prompt
-    fields_str = ", ".join(custom_fields)
-
-    # Define prompt for custom extraction
-    prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            f"""You are an expert document data extraction system.
-
-Your task is to extract ONLY these specific fields from the document: {fields_str}
-
-Return a dictionary with exactly these field names as keys.
-For each field, provide a confidence score between 0.0 and 1.0 indicating how certain you are.
+For each field, provide a confidence score between 0.0 and 1.0.
 
 Guidelines:
 - Extract dates in ISO 8601 format (YYYY-MM-DD)
 - Extract monetary amounts as numbers (without currency symbols)
-- If a requested field is not found in the document, set its value to null
+- If a requested field is not found, set its value to null with confidence 0.0
 - Only extract data that is explicitly present in the document
 - Do not invent or infer values that aren't clearly stated
 
-Return the data as a structured JSON object with extracted_fields and confidence_scores."""
-        ),
-        ("user", "{text}")
-    ])
+Document text:
+{text}"""
 
-    # Create chain with structured output using function calling
-    chain = prompt | llm.with_structured_output(ExtractedData, method="function_calling")
 
-    # Invoke chain
-    result = await chain.ainvoke({"text": text})
+class ExtractionResult(TypedDict):
+    """Structured extraction result from Claude."""
+    extracted_fields: dict[str, Any]
+    confidence_scores: dict[str, float]
 
-    return {
-        "extracted_fields": result.extracted_fields,
-        "confidence_scores": result.confidence_scores
-    }
+
+def _parse_tool_response(response: Message) -> ExtractionResult:
+    """Extract tool use result from Claude response."""
+    for block in response.content:
+        if block.type == "tool_use" and block.name == "save_extracted_data":
+            return {
+                "extracted_fields": block.input.get("extracted_fields", {}),
+                "confidence_scores": block.input.get("confidence_scores", {})
+            }
+    raise ValueError("No extraction result returned from Claude")
+
+
+async def _call_extraction(prompt: str) -> ExtractionResult:
+    """Make extraction API call with the given prompt."""
+    settings = get_settings()
+    client = _get_client()
+
+    response = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=4096,
+        tools=[EXTRACTION_TOOL],
+        tool_choice={"type": "tool", "name": "save_extracted_data"},
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return _parse_tool_response(response)
+
+
+async def extract_auto_mode(text: str) -> ExtractionResult:
+    """
+    Extract all relevant fields automatically from document text.
+
+    Args:
+        text: Raw text from OCR extraction
+
+    Returns:
+        ExtractionResult with extracted_fields and confidence_scores
+    """
+    return await _call_extraction(AUTO_PROMPT.format(text=text))
+
+
+async def extract_custom_fields(text: str, custom_fields: list[str]) -> ExtractionResult:
+    """
+    Extract only specified fields from document text.
+
+    Args:
+        text: Raw text from OCR extraction
+        custom_fields: List of field names to extract
+
+    Returns:
+        ExtractionResult with extracted_fields and confidence_scores
+    """
+    fields_str = ", ".join(custom_fields)
+    return await _call_extraction(CUSTOM_PROMPT.format(fields=fields_str, text=text))
