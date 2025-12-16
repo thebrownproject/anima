@@ -46,31 +46,140 @@ EXTRACTION_TOOL = {
 }
 
 # Extraction prompts
-AUTO_PROMPT = """Analyze this document and extract ALL relevant structured data.
+AUTO_PROMPT = """You are an expert data extraction system. Analyze this document and extract ALL relevant structured data into a rich, well-organized schema.
 
-Use clear, descriptive field names in snake_case (e.g., vendor_name, invoice_date, total_amount).
-For each field, provide a confidence score between 0.0 and 1.0.
+## CRITICAL: Output Structure Requirements
 
-Guidelines:
-- Extract dates in ISO 8601 format (YYYY-MM-DD)
-- Extract monetary amounts as numbers (without currency symbols)
-- Only extract data that is explicitly present in the document
-- If a field value is unclear or missing, omit it rather than guessing
-- Common fields to look for: vendor/company names, dates, amounts, IDs, addresses, line items
+You MUST use rich, nested structures with arrays and objects. NEVER create flat numbered fields.
+
+❌ BAD (flat numbered fields - DO NOT DO THIS):
+{{
+  "project_1": "Shelter Sync",
+  "project_2": "Smart Home System",
+  "experience_1": "Company A",
+  "experience_1_role": "Developer",
+  "experience_2": "Company B"
+}}
+
+✅ GOOD (rich nested structures - DO THIS):
+{{
+  "projects": [
+    {{
+      "project_name": "Shelter Sync",
+      "description": "Animal shelter management system with RFID integration",
+      "technologies": ["SvelteKit", "TypeScript", "Supabase"],
+      "key_achievements": ["Full-stack development", "RFID scanning integration"]
+    }}
+  ],
+  "work_experience": [
+    {{
+      "company": "Company A",
+      "job_title": "Developer",
+      "start_year": 2020,
+      "end_year": 2023,
+      "location": "Melbourne",
+      "key_responsibilities": ["Led development", "Managed team"]
+    }}
+  ]
+}}
+
+## Schema Design Rules
+
+1. **Use Arrays for Collections**: Group similar items into arrays (projects[], work_experience[], education[], line_items[], skills[])
+
+2. **Use Objects for Complex Items**: Each array item should be an object with multiple descriptive properties
+
+3. **Include Rich Context**: For each item, extract:
+   - Names/titles (project_name, job_title, company)
+   - Descriptions (what it is, what it does)
+   - Dates (start_year, end_year, date)
+   - Locations (city, country, address)
+   - Details (technologies, responsibilities, achievements, amounts)
+
+4. **Descriptive Field Names**: Use clear names like "job_title" not "title1", "company_name" not "exp1"
+
+5. **Appropriate Data Types**:
+   - Dates: ISO 8601 (YYYY-MM-DD) or separate year fields (start_year: 2020)
+   - Numbers: Use numeric types, not strings
+   - Lists: Use arrays for multiple values (technologies, skills, achievements)
+   - Amounts: Numbers without currency symbols
+
+## Document Type Examples
+
+**Resume/CV Structure**:
+- full_name, email, phone, location, professional_summary
+- work_experience[] (company, job_title, start_year, end_year, location, key_responsibilities[])
+- education[] (institution, qualification, start_year, end_year, location)
+- projects[] (project_name, description, technologies[], key_achievements[])
+- skills (programming_languages[], frameworks[], tools[])
+
+**Invoice Structure**:
+- vendor (name, address, phone, email, tax_id)
+- customer (name, address)
+- invoice_number, invoice_date, due_date
+- line_items[] (description, quantity, unit_price, total)
+- subtotal, tax_amount, total_amount
+
+**Contract Structure**:
+- parties[] (name, role, address)
+- effective_date, expiration_date
+- terms[] (title, description)
+- signatures[] (name, title, date)
+
+## Quality Standards
+
+- Extract ALL relevant information, not just basics
+- Include descriptions and context, not just names
+- Capture achievements, responsibilities, and details
+- Only extract data explicitly present in the document
+- Omit fields if value is unclear or missing (don't guess)
+
+Provide confidence scores (0.0-1.0) for each top-level field.
 
 Document text:
 {text}"""
 
-CUSTOM_PROMPT = """Extract ONLY these specific fields from the document: {fields}
+CUSTOM_PROMPT = """You are an expert data extraction system. Extract the following specific fields from the document: {fields}
 
-For each field, provide a confidence score between 0.0 and 1.0.
+## CRITICAL: Output Structure Requirements
 
-Guidelines:
-- Extract dates in ISO 8601 format (YYYY-MM-DD)
-- Extract monetary amounts as numbers (without currency symbols)
-- If a requested field is not found, set its value to null with confidence 0.0
-- Only extract data that is explicitly present in the document
-- Do not invent or infer values that aren't clearly stated
+Even when extracting specific fields, use rich nested structures where appropriate.
+
+❌ BAD (flat structure):
+{{
+  "project_1": "Name",
+  "project_1_tech": "Python"
+}}
+
+✅ GOOD (nested structure):
+{{
+  "projects": [
+    {{
+      "project_name": "Name",
+      "technologies": ["Python"]
+    }}
+  ]
+}}
+
+## Guidelines
+
+1. **Interpret field requests intelligently**:
+   - "projects" → Extract as array of project objects with full details
+   - "work_experience" → Extract as array of experience objects
+   - "line_items" → Extract as array with description, quantity, price, total
+
+2. **Include rich details** for each item: names, descriptions, dates, locations, and specifics
+
+3. **Use appropriate types**:
+   - Dates: ISO 8601 format (YYYY-MM-DD) or year integers
+   - Amounts: Numbers without currency symbols
+   - Lists: Arrays for multiple values
+
+4. **Only extract requested fields** but make them comprehensive
+
+5. **If a field is not found**: Set to null with confidence 0.0
+
+Provide confidence scores (0.0-1.0) for each extracted field.
 
 Document text:
 {text}"""

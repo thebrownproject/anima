@@ -20,7 +20,7 @@ Use `/resume` command after clearing chat to check status and continue work.
 - [x] **2.1** Replace `app/services/extractor.py` with Anthropic SDK
 
 ### Phase 3: Consolidate FastAPI Routes
-- [ ] **3.1** Create `app/routes/process.py` (new consolidated endpoints)
+- [x] **3.1** Create `app/routes/process.py` (new consolidated endpoints)
 - [ ] **3.2** Update `app/main.py` (router registration)
 - [ ] **3.3** Delete old route files (documents.py, ocr.py, extractions.py, usage.py)
 
