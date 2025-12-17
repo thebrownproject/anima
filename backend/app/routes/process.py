@@ -30,7 +30,7 @@ async def process_document_task(
     document_id: str,
     user_id: str,
     file_path: str,
-    mode: str,
+    mode: str, # auto or custom
     custom_fields: list[str] | None = None
 ) -> None:
     """

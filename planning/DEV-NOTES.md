@@ -1938,3 +1938,74 @@ Current `extractions` table may need adjustments:
 - Task 4.1: Test extraction service (auto + custom modes)
 - Task 4.2: Test `/api/process` endpoint end-to-end
 
+---
+
+## Session 15: Documentation Cleanup & PRD Review
+
+**Date**: 2025-12-16
+**Duration**: ~45 minutes
+**Focus**: Phase 5 completion + PRD/TASKS review and updates
+
+### Completed
+
+1. **Phase 5: Documentation Updates (Complete)**
+   - Updated `CLAUDE.md` - backend status now "✅ Complete", model updated to Haiku 4.5
+   - Rewrote `ARCHITECTURE.md` - reduced from 698 to 233 lines, updated for hybrid architecture
+   - Updated `TASKS.md` - added Architecture Migration section
+
+2. **Archived Migration Documents**
+   - Moved to `planning/archive/`:
+     - `AGENT-NATIVE-ARCHITECTURE.md`
+     - `ARCHITECTURE-UPDATE.md`
+     - `MIGRATION-PLAN.md`
+     - `MIGRATION-TASKS.md`
+
+3. **PRD.md Updates**
+   - Fixed outdated tech references (LangChain → Anthropic SDK, polling → Supabase Realtime)
+   - Updated model to Claude Haiku 4.5
+   - Added markdown viewer feature (FR5) - show OCR output to users
+   - Documented two-level display approach for nested data (scalars as form, arrays as tables)
+   - Added CSV export approach (denormalized rows)
+   - Replaced "Open Questions" with "Design Decisions (Resolved)" table
+
+4. **TASKS.md Updates**
+   - Marked superseded Phase 2 tasks (Background Processing, Extraction Endpoints, Document Endpoints)
+   - Added hybrid architecture note to Phase 3 intro
+   - Updated Risk Mitigation section (Docling → Mistral OCR)
+   - Cleaned up LangChain references throughout
+   - Updated Week 2 Checkpoint to reflect current stack
+
+### Design Decisions Made
+
+| Decision | Choice |
+|----------|--------|
+| Word docs (.docx) | No - PDF/images only for MVP |
+| Re-extract behavior | Creates new extraction (preserves history) |
+| Document preview | Markdown viewer showing OCR output |
+| Nested data display | Two-level layout (scalars + nested tables) |
+| CSV export format | Denormalized rows (one per line item) |
+| Auth provider | Supabase Auth (not Clerk) - already integrated |
+
+### Files Modified
+
+- `CLAUDE.md` - model + status updates
+- `planning/ARCHITECTURE.md` - complete rewrite
+- `planning/TASKS.md` - migration notes + cleanup
+- `planning/PRD.md` - tech refs + new features + resolved questions
+
+### Migration Status
+
+**✅ COMPLETE** - All 5 phases done:
+- Phase 1: Dependencies
+- Phase 2: Extraction service rewrite
+- Phase 3: Route consolidation
+- Phase 4: Testing
+- Phase 5: Documentation
+
+### Next Session
+
+- Begin Phase 3: Frontend MVP
+- Task: Initialize Next.js project
+- Task: Set up Supabase client
+- Task: Build authentication (login/signup pages)
+

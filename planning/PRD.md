@@ -80,7 +80,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - **Auto mode**: AI extracts all relevant fields from document
 - **Custom fields mode**: User specifies exact fields to extract via form inputs
 - Mode selected BEFORE upload
-- Both modes use same backend extraction logic (Mistral OCR + Claude via OpenRouter)
+- Both modes use same backend extraction logic (Mistral OCR + Claude via Anthropic SDK)
 
 **Data Extraction (FR3):**
 - Mistral OCR performs text extraction via Mistral Direct API (~$2 per 1,000 pages)
@@ -97,9 +97,12 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - Pagination (20 documents per page)
 
 **Extraction Results Display (FR5):**
-- View extracted data in clean card/form layout
-- Show confidence scores per field (visual indicator)
-- Display document thumbnail alongside data
+- **Two-level layout** for extracted data:
+  - Scalar fields (vendor, date, total) displayed as label/value pairs
+  - Array fields (line_items) displayed as nested tables
+- Show confidence indicator per field (green tick for high confidence)
+- **Markdown viewer**: Show OCR output so users can see what was extracted
+- Display filename and status alongside data
 - Clear field labels and values
 
 **Data Editing (FR6):**
@@ -115,8 +118,9 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - Latest extraction displayed by default
 
 **Data Export (FR8):**
-- Download as CSV (flattened structure)
-- Download as JSON (preserves nested data)
+- **CSV export**: Denormalized rows (one row per line item, parent fields repeated)
+  - Excel-native format, easy to filter/pivot
+- **JSON export**: Preserves nested structure as-is
 - Immediate download (no email/delay)
 - Export includes all extracted fields
 
@@ -203,7 +207,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 **Backend:**
 - FastAPI (Python 3.11+)
-- LangChain with Anthropic integration (Claude 3.5 Sonnet)
+- Anthropic SDK (Claude Haiku 4.5) - direct integration with tool use
 - Mistral OCR (`mistral-ocr-latest` via Mistral Python SDK)
 - FastAPI BackgroundTasks for async processing
 - Deployed on Railway/Render/Fly.io
@@ -211,10 +215,11 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 **Database:**
 - Supabase PostgreSQL
 - Supabase Storage (S3-backed) for document files
+- Supabase Realtime for status updates
 
 **AI/LLM:**
-- Anthropic Claude 3.5 Sonnet (via LangChain)
-- Mistral OCR for text extraction (Mistral Direct API, ~$2 per 1,000 pages)
+- Claude Haiku 4.5 via Anthropic SDK (tool use for structured output)
+- Mistral OCR for text extraction (~$2 per 1,000 pages)
 
 ---
 
@@ -276,22 +281,28 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 ---
 
-## Open Questions
+## Design Decisions (Resolved)
 
 **Product Decisions:**
-- Should we support Word docs (.docx) in MVP or just PDF/images?
-- What's the max complexity for nested data structures (e.g., line_items with 50+ rows)?
-- Should "re-extract" overwrite previous extraction or create new version?
+| Question | Decision |
+|----------|----------|
+| Word docs (.docx) support? | **No** - PDF/images only for MVP |
+| Max complexity for nested data? | Accept any complexity, display arrays as nested tables |
+| Re-extract behavior? | **Creates new extraction** (preserves history for comparison) |
 
 **Technical Decisions:**
-- How to handle very large PDFs (50+ pages)? Chunk or reject?
-- Should confidence scores be per-field or per-document?
-- What's the fallback if Mistral OCR API fails? Retry logic with exponential backoff + user notification
+| Question | Decision |
+|----------|----------|
+| Large PDFs (50+ pages)? | **Accept** - Mistral handles up to 1000 pages, just takes longer |
+| Confidence scores? | **Per-field** with simple visual indicator (green tick) |
+| OCR API failure fallback? | Retry with exponential backoff + user notification |
 
 **UX Decisions:**
-- Should we show document preview (PDF viewer) or just thumbnail?
-- How much guidance for custom field names? (e.g., "use snake_case"?)
-- Should CSV export flatten nested arrays or include them as JSON strings?
+| Question | Decision |
+|----------|----------|
+| Document preview? | **Markdown viewer** showing OCR output (not PDF viewer) |
+| Custom field name guidance? | Placeholder text: "e.g., vendor_name, total_amount" |
+| CSV nested arrays? | **Denormalized rows** (one row per line item, parent fields repeated) |
 
 ---
 
@@ -357,15 +368,16 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - **No feature creep**: Stick to PRD, track "nice to have" ideas for post-MVP
 - **Test with real documents**: Use actual invoices/receipts, not synthetic data
 
-**Backend (FastAPI + LangChain):**
+**Backend (FastAPI + Anthropic SDK):**
 - Clear separation: routes, services, models
-- Use LangChain for LLM abstraction (easy to swap OpenAI ↔ Claude)
+- Direct Anthropic SDK with tool use for structured extraction
 - Async processing for extractions (BackgroundTasks)
 - Proper error handling and logging
 
-**Frontend (Next.js):**
+**Frontend (Next.js + Supabase):**
 - Server components where possible (reduce client JS)
-- Optimistic UI updates (show upload immediately, update status via polling)
+- Direct Supabase access for data operations (no backend for reads)
+- Supabase Realtime for status updates (no polling)
 - Clear loading and error states
 - Mobile-first responsive design
 

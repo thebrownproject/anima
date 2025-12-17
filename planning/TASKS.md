@@ -130,11 +130,11 @@ The MVP is divided into 4 phases:
   cd backend
   python -m venv venv
   source venv/bin/activate  # or venv\Scripts\activate on Windows
-  pip install fastapi uvicorn python-dotenv supabase openai langchain-openai docling
+  pip install fastapi uvicorn python-dotenv supabase anthropic mistralai
   ```
 
   - **Completed**: 2025-11-03
-  - **Note**: Updated to use OpenRouter (openai + langchain-openai) instead of Anthropic for model flexibility
+  - **Note**: Now using Anthropic SDK directly (migrated from LangChain in December 2025)
 
 - [x] Create project structure
 
@@ -229,12 +229,14 @@ The MVP is divided into 4 phases:
 ### File Upload Service (Day 4)
 
 - [x] Implement Supabase Storage service
+
   - **Completed**: 2025-11-03
   - Implemented upload_document(), download_document(), create_signed_url(), delete_document()
   - Code verified against official Supabase Python docs
   - All type checking errors resolved
 
 - [x] Implement POST /api/upload endpoint
+
   - **Completed**: 2025-11-03
   - Accepts multipart/form-data (file + mode + user_id)
   - Uploads to Supabase Storage
@@ -243,6 +245,7 @@ The MVP is divided into 4 phases:
   - Integrated with usage limit checking
 
 - [x] Add usage limit check
+
   - **Completed**: 2025-11-03
   - Implemented check_usage_limit(), increment_usage(), reset_usage(), get_usage_stats()
   - Checks users.documents_processed_this_month vs documents_limit
@@ -256,14 +259,16 @@ The MVP is divided into 4 phases:
   - Verified document records in database
   - Confirmed usage counter increments correctly (0 → 1 → 2)
 
-### ~~Docling~~ Mistral OCR Integration (Day 5)  **[MIGRATED]**
+### ~~Docling~~ Mistral OCR Integration (Day 5) **[MIGRATED]**
 
 - [x] ~~Install Docling~~ → Migrated to Mistral OCR Direct API
+
   - **Original completion**: 2025-11-03
   - **Migration decision**: 2025-11-04 (Docling too slow: 10-90s per document)
   - **Reason**: Mistral OCR faster (5-10s), cost-effective (~$2 per 1,000 pages), 128K context window, 98.96% accuracy
 
 - [x] ~~Create Docling OCR service~~ → Replaced with Mistral OCR service
+
   - **Original completion**: 2025-11-03
   - See migration tasks below for Mistral OCR implementation
 
@@ -279,6 +284,7 @@ The MVP is divided into 4 phases:
 ### Mistral OCR Migration Tasks (Day 5-6)
 
 - [x] Create database migration for `ocr_results` table
+
   - File: `backend/migrations/002_add_ocr_results.sql`
   - Table stores raw OCR text (markdown), model, usage_info, processing_time_ms, layout_data
   - Added model field for tracking OCR model version
@@ -286,17 +292,20 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-06
 
 - [x] Apply migration to Supabase database
+
   - Applied migration via Supabase MCP tool
   - Verified table created with correct indexes and RLS policies
   - Tested with 2 documents - OCR results saved successfully
   - **Completed**: 2025-11-06
 
 - [x] Update `backend/app/config.py` with Mistral API settings
+
   - Add `MISTRAL_API_KEY` env var
   - Update `.env.example` with new variable
   - **Completed**: 2025-11-05
 
 - [x] Create `backend/app/services/ocr.py` (renamed from ocr_mistral for flexibility)
+
   - Use Mistral Python SDK (`client.ocr.process()`)
   - Model: `mistral-ocr-latest`
   - Encode PDF/image as base64
@@ -306,16 +315,19 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-05
 
 - [x] Update `backend/app/services/extractor.py`
+
   - Remove Docling imports and code
-  - Converted to placeholder for LangChain implementation (Day 6-7)
+  - Converted to placeholder, then rewritten with Anthropic SDK (December 2025)
   - **Completed**: 2025-11-05
 
 - [x] Update `backend/requirements.txt`
+
   - Remove `docling==2.60.0`
   - Kept `mistralai==1.9.11` (already installed)
   - **Completed**: 2025-11-05
 
 - [x] Test Mistral OCR extraction with uploaded document
+
   - Tested with Ubuntu CLI cheat sheet (3 pages) - SUCCESS
   - Tested with Fraser Brown Resume (2 pages) - SUCCESS
   - OCR quality excellent (markdown formatting preserved)
@@ -324,6 +336,7 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-05
 
 - [x] Optimize OCR to use Supabase signed URLs instead of file downloads
+
   - Refactored `extract_text_ocr()` to accept signed URLs directly
   - Eliminated temp file creation and base64 encoding overhead
   - Reduced code by 47 lines (81 deleted, 34 added)
@@ -332,6 +345,7 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-06
 
 - [x] Implement OCR result database caching
+
   - Added direct Supabase insert/upsert to test endpoint after OCR
   - Maps OCRResult fields to ocr_results table columns
   - Uses upsert for idempotency (one OCR per document)
@@ -340,6 +354,7 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-06
 
 - [x] Code cleanup and lint fixes for ocr.py
+
   - Moved `to_thread` import to top of file
   - Removed unnecessary f-string in logger
   - Improved text extraction with getattr() pattern
@@ -347,6 +362,7 @@ The MVP is divided into 4 phases:
   - **Completed**: 2025-11-06
 
 - [x] Refactor OCR endpoint into dedicated routes file
+
   - Created `backend/app/routes/ocr.py` for OCR-specific endpoints
   - Moved test-ocr endpoint from documents.py to ocr.py
   - Registered OCR router in main.py with /api prefix
@@ -364,11 +380,15 @@ The MVP is divided into 4 phases:
   - Both extractions saved to database, OCR cached and reused
   - **Completed**: 2025-11-10
 
-### LangChain + Claude Integration (Day 6-7)
+### ~~LangChain + Claude Integration (Day 6-7)~~ **[MIGRATED TO ANTHROPIC SDK]**
 
-- [x] Set up LangChain with ChatOpenAI + OpenRouter
-  - Using existing `langchain-openai` package (already installed)
-  - ChatOpenAI configured with OpenRouter base URL for Claude access
+> **Note**: This section documents the original LangChain implementation.
+> Migrated to Anthropic SDK in December 2025. See "Architecture Migration" section.
+
+- [x] ~~Set up LangChain with ChatOpenAI + OpenRouter~~ → Now using Anthropic SDK
+
+  - Original: Used `langchain-openai` package
+  - Current: Direct Anthropic SDK with tool use
   - Pydantic ExtractedData model for structured output
   - Using `method="function_calling"` for proper JSON extraction
   - Temperature=0 for deterministic extraction
@@ -395,7 +415,8 @@ The MVP is divided into 4 phases:
           "confidence_scores": result.confidence_scores
       }
   ```
-  - Created `backend/app/services/extractor.py` with LangChain logic
+
+  - Created `backend/app/services/extractor.py` (now rewritten with Anthropic SDK)
   - Uses ChatPromptTemplate for system + user message structure
   - Extracts all relevant fields automatically with confidence scores
   - Tested successfully with Ubuntu CLI cheat sheet document
@@ -424,12 +445,14 @@ The MVP is divided into 4 phases:
           "confidence_scores": result.confidence_scores
       }
   ```
+
   - Accepts list of field names from user input
   - Dynamically builds prompt with requested fields
   - Returns only the specified fields in structured format
   - **Completed**: 2025-11-06
 
 - [x] Create test endpoints for extraction
+
   - Added `POST /api/test-extract-auto` endpoint
   - Added `POST /api/test-extract-custom` endpoint (accepts comma-separated fields)
   - Created `backend/app/routes/extractions.py` router
@@ -445,9 +468,13 @@ The MVP is divided into 4 phases:
   - Ready for invoice/receipt testing
   - **Completed**: 2025-11-06
 
-### Background Processing (Day 8)
+### ~~Background Processing (Day 8)~~ **[SUPERSEDED BY MIGRATION]**
 
-- [ ] Implement extraction background task
+> **Note**: These tasks were superseded by the Architecture Migration (December 2025).
+> Background processing is now implemented in `backend/app/routes/process.py`.
+> See the "Architecture Migration" section above for details.
+
+- [x] ~~Implement extraction background task~~ → Implemented in `process.py`
 
   ```python
   # services/extractor.py
@@ -502,7 +529,7 @@ The MVP is divided into 4 phases:
           }).eq('id', document_id).execute()
   ```
 
-- [ ] Update upload endpoint to trigger background task
+- [x] ~~Update upload endpoint to trigger background task~~ → Implemented as `POST /api/process`
 
   ```python
   from fastapi import BackgroundTasks
@@ -537,102 +564,33 @@ The MVP is divided into 4 phases:
       }
   ```
 
-- [ ] Test end-to-end extraction flow
-  - Upload document via API
-  - Wait for background task to complete
-  - Query database to verify extraction saved
-  - Verify document status updated to 'completed'
-  - Verify usage counter incremented
+- [x] ~~Test end-to-end extraction flow~~ → Tested via `/api/process` endpoint
 
-### Extraction Endpoints (Day 9)
+### ~~Extraction Endpoints (Day 9)~~ **[SUPERSEDED BY MIGRATION]**
 
-- [ ] Implement GET /api/extractions/{extraction_id}
+> **Note**: These endpoints are no longer needed. Frontend accesses Supabase directly.
+> Only `/api/process` and `/api/re-extract` exist in the new architecture.
 
-  ```python
-  @app.get("/api/extractions/{extraction_id}")
-  async def get_extraction(extraction_id: str, user_id: str = Depends(get_current_user)):
-      extraction = supabase.table('extractions').select('*').eq('id', extraction_id).eq('user_id', user_id).single().execute()
-      return extraction.data
-  ```
+- [x] ~~Implement GET /api/extractions/{extraction_id}~~ → Frontend uses Supabase direct
+- [x] ~~Implement PUT /api/extractions/{extraction_id}~~ → Frontend uses Supabase direct
+- [x] ~~Implement GET /api/extractions/{extraction_id}/status~~ → Replaced by Supabase Realtime
+- [x] ~~Implement CSV/JSON export endpoint~~ → Will be frontend-only (client-side export)
 
-- [ ] Implement PUT /api/extractions/{extraction_id} (edit fields)
+### ~~Document Endpoints (Day 10)~~ **[SUPERSEDED BY MIGRATION]**
 
-  ```python
-  @app.put("/api/extractions/{extraction_id}")
-  async def update_extraction(
-      extraction_id: str,
-      updated_fields: dict,
-      user_id: str = Depends(get_current_user)
-  ):
-      supabase.table('extractions').update({
-          'extracted_fields': updated_fields,
-          'updated_at': datetime.now().isoformat()
-      }).eq('id', extraction_id).eq('user_id', user_id).execute()
+> **Note**: Frontend accesses Supabase directly for all document operations.
 
-      return {"success": True}
-  ```
-
-- [ ] Implement GET /api/extractions/{extraction_id}/status (for polling)
-
-  ```python
-  @app.get("/api/extractions/{extraction_id}/status")
-  async def get_extraction_status(extraction_id: str):
-      doc = supabase.table('documents').select('status').eq('id', extraction_id).single().execute()
-      return {"status": doc.data['status']}
-  ```
-
-- [ ] Implement CSV/JSON export endpoint
-
-  ```python
-  @app.get("/api/extractions/{extraction_id}/export")
-  async def export_extraction(
-      extraction_id: str,
-      format: str = 'csv',
-      user_id: str = Depends(get_current_user)
-  ):
-      extraction = supabase.table('extractions').select('*').eq('id', extraction_id).single().execute()
-
-      if format == 'csv':
-          csv_data = convert_to_csv(extraction.data['extracted_fields'])
-          return Response(content=csv_data, media_type='text/csv')
-      else:
-          return extraction.data['extracted_fields']
-  ```
-
-### Document Endpoints (Day 10)
-
-- [ ] Implement GET /api/documents (list with pagination)
-
-  ```python
-  @app.get("/api/documents")
-  async def list_documents(
-      limit: int = 20,
-      offset: int = 0,
-      status: str = None,
-      user_id: str = Depends(get_current_user)
-  ):
-      query = supabase.table('documents').select('''
-          id, filename, status, uploaded_at, mode,
-          extractions!inner(extracted_fields, confidence_scores)
-      ''').eq('user_id', user_id)
-
-      if status:
-          query = query.eq('status', status)
-
-      result = query.order('uploaded_at', desc=True).range(offset, offset + limit - 1).execute()
-      return result.data
-  ```
-
-- [ ] Implement GET /api/documents/{document_id}
-- [ ] Implement DELETE /api/documents/{document_id}
+- [x] ~~Implement GET /api/documents~~ → Frontend uses Supabase direct
+- [x] ~~Implement GET /api/documents/{document_id}~~ → Frontend uses Supabase direct
+- [x] ~~Implement DELETE /api/documents/{document_id}~~ → Frontend uses Supabase direct
 
 **Week 2 Checkpoint:**
 ✅ File upload to Supabase Storage working
-✅ Docling OCR extracting text from PDFs/images
-✅ Claude extracting structured data (auto + custom modes)
-✅ Background processing working
+✅ Mistral OCR extracting text from PDFs/images
+✅ Claude (Anthropic SDK) extracting structured data (auto + custom modes)
+✅ Background processing working via `/api/process`
 ✅ Extractions saved to database
-✅ All backend endpoints implemented
+✅ Backend API complete (`/api/process`, `/api/re-extract`)
 
 ---
 
@@ -644,12 +602,12 @@ Migrated from LangChain + full FastAPI to hybrid architecture with Anthropic SDK
 
 ### What Changed
 
-| Before | After |
-|--------|-------|
-| LangChain + OpenRouter | Anthropic SDK direct |
-| 10+ FastAPI endpoints | 2 endpoints (`/api/process`, `/api/re-extract`) |
-| Frontend → FastAPI → Supabase | Frontend → Supabase direct |
-| Polling for status | Supabase Realtime |
+| Before                        | After                                           |
+| ----------------------------- | ----------------------------------------------- |
+| LangChain + OpenRouter        | Anthropic SDK direct                            |
+| 10+ FastAPI endpoints         | 2 endpoints (`/api/process`, `/api/re-extract`) |
+| Frontend → FastAPI → Supabase | Frontend → Supabase direct                      |
+| Polling for status            | Supabase Realtime                               |
 
 ### Migration Tasks Completed
 
@@ -661,11 +619,11 @@ Migrated from LangChain + full FastAPI to hybrid architecture with Anthropic SDK
 
 ### New API Surface
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /health` | Health check |
-| `POST /api/process` | Upload + OCR + Extract (background) |
-| `POST /api/re-extract` | New extraction from cached OCR |
+| Endpoint               | Purpose                             |
+| ---------------------- | ----------------------------------- |
+| `GET /health`          | Health check                        |
+| `POST /api/process`    | Upload + OCR + Extract (background) |
+| `POST /api/re-extract` | New extraction from cached OCR      |
 
 ### Key Files Changed
 
@@ -691,6 +649,15 @@ See `planning/MIGRATION-PLAN.md` for full architecture details.
 **Goal:** Build Next.js frontend with document library, upload flow, and extraction results display.
 
 **Deliverable:** User can sign up, upload documents, see extraction results, edit, and download CSV.
+
+> **Architecture Note (December 2025):**
+> Frontend uses **hybrid architecture**:
+>
+> - **Supabase direct** for all data reads (documents, extractions, usage)
+> - **Supabase Realtime** for status updates (no polling)
+> - **FastAPI** only for AI processing (`/api/process`, `/api/re-extract`)
+>
+> Code examples below may show old patterns - refer to `planning/ARCHITECTURE.md` for current approach.
 
 ### Project Setup (Day 11)
 
@@ -1455,18 +1422,19 @@ See `planning/MIGRATION-PLAN.md` for full architecture details.
 
 **Common Risks:**
 
-1. **Docling fails on certain PDFs**
+1. **Mistral OCR fails on certain PDFs**
 
    - Mitigation: Add fallback to Claude Vision (send image directly)
    - Test with wide variety of document types
+   - OCR results cached - can retry extraction without re-OCR
 
 2. **Extraction accuracy too low (<80%)**
 
-   - Mitigation: Iterate on prompts, test different models
+   - Mitigation: Iterate on prompts, test different models (Haiku → Sonnet)
    - Add confidence thresholding (flag low-confidence fields)
    - Collect user feedback on errors
 
-3. **Takes longer than 3 weeks**
+3. **Takes longer than expected**
 
    - Mitigation: Cut P1 features (batch upload, saved templates)
    - Launch with just auto mode (skip custom fields)
@@ -1479,8 +1447,8 @@ See `planning/MIGRATION-PLAN.md` for full architecture details.
    - Consider adding Xero integration earlier
 
 5. **Backend processing too slow (>30 seconds)**
-   - Mitigation: Optimize Docling (use faster model)
-   - Cache OCR results
+   - Mitigation: Mistral OCR is fast (~3-5s), main cost is LLM
+   - OCR results cached for re-extraction
    - Move to Celery if BackgroundTasks insufficient
 
 ---
