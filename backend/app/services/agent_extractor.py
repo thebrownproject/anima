@@ -163,19 +163,14 @@ async def extract_with_agent(
                             if block.name == "mcp__extraction__save_extracted_data":
                                 extraction_result = _parse_extraction_input(block.input)
 
-        # Yield completion event - require both extraction AND session_id
-        if extraction_result and session_id:
+        # Yield completion event
+        if extraction_result:
             yield {
                 "type": "complete",
                 "extraction": extraction_result,
-                "session_id": session_id,
-                "thinking": "\n".join(thinking_chunks)
-            }
-        elif extraction_result and not session_id:
-            # Edge case: got extraction but no session_id (ResultMessage never received)
-            yield {
-                "type": "error",
-                "message": "Extraction completed but session_id not captured - cannot enable corrections"
+                "session_id": session_id,  # May be None - route handler should handle gracefully
+                "thinking": "\n".join(thinking_chunks),
+                "corrections_enabled": session_id is not None,  # Flag for frontend
             }
         else:
             yield {

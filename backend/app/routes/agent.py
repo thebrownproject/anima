@@ -92,6 +92,7 @@ async def extract_with_streaming(
         start_time = time.time()
         extraction_result = None
         session_id = None
+        corrections_enabled = False
 
         try:
             async for event in extract_with_agent(ocr.data["raw_text"], mode, fields_list):
@@ -100,7 +101,8 @@ async def extract_with_streaming(
 
                 elif event["type"] == "complete":
                     extraction_result = event["extraction"]
-                    session_id = event["session_id"]
+                    session_id = event.get("session_id")  # May be None
+                    corrections_enabled = event.get("corrections_enabled", False)
                     # Don't yield yet - save to DB first
 
                 elif event["type"] == "error":
@@ -110,7 +112,7 @@ async def extract_with_streaming(
             if extraction_result:
                 processing_time_ms = int((time.time() - start_time) * 1000)
 
-                # Save extraction with session_id
+                # Save extraction (session_id may be None - corrections just won't work)
                 extraction = supabase.table("extractions").insert({
                     "document_id": document_id,
                     "user_id": user_id,
@@ -120,21 +122,23 @@ async def extract_with_streaming(
                     "custom_fields": fields_list,
                     "model": "claude-agent-sdk",
                     "processing_time_ms": processing_time_ms,
-                    "session_id": session_id,  # Store for correction resume
+                    "session_id": session_id,  # May be None
                 }).execute()
 
-                # Update document with session_id for easy lookup
-                supabase.table("documents").update({
-                    "session_id": session_id
-                }).eq("id", document_id).execute()
+                # Only update document session_id if we have one
+                if session_id:
+                    supabase.table("documents").update({
+                        "session_id": session_id
+                    }).eq("id", document_id).execute()
 
-                logger.info(f"Agent extraction saved for document {document_id}, session {session_id}")
+                logger.info(f"Agent extraction saved for document {document_id}, session {session_id}, corrections_enabled={corrections_enabled}")
 
                 yield sse_event({
                     "type": "complete",
                     "extraction_id": extraction.data[0]["id"],
                     "document_id": document_id,
                     "session_id": session_id,
+                    "corrections_enabled": corrections_enabled,
                     "extracted_fields": extraction_result.get("extracted_fields", {}),
                     "confidence_scores": extraction_result.get("confidence_scores", {}),
                     "processing_time_ms": processing_time_ms,
