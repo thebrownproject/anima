@@ -5,6 +5,40 @@
 
 ---
 
+## Quick Status (Updated 2024-12-18)
+
+### ✅ Completed
+
+| Phase | What's Done |
+|-------|-------------|
+| Phase 1 | SDK installs, basic query works |
+| Phase 2 | Session persistence verified (within-session + cross-process resume) |
+| Phase 3 | @tool decorator, MCP server, multi-turn agent working |
+| Phase 4 | `agent_extractor.py` service created with streaming |
+| Phase 5 | `/api/agent/extract` and `/api/agent/correct` routes created |
+
+### 🔲 Remaining
+
+| Phase | What's Left |
+|-------|-------------|
+| Phase 6 | Full integration test: upload → OCR → extract → save → correct |
+| Phase 6 | Session fallback handling (expired/missing sessions) |
+| Phase 7 | Frontend: `useAgentExtraction` hook |
+| Phase 7 | Frontend: Streaming thinking display |
+| Phase 7 | Frontend: Correction input with session resume |
+
+### 📁 Key Files Created
+
+- `backend/app/services/agent_extractor.py` - Core extraction service
+- `backend/app/routes/agent.py` - SSE streaming endpoints
+- `backend/spikes/` - Spike test scripts
+
+### ➡️ After This
+
+See `Next-Stacks-Implementation.md` for the Stacks feature that builds on this work.
+
+---
+
 ## Philosophy
 
 **Don't break what works.** The current `extractor.py` and endpoints (`/api/process`, `/api/re-extract`) stay untouched. We build the Agent SDK implementation in parallel:
