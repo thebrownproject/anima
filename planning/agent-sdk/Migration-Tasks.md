@@ -1,6 +1,6 @@
 # Agent SDK Migration - Incremental Implementation
 
-**Status**: Planning
+**Status**: Phase 5 Complete ✓
 **Approach**: Build alongside existing code, spike test first, add features gradually
 
 ---
@@ -132,19 +132,19 @@ python spike_agent_sdk.py
 ```
 
 **What to look for:**
-- [ ] SDK initializes without errors
-- [ ] Messages stream (not all at once)
-- [ ] Understand message type structure
-- [ ] See cost/token usage
-- [ ] Note any session_id in messages
+- [x] SDK initializes without errors
+- [x] Messages stream (not all at once)
+- [x] Understand message type structure
+- [x] See cost/token usage
+- [x] Note any session_id in messages
 
 ### 1.4 Spike Checklist
 
-- [ ] SDK installs correctly
-- [ ] Basic query works
-- [ ] Can see streamed text output
-- [ ] Understand message structure
-- [ ] Document any surprises
+- [x] SDK installs correctly (v0.1.17)
+- [x] Basic query works
+- [x] Can see streamed text output
+- [x] Understand message structure
+- [x] Document any surprises (see Notes section)
 
 ---
 
@@ -287,11 +287,68 @@ if __name__ == "__main__":
 
 ### 2.3 Session Spike Checklist
 
-- [ ] Within-session memory works (ClaudeSDKClient)
-- [ ] Can capture session_id from messages
-- [ ] Cross-process resume works (query with resume option)
-- [ ] Document how to extract session_id
-- [ ] Document session_id format
+- [x] Within-session memory works (ClaudeSDKClient)
+- [x] Can capture session_id from messages
+- [x] Cross-process resume works (query with resume option)
+- [x] Document how to extract session_id
+- [x] Document session_id format
+
+---
+
+## Phase 2 Findings (2024-12-18)
+
+### Session ID Details
+
+**Format**: UUID (36 characters)
+- Example: `0ad07f74-73cf-47ea-8c47-fd574ca923f8`
+
+**Where to capture**:
+1. `SystemMessage.data['session_id']` - Available at session init
+2. `ResultMessage.session_id` - Available at query completion (recommended)
+
+### Within-Session Memory (ClaudeSDKClient)
+
+Works correctly. Multiple `client.query()` calls within same `async with ClaudeSDKClient()` context maintain conversation history.
+
+```python
+async with ClaudeSDKClient(options=options) as client:
+    await client.query("Remember this: 42")
+    async for msg in client.receive_response():
+        # Process first response
+        pass
+
+    await client.query("What number?")
+    async for msg in client.receive_response():
+        # Claude remembers 42
+        pass
+```
+
+### Cross-Process Resume
+
+Works correctly. Pass `resume=session_id` in options to continue a previous session.
+
+```python
+# Resume with saved session_id
+options = ClaudeAgentOptions(
+    resume=session_id,  # UUID from previous session
+    max_turns=1,
+)
+async for message in query(prompt="What did I tell you?", options=options):
+    # Claude has full context from previous session
+    pass
+```
+
+### Cost/Performance Observations
+
+- Cost per query: ~$0.006-0.012 (Sonnet 4.5)
+- Duration per query: ~2-3 seconds
+- Model used: claude-sonnet-4-5-20250929
+
+### Spike Files
+
+- `backend/spikes/spike_session.py` - Within-session memory test
+- `backend/spikes/spike_resume.py` - Cross-process resume test
+- `backend/spikes/spike_session_id.txt` - Stored session ID (gitignored)
 
 ---
 
@@ -382,11 +439,65 @@ if __name__ == "__main__":
 
 ### 3.2 Tool Spike Checklist
 
-- [ ] Tool definition with @tool decorator works
-- [ ] MCP server creation works
-- [ ] Claude calls the tool
-- [ ] Tool receives correct arguments
-- [ ] Can access tool input from ToolUseBlock
+- [x] Tool definition with @tool decorator works
+- [x] MCP server creation works
+- [x] Claude calls the tool
+- [x] Tool receives correct arguments
+- [x] Can access tool input from ToolUseBlock
+- [x] Multi-turn agent reasoning works
+- [x] Auto mode extracts rich nested structures
+- [x] Custom mode extracts only requested fields
+
+---
+
+## Phase 3 Findings (2024-12-18)
+
+### @tool Decorator Syntax
+
+The correct syntax uses **positional arguments**:
+
+```python
+@tool("tool_name", "description", {"param_name": type})
+async def my_tool(args: dict) -> dict:
+    return {"content": [{"type": "text", "text": "result"}]}
+```
+
+**NOT** keyword arguments like `name=`, `description=`, `parameters=`.
+
+### Tool Input Schema
+
+Simple type hints work:
+```python
+{"document_id": str}
+{"extracted_fields": dict, "confidence_scores": dict}
+```
+
+### Multi-Turn Agent Behavior
+
+With `max_turns=5`, the agent:
+1. **Turn 1-2**: Reads document with `read_document` tool
+2. **Turn 3**: Reasons about content
+3. **Turn 4-5**: Calls `save_extracted_data` with structured output
+
+### Cost/Performance
+
+| Mode | Duration | Cost | Turns |
+|------|----------|------|-------|
+| Auto | ~21s | ~$0.04 | 3 |
+| Custom | ~10s | ~$0.03 | 3 |
+
+### Key Discoveries
+
+1. **Tool args may be JSON strings**: The SDK sometimes passes `extracted_fields` as a JSON string instead of dict. Parse with `json.loads()` if needed.
+
+2. **Rich nested structures work**: Auto mode produces beautifully nested objects (vendor, customer, line_items, etc.)
+
+3. **Tool naming convention**: `mcp__[server_name]__[tool_name]`
+
+### Spike Files
+
+- `backend/spikes/spike_tools.py` - Multi-turn tool spike
+- `backend/spikes/sample_ocr_output.md` - Sample OCR document
 
 ---
 
@@ -562,11 +673,76 @@ async def correct_with_session(
 
 ### 4.2 Service Checklist
 
-- [ ] `agent_extractor.py` created
-- [ ] Reuses prompts from existing `extractor.py`
-- [ ] Async generator yields streaming events
-- [ ] Session ID captured and returned
-- [ ] Error handling in place
+- [x] `agent_extractor.py` created
+- [x] Reuses prompts from existing `extractor.py`
+- [x] Async generator yields streaming events
+- [x] Session ID captured and returned
+- [x] Error handling in place
+
+---
+
+## Phase 4 Findings (2024-12-18)
+
+### Service Implementation
+
+Created `backend/app/services/agent_extractor.py` with:
+
+1. **`extract_with_agent(ocr_text, mode, custom_fields)`** - New extraction
+2. **`correct_with_session(session_id, instruction)`** - Resume for corrections
+
+### Streaming Events
+
+The service yields three event types:
+
+```python
+{"type": "thinking", "text": "Claude's reasoning..."}
+{"type": "complete", "extraction": {...}, "session_id": "uuid", "thinking": "..."}
+{"type": "error", "message": "..."}
+```
+
+### Test Results
+
+| Test | Result | Notes |
+|------|--------|-------|
+| Auto Mode | PASSED | 9 fields, 5 nested structures |
+| Custom Mode | PASSED | Extracted exactly 4 requested fields |
+| Session Correction | PASSED | Claude remembered context, applied correction |
+
+### Key Implementation Details
+
+1. **JSON String Handling**: Tool inputs may be JSON strings - added `_parse_extraction_input()` helper
+
+2. **Session ID Capture**: Captured from `ResultMessage.session_id` after query completes
+
+3. **Prompt Enhancement**: Added instruction to call tool after analysis:
+   ```python
+   prompt += "\n\nAfter analyzing the document, call the save_extracted_data tool..."
+   ```
+
+4. **MCP Server Singleton**: Server created once at module load, reused across calls
+
+### Files Created
+
+- `backend/app/services/agent_extractor.py` - Main service
+- `backend/spikes/test_agent_extractor.py` - Test script
+
+### Usage Example
+
+```python
+from app.services.agent_extractor import extract_with_agent, correct_with_session
+
+# New extraction
+async for event in extract_with_agent(ocr_text, "auto"):
+    if event["type"] == "thinking":
+        print(f"Claude: {event['text']}")
+    elif event["type"] == "complete":
+        save_to_db(event["extraction"], event["session_id"])
+
+# Later: user correction
+async for event in correct_with_session(session_id, "The total should be $3,000"):
+    if event["type"] == "complete":
+        update_extraction(event["extraction"])
+```
 
 ---
 
@@ -670,11 +846,82 @@ app.include_router(agent.router)  # Add this line
 
 ### 5.3 Routes Checklist
 
-- [ ] `routes/agent.py` created
-- [ ] Routes registered in main.py
-- [ ] `/api/agent/health` returns OK
-- [ ] `/api/agent/process` streams events (even with placeholder data)
-- [ ] Existing `/api/process` still works
+- [x] `routes/agent.py` created
+- [x] Routes registered in main.py
+- [x] `/api/agent/health` returns OK
+- [x] `/api/agent/extract` streams events with real extraction
+- [x] Existing `/api/process` still works
+
+---
+
+## Phase 5 Findings (2024-12-18)
+
+### Endpoints Created
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/agent/extract` | POST | Extract with SSE streaming (uses cached OCR) |
+| `/api/agent/correct` | POST | Correct extraction with session resume |
+| `/api/agent/health` | GET | Health check |
+
+### SSE Event Format
+
+```javascript
+// Status update
+data: {"type": "status", "message": "Starting extraction..."}
+
+// Claude thinking (streamed in real-time)
+data: {"type": "thinking", "text": "I'll analyze this document..."}
+
+// Completion with saved extraction
+data: {"type": "complete", "extraction_id": "uuid", "session_id": "uuid", "extracted_fields": {...}}
+
+// Error
+data: {"type": "error", "message": "..."}
+```
+
+### Database Integration
+
+The routes already implement Phase 6 requirements:
+- ✅ `session_id` stored in `extractions` table
+- ✅ `session_id` stored in `documents` table for easy lookup
+- ✅ Fetches `session_id` from DB for corrections
+- ✅ Uses cached OCR from `ocr_results` table
+
+### Frontend Usage
+
+```javascript
+// Extract with streaming
+const response = await fetch('/api/agent/extract', {
+  method: 'POST',
+  body: formData  // document_id, user_id, mode, custom_fields
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const {value, done} = await reader.read();
+  if (done) break;
+
+  const lines = decoder.decode(value).split('\n');
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const event = JSON.parse(line.slice(6));
+      if (event.type === 'thinking') {
+        // Display thinking in UI
+      } else if (event.type === 'complete') {
+        // Update extraction display
+      }
+    }
+  }
+}
+```
+
+### Files Modified
+
+- `backend/app/routes/agent.py` - New routes file
+- `backend/app/main.py` - Added agent router
 
 ---
 
@@ -684,11 +931,11 @@ app.include_router(agent.router)  # Add this line
 
 ### Tasks
 
-- [ ] Add database migrations for session columns
-- [ ] Update `/api/agent/process` to use real OCR
-- [ ] Save extraction + session_id to database
-- [ ] Update `/api/agent/correct` to fetch session_id from DB
+- [x] Save extraction + session_id to database (done in Phase 5)
+- [x] Fetch session_id from DB for corrections (done in Phase 5)
+- [ ] Add database migrations for `session_id` columns (if not already present)
 - [ ] Add fallback for expired/missing sessions
+- [ ] Full integration test with real document upload
 
 ---
 
@@ -757,3 +1004,59 @@ Since existing code is untouched:
 - **Don't rush**: Each phase should be working before moving to next
 - **Console log everything**: Understand the SDK before abstracting
 - **Keep old code**: Only remove after new code is proven in production
+
+---
+
+## Phase 1 Findings (2024-12-18)
+
+### Actual SDK Message Structure
+
+The Context7 docs were slightly wrong. Here's the real structure:
+
+```python
+# AssistantMessage
+- content: list[TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock]
+- model: str
+- parent_tool_use_id: str | None
+- error: Literal['authentication_failed', 'billing_error', ...] | None
+
+# ResultMessage - THIS HAS SESSION_ID!
+- session_id: str          # ← Key for resume!
+- total_cost_usd: float | None
+- usage: dict | None       # {input_tokens, output_tokens, cache_read_input_tokens, ...}
+- duration_ms: int
+- duration_api_ms: int
+- num_turns: int
+- is_error: bool
+- result: str | None
+- structured_output: Any
+
+# SystemMessage (sent first, contains init data)
+- subtype: str             # "init"
+- data: dict               # Contains tools, mcp_servers, model, session_id, etc.
+
+# UserMessage
+- content: str | list[ContentBlock]
+- uuid: str | None
+- parent_tool_use_id: str | None
+```
+
+### Message Flow
+
+1. `SystemMessage` (subtype="init") - Contains session_id, available tools, model
+2. `AssistantMessage` - Claude's response with TextBlock content
+3. `ResultMessage` - Final stats including session_id, cost, usage
+
+### Key Discovery
+
+- `session_id` is in BOTH `SystemMessage.data['session_id']` and `ResultMessage.session_id`
+- Cost for simple extraction: ~$0.015
+- Duration: ~6 seconds
+- Model: claude-sonnet-4-5-20250929
+
+### Code Corrections
+
+- Use `anyio.run(main)` not `asyncio.run(main())`
+- No `StreamEvent` type exists
+- No `stop_reason` on AssistantMessage (only on ResultMessage indirectly via is_error)
+- Spike tests moved to `backend/spikes/` folder

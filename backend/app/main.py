@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .models import HealthResponse
-from .routes import process
+from .routes import process, agent
 
 # Initialize settings
 settings = get_settings()
@@ -51,3 +51,4 @@ async def root():
 
 # Include routers - AI processing only (data operations go through Supabase directly)
 app.include_router(process.router, prefix="/api", tags=["processing"])
+app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
