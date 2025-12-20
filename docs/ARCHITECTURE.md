@@ -98,14 +98,31 @@ StackDocs uses a hybrid architecture where the frontend connects directly to Sup
 
 Endpoints trigger agents with scoped context (user_id, document_id/stack_id).
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/health` | GET | Health check |
-| `/api/document/upload` | POST | Upload file + run OCR (background) |
-| `/api/document/extract` | POST | Trigger extraction_agent (SSE streaming) |
-| `/api/document/update` | POST | Update extraction via session resume |
-| `/api/stack/extract` | POST | Trigger stack_agent (SSE streaming) |
-| `/api/stack/update` | POST | Update stack extraction via session |
+#### Current Endpoints (to be deprecated)
+
+These endpoints exist and work, but will be replaced by the proposed endpoints below.
+
+| Endpoint | Method | Purpose | Status |
+|----------|--------|---------|--------|
+| `/health` | GET | Health check | Keep |
+| `/api/process` | POST | Upload + OCR + extract (background) | Deprecated |
+| `/api/re-extract` | POST | Re-extract from cached OCR | Deprecated |
+| `/api/agent/extract` | POST | Extract with SSE streaming | Deprecated |
+| `/api/agent/correct` | POST | Correct via session resume | Deprecated |
+| `/api/agent/health` | GET | Agent health check | Deprecated |
+
+#### Proposed Endpoints (aligned with agents)
+
+New endpoint structure matching extraction_agent and stack_agent.
+
+| Endpoint | Method | Purpose | Agent |
+|----------|--------|---------|-------|
+| `/health` | GET | Health check | - |
+| `/api/document/upload` | POST | Upload file + run OCR (background) | - |
+| `/api/document/extract` | POST | Trigger extraction_agent (SSE streaming) | extraction_agent |
+| `/api/document/update` | POST | Update extraction via session resume | extraction_agent |
+| `/api/stack/extract` | POST | Trigger stack_agent (SSE streaming) | stack_agent |
+| `/api/stack/update` | POST | Update stack extraction via session | stack_agent |
 
 ### Frontend Direct Supabase Access
 
@@ -177,19 +194,26 @@ supabase.channel('doc-updates')
 **Custom Database Tools** (not filesystem tools):
 ```python
 # extraction_agent tools
-read_ocr(document_id)         # Fetch from ocr_results
-get_extraction(document_id)   # Read extractions JSONB
-create_extraction(data)       # Write new extraction
-set_field(path, value)        # Surgical JSONB update
-delete_field(path)            # Remove from JSONB
+read_ocr(document_id)           # Fetch from ocr_results
+read_extraction(document_id)    # Read extractions JSONB
+save_extraction(data)           # Write full extraction
+set_field(path, value)          # Surgical JSONB update
+delete_field(path)              # Remove from JSONB
+complete()                      # Mark extraction complete
 
-# stack_agent tools (see CLAUDE.md for full list)
-get_stack_documents(stack_id) # List documents in stack
-get_tables(stack_id)          # Read table definitions
-create_table(schema)          # Create new table
-add_column(table_id, col)     # Add column to table
-create_row(table_id, data)    # Insert to stack_table_rows
-set_row_field(row_id, path, value)  # Surgical row update
+# stack_agent tools
+read_documents(stack_id)        # List documents in stack
+read_ocr(document_id)           # Fetch OCR for document
+read_tables(stack_id)           # Read table definitions
+create_table(name, mode)        # Create new table
+add_column(table_id, col)       # Add column to table
+set_column(table_id, col)       # Modify column definition
+delete_column(table_id, col)    # Remove column from table
+read_rows(table_id)             # Read existing rows
+create_row(table_id, doc_id)    # Insert row for document
+set_row_field(row_id, path, value)    # Surgical row update
+delete_row_field(row_id, path)        # Remove field from row
+complete()                      # Mark stack extraction complete
 ```
 
 **Session Resume**:

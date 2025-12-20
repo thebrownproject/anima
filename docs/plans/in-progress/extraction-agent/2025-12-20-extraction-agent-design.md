@@ -28,11 +28,20 @@ Agentic document extraction using Claude Agent SDK, enabling:
 
 ### API Endpoints
 
+#### Current Endpoints (to be deprecated)
+
 | Endpoint | Purpose |
 |----------|---------|
 | `POST /api/agent/extract` | Extract with streaming (uses cached OCR) |
 | `POST /api/agent/correct` | Correct extraction with session resume |
 | `GET /api/agent/health` | Health check |
+
+#### Proposed Endpoints (aligned with agents)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/document/extract` | Trigger extraction_agent (SSE streaming) |
+| `POST /api/document/update` | Update extraction via session resume |
 
 ### How It Works
 
@@ -80,20 +89,22 @@ async def extraction_tool(args: dict) -> dict:
 - Tool doesn't do real work (just acknowledgment)
 - Data captured via interception, not tool execution
 
-### Future: Agentic Tool Approach (Planned)
+### Agentic Tool Approach (In Progress)
 
 A proper agentic architecture where tools perform real database operations:
 
 | Tool | Operation |
 |------|-----------|
-| `get_document_text` | READ from ocr_results |
-| `extract_fields` | WRITE to extractions |
-| `update_field` | WRITE with jsonb_set |
-| `complete_extraction` | WRITE status |
+| `read_ocr` | READ from ocr_results |
+| `read_extraction` | READ from extractions |
+| `save_extraction` | WRITE to extractions |
+| `set_field` | WRITE with jsonb_set |
+| `delete_field` | DELETE from JSONB |
+| `complete` | WRITE status to documents |
 
 **Benefits:** More robust, crash recovery, observable progress
 
-**Status:** Placeholder stubs exist at `backend/app/agents/extraction_agent/` but not implemented
+**Status:** Tool stubs exist at `backend/app/agents/extraction_agent/tools/` with proper naming convention. Implementation pending.
 
 ---
 
@@ -167,9 +178,10 @@ extractions.processing_time_ms INT -- Performance tracking
 
 | File | Purpose |
 |------|---------|
-| `backend/app/services/agent_extractor.py` | Core extraction logic |
-| `backend/app/routes/agent.py` | SSE streaming endpoints |
-| `backend/app/agents/extraction_agent/` | Placeholder for agentic refactor |
+| `backend/app/services/agent_extractor.py` | Core extraction logic (current) |
+| `backend/app/routes/agent.py` | SSE streaming endpoints (to be deprecated) |
+| `backend/app/agents/extraction_agent/` | Agentic tools (stubs ready for implementation) |
+| `backend/app/agents/extraction_agent/tools/` | Tool implementations: read_ocr, read_extraction, save_extraction, set_field, delete_field, complete |
 | `backend/spikes/` | SDK spike test scripts |
 
 ---

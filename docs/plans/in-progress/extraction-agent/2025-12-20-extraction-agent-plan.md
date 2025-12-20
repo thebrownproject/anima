@@ -11,12 +11,15 @@
 
 **Working:**
 - `backend/app/services/agent_extractor.py` - Extraction with Claude Agent SDK
-- `backend/app/routes/agent.py` - SSE streaming endpoints
+- `backend/app/routes/agent.py` - SSE streaming endpoints (to be deprecated)
 - Session capture via `ResultMessage.session_id`
-- Routes: `/api/agent/extract`, `/api/agent/correct`, `/api/agent/health`
+- Current routes: `/api/agent/extract`, `/api/agent/correct`, `/api/agent/health`
+- Proposed routes: `/api/document/extract`, `/api/document/update`
 
-**Placeholder (not implemented):**
-- `backend/app/agents/extraction_agent/` - Agentic tool stubs (future refactor)
+**Agentic Tools (stubs ready):**
+- `backend/app/agents/extraction_agent/tools/` - Tool stubs with proper naming convention
+- Tools: `read_ocr`, `read_extraction`, `save_extraction`, `set_field`, `delete_field`, `complete`
+- Implementation pending
 
 ---
 
@@ -144,5 +147,5 @@ After each phase:
 
 - Session fallback is important for UX - users shouldn't see errors for expired sessions
 - Frontend uses `fetch()` not `EventSource` because POST is needed
-- Consider adding feature flag to switch between old/new extraction endpoints
-- Agentic tool refactor (Phase 8) is optional - current approach works
+- Current endpoints (`/api/agent/*`) to be deprecated in favor of `/api/document/*`
+- Agentic tool stubs are in place with proper naming convention - implementation is next step after frontend integration

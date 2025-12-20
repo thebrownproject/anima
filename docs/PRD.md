@@ -154,7 +154,6 @@ Build a general-purpose document data extraction tool that uses AI to extract st
   - Documents can belong to multiple stacks (many-to-many)
   - Create multiple tables per stack with custom columns
   - stack_agent extracts data across all documents in stack
-- **Streaming AI thinking** - Show Claude's analysis in real-time during extraction
 - Batch upload (multiple documents at once)
 - Saved templates (reusable custom field configurations)
 - AI-suggested templates based on document type detection
@@ -403,6 +402,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - Session resume for contextual corrections
 - Async processing for OCR (BackgroundTasks)
 - Proper error handling and logging
+- Tool naming convention: `read_*` (fetch data), `save_*` (write objects), `set_*` (update fields), `delete_*` (remove), `create_*` (new records), `complete` (state transitions)
 
 **Frontend (Next.js + Supabase):**
 - Server components where possible (reduce client JS)
