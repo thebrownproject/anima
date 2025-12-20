@@ -2009,3 +2009,201 @@ Current `extractions` table may need adjustments:
 - Task: Set up Supabase client
 - Task: Build authentication (login/signup pages)
 
+---
+
+## Session 16 - 2025-12-20 - Planning Folder Reorganization (In Progress)
+
+**Phase**: Project Organization
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Brainstormed new folder structure using superpowers:brainstorming skill
+- [x] Designed kanban-style planning system integrated with superpowers workflow
+- [x] Created new `docs/` folder structure:
+  ```
+  docs/
+  ├── CLAUDE.md         # Index + superpowers workflow instructions
+  ├── DEV-NOTES.md      # Session continuity
+  ├── ROADMAP.md        # Prioritized features (was TASKS.md)
+  ├── PRD.md            # Product requirements
+  ├── ARCHITECTURE.md   # System design
+  ├── SCHEMA.md         # Database schema
+  └── plans/
+      ├── todo/         # Features ready to implement
+      ├── in-progress/  # Currently being worked on
+      │   ├── agent-sdk/
+      │   ├── stacks-schema/
+      │   └── planning-reorganization/
+      ├── complete/     # Done
+      └── archive/      # Superseded docs
+  ```
+- [x] Migrated all files from `planning/` to `docs/`
+- [x] Slimmed root CLAUDE.md from 271 → 146 lines (operational essentials only)
+- [x] Created `docs/CLAUDE.md` with superpowers workflow instructions
+- [x] Deleted old `planning/` folder
+
+### Tasks Remaining
+
+- [ ] Review all docs in `docs/plans/in-progress/` - assess what's actually complete vs in-progress
+- [ ] Move completed feature docs to `docs/plans/complete/`
+- [ ] Review and update reference docs (ARCHITECTURE.md, SCHEMA.md, PRD.md, ROADMAP.md) to reflect current reality
+- [ ] Ensure docs align with superpowers workflow (design → plan → execute → complete)
+- [ ] Move `planning-reorganization/` to `complete/` when done
+
+### Decisions Made
+
+1. **Consolidated under `docs/`** - All planning in one place, not split between `planning/` and `docs/`
+2. **Kanban in plans/** - `todo/` → `in-progress/` → `complete/` + `archive/` for abandoned
+3. **Feature subfolders** - Each feature gets its own folder that moves through stages
+4. **Superpowers integration** - Brainstorm creates design in `in-progress/<feature>/`, execution happens, folder moves to `complete/`
+5. **Reference docs at root** - ARCHITECTURE, SCHEMA, PRD, ROADMAP stay at `docs/` root, updated when features complete
+
+### Superpowers Workflow (Documented in docs/CLAUDE.md)
+
+1. `/superpowers:brainstorm` → creates design doc in `plans/in-progress/<feature>/`
+2. `/superpowers:write-plan` → adds implementation plan to same folder
+3. `/superpowers:execute-plan` → work happens
+4. Complete → `git mv plans/in-progress/<feature> plans/complete/` → update reference docs
+
+### Next Session
+
+See Session 17 below.
+
+---
+
+## Session 17 - 2025-12-20 - Planning Reorganization Phase 2 (Content Review)
+
+**Phase**: Project Organization (continued)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] Reviewed `agent-sdk/` folder - assessed completion status
+  - Backend Phases 1-5 complete (SDK integration, service layer, routes)
+  - New agentic tool architecture implemented (`backend/app/agents/extraction_agent/`)
+  - Phase 6-7 (frontend integration) NOT started
+- [x] Reviewed `stacks-schema/` folder - assessed completion status
+  - Database migrations 004 & 005 already applied
+  - No implementation code exists - planning only
+- [x] **Refactored stacks-schema to superpowers format**:
+  - Used `superpowers:brainstorming` skill to validate design
+  - Used `superpowers:writing-plans` skill to create implementation plan
+  - Created: `docs/plans/todo/stacks/2025-12-20-stacks-design.md`
+  - Created: `docs/plans/todo/stacks/2025-12-20-stacks-plan.md`
+  - Archived old docs to `docs/plans/todo/stacks/archive/`
+  - Removed `docs/plans/in-progress/stacks-schema/` folder
+
+### Current Folder Structure
+
+```
+docs/plans/
+├── todo/
+│   └── stacks/                    # ← Refactored with superpowers format
+│       ├── 2025-12-20-stacks-design.md
+│       ├── 2025-12-20-stacks-plan.md
+│       └── archive/               # Old docs preserved
+├── in-progress/
+│   ├── agent-sdk/                 # ← Needs refactoring next session
+│   └── planning-reorganization/
+├── complete/
+└── archive/
+```
+
+### Tasks Remaining
+
+- [ ] Refactor `agent-sdk/` folder using superpowers workflow (brainstorm → design → plan)
+- [ ] Update reference docs (ARCHITECTURE.md, SCHEMA.md) to reflect Agent SDK implementation
+- [ ] Move `planning-reorganization/` to `complete/` when done
+
+### Next Session
+
+**Continue**: Refactor agent-sdk folder
+
+**Process**:
+1. Use `superpowers:brainstorming` to validate/refine agent-sdk design
+2. Use `superpowers:writing-plans` to create proper implementation plan
+3. Consolidate existing docs into superpowers format (design.md + plan.md)
+4. Move to appropriate folder (in-progress since backend done, frontend pending)
+5. Update reference docs
+
+**Start with**:
+```
+/superpowers:brainstorming Refactor the agent-sdk planning folder at docs/plans/in-progress/agent-sdk/
+```
+
+---
+
+## Session 18 - 2025-12-20 - Planning Reorganization Phase 2 (Extraction Agent Refactor)
+
+**Phase**: Project Organization (continued)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Refactored agent-sdk to extraction-agent with superpowers format**:
+  - Renamed folder: `agent-sdk/` → `extraction-agent/` (matches `backend/app/agents/extraction_agent/`)
+  - Created: `docs/plans/in-progress/extraction-agent/2025-12-20-extraction-agent-design.md`
+  - Created: `docs/plans/in-progress/extraction-agent/2025-12-20-extraction-agent-plan.md`
+  - Archived 5 old docs to `archive/` subfolder (Migration-Tasks.md, User-Stories.md, UI-Decisions.md, etc.)
+- [x] **Corrected implementation state understanding**:
+  - `backend/app/agents/extraction_agent/` files are STUBS (just docstrings)
+  - Actual working implementation is in `backend/app/services/agent_extractor.py`
+  - Routes at `backend/app/routes/agent.py` use the service, not the agent stubs
+- [x] **Organized project-level archive**:
+  - Created `docs/plans/archive/2024-12-langchain-migration/` for completed migration docs
+  - Moved MIGRATION-TASKS.md, MIGRATION-PLAN.md, ARCHITECTURE-UPDATE.md into it
+  - Kept `AGENT-NATIVE-ARCHITECTURE.md` at archive root as strategic vision reference
+
+### Current Folder Structure
+
+```
+docs/plans/
+├── todo/
+│   └── stacks/                           # Stacks feature (ready to implement)
+├── in-progress/
+│   ├── extraction-agent/                 # ← Refactored this session
+│   │   ├── 2025-12-20-extraction-agent-design.md
+│   │   ├── 2025-12-20-extraction-agent-plan.md
+│   │   └── archive/
+│   └── planning-reorganization/          # ← This meta-task
+├── complete/
+└── archive/
+    ├── 2024-12-langchain-migration/      # ← Organized completed migration
+    │   ├── MIGRATION-TASKS.md
+    │   ├── MIGRATION-PLAN.md
+    │   └── ARCHITECTURE-UPDATE.md
+    └── AGENT-NATIVE-ARCHITECTURE.md      # Strategic vision doc
+```
+
+### Key Clarification: Backend Implementation State
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| Agent Extractor Service | `backend/app/services/agent_extractor.py` | **WORKING** |
+| SSE Streaming Routes | `backend/app/routes/agent.py` | **WORKING** |
+| Agent Tool Stubs | `backend/app/agents/extraction_agent/` | Placeholder only |
+
+The "agentic tool redesign" from the archived docs was PLANNED but not implemented. Current working implementation uses a "dummy tool" approach that captures extraction via `ToolUseBlock.input` interception.
+
+### Tasks Remaining (Next Session)
+
+- [ ] Update reference docs to reflect current reality:
+  - `docs/PRD.md` - Product requirements
+  - `docs/ROADMAP.md` - Feature priorities
+  - `docs/SCHEMA.md` - Database schema (session_id columns, etc.)
+  - `docs/ARCHITECTURE.md` - System design (hybrid architecture, Agent SDK)
+- [ ] Move `planning-reorganization/` to `complete/` when done
+
+### Next Session
+
+**Task**: Update reference docs (PRD, ROADMAP, SCHEMA, ARCHITECTURE)
+
+This is an important session - these docs should accurately reflect:
+1. Current product state (what's built vs planned)
+2. Technical architecture (hybrid Supabase + FastAPI, Agent SDK integration)
+3. Database schema (including session tracking columns)
+4. Feature priorities (extraction-agent frontend, stacks feature)
+
+See handover prompt in session notes for detailed guidance.
+
