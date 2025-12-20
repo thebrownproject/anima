@@ -1,6 +1,6 @@
 """
-Tool: complete_extraction (WRITE)
+Tool: complete (WRITE)
 
-Marks extraction as complete by setting status='completed'.
+Marks extraction as complete by setting document status='completed'.
 Validates that fields have been extracted before allowing completion.
 """

@@ -36,8 +36,9 @@ Build a general-purpose document data extraction tool that uses AI to extract st
    - Claude analyzes and extracts all relevant fields automatically
 5. User sees document in library with extraction results displayed
 6. User can:
-   - View extracted data in card format
-   - Edit any fields via edit form (modal)
+   - View extracted data in table format with confidence scores
+   - View original PDF or OCR text in preview panel
+   - Edit fields via form OR use **agent chat** for natural language corrections
    - Download as JSON or CSV
    - Re-extract with custom fields if needed
 
@@ -51,7 +52,10 @@ Build a general-purpose document data extraction tool that uses AI to extract st
    - Mistral OCR extracts text/layout
    - Claude extracts ONLY the specified fields
 6. User sees document with extraction results
-7. User can edit, download, or re-extract
+7. User can:
+   - Edit fields via form OR use **agent chat** for corrections
+   - Download as JSON or CSV
+   - Re-extract with different fields
 
 ### Document Library
 - Grid view (card layout) showing all uploaded documents
@@ -80,14 +84,16 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - **Auto mode**: AI extracts all relevant fields from document
 - **Custom fields mode**: User specifies exact fields to extract via form inputs
 - Mode selected BEFORE upload
-- Both modes use same backend extraction logic (Mistral OCR + Claude via Anthropic SDK)
+- Both modes use same backend extraction logic (Mistral OCR + Claude Agent SDK)
 
 **Data Extraction (FR3):**
 - Mistral OCR performs text extraction via Mistral Direct API (~$2 per 1,000 pages)
 - OCR results cached in `ocr_results` table for cost-efficient re-extraction
-- Claude (Anthropic) extracts structured data with confidence scores
+- Claude Agent SDK extracts structured data via agentic workflow
+- Agent uses custom database tools to read OCR and write extractions
+- Real-time thinking displayed via SSE streaming
 - Processing time: <30 seconds per document
-- FastAPI BackgroundTasks for async processing (non-blocking)
+- FastAPI BackgroundTasks for OCR (non-blocking)
 
 **Document Library (FR4):**
 - Grid view displaying all user's documents
@@ -100,8 +106,10 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - **Two-level layout** for extracted data:
   - Scalar fields (vendor, date, total) displayed as label/value pairs
   - Array fields (line_items) displayed as nested tables
-- Show confidence indicator per field (green tick for high confidence)
-- **Markdown viewer**: Show OCR output so users can see what was extracted
+- Show confidence indicator per field (percentage + green tick for high confidence)
+- **Document preview panel** with tabs:
+  - PDF tab: View original document
+  - OCR Text tab: View extracted text
 - Display filename and status alongside data
 - Clear field labels and values
 
@@ -110,6 +118,10 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - Edit any extracted field value
 - Save changes (updates extraction record in DB)
 - Support nested data structures (e.g., line_items array)
+- **Agent chat input** - Natural language corrections via text box
+  - "Ask agent to filter, edit, or analyze data..."
+  - Agent uses session resume to remember document context
+  - Example: "Change vendor to Acme Corporation" or "Remove the third line item"
 
 **Re-extraction (FR7):**
 - User can re-extract same document with different settings
@@ -125,7 +137,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - Export includes all extracted fields
 
 **Authentication (FR9):**
-- Supabase Auth (email/password signup and login)
+- Clerk for authentication (email/password, OAuth)
 - User accounts required from day 1
 - Each user has isolated document library
 - Logout functionality
@@ -138,6 +150,11 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 ### Nice to Have (P1 - Post-MVP)
 
+- **Stacks** - Group documents into collections, create custom tables, extract one row per document
+  - Documents can belong to multiple stacks (many-to-many)
+  - Create multiple tables per stack with custom columns
+  - stack_agent extracts data across all documents in stack
+- **Streaming AI thinking** - Show Claude's analysis in real-time during extraction
 - Batch upload (multiple documents at once)
 - Saved templates (reusable custom field configurations)
 - AI-suggested templates based on document type detection
@@ -194,23 +211,32 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - So I can plan my usage and decide when to upgrade
 - Acceptance: Dashboard shows "3/5 free extractions used this month"
 
+**US9: As a user, I want to correct extraction errors using natural language**
+- So I don't have to manually edit form fields for simple corrections
+- Acceptance: Type "Change vendor to Acme Corp" → Agent updates the field → See updated data
+
+**US10: As a user, I want to group related documents into stacks and extract consistent data across them**
+- So I can compare data from multiple invoices/contracts in a single table
+- Acceptance: Create "Q1 Expenses" stack → Add 10 invoices → Create "Master Data" table → See one row per invoice with vendor, amount, date
+
 ---
 
 ## Tech Stack
 
 **Frontend:**
-- Next.js 14 (App Router)
+- Next.js 16 (App Router)
 - TypeScript
-- Tailwind CSS
-- Supabase Auth client
-- Deployed on Vercel
+- Tailwind CSS + shadcn/ui
+- TanStack Table for dynamic data tables
+- Clerk for authentication
+- Deployed on Vercel (`www.stackdocs.io`)
 
 **Backend:**
 - FastAPI (Python 3.11+)
-- Anthropic SDK (Claude Haiku 4.5) - direct integration with tool use
+- Claude Agent SDK - agentic extraction with session resume, SSE streaming
 - Mistral OCR (`mistral-ocr-latest` via Mistral Python SDK)
 - FastAPI BackgroundTasks for async processing
-- Deployed on Railway/Render/Fly.io
+- Deployed on DigitalOcean Droplet (`api.stackdocs.io`)
 
 **Database:**
 - Supabase PostgreSQL
@@ -218,7 +244,9 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - Supabase Realtime for status updates
 
 **AI/LLM:**
-- Claude Haiku 4.5 via Anthropic SDK (tool use for structured output)
+- Claude Agent SDK with custom database tools (agentic workflow)
+- Real-time thinking displayed via SSE streaming
+- Session resume for contextual corrections
 - Mistral OCR for text extraction (~$2 per 1,000 pages)
 
 ---
@@ -238,10 +266,10 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 **Security:**
 - HTTPS only (all traffic encrypted)
-- Supabase Auth handles password security
+- Clerk handles authentication and password security
 - Document files stored in Supabase Storage (access-controlled)
 - User data isolated (row-level security)
-- API authentication via Supabase JWT tokens
+- API authentication via Clerk JWT tokens
 
 **Reliability:**
 - Graceful error handling (OCR failures, LLM timeouts, network issues)
@@ -300,7 +328,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 **UX Decisions:**
 | Question | Decision |
 |----------|----------|
-| Document preview? | **Markdown viewer** showing OCR output (not PDF viewer) |
+| Document preview? | **Both** - PDF viewer tab + OCR Text tab |
 | Custom field name guidance? | Placeholder text: "e.g., vendor_name, total_amount" |
 | CSV nested arrays? | **Denormalized rows** (one row per line item, parent fields repeated) |
 
@@ -368,10 +396,12 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - **No feature creep**: Stick to PRD, track "nice to have" ideas for post-MVP
 - **Test with real documents**: Use actual invoices/receipts, not synthetic data
 
-**Backend (FastAPI + Anthropic SDK):**
-- Clear separation: routes, services, models
-- Direct Anthropic SDK with tool use for structured extraction
-- Async processing for extractions (BackgroundTasks)
+**Backend (FastAPI + Claude Agent SDK):**
+- Clear separation: routes, agents, tools
+- Claude Agent SDK with custom database tools for agentic extraction
+- SSE streaming for real-time agent thinking
+- Session resume for contextual corrections
+- Async processing for OCR (BackgroundTasks)
 - Proper error handling and logging
 
 **Frontend (Next.js + Supabase):**
@@ -385,6 +415,6 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 ## Related Documentation
 
-- **Architecture**: `planning/ARCHITECTURE.md` (data flow, API endpoints)
-- **Database schema**: `planning/SCHEMA.md` (table definitions, relationships)
-- **Development tasks**: `planning/TASKS.md` (week-by-week build plan)
+- **Architecture**: `docs/ARCHITECTURE.md` (data flow, API endpoints)
+- **Database schema**: `docs/SCHEMA.md` (table definitions, relationships)
+- **Roadmap**: `docs/ROADMAP.md` (feature priorities)

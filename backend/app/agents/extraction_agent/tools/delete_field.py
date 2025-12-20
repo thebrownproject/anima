@@ -1,6 +1,6 @@
 """
-Tool: remove_field (WRITE)
+Tool: delete_field (WRITE)
 
-Removes a field using JSON path notation.
+Deletes a field using JSON path notation.
 Uses Postgres jsonb path removal operator.
 """

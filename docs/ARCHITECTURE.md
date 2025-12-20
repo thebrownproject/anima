@@ -1,22 +1,22 @@
 # System Architecture
 
-**Last Updated**: 2025-12-16
-**Status**: Backend complete, Frontend not started
+**Last Updated**: 2025-12-21
+**Status**: Agent SDK integration in progress, Frontend planned
 
 ---
 
 ## Hybrid Architecture
 
-StackDocs uses a hybrid architecture where the frontend connects directly to Supabase for data operations, while FastAPI handles only AI processing.
+StackDocs uses a hybrid architecture where the frontend connects directly to Supabase for data operations, while FastAPI handles AI agent operations via streaming.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Next.js Frontend                        │
+│              Next.js Frontend (www.stackdocs.io)            │
 ├─────────────────────────────────────────────────────────────┤
-│  Supabase Client (Direct)     │    FastAPI (AI Only)        │
+│  Supabase Client (Direct)     │    FastAPI (Agents Only)    │
 │  ─────────────────────────    │    ──────────────────       │
-│  • Auth (login/signup)        │    • POST /api/process      │
-│  • Read documents             │    • POST /api/re-extract   │
+│  • Auth (login/signup)        │    • POST /api/document/*   │
+│  • Read documents             │    • POST /api/stack/*      │
 │  • Read extractions           │                             │
 │  • Edit extractions           │                             │
 │  • Realtime subscriptions     │                             │
@@ -25,61 +25,87 @@ StackDocs uses a hybrid architecture where the frontend connects directly to Sup
                 ▼                             ▼
 ┌───────────────────────────────┐  ┌─────────────────────────┐
 │      Supabase Platform        │  │   FastAPI Backend       │
-│  • PostgreSQL (RLS enforced)  │  │  • Mistral OCR API      │
-│  • Storage (documents)        │  │  • Anthropic SDK        │
-│  • Auth (JWT tokens)          │  │  • Background tasks     │
-│  • Realtime (status updates)  │  └─────────────────────────┘
-└───────────────────────────────┘
+│  • PostgreSQL (RLS enforced)  │  │  (api.stackdocs.io)     │
+│  • Storage (documents)        │  │  • Mistral OCR API      │
+│  • Auth (JWT tokens)          │  │  • Claude Agent SDK     │
+│  • Realtime (status updates)  │  │  • SSE streaming        │
+└───────────────────────────────┘  └─────────────────────────┘
 ```
 
 **Why hybrid?**
-- Only 2 FastAPI endpoints to maintain (vs 10+ in traditional architecture)
+- FastAPI only handles agent triggers (upload, extract, update)
 - Supabase Realtime for instant status updates (no polling)
-- Direct Anthropic SDK = simpler code, fewer dependencies
+- Claude Agent SDK = agentic workflow with session memory
 - RLS policies enforce security at database level
 
 ---
 
 ## Data Flows
 
-### Process Flow (Upload → OCR → Extract)
+### Document Upload Flow
 
 ```
-1. Frontend: POST /api/process (file + mode + user_id)
+1. Frontend: POST /api/document/upload (file + user_id)
 2. Backend:  Upload file to Supabase Storage
 3. Backend:  Create document record (status='processing')
 4. Backend:  Return document_id immediately
 5. Background task:
    a. Mistral OCR → save to ocr_results (cached)
-   b. Anthropic Claude → extract structured data
-   c. Save extraction to extractions table
-   d. Update document status='completed'
+   b. Update document status='ready'
 6. Frontend: Receives update via Supabase Realtime
 ```
 
-### Re-extract Flow (Cached OCR → New Extraction)
+### Document Extraction Flow (Agent-based, Streaming)
 
 ```
-1. Frontend: POST /api/re-extract (document_id + mode + fields)
-2. Backend:  Fetch cached OCR from ocr_results (no API call)
-3. Backend:  Run Claude extraction with new parameters
-4. Backend:  Save new extraction record
-5. Backend:  Return extraction result
+1. Frontend: POST /api/document/extract (document_id + user_id + mode)
+2. Backend:  Fetch cached OCR from ocr_results
+3. Backend:  Trigger extraction_agent with SSE streaming
+4. Agent:    Reads OCR → extracts structured data → writes to extractions
+5. Frontend: Receives real-time thinking via SSE stream
+6. Backend:  Returns session_id for future corrections
 ```
 
-**Key insight**: Re-extraction skips OCR entirely, saving ~$0.002 per document.
+### Document Update Flow (Session Resume)
+
+```
+1. Frontend: POST /api/document/update (document_id + instruction)
+2. Backend:  Resume agent session (Claude remembers context)
+3. Agent:    Reads instruction → updates extraction fields
+4. Frontend: Receives updated extraction via SSE stream
+```
+
+### Stack Extraction Flow
+
+```
+1. Frontend: POST /api/stack/extract (stack_id + user_id)
+2. Backend:  Trigger stack_agent with SSE streaming
+3. Agent:
+   a. Reads stack_documents to get document list
+   b. Reads OCR for each document
+   c. Creates/updates stack_tables schema
+   d. Extracts rows to stack_table_rows
+4. Frontend: Receives progress via SSE stream
+```
+
+**Key insight**: OCR is cached. Extraction and updates only cost Claude API, not Mistral OCR.
 
 ---
 
 ## API Surface
 
-### FastAPI Endpoints (AI processing only)
+### FastAPI Endpoints (api.stackdocs.io)
+
+Endpoints trigger agents with scoped context (user_id, document_id/stack_id).
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/health` | GET | Health check |
-| `/api/process` | POST | Upload + OCR + Extract (background) |
-| `/api/re-extract` | POST | New extraction from cached OCR |
+| `/api/document/upload` | POST | Upload file + run OCR (background) |
+| `/api/document/extract` | POST | Trigger extraction_agent (SSE streaming) |
+| `/api/document/update` | POST | Update extraction via session resume |
+| `/api/stack/extract` | POST | Trigger stack_agent (SSE streaming) |
+| `/api/stack/update` | POST | Update stack extraction via session |
 
 ### Frontend Direct Supabase Access
 
@@ -129,24 +155,52 @@ supabase.channel('doc-updates')
 
 **Trade-off**: API dependency, but mitigated by caching OCR results for re-extraction.
 
-### Anthropic SDK (not LangChain)
+### Claude Agent SDK (not raw Anthropic SDK)
 
-**Choice**: Direct Anthropic SDK with tool use for structured output
+**Choice**: Claude Agent SDK for agentic extraction workflow
 
 **Why**:
-- Simpler: No abstraction layer, easier debugging
-- Guaranteed structure: Tool use forces JSON schema compliance
-- Direct billing: No OpenRouter middleman
-- Easier upgrades: Direct access to new Claude models
+- Agentic: Agent autonomously reads, decides, and writes (like Claude Code)
+- Session memory: Resume sessions for corrections without re-explaining context
+- Custom tools: Agent uses database tools to read OCR and write extractions
+- SSE streaming: Real-time thinking visible to users
+- Built-in tool execution: No manual tool loop implementation
 
-**Implementation**:
+**Agentic Workflow**:
+```
+1. User gives task → "Extract data from this document"
+2. Agent reads data → Uses tools to fetch OCR text, current state
+3. Agent acts via tools → Tools perform real DB operations
+4. Agent summarizes → Tells user what was accomplished
+```
+
+**Custom Database Tools** (not filesystem tools):
 ```python
-response = client.messages.create(
-    model="claude-sonnet-4-20250514",
-    tools=[EXTRACTION_TOOL],
-    tool_choice={"type": "tool", "name": "save_extracted_data"},
-    messages=[{"role": "user", "content": prompt}]
-)
+# extraction_agent tools
+read_ocr(document_id)         # Fetch from ocr_results
+get_extraction(document_id)   # Read extractions JSONB
+create_extraction(data)       # Write new extraction
+set_field(path, value)        # Surgical JSONB update
+delete_field(path)            # Remove from JSONB
+
+# stack_agent tools (see CLAUDE.md for full list)
+get_stack_documents(stack_id) # List documents in stack
+get_tables(stack_id)          # Read table definitions
+create_table(schema)          # Create new table
+add_column(table_id, col)     # Add column to table
+create_row(table_id, data)    # Insert to stack_table_rows
+set_row_field(row_id, path, value)  # Surgical row update
+```
+
+**Session Resume**:
+```python
+# Initial extraction returns session_id
+async for msg in query(prompt="Extract from document", options=...):
+    session_id = msg.session_id
+
+# Later correction resumes same session
+async for msg in query(prompt="Fix vendor name", options=ClaudeAgentOptions(resume=session_id)):
+    # Claude remembers original document and extraction
 ```
 
 ### Supabase Realtime (not polling)
@@ -206,19 +260,61 @@ documents/{user_id}/{document_id}_{filename}
 
 ## Database Tables
 
+**Core Tables:**
+
 | Table | Purpose |
 |-------|---------|
 | `users` | User profile, usage limits, subscription tier |
-| `documents` | Uploaded file metadata, processing status |
+| `documents` | Uploaded file metadata, processing status, session_id |
 | `ocr_results` | Cached OCR text (for re-extraction) |
-| `extractions` | Extracted fields, confidence scores, mode |
+| `extractions` | Extracted JSONB fields, confidence scores, mode |
+
+**Stacks Tables:**
+
+| Table | Purpose |
+|-------|---------|
+| `stacks` | Stack metadata (collection of documents) |
+| `stack_documents` | Junction table: documents ↔ stacks (many-to-many) |
+| `stack_tables` | Table definitions within stacks (columns JSONB) |
+| `stack_table_rows` | Extracted row data (row_data JSONB) |
 
 **Key relationships**:
 - `users` 1:N `documents`
 - `documents` 1:N `extractions` (history preserved)
 - `documents` 1:1 `ocr_results` (cached)
+- `stacks` N:M `documents` (via `stack_documents`)
+- `stacks` 1:N `stack_tables`
+- `stack_tables` 1:N `stack_table_rows`
 
-See `planning/SCHEMA.md` for full table definitions.
+See `SCHEMA.md` for full table definitions.
+
+---
+
+## Frontend Stack
+
+**Deployment**: `www.stackdocs.io` (Vercel)
+
+**Technology**:
+- Next.js 16 (App Router) + TypeScript + Tailwind
+- shadcn/ui for components
+- TanStack Table for data tables with dynamic columns
+
+**Key Patterns**:
+- SSE streaming for real-time agent thinking display
+- Direct Supabase access for data reads/writes
+- Dynamic column generation from extraction schema
+- AI-first editing (corrections via natural language)
+
+**Data Flow**:
+```
+Frontend (www.stackdocs.io)
+    │
+    ├── Direct to Supabase (reads, writes, realtime)
+    │
+    └── SSE to FastAPI (agent triggers)
+            │
+            └── api.stackdocs.io
+```
 
 ---
 
@@ -226,7 +322,7 @@ See `planning/SCHEMA.md` for full table definitions.
 
 | Document | Purpose |
 |----------|---------|
-| `CLAUDE.md` | Quick reference for Claude Code |
-| `planning/SCHEMA.md` | Database schema with SQL |
-| `planning/PRD.md` | Product requirements |
-| `planning/TASKS.md` | Task breakdown + migration history |
+| `SCHEMA.md` | Database schema with SQL |
+| `PRD.md` | Product requirements |
+| `ROADMAP.md` | Feature priorities |
+| `plans/` | Feature plans (kanban structure) |

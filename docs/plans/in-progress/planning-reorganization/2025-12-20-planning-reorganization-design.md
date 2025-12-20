@@ -93,5 +93,5 @@ Slim down to project essentials:
 - [x] Organize project-level archive
   - Created `docs/plans/archive/2024-12-langchain-migration/` for completed migration docs
   - Kept `AGENT-NATIVE-ARCHITECTURE.md` at archive root as strategic reference
-- [ ] Update reference docs (ARCHITECTURE, SCHEMA, PRD, ROADMAP) to reflect current reality
-- [ ] Move this folder to `complete/` when done
+- [x] Update reference docs (ARCHITECTURE, SCHEMA, PRD, ROADMAP) to reflect current reality
+- [x] Move this folder to `complete/` when done
