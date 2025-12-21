@@ -126,7 +126,7 @@ CREATE TABLE extractions (
     custom_fields TEXT[],                    -- Field names if mode='custom'
 
     -- Tracking
-    model VARCHAR NOT NULL,                  -- 'claude-haiku-4-5-latest' or 'claude-agent-sdk'
+    model VARCHAR NOT NULL,                  -- 'claude-haiku-4-5' or 'claude-agent-sdk'
     processing_time_ms INTEGER NOT NULL,
     session_id VARCHAR,                      -- Agent SDK session ID
     is_correction BOOLEAN DEFAULT false,     -- True if created via /api/agent/correct

@@ -274,7 +274,7 @@ SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_KEY=your_service_role_key
 MISTRAL_API_KEY=your_mistral_key
 ANTHROPIC_API_KEY=sk-ant-xxx
-CLAUDE_MODEL=claude-haiku-4-5-latest
+CLAUDE_MODEL=claude-haiku-4-5
 ```
 
 ---

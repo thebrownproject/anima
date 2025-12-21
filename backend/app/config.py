@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # Anthropic API Configuration (for extraction)
     ANTHROPIC_API_KEY: str
-    CLAUDE_MODEL: str = "claude-haiku-4-5-latest"
+    CLAUDE_MODEL: str = "claude-haiku-4-5"
 
     # Mistral API Configuration (for OCR)
     MISTRAL_API_KEY: str

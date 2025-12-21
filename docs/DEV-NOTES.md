@@ -2262,3 +2262,50 @@ See handover prompt in session notes for detailed guidance.
 2. Check ROADMAP.md for current priorities
 3. Use `/superpowers:execute-plan` to continue extraction-agent work
 
+---
+
+## Session 20 - 2025-12-21 - Model Fix & Service Test Endpoints Design
+
+**Feature**: service-test-endpoints
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Fixed invalid Claude model identifier**:
+  - Changed `claude-haiku-4-5-latest` to `claude-haiku-4-5` (correct identifier)
+  - Updated in: `backend/app/config.py`, `.github/workflows/deploy.yml`, `docs/SCHEMA.md`, `CLAUDE.md`
+  - Verified via Perplexity search that `-latest` suffix is not valid for Claude models
+
+- [x] **Designed service test endpoints** (via `/superpowers:brainstorm`):
+  - `GET /api/test/claude` - Minimal ping using Agent SDK
+  - `GET /api/test/mistral` - List models (free call)
+  - Always returns 200 with status field for Swagger-friendly debugging
+  - Design saved to `docs/plans/todo/service-test-endpoints/`
+
+- [x] **Created implementation plan** (via `/superpowers:write-plan`):
+  - 5 tasks: response model, Claude endpoint, Mistral endpoint, router registration, manual verification
+  - Uses Claude Agent SDK `query()` function for Claude test
+  - Plan saved alongside design doc
+
+- [x] **Updated docs/CLAUDE.md**:
+  - Added override note for superpowers skills
+  - Plans should go to `plans/todo/<feature>/` or `plans/in-progress/<feature>/`, not `docs/plans/YYYY-MM-DD-<feature>.md`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Claude model ID | `claude-haiku-4-5` | `-latest` suffix not valid for Anthropic API |
+| Test approach | Minimal ping | Cheap (~$0.0001), proves connectivity without burning credits |
+| Response format | Always 200 + status field | Easier to read in Swagger than HTTP error codes |
+| Claude test method | Agent SDK `query()` | Matches how production code uses Claude |
+
+### Next Session
+
+**Task**: Implement service test endpoints OR continue extraction-agent frontend
+
+**Process**:
+1. Run `/continue` to load context
+2. Either execute `docs/plans/todo/service-test-endpoints/` plan
+3. Or move to extraction-agent work per ROADMAP.md priorities
+

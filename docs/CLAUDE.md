@@ -27,6 +27,8 @@
 - Not ready to start? Move to `plans/todo/`
 - Abandoned? Move to `plans/archive/`
 
+> **Override:** The `/superpowers:brainstorm` and `/superpowers:write-plan` skills specify saving to `docs/plans/YYYY-MM-DD-<feature>.md`. **Ignore this.** Instead, save to `docs/plans/todo/<feature>/` or `docs/plans/in-progress/<feature>/` as described above.
+
 ---
 
 ## Reference Docs
