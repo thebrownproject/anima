@@ -2360,3 +2360,63 @@ See handover prompt in session notes for detailed guidance.
 2. Run `/superpowers:execute-plan` with `docs/plans/in-progress/ocr-3-upgrade/`
 3. Work through 8 tasks: migration → OCR service → new route → cleanup → verify
 
+
+---
+
+## Session 22 - 2025-12-21 - Frontend Foundation Design & Planning
+
+**Feature**: nextjs-frontend-foundation
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Researched shadcn Nova style** (via Perplexity):
+  - New preset from Dec 2025 with compact layouts
+  - Reduced padding/margins for data-heavy apps
+  - HugeIcons integration for prominent icons
+  - Neutral theme for professional appearance
+
+- [x] **Brainstormed frontend foundation** (via `/superpowers:brainstorm`):
+  - Architecture: Next.js 16 + shadcn/ui (Nova) + Clerk + Supabase
+  - Navigation: Workspace (Documents, Extractions) + Stacks sections
+  - Integration: Direct Supabase access for CRUD, FastAPI for agents
+  - Design saved to `docs/plans/todo/nextjs-frontend-foundation/`
+
+- [x] **Created implementation plan** (via `/superpowers:write-plan`):
+  - 7 tasks: shadcn create → Clerk auth → Supabase client → env vars → sidebar nav → dashboard pages → test
+  - Plan uses correct approach: shadcn scaffolds all components (button, sidebar, utils, etc.)
+  - Plan saved alongside design doc
+  - Verified Clerk integration follows current App Router approach (clerkMiddleware, ClerkProvider, proxy.ts)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Project structure | Use existing `frontend/` directory | Clean up existing placeholder files |
+| shadcn initialization | `npx shadcn@latest create` with Nova preset | Auto-scaffolds Next.js project + all components |
+| Components approach | Import from shadcn, customize content only | Don't recreate components, only customize navigation |
+| Auth provider | Clerk | Modern, feature-rich, easy Next.js integration |
+| Database access | Direct Supabase | Faster, leverages Supabase features (Realtime, RLS) |
+| Sidebar style | sidebar-08 from shadcn preset | Solid foundation, can customize as needed |
+
+### Files Created
+
+- `docs/plans/todo/nextjs-frontend-foundation/2025-12-21-frontend-foundation-design.md`
+- `docs/plans/todo/nextjs-frontend-foundation/2025-12-21-frontend-foundation-plan.md`
+
+### Tasks Remaining
+
+- [ ] Execute implementation plan (7 tasks)
+- [ ] Test development server
+- [ ] Verify Clerk authentication flow
+- [ ] Confirm Nova styling applies correctly
+
+### Next Session
+
+**Task**: Execute Next.js frontend foundation implementation plan
+
+**Process**:
+1. Run `/continue` to load context
+2. Run `/superpowers:execute-plan` with `docs/plans/todo/nextjs-frontend-foundation/`
+3. Work through 7 tasks: shadcn create → Clerk → Supabase → env → sidebar → pages → test
+

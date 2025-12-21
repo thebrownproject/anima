@@ -22,6 +22,13 @@
 
 ### Todo
 
+**Next.js Frontend Foundation** (`plans/todo/nextjs-frontend-foundation/`)
+- Setup Next.js 16 + shadcn/ui (Nova style preset)
+- Integrate Clerk authentication
+- Integrate Supabase client
+- Create sidebar navigation (Workspace: Documents/Extractions, Stacks)
+- Enables: Foundation for all future frontend features
+
 **Service Test Endpoints** (`plans/todo/service-test-endpoints/`)
 - GET /api/test/claude - Minimal ping using Agent SDK
 - GET /api/test/mistral - List models (free call)
