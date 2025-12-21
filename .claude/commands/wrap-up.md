@@ -60,11 +60,18 @@ Add a session entry at the END of `docs/DEV-NOTES.md`:
 
 Keep notes detailed enough that grepping session titles gives useful context.
 
-## Step 3: Update ROADMAP.md (if milestone reached)
+## Step 3: Update ROADMAP.md (if plans changed)
 
-If a feature phase completed or priorities changed:
+Update ROADMAP.md if ANY of these happened this session:
+- **New plan created** in `docs/plans/todo/` or `docs/plans/in-progress/`
+- **Feature phase completed** (e.g., backend done, frontend started)
+- **Priorities changed**
+
+Steps:
 1. Read `docs/ROADMAP.md`
-2. Update "In Progress" or "Completed" sections as needed
+2. Add new features to "Todo" or "In Progress" sections
+3. Update existing feature status as needed
+4. Move completed features to "Completed" section
 
 ## Step 4: Git Commit
 

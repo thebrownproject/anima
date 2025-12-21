@@ -2309,3 +2309,54 @@ See handover prompt in session notes for detailed guidance.
 2. Either execute `docs/plans/todo/service-test-endpoints/` plan
 3. Or move to extraction-agent work per ROADMAP.md priorities
 
+---
+
+## Session 21 - 2025-12-21 - OCR 3 Upgrade Design & Planning ✅
+
+**Feature**: ocr-3-upgrade
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Researched Mistral OCR 3** (via Perplexity):
+  - New model: `mistral-ocr-2512` (released Dec 2025)
+  - 74% win rate over OCR 2, especially for tables/handwriting
+  - New `table_format="html"` parameter outputs HTML tables separately
+  - Markdown contains placeholders, `tables` array has actual HTML
+
+- [x] **Designed OCR 3 upgrade** (via `/superpowers:brainstorm`):
+  - Add `html_tables` JSONB column to `ocr_results` table
+  - New `POST /api/document/upload` endpoint (sync upload + OCR)
+  - Deprecate `/api/process` and `/api/re-extract`
+  - New document status: `ocr_complete`
+  - Agent continues using markdown only (HTML tables for frontend preview)
+  - Design saved to `docs/plans/in-progress/ocr-3-upgrade/`
+
+- [x] **Created implementation plan** (via `/superpowers:write-plan`):
+  - 8 tasks: migration, OCR service, new route, main.py, delete old route, verify, docs, cleanup
+  - Plan saved alongside design doc
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Storage approach | Add `html_tables` column | Minimal change, frontend replaces placeholders with HTML |
+| Agent impact | None - uses markdown only | HTML tables for preview, not extraction |
+| Sync vs async | Synchronous request | OCR takes ~2 sec, FastAPI async handles concurrency |
+| Document status | `ocr_complete` | Clear separation: OCR done, extraction separate |
+| Migration | Leave existing docs as-is | Project not live, no need to reprocess |
+
+### Files Created
+
+- `docs/plans/in-progress/ocr-3-upgrade/2025-12-21-ocr-3-upgrade-design.md`
+- `docs/plans/in-progress/ocr-3-upgrade/2025-12-21-ocr-3-upgrade-plan.md`
+
+### Next Session
+
+**Task**: Execute OCR 3 upgrade implementation plan
+
+**Process**:
+1. Run `/continue` to load context
+2. Run `/superpowers:execute-plan` with `docs/plans/in-progress/ocr-3-upgrade/`
+3. Work through 8 tasks: migration → OCR service → new route → cleanup → verify
+

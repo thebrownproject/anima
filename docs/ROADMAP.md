@@ -1,6 +1,6 @@
 # StackDocs Roadmap
 
-**Last Updated:** 2025-12-20
+**Last Updated:** 2025-12-21
 
 ---
 
@@ -8,12 +8,24 @@
 
 ### In Progress
 
+**OCR 3 Upgrade + Document Upload Endpoint** (`plans/in-progress/ocr-3-upgrade/`)
+- Upgrade from Mistral OCR 2 to OCR 3 (`mistral-ocr-2512`)
+- New `POST /api/document/upload` endpoint (sync upload + OCR)
+- Deprecate `/api/process` and `/api/re-extract`
+- Store HTML tables for future document preview
+- Enables: Better extraction accuracy, cleaner API separation, document preview
+
 **Extraction Agent Frontend** (`plans/in-progress/extraction-agent/`)
 - Backend: Complete (Claude Agent SDK integration, SSE streaming, session resume)
 - Frontend: Pending (Phase 6-7)
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
 ### Todo
+
+**Service Test Endpoints** (`plans/todo/service-test-endpoints/`)
+- GET /api/test/claude - Minimal ping using Agent SDK
+- GET /api/test/mistral - List models (free call)
+- Enables: Swagger-friendly debugging of external service connectivity
 
 **Stacks Feature** (`plans/todo/stacks/`)
 - Database: Ready (migrations 004 & 005 applied)
