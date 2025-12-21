@@ -2207,3 +2207,58 @@ This is an important session - these docs should accurately reflect:
 
 See handover prompt in session notes for detailed guidance.
 
+---
+
+## Session 19 - 2025-12-21 - Documentation Review & Session Commands
+
+**Feature**: planning-reorganization
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Comprehensive documentation review**:
+  - Verified all 6 planning docs against actual codebase
+  - Confirmed tool names consistent across all docs
+  - Confirmed folder structure matches documentation
+  - Zero inconsistencies found
+
+- [x] **Created session slash commands**:
+  - `/continue` - Resume session, activates using-superpowers, loads context
+  - `/wrap-up` - End session, updates plans/DEV-NOTES, commits
+  - `/handover-prompt` - Mid-session handover using prompt-craft skill
+  - Deleted outdated `migration-resume.md`
+
+- [x] **Updated root CLAUDE.md**:
+  - Added Session Commands table
+  - Added superpowers workflow documentation
+  - Added MCP Tools Guide
+  - Added Reference Docs table
+  - Updated architecture diagram to proposed endpoints
+  - Added target audience (SMBs)
+
+- [x] **Updated docs/CLAUDE.md**:
+  - Added DEV-NOTES grep guidance with examples
+  - Clarified never to read DEV-NOTES in full
+
+- [x] **Updated wrap-up template**:
+  - New session notes format with detailed structure
+  - Uses dates not "Week X, Day Y" format
+  - Includes decisions table, tasks remaining, next session process
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| DEV-NOTES usage | Grep only, never read full | File is 2200+ lines, only latest session needed |
+| Session note format | `## Session N - YYYY-MM-DD - Description` | Grep-friendly, date-based not week-based |
+| Slash commands | 3 commands (continue, wrap-up, handover-prompt) | Covers session lifecycle, superpowers handles implementation |
+
+### Next Session
+
+**Task**: Continue with extraction-agent frontend implementation
+
+**Process**:
+1. Run `/continue` to load context
+2. Check ROADMAP.md for current priorities
+3. Use `/superpowers:execute-plan` to continue extraction-agent work
+
