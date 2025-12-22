@@ -96,6 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <UserButton
               showName
+              afterSignOutUrl="/"
               appearance={{
                 elements: {
                   rootBox: "w-full",
