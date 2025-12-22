@@ -77,12 +77,13 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           DROPLET_IP: ${{ secrets.DROPLET_IP }}
         with:
           host: ${{ secrets.DROPLET_IP }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: IMAGE_NAME,GHCR_TOKEN,GHCR_USER,SUPABASE_URL,SUPABASE_KEY,MISTRAL_API_KEY,ANTHROPIC_API_KEY,DROPLET_IP
+          envs: IMAGE_NAME,GHCR_TOKEN,GHCR_USER,SUPABASE_URL,SUPABASE_KEY,MISTRAL_API_KEY,ANTHROPIC_API_KEY,CLERK_SECRET_KEY,DROPLET_IP
           script: |
             set -e
             echo "Deploying StackDocs API..."
@@ -97,14 +98,17 @@ jobs:
             # Create production environment file
             cat > .env.production << EOF
             ENVIRONMENT=production
+            DEBUG=False
             SUPABASE_URL=${SUPABASE_URL}
             SUPABASE_KEY=${SUPABASE_KEY}
+            CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+            CLERK_AUTHORIZED_PARTIES=https://www.stackdocs.io
             MISTRAL_API_KEY=${MISTRAL_API_KEY}
             ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
             CLAUDE_MODEL=claude-haiku-4-5
             APP_NAME=StackDocs
             APP_VERSION=1.0.0
-            ALLOWED_ORIGINS=https://stackdocs.io,https://app.stackdocs.io,http://localhost:3000
+            ALLOWED_ORIGINS=https://www.stackdocs.io
             EOF
 
             # Pull the latest image

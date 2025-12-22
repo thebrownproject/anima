@@ -14,14 +14,25 @@ if [ ! -f .env.production ]; then
     echo "Creating template..."
     cat > .env.production << 'EOF'
 ENVIRONMENT=production
+DEBUG=False
+
+# Supabase
 SUPABASE_URL=your_supabase_url_here
 SUPABASE_KEY=your_supabase_service_role_key_here
+
+# Clerk Authentication
+CLERK_SECRET_KEY=sk_live_your_clerk_secret_key_here
+CLERK_AUTHORIZED_PARTIES=https://www.stackdocs.io
+
+# AI Services
 MISTRAL_API_KEY=your_mistral_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 CLAUDE_MODEL=claude-sonnet-4-20250514
+
+# Application
 APP_NAME=StackDocs
 APP_VERSION=1.0.0
-ALLOWED_ORIGINS=http://localhost:3000,https://your-frontend-domain.com
+ALLOWED_ORIGINS=https://www.stackdocs.io
 EOF
     echo "✅ Template .env.production created!"
     echo "⚠️  Please update with your actual API keys and run again"
