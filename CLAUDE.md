@@ -83,7 +83,7 @@ This project uses the **superpowers workflow** for planning and implementing fea
 │  Supabase Client (Direct)     │    FastAPI (AI Only)        │
 │  ─────────────────────────    │    ──────────────────       │
 │  • Auth (login/signup)        │    • POST /api/document/*   │
-│  • Read documents             │    • POST /api/stack/*      │
+│  • Read documents             │    • POST /api/agent/*      │
 │  • Read extractions           │                             │
 │  • Edit extractions           │                             │
 │  • Realtime subscriptions     │                             │
@@ -203,31 +203,40 @@ Extracts structured data across multiple documents into a unified table. Reads a
 
 Routes defined in `backend/app/routes/`. Endpoints trigger agents with scoped context (user_id, document_id).
 
-### Current Endpoints (to be deprecated)
+### Document Endpoints
 
-These endpoints exist and work, but will be replaced by the proposed endpoints below.
+| Endpoint                       | Purpose                                                    |
+| ------------------------------ | ---------------------------------------------------------- |
+| `POST /api/document/upload`    | Upload file to Supabase Storage, run Mistral OCR, save to `ocr_results` |
+| `POST /api/document/retry-ocr` | Retry OCR on failed documents (uses already-uploaded file) |
 
-| Endpoint                  | Purpose                             | Status     |
-| ------------------------- | ----------------------------------- | ---------- |
-| `GET /health`             | Health check                        | Keep       |
-| `POST /api/process`       | Upload + OCR + extract (background) | Deprecated |
-| `POST /api/re-extract`    | Re-extract from cached OCR          | Deprecated |
-| `POST /api/agent/extract` | Extract with SSE streaming          | Deprecated |
-| `POST /api/agent/correct` | Correct via session resume          | Deprecated |
-| `GET /api/agent/health`   | Agent health check                  | Deprecated |
+### Agent Endpoints
 
-### Proposed Endpoints (aligned with agents)
+| Endpoint                  | Purpose                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `POST /api/agent/extract` | Extract from `ocr_results`, agent uses tools to write to `extractions` (SSE streaming) |
+| `POST /api/agent/correct` | Resume session, agent makes changes based on natural language instruction (SSE streaming) |
+| `GET /api/agent/health`   | Agent health check                                                   |
 
-New endpoint structure matching extraction_agent and stack_agent.
+### Test Endpoints
 
-| Endpoint                     | Purpose                                  | Agent            |
-| ---------------------------- | ---------------------------------------- | ---------------- |
-| `GET /health`                | Health check                             | -                |
-| `POST /api/document/upload`  | Upload file + run OCR (background)       | -                |
-| `POST /api/document/extract` | Trigger extraction_agent (SSE streaming) | extraction_agent |
-| `POST /api/document/update`  | Update extraction via session resume     | extraction_agent |
-| `POST /api/stack/extract`    | Trigger stack_agent (SSE streaming)      | stack_agent      |
-| `POST /api/stack/update`     | Update stack extraction via session      | stack_agent      |
+| Endpoint              | Purpose                           |
+| --------------------- | --------------------------------- |
+| `GET /api/test/claude`  | Test Claude Agent SDK connectivity |
+| `GET /api/test/mistral` | Test Mistral OCR API connectivity  |
+
+### Utility Endpoints
+
+| Endpoint      | Purpose      |
+| ------------- | ------------ |
+| `GET /health` | Health check |
+
+### Planned Endpoints (stacks feature)
+
+| Endpoint                 | Purpose                                  | Agent       |
+| ------------------------ | ---------------------------------------- | ----------- |
+| `POST /api/stack/extract` | Trigger stack_agent (SSE streaming)      | stack_agent |
+| `POST /api/stack/update`  | Update stack extraction via session      | stack_agent |
 
 **Frontend uses Supabase directly for:** reading documents/extractions, editing fields, usage stats, auth.
 

@@ -16,7 +16,7 @@ StackDocs uses a hybrid architecture where the frontend connects directly to Sup
 │  Supabase Client (Direct)     │    FastAPI (Agents Only)    │
 │  ─────────────────────────    │    ──────────────────       │
 │  • Auth (login/signup)        │    • POST /api/document/*   │
-│  • Read documents             │    • POST /api/stack/*      │
+│  • Read documents             │    • POST /api/agent/*      │
 │  • Read extractions           │                             │
 │  • Edit extractions           │                             │
 │  • Realtime subscriptions     │                             │
@@ -64,7 +64,7 @@ StackDocs uses a hybrid architecture where the frontend connects directly to Sup
 ### Document Extraction Flow (Agent-based, Streaming)
 
 ```
-1. Frontend: POST /api/document/extract (document_id + user_id + mode)
+1. Frontend: POST /api/agent/extract (document_id + user_id + mode)
 2. Backend:  Fetch cached OCR from ocr_results
 3. Backend:  Trigger extraction_agent with SSE streaming
 4. Agent:    Reads OCR → extracts structured data → writes to extractions
@@ -72,12 +72,12 @@ StackDocs uses a hybrid architecture where the frontend connects directly to Sup
 6. Backend:  Returns session_id for future corrections
 ```
 
-### Document Update Flow (Session Resume)
+### Document Correction Flow (Session Resume)
 
 ```
-1. Frontend: POST /api/document/update (document_id + instruction)
+1. Frontend: POST /api/agent/correct (document_id + instruction)
 2. Backend:  Resume agent session (Claude remembers context)
-3. Agent:    Reads instruction → updates extraction fields
+3. Agent:    Reads instruction → updates extraction fields via tools
 4. Frontend: Receives updated extraction via SSE stream
 ```
 
