@@ -2820,3 +2820,98 @@ Feature is designed and planned. Implementation pending:
 
 **Context**: Phase 1 (database) and Phase 2 (frontend) are complete. Only backend auth and testing remain.
 
+
+---
+
+## Session 28 - 2025-12-22 - OCR 3 Upgrade + Document Upload Endpoint ✅
+
+**Feature**: OCR 3 Upgrade (`plans/complete/ocr-3-upgrade/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Upgraded Mistral SDK** (1.9.11 → 1.10.0) - Added OCR 3 support with `table_format` parameter
+- [x] **Database migration** - Added `html_tables` JSONB column to `ocr_results` (migration 008)
+- [x] **OCR service update** - Changed to `mistral-ocr-latest`, added `table_format="html"`, extract HTML tables
+- [x] **New document endpoints**:
+  - `POST /api/document/upload` - Synchronous upload + OCR
+  - `POST /api/document/retry-ocr` - Retry failed OCR on existing documents
+- [x] **Deleted deprecated files** - `routes/process.py`, `services/extractor.py`
+- [x] **Updated Mistral test** - Now calls actual OCR API instead of listing models
+- [x] **Updated docs** - SCHEMA.md, ARCHITECTURE.md, ROADMAP.md
+- [x] **Moved plans to complete** - ocr-3-upgrade, service-test-endpoints
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Model ID | `mistral-ocr-latest` | Auto-updates to latest OCR version |
+| Upload flow | Synchronous | Frontend gets immediate result, no background task needed |
+| Table format | HTML | Better structure for complex tables (colspan/rowspan) |
+
+### Files Modified
+
+- `backend/app/services/ocr.py` - OCR 3 integration
+- `backend/app/routes/document.py` - New upload + retry-ocr endpoints
+- `backend/app/routes/test.py` - Mistral test now calls OCR
+- `backend/app/main.py` - Replaced process router with document router
+- `backend/migrations/008_add_html_tables.sql` - New column
+- `docs/SCHEMA.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`
+
+### Next Session
+
+See Session 29.
+
+---
+
+## Session 29 - 2025-12-22 - Clerk + Supabase Integration Phase 3 Complete ✅
+
+**Feature**: clerk-supabase-integration (`plans/complete/clerk-supabase-integration/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 7**: Installed `clerk-backend-api==4.2.0` and `httpx==0.28.1`
+- [x] **Task 8**: Added `CLERK_SECRET_KEY` and `CLERK_AUTHORIZED_PARTIES` to config
+- [x] **Task 9**: Created `backend/app/auth.py` with `get_current_user` dependency
+- [x] **Task 10**: Protected agent routes (`/api/agent/*`) with Clerk auth
+- [x] **Task 11**: Protected document routes (`/api/document/*`) with Clerk auth
+- [x] **Task 12**: Updated `.env.example` with Clerk configuration
+- [x] **Task 13**: Updated `docs/SCHEMA.md` for TEXT user_id and Clerk RLS
+- [x] **Bonus**: Added DEBUG mode bypass for Swagger testing
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| SDK package | `clerk-backend-api` | Official Clerk Python SDK |
+| Dev testing | DEBUG mode bypass | Skip auth when DEBUG=True and no header present |
+| Dev user ID | `dev_user_test` | Consistent ID for Swagger testing |
+
+### Files Created/Modified
+
+- `backend/app/auth.py` - **NEW** - Clerk auth dependency
+- `backend/app/config.py` - Added CLERK settings
+- `backend/app/routes/agent.py` - Added auth to endpoints
+- `backend/app/routes/document.py` - Added auth to endpoints
+- `backend/.env.example` - Added Clerk configuration section
+- `docs/SCHEMA.md` - Updated for TEXT user_id and Clerk RLS
+
+### Clerk + Supabase Integration Summary
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1 | ✅ | Database: UUID→TEXT, RLS policies |
+| Phase 2 | ✅ | Frontend: Clerk-authenticated Supabase clients |
+| Phase 3 | ✅ | Backend: FastAPI auth dependency |
+| Phase 4 | ✅ | Docs, env, cleanup |
+
+### Next Session
+
+**Task**: Test Clerk + Supabase integration end-to-end OR start Extraction Agent Frontend
+
+**Testing checklist**:
+1. Start backend with `DEBUG=True` - Swagger works without auth
+2. Start frontend - Sign in with Clerk
+3. Test document upload - Verify user_id is Clerk ID in database
+4. Test RLS - Verify users only see their own data
