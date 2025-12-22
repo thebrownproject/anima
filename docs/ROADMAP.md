@@ -8,6 +8,11 @@
 
 ### In Progress
 
+**Vercel Deployment** (`plans/in-progress/vercel-deployment/`)
+- Deploy frontend to Vercel with environment variables
+- Configure Clerk webhook for production URL
+- Test user sync to Supabase
+
 **Extraction Agent Frontend** (`plans/in-progress/extraction-agent/`)
 - Backend: Complete (Claude Agent SDK integration, SSE streaming, session resume)
 - Frontend: Pending (Phase 6-7)
