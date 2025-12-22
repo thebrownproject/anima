@@ -8,8 +8,9 @@ Extraction is handled separately via /api/agent/extract.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 
+from ..auth import get_current_user
 from ..services.storage import upload_document, create_signed_url
 from ..services.ocr import extract_text_ocr
 from ..services.usage import check_usage_limit, increment_usage
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 @router.post("/document/upload")
 async def upload_and_ocr(
     file: UploadFile = File(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    user_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
+    user_id: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Upload document and run OCR (synchronous).
@@ -32,7 +33,7 @@ async def upload_and_ocr(
 
     Args:
         file: Document file (PDF, JPG, PNG)
-        user_id: User UUID
+        user_id: From Clerk JWT (injected via auth dependency)
 
     Returns:
         document_id, filename, status, ocr_result
@@ -120,7 +121,7 @@ async def upload_and_ocr(
 @router.post("/document/retry-ocr")
 async def retry_ocr(
     document_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    user_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
+    user_id: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Retry OCR on an existing document (for failed OCR recovery).
@@ -131,7 +132,7 @@ async def retry_ocr(
 
     Args:
         document_id: Existing document UUID
-        user_id: User UUID
+        user_id: From Clerk JWT (injected via auth dependency)
 
     Returns:
         document_id, status, ocr_result

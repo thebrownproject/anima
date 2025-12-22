@@ -2,7 +2,7 @@
 
 **Product:** StackDocs MVP - Document Data Extractor
 **Version:** 1.1
-**Last Updated:** 2025-12-20
+**Last Updated:** 2025-12-22
 **Database:** Supabase PostgreSQL
 
 ---
@@ -15,6 +15,7 @@
 3. **Date-based sorting**: Latest extraction = most recent by timestamp
 4. **JSONB flexibility**: `extracted_fields` supports any document type
 5. **Security first**: Row-Level Security (RLS) on all tables
+6. **Clerk authentication**: All `user_id` columns are TEXT (Clerk IDs like `user_xxx`)
 
 ---
 
@@ -36,11 +37,11 @@
 
 ## Table: `users`
 
-User profiles linked to Supabase Auth, with current month usage tracking integrated.
+User profiles with current month usage tracking. Uses Clerk user IDs (TEXT).
 
 ```sql
 CREATE TABLE public.users (
-    id UUID PRIMARY KEY REFERENCES auth.users(id),
+    id TEXT PRIMARY KEY DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
     email TEXT NOT NULL,
 
     -- Usage tracking (current month only)
@@ -64,7 +65,7 @@ Metadata about uploaded documents and their processing status.
 ```sql
 CREATE TABLE documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES public.users(id),
+    user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
     filename VARCHAR(255) NOT NULL,
     file_path TEXT NOT NULL,
     file_size_bytes INTEGER NOT NULL,
@@ -88,7 +89,7 @@ Raw OCR text extracted from documents using Mistral OCR. One OCR result per docu
 CREATE TABLE ocr_results (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL UNIQUE REFERENCES documents(id),
-    user_id UUID NOT NULL REFERENCES public.users(id),
+    user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
 
     -- OCR output
     raw_text TEXT NOT NULL,
@@ -116,7 +117,7 @@ AI-extracted structured data from documents. Multiple extractions per document s
 CREATE TABLE extractions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL REFERENCES documents(id),
-    user_id UUID NOT NULL REFERENCES public.users(id),
+    user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
 
     -- Extraction data
     extracted_fields JSONB NOT NULL,
@@ -151,7 +152,7 @@ Document groupings for batch extraction.
 ```sql
 CREATE TABLE stacks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES public.users(id),
+    user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
     name VARCHAR NOT NULL,
     description TEXT,
     status VARCHAR DEFAULT 'active',         -- 'active', 'archived'
@@ -181,7 +182,7 @@ Table definitions within stacks. Stores column schema and extraction session.
 CREATE TABLE stack_tables (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     stack_id UUID NOT NULL REFERENCES stacks(id),
-    user_id UUID NOT NULL REFERENCES public.users(id),
+    user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
 
     -- Table definition
     name VARCHAR NOT NULL DEFAULT 'Master Data',
@@ -207,7 +208,7 @@ CREATE TABLE stack_table_rows (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     table_id UUID NOT NULL REFERENCES stack_tables(id),
     document_id UUID NOT NULL REFERENCES documents(id),
-    user_id UUID NOT NULL REFERENCES public.users(id),
+    user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
 
     -- Row data
     row_data JSONB NOT NULL,                 -- Column values for this document
@@ -223,6 +224,7 @@ CREATE TABLE stack_table_rows (
 ## Row-Level Security (RLS)
 
 All tables have RLS enabled to ensure users can only access their own data.
+Uses Clerk JWT tokens via Supabase's third-party auth integration.
 
 ```sql
 -- Enable RLS on all tables
@@ -235,27 +237,43 @@ ALTER TABLE stack_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stack_tables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stack_table_rows ENABLE ROW LEVEL SECURITY;
 
--- Users can only see their own data
-CREATE POLICY users_isolation ON public.users
-    FOR ALL USING (auth.uid() = id);
+-- Clerk JWT-based isolation policies
+-- Uses (SELECT auth.jwt()->>'sub') for Clerk user ID extraction
+CREATE POLICY users_clerk_isolation ON public.users
+    FOR ALL TO authenticated
+    USING ((SELECT auth.jwt()->>'sub') = id);
 
-CREATE POLICY documents_isolation ON documents
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY documents_clerk_isolation ON documents
+    FOR ALL TO authenticated
+    USING ((SELECT auth.jwt()->>'sub') = user_id);
 
-CREATE POLICY ocr_results_isolation ON ocr_results
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY ocr_results_clerk_isolation ON ocr_results
+    FOR ALL TO authenticated
+    USING ((SELECT auth.jwt()->>'sub') = user_id);
 
-CREATE POLICY extractions_isolation ON extractions
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY extractions_clerk_isolation ON extractions
+    FOR ALL TO authenticated
+    USING ((SELECT auth.jwt()->>'sub') = user_id);
 
-CREATE POLICY stacks_isolation ON stacks
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY stacks_clerk_isolation ON stacks
+    FOR ALL TO authenticated
+    USING ((SELECT auth.jwt()->>'sub') = user_id);
 
-CREATE POLICY stack_tables_isolation ON stack_tables
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY stack_documents_clerk_isolation ON stack_documents
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM stacks
+        WHERE stacks.id = stack_documents.stack_id
+        AND stacks.user_id = (SELECT auth.jwt()->>'sub')
+    ));
 
-CREATE POLICY stack_table_rows_isolation ON stack_table_rows
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY stack_tables_clerk_isolation ON stack_tables
+    FOR ALL TO authenticated
+    USING ((SELECT auth.jwt()->>'sub') = user_id);
+
+CREATE POLICY stack_table_rows_clerk_isolation ON stack_table_rows
+    FOR ALL TO authenticated
+    USING ((SELECT auth.jwt()->>'sub') = user_id);
 ```
 
 ---

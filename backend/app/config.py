@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     # Mistral API Configuration (for OCR)
     MISTRAL_API_KEY: str
 
+    # Clerk Configuration (for auth)
+    CLERK_SECRET_KEY: str
+    CLERK_AUTHORIZED_PARTIES: str = "https://www.stackdocs.io"  # Comma-separated
+
     # Application Configuration
     APP_NAME: str = "StackDocs MVP"
     APP_VERSION: str = "0.2.0"  # Bumped for hybrid architecture migration

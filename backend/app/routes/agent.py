@@ -12,10 +12,11 @@ import logging
 import time
 from typing import AsyncIterator
 
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..agents.extraction_agent import extract_with_agent, correct_with_session
+from ..auth import get_current_user
 from ..database import get_supabase_client
 
 router = APIRouter()
@@ -30,9 +31,9 @@ def sse_event(data: dict) -> str:
 @router.post("/extract")
 async def extract_with_streaming(
     document_id: str = Form(...),
-    user_id: str = Form(...),
     mode: str = Form("auto"),
     custom_fields: str | None = Form(None),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Extract from document with SSE streaming.
@@ -42,9 +43,9 @@ async def extract_with_streaming(
 
     Args:
         document_id: Document UUID (must have OCR cached)
-        user_id: User UUID
         mode: "auto" or "custom"
         custom_fields: Comma-separated field names (required if mode=custom)
+        user_id: From Clerk JWT (injected via auth dependency)
 
     Returns:
         SSE stream with events:
@@ -137,16 +138,16 @@ async def extract_with_streaming(
 @router.post("/correct")
 async def correct_extraction(
     document_id: str = Form(...),
-    user_id: str = Form(...),
     instruction: str = Form(...),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Correct extraction using session resume.
 
     Args:
         document_id: Document UUID
-        user_id: User UUID
         instruction: Correction instruction
+        user_id: From Clerk JWT (injected via auth dependency)
 
     Returns:
         SSE stream with same event types as /extract
