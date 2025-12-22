@@ -348,6 +348,43 @@ Copy the signing secret and add it to your `.env.local` as `CLERK_WEBHOOK_SIGNIN
 
 ---
 
+## Task 8: Remove legacy unauthenticated Supabase client
+
+**Files:**
+- Modify: `frontend/lib/supabase.ts`
+
+**Step 1: Remove the legacy export**
+
+Delete line 21 (the unauthenticated client export):
+
+```typescript
+// DELETE THIS LINE:
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+```
+
+Also remove the comment on line 20:
+```typescript
+// DELETE THIS LINE:
+// Legacy client for migration (remove after full integration)
+```
+
+The file should now only export `createClerkSupabaseClient`.
+
+**Step 2: Verify no code depends on it**
+
+Run: `grep -r "import { supabase" frontend/`
+
+Expected: No matches (nothing imports the legacy client).
+
+**Step 3: Commit**
+
+```bash
+git add frontend/lib/supabase.ts
+git commit -m "security: remove unauthenticated Supabase client"
+```
+
+---
+
 ## Summary
 
 | Task | Description | Commit Message |
@@ -359,5 +396,6 @@ Copy the signing secret and add it to your `.env.local` as `CLERK_WEBHOOK_SIGNIN
 | 5 | Add environment variables | (no commit - .env.local) |
 | 6 | Test middleware protection | (manual testing) |
 | 7 | Configure Clerk webhook | (manual - Clerk Dashboard) |
+| 8 | Remove legacy unauthenticated Supabase client | `security: remove unauthenticated Supabase client` |
 
-**Total Tasks:** 7 (4 code changes, 1 env config, 2 manual setup/testing)
+**Total Tasks:** 8 (5 code changes, 1 env config, 2 manual setup/testing)
