@@ -3,7 +3,7 @@
 import * as React from "react"
 import {
   IconFileText,
-  IconLayers,
+  IconLayersLinked,
   IconLifebuoy,
   IconSend,
   IconStack2,
@@ -65,7 +65,7 @@ const data = {
     {
       name: "All Stacks",
       url: "/stacks",
-      icon: IconLayers,
+      icon: IconLayersLinked,
     },
   ],
 }
