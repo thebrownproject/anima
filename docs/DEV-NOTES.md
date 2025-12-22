@@ -2662,6 +2662,7 @@ Feature complete. Ready to move to `plans/complete/`.
 c0ddbd2 feat(frontend): replace NavUser with Clerk UserButton in sidebar
 e039204 chore(frontend): remove unused NavUser component
 df6fb04 docs: move clerk-shadcn-theme plan to complete
+9c4c63d feat(frontend): redirect to /documents after sign-in/sign-up
 ```
 
 ### Verification
@@ -2672,7 +2673,15 @@ df6fb04 docs: move clerk-shadcn-theme plan to complete
 | UserButton in sidebar | Shows name + avatar ✓ |
 | UserButton dropdown | Manage account + Sign out ✓ |
 | Waitlist mode | Get Started shows waitlist ✓ |
+| Post-auth redirect | Lands on /documents ✓ |
 | Build | Passes without errors ✓ |
+
+### Additional Clerk Config (Dashboard)
+
+- Google SSO enabled
+- Microsoft SSO enabled
+- Apple SSO enabled
+- Waitlist mode enabled for beta access
 
 ### Tasks Remaining
 
@@ -2680,10 +2689,10 @@ Feature complete. Plan moved to `docs/plans/complete/clerk-shadcn-theme/`.
 
 ### Next Session
 
-**Task**: Continue with OCR 3 Upgrade or Extraction Agent Frontend
+**Task**: Clerk + Supabase Integration (JWT, RLS policies)
 
 **Process**:
 1. Run `/continue` to load context
-2. Choose next priority from ROADMAP
-3. Run `/superpowers:execute-plan` on selected feature
+2. `/superpowers:brainstorm` for Clerk + Supabase integration approach
+3. Configure JWT template, RLS policies, user sync
 
