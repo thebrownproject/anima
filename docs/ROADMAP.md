@@ -13,12 +13,6 @@
 - Frontend: Pending (Phase 6-7)
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
-**Clerk + Supabase Integration** (`plans/in-progress/clerk-supabase-integration/`)
-- Design: Complete (architecture, security model documented)
-- Dashboard: Complete (Clerk configured as Supabase third-party auth provider)
-- Implementation: Pending (15 tasks across 4 phases)
-- Enables: RLS enforcement with Clerk user IDs, secure multi-tenant data access
-
 ### Todo
 
 **Stacks Feature** (`plans/todo/stacks/`)
@@ -30,6 +24,13 @@
 ---
 
 ## Completed
+
+**Clerk + Supabase Integration** (Dec 2025) ✅
+- Database: All user_id columns changed to TEXT for Clerk IDs
+- RLS: 8 policies using `auth.jwt()->>'sub'` for Clerk JWT
+- Frontend: Clerk-authenticated Supabase clients (client + server + hook)
+- Backend: FastAPI routes protected with Clerk auth dependency
+- Enables: Secure multi-tenant data access with Clerk authentication
 
 **OCR 3 Upgrade + Document Upload Endpoint** (Dec 2025) ✅
 - Upgraded from Mistral OCR 2 to OCR 3 (`mistral-ocr-latest`)
