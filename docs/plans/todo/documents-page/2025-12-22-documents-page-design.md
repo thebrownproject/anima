@@ -76,7 +76,7 @@ return <DocumentsTable documents={documents} />
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Documents / invoice_acme.pdf    [Stacks ▼] [Export]         │
+│ Documents / invoice_acme.pdf   [Q1 Expenses +2] [Edit] [Export]│
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  Extracted Data                    Preview                  │
@@ -89,7 +89,6 @@ return <DocumentsTable documents={documents} />
 │  │ total    $1,320.00  98%  │     │   Here             │   │
 │  │ line_items [2 items] 94% │     │                    │   │
 │  └──────────────────────────┘     └────────────────────┘   │
-│  [Edit]                                                     │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │  ✨ Ask agent to filter, edit, or analyze data...      [>]  │
@@ -100,8 +99,30 @@ return <DocumentsTable documents={documents} />
 
 | Action | Behavior |
 |--------|----------|
-| Stacks dropdown | Checkbox list of user's stacks, toggle to assign/unassign |
+| Stacks badge | Shows assigned stacks (e.g., "Q1 Expenses +2"). Clickable - opens dropdown to assign/unassign. Hover highlight, no dropdown arrow. |
+| Edit button | Opens Edit Document dialog (stacks + fields config) |
 | Export button | Export extracted data (format TBD - likely CSV/JSON) |
+
+### Stacks Dropdown (in header)
+
+Clicking the stacks badge opens a dropdown:
+
+```
+┌─────────────────────────────────┐
+│ Assign to Stacks                │
+├─────────────────────────────────┤
+│ ◎ Q1 Expenses 2024         ✓   │
+│ ◎ Vendor Contracts         ✓   │
+│ ◎ Travel Receipts          ✓   │
+│ ◎ Tax Filings 2023             │
+│ ◎ Project Alpha                │
+│ ◎ HR & Onboarding              │
+├─────────────────────────────────┤
+│ + Create New Stack              │
+└─────────────────────────────────┘
+```
+
+Click stack to toggle assignment. Checkmark shows currently assigned.
 
 ### Extracted Data Panel (Left)
 
@@ -111,42 +132,66 @@ return <DocumentsTable documents={documents} />
 - Values rendered based on type (strings, numbers, expandable for arrays/objects)
 - Confidence from `extractions.confidence_scores` (green checkmark + percentage)
 
-**Edit button:** Opens edit dialog (see below)
-
 ### Preview Panel (Right)
 
 **Tabs:**
 - **PDF** - Render original document using PDF viewer library
 - **Visual** - Render OCR markdown as formatted text
 
-### Edit Dialog
+### Edit Document Dialog
 
-Simple key-value editor for MVP:
+Configure document stacks and extraction fields. Opens from Edit button in header.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│ Edit Extraction                               [X]   │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  vendor        [Acme Corporation    ] [🗑]          │
-│  invoice_number[INV-2024-0847       ] [🗑]          │
-│  date          [2024-01-15          ] [🗑]          │
-│  total         [$1,320.00           ] [🗑]          │
-│                                                     │
-│  [+ Add Field]                                      │
-│                                                     │
-├─────────────────────────────────────────────────────┤
-│                          [Cancel]  [Save Changes]   │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ Edit Document                                         [X]   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Stacks                                                     │
+│  ┌─────────────────────────────────────┐                   │
+│  │ Q1 Expenses, Travel              ▼  │                   │
+│  └─────────────────────────────────────┘                   │
+│    ┌─────────────────────────────────┐                     │
+│    │ Q1 Expenses 2024          ✓     │                     │
+│    │ Vendor Contracts                │                     │
+│    │ Travel Receipts           ✓     │                     │
+│    │ Tax Filings 2023                │                     │
+│    │ + Create New Stack              │                     │
+│    └─────────────────────────────────┘                     │
+│                                                             │
+│  Fields                                                     │
+│  ┌───────────────────┬─────────────────────────────┬───┐   │
+│  │ Field             │ Description                 │   │   │
+│  ├───────────────────┼─────────────────────────────┼───┤   │
+│  │ [vendor        ]  │ [Company that issued...]    │ 🗑 │   │
+│  │ [invoice_number]  │ [                    ]      │ 🗑 │   │
+│  │ [date          ]  │ [Invoice date, not due]     │ 🗑 │   │
+│  │ [total         ]  │ [Final amount inc. tax]     │ 🗑 │   │
+│  └───────────────────┴─────────────────────────────┴───┘   │
+│  [+ Add Field]                                              │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                              [Cancel]  [Save & Re-extract]  │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+**Sections:**
+
+1. **Stacks** - Dropdown to assign/unassign stacks (same pattern as header dropdown)
+2. **Fields** - Configure extraction schema:
+   - Field name (editable)
+   - Description (optional hint for the LLM, e.g., "Invoice date, not the due date")
+   - Delete button to remove field
+   - Add Field button to add new fields
+
+**Important:** Users edit field names and descriptions, NOT values. Value editing is done via the AI chat bar.
 
 **Save flow:**
-1. User edits fields, adds/removes as needed
-2. Clicks "Save Changes"
-3. Frontend generates instruction for agent (e.g., "Update vendor to 'Acme Corp', delete field 'notes', add field 'po_number' with value '12345'")
-4. Sends to `/api/agent/correct` endpoint
-5. Agent processes, updates database
-6. UI shows streaming response in agent panel
+1. User configures fields (add/remove/rename) and descriptions
+2. Clicks "Save & Re-extract"
+3. Frontend sends updated schema to agent
+4. Agent re-extracts using new field definitions and descriptions
+5. UI shows streaming response in agent panel
 
 ### AI Chat Bar (Bottom)
 
@@ -281,7 +326,7 @@ LIMIT 1
 | `PreviewPanel` | PDF + Visual tabs |
 | `PdfViewer` | PDF rendering (react-pdf or similar) |
 | `VisualPreview` | Rendered markdown from OCR |
-| `EditExtractionDialog` | Key-value field editor |
+| `EditDocumentDialog` | Stacks + fields configuration dialog |
 | `AiChatBar` | Floating input for agent instructions |
 | `AgentResponsePanel` | Collapsible streaming output display |
 | `StacksDropdown` | Assign/unassign stacks to document |
@@ -301,11 +346,12 @@ LIMIT 1
 
 - **Search** - filter documents by name
 - **Stack filter** - dropdown to filter by stack
-- **Grid view** - card-based layout with previews
-- **Field types** - Text, Number, Date, List type selection in edit dialog
-- **Inline editing** - click cell to edit directly in table
+- **Grid view** - card-based layout with document previews
+- **Field types** - Text, Number, Date, List type selection in edit dialog (like Mistral's schema builder)
+- **Field templates** - save and reuse field configurations across documents
+- **Inline value editing** - click cell to edit value directly in extracted data table
 - **Bulk actions** - select multiple documents, bulk assign to stack
-- **Re-extract button** - trigger fresh extraction
+- **Re-extract button** - trigger fresh extraction without opening edit dialog
 
 ---
 
