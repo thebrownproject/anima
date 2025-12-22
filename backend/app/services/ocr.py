@@ -138,7 +138,7 @@ async def extract_text_ocr(document_url: str) -> OCRResult:
         # Call Mistral OCR API (sync client, run in thread)
         def _call_ocr():
             return client.ocr.process(
-                model="mistral-ocr-2512",
+                model="mistral-ocr-latest",
                 document={"type": "document_url", "document_url": document_url},
                 table_format="html",
                 include_image_base64=False
@@ -165,7 +165,7 @@ async def extract_text_ocr(document_url: str) -> OCRResult:
 
         # Build result
         page_count = len(response.pages)
-        model = getattr(response, 'model', 'mistral-ocr-2512')
+        model = getattr(response, 'model', 'mistral-ocr-latest')
 
         logger.info(
             f"OCR complete: {page_count} pages, {len(extracted_text)} chars, {processing_time_ms}ms"
