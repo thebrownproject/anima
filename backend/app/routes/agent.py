@@ -1,11 +1,8 @@
 """
 Agent SDK routes - streaming extraction endpoints.
 
-These run alongside existing /api/process and /api/re-extract.
-Key difference: These stream Claude's thinking in real-time via SSE.
-
 Endpoints:
-- POST /api/agent/extract - Extract with streaming (uses cached OCR)
+- POST /api/agent/extract - Extract with streaming
 - POST /api/agent/correct - Correct extraction with session resume
 - GET /api/agent/health - Health check
 """
@@ -18,12 +15,10 @@ from typing import AsyncIterator
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..services.agent_extractor import extract_with_agent, correct_with_session
+from ..agents.extraction_agent import extract_with_agent, correct_with_session
 from ..database import get_supabase_client
-from ..config import get_settings
 
 router = APIRouter()
-settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
@@ -34,16 +29,16 @@ def sse_event(data: dict) -> str:
 
 @router.post("/extract")
 async def extract_with_streaming(
-    document_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    user_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    mode: str = Form("auto"),  # pyright: ignore[reportCallInDefaultInitializer]
-    custom_fields: str | None = Form(None),  # pyright: ignore[reportCallInDefaultInitializer]
+    document_id: str = Form(...),
+    user_id: str = Form(...),
+    mode: str = Form("auto"),
+    custom_fields: str | None = Form(None),
 ):
     """
     Extract from document with SSE streaming.
 
-    Uses cached OCR (document must already be processed via /api/process).
-    Streams Claude's thinking in real-time, then saves extraction with session_id.
+    Creates extraction record first, then runs agent.
+    Agent writes directly to database via tools.
 
     Args:
         document_id: Document UUID (must have OCR cached)
@@ -53,12 +48,11 @@ async def extract_with_streaming(
 
     Returns:
         SSE stream with events:
-        - {"type": "status", "message": "..."}
-        - {"type": "thinking", "text": "..."}
-        - {"type": "complete", "extraction": {...}, "session_id": "...", "extraction_id": "..."}
-        - {"type": "error", "message": "..."}
+        - {"text": "..."} - Claude's response
+        - {"tool": "...", "input": {...}} - Tool activity
+        - {"complete": true, "extraction_id": "...", "session_id": "..."}
+        - {"error": "..."}
     """
-    # Validate mode
     if mode not in ["auto", "custom"]:
         raise HTTPException(status_code=400, detail="Mode must be 'auto' or 'custom'")
 
@@ -67,88 +61,67 @@ async def extract_with_streaming(
 
     supabase = get_supabase_client()
 
-    # Verify document exists and user owns it
-    doc = supabase.table("documents").select("*").eq("id", document_id).eq("user_id", user_id).single().execute()
+    # Verify document exists and has OCR
+    doc = supabase.table("documents").select("id").eq("id", document_id).eq("user_id", user_id).single().execute()
     if not doc.data:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Fetch cached OCR
-    ocr = supabase.table("ocr_results").select("raw_text").eq("document_id", document_id).single().execute()
+    ocr = supabase.table("ocr_results").select("id").eq("document_id", document_id).single().execute()
     if not ocr.data:
-        raise HTTPException(
-            status_code=400,
-            detail="No cached OCR found. Use /api/process to process the document first."
-        )
+        raise HTTPException(status_code=400, detail="No cached OCR. Process document first.")
 
     # Parse custom fields
     fields_list: list[str] | None = None
     if custom_fields:
         fields_list = [f.strip() for f in custom_fields.split(",") if f.strip()]
 
+    # Create extraction record BEFORE starting agent
+    start_time = time.time()
+    extraction = supabase.table("extractions").insert({
+        "document_id": document_id,
+        "user_id": user_id,
+        "extracted_fields": {},  # Agent will populate via tools
+        "confidence_scores": {},
+        "mode": mode,
+        "custom_fields": fields_list,
+        "model": "claude-agent-sdk",
+        "processing_time_ms": 0,  # Will update on completion
+        "status": "in_progress"
+    }).execute()
+
+    extraction_id = extraction.data[0]["id"]
+
     async def event_stream() -> AsyncIterator[str]:
         """Generate SSE events from extraction."""
-        yield sse_event({"type": "status", "message": "Starting extraction with Agent SDK..."})
-
-        start_time = time.time()
-        extraction_result = None
-        session_id = None
-        corrections_enabled = False
-
         try:
-            async for event in extract_with_agent(ocr.data["raw_text"], mode, fields_list):
-                if event["type"] == "thinking":
-                    yield sse_event(event)
+            async for event in extract_with_agent(
+                extraction_id=extraction_id,
+                document_id=document_id,
+                user_id=user_id,
+                db=supabase,
+                mode=mode,
+                custom_fields=fields_list
+            ):
+                if "complete" in event:
+                    # Update processing time
+                    processing_time_ms = int((time.time() - start_time) * 1000)
+                    supabase.table("extractions").update({
+                        "processing_time_ms": processing_time_ms
+                    }).eq("id", extraction_id).execute()
 
-                elif event["type"] == "complete":
-                    extraction_result = event["extraction"]
-                    session_id = event.get("session_id")  # May be None
-                    corrections_enabled = event.get("corrections_enabled", False)
-                    # Don't yield yet - save to DB first
+                    # Store session_id on document for future corrections
+                    if event.get("session_id"):
+                        supabase.table("documents").update({
+                            "session_id": event["session_id"]
+                        }).eq("id", document_id).execute()
 
-                elif event["type"] == "error":
-                    yield sse_event(event)
-                    return
+                    event["processing_time_ms"] = processing_time_ms
 
-            if extraction_result:
-                processing_time_ms = int((time.time() - start_time) * 1000)
-
-                # Save extraction (session_id may be None - corrections just won't work)
-                extraction = supabase.table("extractions").insert({
-                    "document_id": document_id,
-                    "user_id": user_id,
-                    "extracted_fields": extraction_result.get("extracted_fields", {}),
-                    "confidence_scores": extraction_result.get("confidence_scores", {}),
-                    "mode": mode,
-                    "custom_fields": fields_list,
-                    "model": "claude-agent-sdk",
-                    "processing_time_ms": processing_time_ms,
-                    "session_id": session_id,  # May be None
-                }).execute()
-
-                # Only update document session_id if we have one
-                if session_id:
-                    supabase.table("documents").update({
-                        "session_id": session_id
-                    }).eq("id", document_id).execute()
-
-                logger.info(f"Agent extraction saved for document {document_id}, session {session_id}, corrections_enabled={corrections_enabled}")
-
-                yield sse_event({
-                    "type": "complete",
-                    "extraction_id": extraction.data[0]["id"],
-                    "document_id": document_id,
-                    "session_id": session_id,
-                    "corrections_enabled": corrections_enabled,
-                    "extracted_fields": extraction_result.get("extracted_fields", {}),
-                    "confidence_scores": extraction_result.get("confidence_scores", {}),
-                    "processing_time_ms": processing_time_ms,
-                })
-            else:
-                yield sse_event({"type": "error", "message": "No extraction result"})
+                yield sse_event(event)
 
         except Exception as e:
-            logger.error(f"Agent extraction failed for document {document_id}: {e}")
-            yield sse_event({"type": "error", "message": str(e)})
+            logger.error(f"Extraction stream error: {e}")
+            yield sse_event({"error": str(e)})
 
     return StreamingResponse(
         event_stream(),
@@ -156,105 +129,69 @@ async def extract_with_streaming(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Accel-Buffering": "no",
         }
     )
 
 
 @router.post("/correct")
 async def correct_extraction(
-    document_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    user_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
-    instruction: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
+    document_id: str = Form(...),
+    user_id: str = Form(...),
+    instruction: str = Form(...),
 ):
     """
     Correct extraction using session resume.
 
-    Resumes the previous Claude session, so Claude remembers:
-    - The original document content
-    - What it previously extracted
-    - The conversation context
-
     Args:
         document_id: Document UUID
         user_id: User UUID
-        instruction: Correction instruction (e.g., "The vendor name should be 'Acme Inc'")
+        instruction: Correction instruction
 
     Returns:
         SSE stream with same event types as /extract
     """
     supabase = get_supabase_client()
 
-    # Verify document exists and user owns it
+    # Get document with session_id
     doc = supabase.table("documents").select("session_id").eq("id", document_id).eq("user_id", user_id).single().execute()
     if not doc.data:
         raise HTTPException(status_code=404, detail="Document not found")
 
     session_id = doc.data.get("session_id")
     if not session_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No session found for this document. Extract with /api/agent/extract first."
-        )
+        raise HTTPException(status_code=400, detail="No session found. Extract first.")
+
+    # Get latest extraction
+    extraction = supabase.table("extractions") \
+        .select("id, mode, custom_fields") \
+        .eq("document_id", document_id) \
+        .order("created_at", desc=True) \
+        .limit(1) \
+        .single() \
+        .execute()
+
+    if not extraction.data:
+        raise HTTPException(status_code=400, detail="No extraction found")
+
+    extraction_id = extraction.data["id"]
 
     async def event_stream() -> AsyncIterator[str]:
         """Generate SSE events from correction."""
-        yield sse_event({"type": "status", "message": f"Resuming session for correction..."})
-
-        start_time = time.time()
-        extraction_result = None
-
         try:
-            async for event in correct_with_session(session_id, instruction):
-                if event["type"] == "thinking":
-                    yield sse_event(event)
-
-                elif event["type"] == "complete":
-                    extraction_result = event["extraction"]
-                    # Don't yield yet - save to DB first
-
-                elif event["type"] == "error":
-                    yield sse_event(event)
-                    return
-
-            if extraction_result:
-                processing_time_ms = int((time.time() - start_time) * 1000)
-
-                # Get the latest extraction to find the mode
-                latest = supabase.table("extractions").select("mode, custom_fields").eq("document_id", document_id).order("created_at", desc=True).limit(1).single().execute()
-
-                # Save new extraction (correction)
-                extraction = supabase.table("extractions").insert({
-                    "document_id": document_id,
-                    "user_id": user_id,
-                    "extracted_fields": extraction_result.get("extracted_fields", {}),
-                    "confidence_scores": extraction_result.get("confidence_scores", {}),
-                    "mode": latest.data.get("mode", "auto") if latest.data else "auto",
-                    "custom_fields": latest.data.get("custom_fields") if latest.data else None,
-                    "model": "claude-agent-sdk",
-                    "processing_time_ms": processing_time_ms,
-                    "session_id": session_id,
-                    "is_correction": True,  # Mark as correction
-                }).execute()
-
-                logger.info(f"Correction saved for document {document_id}")
-
-                yield sse_event({
-                    "type": "complete",
-                    "extraction_id": extraction.data[0]["id"],
-                    "document_id": document_id,
-                    "session_id": session_id,
-                    "extracted_fields": extraction_result.get("extracted_fields", {}),
-                    "confidence_scores": extraction_result.get("confidence_scores", {}),
-                    "processing_time_ms": processing_time_ms,
-                    "is_correction": True,
-                })
-            else:
-                yield sse_event({"type": "error", "message": "No extraction result from correction"})
+            async for event in correct_with_session(
+                session_id=session_id,
+                extraction_id=extraction_id,
+                document_id=document_id,
+                user_id=user_id,
+                instruction=instruction,
+                db=supabase
+            ):
+                yield sse_event(event)
 
         except Exception as e:
-            logger.error(f"Correction failed for document {document_id}: {e}")
-            yield sse_event({"type": "error", "message": str(e)})
+            logger.error(f"Correction stream error: {e}")
+            yield sse_event({"error": str(e)})
 
     return StreamingResponse(
         event_stream(),
@@ -273,5 +210,6 @@ async def agent_health():
     return {
         "status": "ok",
         "sdk": "claude-agent-sdk",
-        "endpoints": ["/api/agent/extract", "/api/agent/correct"]
+        "endpoints": ["/api/agent/extract", "/api/agent/correct"],
+        "architecture": "agentic-tools"
     }

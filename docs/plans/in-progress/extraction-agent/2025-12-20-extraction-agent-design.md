@@ -1,8 +1,8 @@
 # Extraction Agent - Design
 
-> **Status:** In Progress (Backend service working, Frontend pending)
+> **Status:** Backend Complete (Agentic tools implemented, Frontend pending)
 > **Created:** 2025-12-18
-> **Updated:** 2025-12-20
+> **Updated:** 2025-12-22
 
 ---
 
@@ -12,6 +12,7 @@ Agentic document extraction using Claude Agent SDK, enabling:
 - Session-based extraction with memory
 - User corrections via session resume
 - Real-time streaming of Claude's reasoning
+- Tools perform real database operations
 
 ---
 
@@ -21,10 +22,12 @@ Agentic document extraction using Claude Agent SDK, enabling:
 
 | Component | Location | Status |
 |-----------|----------|--------|
-| Agent Extractor Service | `backend/app/services/agent_extractor.py` | Working |
+| Extraction Agent | `backend/app/agents/extraction_agent/` | Working |
+| Agentic Tools (6) | `backend/app/agents/extraction_agent/tools/` | Working |
 | SSE Streaming Routes | `backend/app/routes/agent.py` | Working |
-| Dummy Extraction Tool | In agent_extractor.py | Working |
-| Session Capture | Via ResultMessage.session_id | Working |
+| Session Resume | Via ClaudeAgentOptions.resume | Working |
+| Status Column | `extractions.status` | Migrated |
+| RPC Functions | `update_extraction_field`, `remove_extraction_field` | Migrated |
 
 ### API Endpoints
 
