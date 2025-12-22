@@ -2762,3 +2762,61 @@ Feature is designed and planned. Implementation pending:
 
 **Important**: Dashboard config is already complete (Clerk domain configured in Supabase).
 
+---
+
+## Session 27 - 2025-12-22 - Clerk + Supabase Integration Phase 1 & 2
+
+**Feature**: clerk-supabase-integration
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 1: Database Migration (Tasks 1-3)**:
+  - Dropped all FK constraints and old RLS policies via Supabase MCP
+  - Changed all `user_id` columns from UUID to TEXT (7 tables)
+  - Set defaults to `auth.jwt()->>'sub'` for auto-population
+  - Created 8 new RLS policies using `(SELECT auth.jwt()->>'sub') = user_id`
+  - Verified all changes via SQL queries
+
+- [x] **Phase 2: Frontend Supabase Clients (Tasks 4-6)**:
+  - Updated `frontend/lib/supabase.ts` with `createClerkSupabaseClient()` using `accessToken` callback
+  - Created `frontend/lib/supabase-server.ts` for server components
+  - Created `frontend/hooks/use-supabase.ts` hook for client components
+  - Committed: `2291e0f feat(frontend): add Clerk-authenticated Supabase clients`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Supabase client approach | `accessToken` callback | Official docs recommend this over `global.fetch` override |
+| Skip JWT template | Yes | Third-party auth integration doesn't need `template: 'supabase'` |
+
+### Files Modified
+
+- `frontend/lib/supabase.ts` - Added Clerk-authenticated client factory
+- `frontend/lib/supabase-server.ts` - New server-side client
+- `frontend/hooks/use-supabase.ts` - New hook for client components
+
+### Tasks Remaining
+
+- [ ] Phase 3: Backend auth (Tasks 7-11)
+  - Install Clerk Python SDK
+  - Add CLERK_SECRET_KEY to config
+  - Create auth dependency
+  - Update agent routes
+  - Update process routes
+- [ ] Phase 4: Environment & Verification (Tasks 12-15)
+
+### Next Session
+
+**Task**: Complete Clerk + Supabase Integration (Phase 3: Backend Auth)
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Read `docs/ARCHITECTURE.md` to understand FastAPI backend structure
+3. Continue `/superpowers:execute-plan` from Task 7
+4. Focus on Tasks 7-11 (Backend auth)
+5. Then Tasks 12-15 (Environment & verification)
+
+**Context**: Phase 1 (database) and Phase 2 (frontend) are complete. Only backend auth and testing remain.
+
