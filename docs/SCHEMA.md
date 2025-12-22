@@ -130,6 +130,7 @@ CREATE TABLE extractions (
     processing_time_ms INTEGER NOT NULL,
     session_id VARCHAR,                      -- Agent SDK session ID
     is_correction BOOLEAN DEFAULT false,     -- True if created via /api/agent/correct
+    status VARCHAR(20) DEFAULT 'completed',  -- pending, in_progress, completed, failed
 
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -269,6 +270,8 @@ Migration files are in `backend/migrations/`:
 | 003_add_extraction_metadata.sql | model, processing_time_ms columns |
 | 004_add_stacks_schema.sql | Stacks tables |
 | 005_remove_extraction_id_from_stack_rows.sql | Simplify stack_table_rows schema |
+| 006_add_extraction_status.sql | Add status column for agent workflow |
+| 007_add_extraction_rpc_functions.sql | RPC functions for JSONB field updates |
 
 ---
 

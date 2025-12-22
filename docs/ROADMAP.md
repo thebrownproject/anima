@@ -1,6 +1,6 @@
 # StackDocs Roadmap
 
-**Last Updated:** 2025-12-21
+**Last Updated:** 2025-12-22
 
 ---
 
@@ -21,13 +21,6 @@
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
 ### Todo
-
-**Next.js Frontend Foundation** (`plans/todo/nextjs-frontend-foundation/`)
-- Setup Next.js 16 + shadcn/ui (Nova style preset)
-- Integrate Clerk authentication
-- Integrate Supabase client
-- Create sidebar navigation (Workspace: Documents/Extractions, Stacks)
-- Enables: Foundation for all future frontend features
 
 **Service Test Endpoints** (`plans/todo/service-test-endpoints/`)
 - GET /api/test/claude - Minimal ping using Agent SDK
@@ -59,6 +52,14 @@
 - Consolidated docs into kanban structure
 - Refactored plans to superpowers format
 - Cleaned up archive
+
+**Next.js Frontend Foundation** (Dec 2025) ✅
+- Next.js 16 + shadcn/ui (new-york style, sidebar-08)
+- Clerk authentication with modal sign-in/sign-up
+- Supabase client configured
+- Route groups: `(app)/` for protected routes
+- Sidebar navigation: Workspace (Documents, Extractions) + Stacks
+- Placeholder pages ready for feature implementation
 
 ---
 

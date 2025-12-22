@@ -2406,17 +2406,98 @@ See handover prompt in session notes for detailed guidance.
 
 ### Tasks Remaining
 
-- [ ] Execute implementation plan (7 tasks)
-- [ ] Test development server
-- [ ] Verify Clerk authentication flow
-- [ ] Confirm Nova styling applies correctly
+- [x] Execute implementation plan (completed in Session 23)
+
+---
+
+## Session 23 - 2025-12-22 - Frontend Foundation Implementation ✅
+
+**Feature**: nextjs-frontend-foundation
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Executed implementation plan** (via `/superpowers:execute-plan`):
+  - Installed Clerk and Supabase dependencies
+  - Created `.env.local.example` template
+  - Created `proxy.ts` with Clerk middleware (Next.js 16+)
+  - Updated root layout with ClerkProvider
+  - Created Supabase client (`lib/supabase.ts`)
+  - Customized sidebar with StackDocs navigation and Tabler icons
+  - Created `(app)` route group with auth-protected layout
+  - Created placeholder pages: documents, extractions, stacks
+  - Updated home page with Clerk auth buttons (SignedIn/SignedOut)
+
+- [x] **Adapted plan based on Clerk docs**:
+  - Used `proxy.ts` (Next.js 16+) instead of `middleware.ts`
+  - Used modal components (`<SignInButton>`, `<SignUpButton>`) instead of separate pages
+  - Simplified auth via `auth.protect()` in layout
+
+- [x] **Fixed issues discovered during testing**:
+  - `IconLayers` doesn't exist in Tabler → used `IconLayersLinked`
+  - Updated `.gitignore` patterns to allow `.env.local.example` and `frontend/lib/`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Style preset | new-york (not nova) | Nova doesn't support sidebar-08 block |
+| Font | Geist (keep default) | Modern, from Next.js - no need to change |
+| Route structure | `(app)/` route group | Cleaner URLs (`/documents` vs `/dashboard/documents`) |
+| Clerk integration | Modals, not pages | Simpler, official quickstart approach |
+| Auth protection | `auth.protect()` in layout | Per-layout protection, cleaner than middleware route matching |
+
+### Files Created/Modified
+
+**Created:**
+- `frontend/proxy.ts` - Clerk middleware
+- `frontend/.env.local.example` - Environment template
+- `frontend/lib/supabase.ts` - Supabase client
+- `frontend/app/(app)/layout.tsx` - App layout with sidebar and auth
+- `frontend/app/(app)/documents/page.tsx` - Documents page
+- `frontend/app/(app)/extractions/page.tsx` - Extractions page
+- `frontend/app/(app)/stacks/page.tsx` - Stacks page
+
+**Modified:**
+- `frontend/app/layout.tsx` - Added ClerkProvider
+- `frontend/app/page.tsx` - Added Clerk auth buttons
+- `frontend/components/app-sidebar.tsx` - StackDocs navigation, Tabler icons
+- `frontend/components/nav-main.tsx` - Tabler icons
+- `frontend/components/nav-projects.tsx` - Tabler icons
+- `frontend/components/nav-secondary.tsx` - Tabler icons
+
+### Commits
+
+```
+e807365 feat(frontend): add environment variables template
+02805a2 feat(frontend): add Clerk proxy for Next.js 16
+65675b5 feat(frontend): wrap app with ClerkProvider
+fa8eae6 feat(frontend): add Supabase client configuration
+84c43aa feat(frontend): customize sidebar with StackDocs navigation and Tabler icons
+17d2483 feat(frontend): add app layout with sidebar and auth protection
+da087e2 feat(frontend): add app placeholder pages (documents, extractions, stacks)
+28ea5a1 feat(frontend): update home page with Clerk auth buttons
+946b116 chore(frontend): remove old dashboard page (replaced by route groups)
+05f88f3 feat(frontend): add shadcn utils
+ab86b59 fix(frontend): use correct Tabler icon name (IconLayersLinked)
+```
+
+### Verification
+
+| Route | Status | Expected |
+|-------|--------|----------|
+| `/` | 200 | Public home page with auth buttons |
+| `/documents` | 307 | Redirects to sign-in (protected) |
+| `/extractions` | 307 | Redirects to sign-in (protected) |
+| `/stacks` | 307 | Redirects to sign-in (protected) |
+
+### Tasks Remaining
+
+Feature complete. Ready to move to `plans/complete/`.
 
 ### Next Session
 
-**Task**: Execute Next.js frontend foundation implementation plan
+**Task**: Continue with next priority from ROADMAP (OCR 3 Upgrade or Extraction Agent Frontend)
 
-**Process**:
-1. Run `/continue` to load context
-2. Run `/superpowers:execute-plan` with `docs/plans/todo/nextjs-frontend-foundation/`
-3. Work through 7 tasks: shadcn create → Clerk → Supabase → env → sidebar → pages → test
+**Frontend foundation is complete and can be built upon.**
 

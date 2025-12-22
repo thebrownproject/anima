@@ -89,11 +89,17 @@ Add this function after `_extract_usage_info` (around line 100):
 
 ```python
 def _extract_html_tables(pages: list[Any]) -> list[str] | None:
-    """Extract HTML tables from all pages."""
+    """Extract HTML table content from all pages.
+
+    OCR 3 returns tables as objects: {"id": "tbl-0", "format": "html", "content": "<table>..."}
+    We extract just the content strings for storage.
+    """
     tables: list[str] = []
     for page in pages:
         if page_tables := getattr(page, 'tables', None):
-            tables.extend(page_tables)
+            for table in page_tables:
+                if content := getattr(table, 'content', None):
+                    tables.append(content)
     return tables if tables else None
 ```
 
@@ -413,6 +419,8 @@ Expected: `{"status":"ok",...}`
 
 Press Ctrl+C to stop the server.
 
+> **Note:** Full table validation happens in Task 8. This task just verifies the server runs.
+
 ---
 
 ## Task 7: Update Documentation
@@ -467,11 +475,11 @@ git commit -m "docs: Update schema and architecture for OCR 3 upgrade
 cd /Users/fraserbrown/stackdocs/backend && uvicorn app.main:app --reload --port 8001
 ```
 
-**Step 2: Test the new endpoint with a real document**
+**Step 2: Test with a document WITHOUT tables**
 
 Using Swagger UI at http://localhost:8001/docs:
 1. Navigate to `POST /api/document/upload`
-2. Upload a test PDF/image
+2. Upload a simple PDF/image (no tables)
 3. Provide a valid `user_id`
 4. Execute
 
@@ -483,7 +491,7 @@ Expected response:
   "status": "ocr_complete",
   "ocr_result": {
     "raw_text": "...",
-    "html_tables": [...] or null,
+    "html_tables": null,
     "page_count": 1,
     "processing_time_ms": ...,
     "model": "mistral-ocr-2512"
@@ -491,16 +499,31 @@ Expected response:
 }
 ```
 
-**Step 3: Verify database**
+**Step 3: Test with a document WITH tables**
+
+Upload an invoice or form containing tables. Verify:
+1. `html_tables` is an array of HTML strings (not objects)
+2. Each entry starts with `<table` and ends with `</table>`
+3. `raw_text` contains the markdown with table placeholders
+
+Example expected `html_tables`:
+```json
+["<table><tr><th>Item</th><th>Price</th></tr>...</table>"]
+```
+
+> **Important:** Check the markdown (`raw_text`) for table placeholders. They may look like `[tbl-0.html](tbl-0.html)` or similar. Document the actual format for Phase 2 frontend work.
+
+**Step 4: Verify database**
 
 Check Supabase to confirm:
 - Document record has `status = 'ocr_complete'`
-- OCR result has `html_tables` column (may be null if no tables in doc)
+- `ocr_results.html_tables` contains valid JSON array of HTML strings
+- `ocr_results.model` is `mistral-ocr-2512`
 
-**Step 4: Move plan to complete**
+**Step 5: Move plan to complete**
 
 ```bash
-git mv docs/plans/todo/ocr-3-upgrade docs/plans/complete/
+git mv docs/plans/in-progress/ocr-3-upgrade docs/plans/complete/
 git commit -m "chore: Move OCR 3 upgrade plan to complete"
 ```
 

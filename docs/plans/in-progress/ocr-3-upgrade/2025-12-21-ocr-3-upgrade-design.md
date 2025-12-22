@@ -189,11 +189,15 @@ function renderOcrContent(rawText: string, htmlTables: string[] | null) {
 
   let rendered = rawText;
   htmlTables.forEach((tableHtml, i) => {
+    // Replace placeholder with actual HTML table
+    // Note: Placeholder format should be verified during Phase 1 testing
     rendered = rendered.replace(`[tbl-${i}.html](tbl-${i}.html)`, tableHtml);
   });
   return rendered;
 }
 ```
+
+> **Note:** The placeholder format `[tbl-{i}.html](tbl-{i}.html)` should be verified during Phase 1 testing (Task 8). The actual format may differ slightly.
 
 ---
 
@@ -201,17 +205,25 @@ function renderOcrContent(rawText: string, htmlTables: string[] | null) {
 
 ### OCR 3 Output Format
 
-OCR 3 outputs markdown with embedded placeholders, not full HTML. The `tables` array contains the actual HTML:
+OCR 3 outputs markdown with embedded placeholders, not full HTML. The `tables` array contains table objects with content:
 
 ```json
 {
   "pages": [{
     "index": 0,
     "markdown": "Invoice\n\n[tbl-0.html](tbl-0.html)\n\nTotal: $1,320.00",
-    "tables": ["<table><tr><th>Product</th>...</table>"]
+    "tables": [
+      {
+        "id": "tbl-0",
+        "format": "html",
+        "content": "<table><tr><th>Product</th>...</table>"
+      }
+    ]
   }]
 }
 ```
+
+We extract just the `content` field from each table object and store as `html_tables: ["<table>...</table>"]`.
 
 ### Why Synchronous?
 
