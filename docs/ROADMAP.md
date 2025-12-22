@@ -13,12 +13,6 @@
 - Frontend: Pending (Phase 6-7)
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
-**Auth Fixes** (`plans/in-progress/auth-fixes/`)
-- Middleware route protection with Clerk
-- Webhook handler for user sync to Supabase
-- Sign-out redirect, cleanup redundant layout auth
-- Enables: Complete Clerk auth flow with user data sync
-
 ### Todo
 
 **Stacks Feature** (`plans/todo/stacks/`)
@@ -30,6 +24,14 @@
 ---
 
 ## Completed
+
+**Auth Fixes** (Dec 2025) ✅
+- Edge middleware route protection with Clerk
+- Webhook handler for user sync to Supabase (`/api/webhooks/clerk`)
+- Sign-out redirect to homepage
+- Removed redundant layout auth check
+- Removed legacy unauthenticated Supabase client
+- Enables: Complete Clerk auth flow with automatic user data sync
 
 **Clerk + Supabase Integration** (Dec 2025) ✅
 - Database: All user_id columns changed to TEXT for Clerk IDs

@@ -2915,3 +2915,71 @@ See Session 29.
 2. Start frontend - Sign in with Clerk
 3. Test document upload - Verify user_id is Clerk ID in database
 4. Test RLS - Verify users only see their own data
+
+---
+
+## Session 30 - 2025-12-22 - Auth Fixes Implementation ✅
+
+**Feature**: auth-fixes (`plans/complete/auth-fixes/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 1: Route protection middleware**
+  - Updated `frontend/proxy.ts` with `createRouteMatcher`
+  - Public routes: `/`, `/pricing`, `/about`, `/contact`
+  - All other routes protected via `auth.protect()`
+
+- [x] **Task 2: Clerk webhook handler**
+  - Created `frontend/app/api/webhooks/clerk/route.ts`
+  - Handles `user.created`, `user.updated`, `user.deleted`
+  - Uses `verifyWebhook` from `@clerk/nextjs/webhooks`
+  - Syncs users to Supabase `users` table
+
+- [x] **Task 3: Sign-out redirect**
+  - Added `afterSignOutUrl="/"` to UserButton in sidebar
+
+- [x] **Task 4: Remove redundant layout auth**
+  - Removed `auth.protect()` from `frontend/app/(app)/layout.tsx`
+  - Middleware now handles all route protection
+
+- [x] **Task 5: Environment variables**
+  - Added `SUPABASE_SERVICE_ROLE_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET`
+  - Updated `.env.local.example` with new variables
+
+- [x] **Task 6: Test middleware protection**
+  - Verified incognito redirect to sign-in
+  - Verified authenticated navigation works
+
+- [x] **Task 7: Configure Clerk webhook**
+  - Configured webhook endpoint in Clerk Dashboard
+  - Events: `user.created`, `user.updated`, `user.deleted`
+
+- [x] **Task 8: Remove legacy Supabase client**
+  - Removed unauthenticated `supabase` export from `frontend/lib/supabase.ts`
+  - Security fix: prevents bypassing RLS
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Webhook testing | Deploy to Vercel | Webhook needs public URL; ngrok is alternative for local |
+
+### Files Created/Modified
+
+- `frontend/proxy.ts` - Route protection middleware
+- `frontend/app/api/webhooks/clerk/route.ts` - **NEW** - Webhook handler
+- `frontend/components/app-sidebar.tsx` - Sign-out redirect
+- `frontend/app/(app)/layout.tsx` - Removed redundant auth
+- `frontend/lib/supabase.ts` - Removed legacy client
+- `frontend/.env.local.example` - Added webhook env vars
+
+### Next Session
+
+**Task**: Deploy frontend to Vercel and test webhook
+
+**Process**:
+1. Push to main (triggers Vercel deploy)
+2. Add env vars to Vercel project settings
+3. Test webhook by signing up new user
+4. Verify user appears in Supabase `users` table
