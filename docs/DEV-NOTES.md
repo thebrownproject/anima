@@ -2696,3 +2696,69 @@ Feature complete. Plan moved to `docs/plans/complete/clerk-shadcn-theme/`.
 2. `/superpowers:brainstorm` for Clerk + Supabase integration approach
 3. Configure JWT template, RLS policies, user sync
 
+---
+
+## Session 26 - 2025-12-22 - Clerk + Supabase Integration Design & Planning ✅
+
+**Feature**: clerk-supabase-integration (new feature)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed Clerk + Supabase integration**:
+  - Reviewed official Clerk docs for Supabase integration
+  - Verified approach using Context7 (Clerk + Supabase docs)
+  - Designed architecture: Clerk as third-party auth provider in Supabase
+
+- [x] **Researched Clerk Billing**:
+  - Clerk Billing doesn't support usage-based billing yet
+  - Decided to keep `public.users` table for usage tracking
+  - Subscription tier can integrate with Clerk Billing later
+
+- [x] **Configured Clerk + Supabase dashboard integration**:
+  - Activated Supabase integration in Clerk Dashboard
+  - Added Clerk as third-party provider in Supabase (domain: `worthy-rodent-66.clerk.accounts.dev`)
+  - This manual step is COMPLETE
+
+- [x] **Created design document**:
+  - `docs/plans/in-progress/clerk-supabase-integration/2025-12-22-clerk-supabase-design.md`
+  - Architecture, schema changes, security model documented
+
+- [x] **Created implementation plan**:
+  - `docs/plans/in-progress/clerk-supabase-integration/2025-12-22-clerk-supabase-plan.md`
+  - 15 tasks across 4 phases: Database, Frontend, Backend, Verification
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| User ID type | TEXT (not UUID) | Clerk IDs are strings like `user_2abc...` |
+| Keep `public.users` | Yes with JIT creation | Needed for usage tracking; Clerk Billing lacks usage-based billing |
+| Backend auth | Clerk Python SDK | Official approach via `authenticate_request()` |
+| RLS policy pattern | `auth.jwt()->>'sub'` | Native Supabase + Clerk integration (not deprecated JWT template) |
+
+### Files Created
+
+- `docs/plans/in-progress/clerk-supabase-integration/2025-12-22-clerk-supabase-design.md`
+- `docs/plans/in-progress/clerk-supabase-integration/2025-12-22-clerk-supabase-plan.md`
+
+### Tasks Remaining
+
+Feature is designed and planned. Implementation pending:
+- [ ] Phase 1: Database migration (drop constraints, change UUID→TEXT, new RLS policies)
+- [ ] Phase 2: Frontend Supabase clients (client + server + hook)
+- [ ] Phase 3: Backend auth (Clerk SDK, config, auth dependency)
+- [ ] Phase 4: Testing and verification
+
+### Next Session
+
+**Task**: Execute Clerk + Supabase Integration Plan
+
+**Process**:
+1. Run `/continue` to load context
+2. Use `/superpowers:execute-plan` with `docs/plans/in-progress/clerk-supabase-integration/2025-12-22-clerk-supabase-plan.md`
+3. Start with Phase 1 (Database migration) - this must complete first
+4. Phase 2 (Frontend) and Phase 3 (Backend) can run in parallel after
+
+**Important**: Dashboard config is already complete (Clerk domain configured in Supabase).
+

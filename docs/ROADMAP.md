@@ -20,6 +20,12 @@
 - Frontend: Pending (Phase 6-7)
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
+**Clerk + Supabase Integration** (`plans/in-progress/clerk-supabase-integration/`)
+- Design: Complete (architecture, security model documented)
+- Dashboard: Complete (Clerk configured as Supabase third-party auth provider)
+- Implementation: Pending (15 tasks across 4 phases)
+- Enables: RLS enforcement with Clerk user IDs, secure multi-tenant data access
+
 ### Todo
 
 **Service Test Endpoints** (`plans/todo/service-test-endpoints/`)

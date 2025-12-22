@@ -39,6 +39,7 @@ class OCRResult(TypedDict):
     usage_info: dict[str, Any]
     layout_data: dict[str, Any] | None
     document_annotation: str | None
+    html_tables: list[str] | None  # HTML tables from OCR 3
 
 
 def _extract_page_text(page: Any) -> str:
@@ -98,6 +99,21 @@ def _extract_usage_info(response: Any) -> dict[str, Any]:
             'doc_size_bytes': getattr(usage, 'doc_size_bytes', None),
         }
     return {}
+
+
+def _extract_html_tables(pages: list[Any]) -> list[str] | None:
+    """Extract HTML table content from all pages.
+
+    OCR 3 returns tables as objects: {"id": "tbl-0", "format": "html", "content": "<table>..."}
+    We extract just the content strings for storage.
+    """
+    tables: list[str] = []
+    for page in pages:
+        if page_tables := getattr(page, 'tables', None):
+            for table in page_tables:
+                if content := getattr(table, 'content', None):
+                    tables.append(content)
+    return tables if tables else None
 
 
 async def extract_text_ocr(document_url: str) -> OCRResult:

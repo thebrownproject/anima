@@ -6,19 +6,55 @@
 
 **Architecture:** Replace the background-task-based `/api/process` endpoint with a synchronous `/api/document/upload` endpoint. Update OCR service to use OCR 3 model with HTML table extraction. Store HTML tables in new database column.
 
+**API Structure (confirmed):**
+```
+Document Operations (document.py):
+  POST /api/document/upload      → Upload + OCR (new files)
+  POST /api/document/retry-ocr   → Re-run OCR (existing files, retry failed)
+
+Agent Operations (agent.py):
+  POST /api/agent/extract        → AI extraction (SSE stream)
+  POST /api/agent/correct        → AI correction (SSE stream)
+  GET  /api/agent/health         → Health check
+
+Service Tests (test.py):
+  GET  /api/test/claude          → Test Claude
+  GET  /api/test/mistral         → Test Mistral
+```
+
+> **Note:** Agent endpoints stay in `agent.py` - separation of concerns. Document upload/OCR is separate from AI extraction.
+
+**Files to delete:**
+- `routes/process.py` - Both `/api/process` and `/api/re-extract` replaced
+- `services/extractor.py` - Only used by process.py, agent uses `extraction_agent` instead
+
 **Tech Stack:** FastAPI, Mistral OCR 3 (`mistral-ocr-2512`), Supabase PostgreSQL
+
+---
+
+## ⚠️ Pre-requisite: Upgrade Mistral SDK
+
+OCR 3 was released 2025-12-21. Current SDK (v1.9.11) predates this.
+
+```bash
+cd /Users/fraserbrown/stackdocs/backend
+pip install --upgrade mistralai
+pip show mistralai  # Verify new version
+```
+
+After upgrading, verify the new SDK supports `table_format` parameter and `tables` response field before proceeding.
 
 ---
 
 ## Task 1: Database Migration
 
 **Files:**
-- Create: `backend/migrations/006_add_html_tables.sql`
+- Create: `backend/migrations/008_add_html_tables.sql`
 
 **Step 1: Create migration file**
 
 ```sql
--- Migration: 006_add_html_tables.sql
+-- Migration: 008_add_html_tables.sql
 -- Description: Add html_tables column for OCR 3 HTML table output
 
 ALTER TABLE ocr_results
@@ -295,14 +331,109 @@ cd /Users/fraserbrown/stackdocs/backend && python -m py_compile app/routes/docum
 
 Expected: No output (successful compilation)
 
-**Step 3: Commit**
+**Step 3: Add retry-ocr endpoint**
+
+Add after the `upload_and_ocr` function:
+
+```python
+@router.post("/document/retry-ocr")
+async def retry_ocr(
+    document_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
+    user_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
+) -> dict[str, Any]:
+    """
+    Retry OCR on an existing document (for failed OCR recovery).
+
+    Use when:
+    - File uploaded successfully but OCR failed
+    - User clicks "Retry" button after error
+
+    Args:
+        document_id: Existing document UUID
+        user_id: User UUID
+
+    Returns:
+        document_id, status, ocr_result
+    """
+    supabase = get_supabase_client()
+
+    # Verify document exists and user owns it
+    doc = supabase.table("documents").select("file_path, filename").eq("id", document_id).eq("user_id", user_id).single().execute()
+    if not doc.data:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Update status to processing
+    supabase.table("documents").update({
+        "status": "processing"
+    }).eq("id", document_id).execute()
+
+    try:
+        # Get signed URL and run OCR
+        logger.info(f"Retrying OCR for document {document_id}")
+        signed_url = await create_signed_url(doc.data["file_path"])
+        ocr_result = await extract_text_ocr(signed_url)
+
+        # Save/update OCR result
+        supabase.table("ocr_results").upsert({
+            "document_id": document_id,
+            "user_id": user_id,
+            "raw_text": ocr_result["text"],
+            "html_tables": ocr_result.get("html_tables"),
+            "page_count": ocr_result.get("page_count", 1),
+            "model": ocr_result.get("model", "mistral-ocr-2512"),
+            "processing_time_ms": ocr_result.get("processing_time_ms", 0),
+            "usage_info": ocr_result.get("usage_info", {}),
+            "layout_data": ocr_result.get("layout_data"),
+        }).execute()
+
+        # Update document status
+        supabase.table("documents").update({
+            "status": "ocr_complete"
+        }).eq("id", document_id).execute()
+
+        logger.info(f"OCR retry complete for document {document_id}")
+
+        return {
+            "document_id": document_id,
+            "filename": doc.data["filename"],
+            "status": "ocr_complete",
+            "ocr_result": {
+                "raw_text": ocr_result["text"],
+                "html_tables": ocr_result.get("html_tables"),
+                "page_count": ocr_result.get("page_count", 1),
+                "processing_time_ms": ocr_result.get("processing_time_ms", 0),
+                "model": ocr_result.get("model", "mistral-ocr-2512"),
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"OCR retry failed for document {document_id}: {e}")
+        supabase.table("documents").update({
+            "status": "failed"
+        }).eq("id", document_id).execute()
+        raise HTTPException(
+            status_code=500,
+            detail=f"OCR processing failed: {str(e)}"
+        )
+```
+
+**Step 4: Verify file syntax**
+
+```bash
+cd /Users/fraserbrown/stackdocs/backend && python -m py_compile app/routes/document.py
+```
+
+Expected: No output (successful compilation)
+
+**Step 5: Commit**
 
 ```bash
 git add backend/app/routes/document.py
-git commit -m "feat: Add /api/document/upload endpoint
+git commit -m "feat: Add /api/document/upload and /api/document/retry-ocr endpoints
 
-Synchronous upload + OCR endpoint that returns full OCR result.
-Sets document status to 'ocr_complete' when done."
+- /api/document/upload: Synchronous upload + OCR for new files
+- /api/document/retry-ocr: Retry OCR on existing documents (failed OCR recovery)
+Both set document status to 'ocr_complete' when done."
 ```
 
 ---
@@ -316,12 +447,12 @@ Sets document status to 'ocr_complete' when done."
 
 In `backend/app/main.py`, find line 7:
 ```python
-from .routes import process, agent
+from .routes import process, agent, test
 ```
 
 Replace with:
 ```python
-from .routes import document, agent
+from .routes import document, agent, test
 ```
 
 **Step 2: Update router registration**
@@ -335,6 +466,8 @@ Replace with:
 ```python
 app.include_router(document.router, prefix="/api", tags=["document"])
 ```
+
+> **Note:** Keep `test.router` registration - it was added for service connectivity tests.
 
 **Step 3: Verify file syntax**
 
@@ -356,34 +489,45 @@ git commit -m "refactor: Replace process router with document router
 
 ---
 
-## Task 5: Delete Deprecated Process Route
+## Task 5: Delete Deprecated Files
 
 **Files:**
 - Delete: `backend/app/routes/process.py`
+- Delete: `backend/app/services/extractor.py`
 
-**Step 1: Delete the file**
+**Step 1: Delete deprecated route**
 
 ```bash
 rm /Users/fraserbrown/stackdocs/backend/app/routes/process.py
 ```
 
-**Step 2: Verify deletion**
+**Step 2: Delete deprecated service**
+
+```bash
+rm /Users/fraserbrown/stackdocs/backend/app/services/extractor.py
+```
+
+> **Note:** `extractor.py` was only used by `process.py`. The agent uses `extraction_agent` instead.
+
+**Step 3: Verify deletions**
 
 ```bash
 ls /Users/fraserbrown/stackdocs/backend/app/routes/
+ls /Users/fraserbrown/stackdocs/backend/app/services/
 ```
 
-Expected: `process.py` should NOT be in the list. Should see: `__init__.py`, `agent.py`, `document.py`
+Expected routes: `__init__.py`, `agent.py`, `document.py`, `test.py`
+Expected services: `__init__.py`, `ocr.py`, `storage.py`, `usage.py`
 
-**Step 3: Commit**
+**Step 4: Commit**
 
 ```bash
 git add -A
-git commit -m "refactor: Remove deprecated process.py route
+git commit -m "refactor: Remove deprecated process.py and extractor.py
 
-Endpoints /api/process and /api/re-extract have been replaced by:
-- /api/document/upload (OCR only)
-- /api/document/extract (extraction, via agent router)"
+Deleted:
+- routes/process.py: /api/process and /api/re-extract replaced by /api/document/* and /api/agent/*
+- services/extractor.py: Agent uses extraction_agent instead"
 ```
 
 ---
@@ -404,8 +548,10 @@ Open: http://localhost:8001/docs
 
 Expected:
 - See `POST /api/document/upload` endpoint
+- See `POST /api/document/retry-ocr` endpoint
+- See `/api/agent/*` endpoints (extract, correct, health)
+- See `/api/test/*` endpoints (claude, mistral)
 - NOT see `/api/process` or `/api/re-extract`
-- See `/api/agent/*` endpoints still present
 
 **Step 3: Test health endpoint**
 
