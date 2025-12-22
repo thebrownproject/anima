@@ -20,10 +20,16 @@
 
 ### Todo
 
+**Documents Page** (`plans/todo/documents-page/`)
+- Design: Complete (list page + detail page)
+- Implementation plan: Complete (22 tasks across 5 phases)
+- Frontend: Not started
+- Enables: View/manage documents, see extracted data, PDF preview, AI chat for corrections
+
 **Stacks Feature** (`plans/todo/stacks/`)
 - Database: Ready (migrations 004 & 005 applied)
 - Backend: Not started (depends on extraction agent patterns)
-- Frontend: Not started (depends on extraction agent frontend)
+- Frontend: Not started (depends on documents page)
 - Enables: Group documents into stacks, extract tabular data with consistent schema
 
 ---

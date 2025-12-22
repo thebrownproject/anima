@@ -2983,3 +2983,61 @@ See Session 29.
 2. Add env vars to Vercel project settings
 3. Test webhook by signing up new user
 4. Verify user appears in Supabase `users` table
+
+---
+
+## Session 31 - 2025-12-22 - Documents Page Implementation Plan
+
+**Feature**: documents-page (`plans/todo/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Documents Page Design Review**
+  - Read existing design doc from previous session
+  - Design covers list page (`/documents`) and detail page (`/documents/[id]`)
+
+- [x] **Technical Research**
+  - Verified shadcn components: table, dialog, badge, tabs, dropdown-menu, popover, checkbox
+  - Confirmed TanStack Table patterns from Context7 docs
+  - Confirmed react-pdf setup for Next.js App Router (dynamic import, ssr: false)
+  - Reviewed existing project structure: Supabase clients, breadcrumb component
+
+- [x] **Implementation Plan Created**
+  - 22 bite-sized tasks across 5 phases
+  - Phase 1: Foundation (shadcn components, page header context)
+  - Phase 2: Documents list page (types, queries, TanStack Table)
+  - Phase 3: Document detail page (react-pdf, extracted data table, preview)
+  - Phase 4: AI chat bar (stub for agent integration)
+  - Phase 5: Build verification
+
+- [x] **Design System Defined (Linear-inspired)**
+  - Typography: font-medium headers, lowercase table headers, muted secondary text
+  - Color: Near-monochrome, status indicators only via colored dots
+  - Spacing: py-3 rows, space-y-6 sections, generous breathing room
+  - Motion: 150ms transitions, bg-muted/50 hover states
+  - Borders: Single outer borders, no internal row borders
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Table library | TanStack Table + shadcn Table | Headless flexibility with shadcn styling |
+| PDF viewer | react-pdf with dynamic import | Works with Next.js App Router, avoids SSR issues |
+| Header system | React Context + portal pattern | Breadcrumbs via hook, actions passed as props |
+| Confidence display | Colored dot + percentage | Clean, Linear-inspired, not heavy progress bars |
+| Table row styling | No internal borders, hover bg only | Matches Linear's minimal aesthetic |
+
+### Files Created
+
+- `docs/plans/todo/documents-page/2025-12-22-documents-page-plan.md` - Full implementation plan
+
+### Next Session
+
+**Task**: Execute documents page implementation plan
+
+**Process**:
+1. Move plan folder to `docs/plans/in-progress/documents-page/`
+2. Run `/superpowers:execute-plan` or subagent-driven execution
+3. Start with Phase 1: Install shadcn components, create page header context
+4. Continue through all 22 tasks with commits after each
