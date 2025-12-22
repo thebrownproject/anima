@@ -2501,3 +2501,112 @@ Feature complete. Ready to move to `plans/complete/`.
 
 **Frontend foundation is complete and can be built upon.**
 
+---
+
+## Session 24 - 2025-12-22 - Extraction Agent Agentic Tools Implementation
+
+**Feature**: extraction-agent
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Verified Claude Agent SDK API patterns**:
+  - Spawned subagent to fetch SDK docs from existing spike tests
+  - Confirmed correct patterns: `@tool` decorator, `ClaudeAgentOptions`, `allowed_tools`
+
+- [x] **Implemented database migrations**:
+  - `006_add_extraction_status.sql` - Added status column to extractions table
+  - `007_add_extraction_rpc_functions.sql` - RPC functions for JSONB field updates
+  - Applied both migrations to Supabase
+
+- [x] **Implemented 6 agentic tools** (all with closure-based multi-tenant scoping):
+  - `read_ocr.py` - Read OCR text from ocr_results table
+  - `read_extraction.py` - Read current extraction state
+  - `save_extraction.py` - Bulk save fields with validation
+  - `set_field.py` - Surgical update via JSON path + RPC
+  - `delete_field.py` - Remove field via JSON path + RPC
+  - `complete.py` - Mark extraction complete with validation
+
+- [x] **Implemented agent core**:
+  - `prompts.py` - System prompt and correction template
+  - `agent.py` - `extract_with_agent()` and `correct_with_session()` with SSE streaming
+  - `tools/__init__.py` - `create_tools()` to assemble all tools
+
+- [x] **Updated routes**:
+  - Changed import from `services.agent_extractor` to `agents.extraction_agent`
+  - Fixed SSE event format: `{"text": ...}`, `{"tool": ...}`, `{"complete": ...}`
+  - Extraction record created BEFORE agent runs (agent writes via tools)
+
+- [x] **Fixed SDK API issues during testing**:
+  - Changed `system=` to `system_prompt=` in ClaudeAgentOptions
+  - Added `allowed_tools` list to whitelist MCP tools
+  - Fixed JSON string handling in `save_extraction` and `set_field`
+
+- [x] **Integration tested successfully**:
+  - Agent reads OCR via tool ✓
+  - Agent saves extraction via tool ✓
+  - Agent marks complete via tool ✓
+  - Database shows correct status and properly structured JSON ✓
+
+- [x] **Cleanup**:
+  - Deleted old `backend/app/services/agent_extractor.py`
+  - Updated design doc status to "Backend Complete"
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Tool organization | Individual files per tool | Matches stack_agent structure, cleaner |
+| SSE event format | Flat objects: `{"text": ...}` | Frontend checks which key exists |
+| TextBlock handling | User-facing response (NOT "thinking") | Semantically correct per SDK docs |
+| Tool scoping | Closure pattern at creation time | Multi-tenant security enforced by design |
+| JSON string handling | Parse in tools if string | Claude sometimes stringifies dict params |
+
+### Files Created/Modified
+
+**Created:**
+- `backend/migrations/006_add_extraction_status.sql`
+- `backend/migrations/007_add_extraction_rpc_functions.sql`
+
+**Modified:**
+- `backend/app/agents/extraction_agent/tools/*.py` (all 6 tools)
+- `backend/app/agents/extraction_agent/agent.py`
+- `backend/app/agents/extraction_agent/prompts.py`
+- `backend/app/agents/extraction_agent/__init__.py`
+- `backend/app/agents/extraction_agent/tools/__init__.py`
+- `backend/app/routes/agent.py`
+- `docs/SCHEMA.md` (added status column, migrations 006-007)
+- `docs/plans/in-progress/extraction-agent/2025-12-20-extraction-agent-design.md`
+
+**Deleted:**
+- `backend/app/services/agent_extractor.py`
+
+### Commits
+
+```
+8c3a29a feat(extraction-agent): implement agentic tools architecture
+```
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| Health endpoint | `{"architecture": "agentic-tools"}` ✓ |
+| Extract endpoint | Agent calls read_ocr, save_extraction, complete ✓ |
+| Database | Status=completed, fields properly structured ✓ |
+| SSE format | Correct flat format with text/tool/complete keys ✓ |
+
+### Tasks Remaining
+
+- [ ] Extraction Agent Frontend (Phase 6-7)
+- [ ] Test correction endpoint with session resume
+
+### Next Session
+
+**Task**: Continue with OCR 3 Upgrade or Extraction Agent Frontend
+
+**Process**:
+1. Run `/continue` to load context
+2. Choose next priority from ROADMAP
+3. Run `/superpowers:execute-plan` on selected feature
+
