@@ -76,8 +76,8 @@ CLAUDE.md
 .kilocode/
 
 # Document uploads (will be in Supabase Storage, not local)
-uploads/
-documents/
+/uploads/
+/documents/
 
 # Spike test artifacts (session IDs, temp files)
 backend/spikes/spike_session_id.txt
