@@ -90,33 +90,47 @@ async def test_claude():
 @router.get("/mistral", response_model=ServiceTestResponse)
 async def test_mistral():
     """
-    Test Mistral API connectivity by listing available models.
+    Test Mistral OCR API connectivity with a minimal test image.
 
-    Cost: Free (no billable operation).
+    Cost: ~$0.002 per call (1 page).
     """
     start_time = time.perf_counter()
 
     try:
         client = Mistral(api_key=settings.MISTRAL_API_KEY)
 
-        # List models is a sync operation, run in thread
-        response = await to_thread(client.models.list)
+        # Minimal 1x1 white PNG for testing OCR connectivity
+        # This is the smallest valid PNG that OCR will accept
+        test_image_base64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+            "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
 
+        def _call_ocr():
+            return client.ocr.process(
+                model="mistral-ocr-latest",
+                document={
+                    "type": "image_url",
+                    "image_url": f"data:image/png;base64,{test_image_base64}"
+                }
+            )
+
+        response = await to_thread(_call_ocr)
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
 
-        # Get first model name for display
-        model_name = response.data[0].id if response.data else "unknown"
+        # Get model from response
+        model_name = getattr(response, 'model', 'mistral-ocr-latest')
 
         return ServiceTestResponse(
             status="ok",
-            service="mistral",
+            service="mistral-ocr",
             model=model_name,
             response_time_ms=elapsed_ms,
             timestamp=datetime.now(timezone.utc)
         )
 
     except SDKError as e:
-        logger.warning(f"Mistral SDK error: {e}")
+        logger.warning(f"Mistral OCR SDK error: {e}")
         error_type = "unknown_error"
         message = str(e)
 
@@ -132,7 +146,7 @@ async def test_mistral():
 
         return ServiceTestResponse(
             status="error",
-            service="mistral",
+            service="mistral-ocr",
             message=message,
             error_type=error_type,
             response_time_ms=elapsed_ms,
@@ -140,14 +154,14 @@ async def test_mistral():
         )
 
     except Exception as e:
-        logger.error(f"Mistral unexpected error: {e}")
+        logger.error(f"Mistral OCR unexpected error: {e}")
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
 
         # Check for connection errors
         if "connect" in str(e).lower():
             return ServiceTestResponse(
                 status="error",
-                service="mistral",
+                service="mistral-ocr",
                 message="Could not connect to service",
                 error_type="network_error",
                 response_time_ms=elapsed_ms,
@@ -156,7 +170,7 @@ async def test_mistral():
 
         return ServiceTestResponse(
             status="error",
-            service="mistral",
+            service="mistral-ocr",
             message=str(e),
             error_type="unknown_error",
             response_time_ms=elapsed_ms,
