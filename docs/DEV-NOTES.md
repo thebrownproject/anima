@@ -3041,3 +3041,92 @@ See Session 29.
 2. Run `/superpowers:execute-plan` or subagent-driven execution
 3. Start with Phase 1: Install shadcn components, create page header context
 4. Continue through all 22 tasks with commits after each
+
+---
+
+## Session 32 - 2025-12-22 - Vercel Deployment & Clerk Production Setup ✅
+
+**Feature**: vercel-deployment (`plans/in-progress/vercel-deployment/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Created Vercel deployment plan**
+  - 8-task implementation plan for frontend deployment
+  - Covers env vars, webhook config, testing
+
+- [x] **Fixed TypeScript build error**
+  - `Request` → `NextRequest` in webhook handler
+  - `frontend/app/api/webhooks/clerk/route.ts`
+
+- [x] **Fixed auth middleware for webhook**
+  - Added `/api/webhooks/clerk` to public routes
+  - `frontend/proxy.ts`
+
+- [x] **Fixed gitignore blocking documents page**
+  - Changed `documents/` to `/documents/` (root only)
+  - Committed previously-ignored `frontend/app/(app)/documents/page.tsx`
+
+- [x] **Configured Vercel project**
+  - Set Framework Preset to Next.js (was null - causing 404s)
+  - Set Node.js version to 22.x
+  - Root Directory already set to `frontend`
+
+- [x] **Set up Clerk production instance**
+  - Created production instance (cloned from dev)
+  - Domain: stackdocs.io
+  - Added all 5 DNS CNAME records to Vercel DNS:
+    - `clerk` → `frontend-api.clerk.services`
+    - `accounts` → `accounts.clerk.services`
+    - `clkmail` → `mail.gezj56yh3t3n.clerk.services`
+    - `clk._domainkey` → `dkim1.gezj56yh3t3n.clerk.services`
+    - `clk2._domainkey` → `dkim2.gezj56yh3t3n.clerk.services`
+  - SSL certificates issued
+
+- [x] **Verified deployment works**
+  - Tested on mobile data - sign-in works ✓
+  - Home network DNS still caching old records (will propagate overnight)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Clerk production setup | Clone dev instance | Copies existing auth settings and theme |
+| DNS for Clerk | 5 CNAME records in Vercel | Required for custom domain with Clerk production |
+| gitignore fix | `/documents/` not `documents/` | Root-only ignore, doesn't catch frontend route |
+
+### Tasks Remaining
+
+- [ ] Flush local DNS cache (or wait for propagation)
+- [ ] Add `SUPABASE_SERVICE_ROLE_KEY` to Vercel env vars
+- [ ] Add `CLERK_WEBHOOK_SIGNING_SECRET` to Vercel env vars
+- [ ] Update GitHub Actions `CLERK_SECRET_KEY` with production key
+- [ ] Add production Clerk keys to Vercel (`pk_live_...`, `sk_live_...`)
+- [ ] Create webhook endpoint in Clerk production dashboard
+- [ ] Test webhook by signing up new user
+- [ ] Verify user appears in Supabase
+
+### Files Created/Modified
+
+- `docs/plans/in-progress/vercel-deployment/2025-12-22-vercel-deployment.md` - Deployment plan
+- `frontend/app/api/webhooks/clerk/route.ts` - Fixed NextRequest type
+- `frontend/proxy.ts` - Added webhook to public routes
+- `.gitignore` - Fixed documents/ ignore pattern
+- `frontend/app/(app)/documents/page.tsx` - Now committed (was gitignored)
+- `docs/ROADMAP.md` - Added Vercel Deployment to In Progress
+
+### Next Session
+
+**Task**: Complete Vercel deployment - add env vars and test webhook
+
+**Process**:
+1. Verify DNS propagated (test sign-in on Mac)
+2. Add remaining env vars to Vercel:
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `CLERK_WEBHOOK_SIGNING_SECRET`
+   - Production Clerk keys (`pk_live_...`, `sk_live_...`)
+3. Update GitHub Actions `CLERK_SECRET_KEY` secret
+4. Create webhook endpoint in Clerk production dashboard
+5. Test by signing up new user
+6. Verify user in Supabase `users` table
+7. Move `vercel-deployment` plan to `complete/` when done
