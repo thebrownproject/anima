@@ -8,13 +8,6 @@
 
 ### In Progress
 
-**OCR 3 Upgrade + Document Upload Endpoint** (`plans/in-progress/ocr-3-upgrade/`)
-- Upgrade from Mistral OCR 2 to OCR 3 (`mistral-ocr-2512`)
-- New `POST /api/document/upload` endpoint (sync upload + OCR)
-- Deprecate `/api/process` and `/api/re-extract`
-- Store HTML tables for future document preview
-- Enables: Better extraction accuracy, cleaner API separation, document preview
-
 **Extraction Agent Frontend** (`plans/in-progress/extraction-agent/`)
 - Backend: Complete (Claude Agent SDK integration, SSE streaming, session resume)
 - Frontend: Pending (Phase 6-7)
@@ -28,11 +21,6 @@
 
 ### Todo
 
-**Service Test Endpoints** (`plans/todo/service-test-endpoints/`)
-- GET /api/test/claude - Minimal ping using Agent SDK
-- GET /api/test/mistral - List models (free call)
-- Enables: Swagger-friendly debugging of external service connectivity
-
 **Stacks Feature** (`plans/todo/stacks/`)
 - Database: Ready (migrations 004 & 005 applied)
 - Backend: Not started (depends on extraction agent patterns)
@@ -42,6 +30,17 @@
 ---
 
 ## Completed
+
+**OCR 3 Upgrade + Document Upload Endpoint** (Dec 2025) ✅
+- Upgraded from Mistral OCR 2 to OCR 3 (`mistral-ocr-latest`)
+- New `POST /api/document/upload` endpoint (sync upload + OCR)
+- New `POST /api/document/retry-ocr` endpoint (retry failed OCR)
+- Deleted deprecated `/api/process` and `/api/re-extract`
+- HTML tables stored in `ocr_results.html_tables` for document preview
+
+**Service Test Endpoints** (Dec 2025) ✅
+- `GET /api/test/claude` - Test Claude Agent SDK connectivity
+- `GET /api/test/mistral` - Test Mistral OCR API connectivity
 
 **Backend Core** (Nov 2025)
 - FastAPI setup with Supabase integration
