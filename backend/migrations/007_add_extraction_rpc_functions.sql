@@ -4,7 +4,7 @@
 -- Function: Update a field at a JSON path
 CREATE OR REPLACE FUNCTION update_extraction_field(
     p_extraction_id UUID,
-    p_user_id UUID,
+    p_user_id TEXT,
     p_field_path TEXT[],
     p_value JSONB,
     p_confidence FLOAT
@@ -32,7 +32,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Function: Remove a field at a JSON path
 CREATE OR REPLACE FUNCTION remove_extraction_field(
     p_extraction_id UUID,
-    p_user_id UUID,
+    p_user_id TEXT,
     p_field_path TEXT[]
 ) RETURNS VOID AS $$
 BEGIN
