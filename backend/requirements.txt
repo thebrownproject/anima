@@ -16,6 +16,10 @@ claude-agent-sdk>=0.1.17
 # Document Processing (OCR)
 mistralai==1.10.0
 
+# Authentication
+clerk-backend-api==4.2.0
+httpx==0.28.1
+
 # Utilities
 python-dotenv==1.2.1
 python-multipart==0.0.20
