@@ -1,4 +1,3 @@
-import { auth } from '@clerk/nextjs/server'
 import { cookies } from 'next/headers'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -9,9 +8,6 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Protect all routes in (app) - redirects to Clerk sign-in if not authenticated
-  await auth.protect()
-
   // Sidebar state persistence
   const cookieStore = await cookies()
   const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true'
