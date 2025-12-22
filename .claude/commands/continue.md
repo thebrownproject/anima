@@ -1,5 +1,9 @@
 ---
 description: Resume StackDocs development from where you left off
+arguments:
+  - name: handover
+    description: Optional handover prompt from previous session (paste the full handover text)
+    required: false
 ---
 
 You are resuming the **StackDocs** project. Get oriented and wait for direction.
@@ -10,6 +14,12 @@ You are resuming the **StackDocs** project. Get oriented and wait for direction.
 ```
 
 **TOKEN BUDGET**: Target <5,000 tokens for initial context loading. Use grep/offset/limit to read selectively.
+
+## Handover Prompt (if provided)
+
+$ARGUMENTS
+
+---
 
 ## Step 1: Read Context
 
@@ -33,7 +43,9 @@ Read in order:
    - Then use Read tool with offset: `Read docs/DEV-NOTES.md offset=[line_number]`
    - **Key benefit**: "Next Session" section shows what to work on next
 
-3. **Skip reading these at startup** (grep on-demand instead):
+3. **If handover prompt provided above**: Use it as additional context alongside DEV-NOTES. The handover may contain more detailed decisions and specific next steps.
+
+4. **Skip reading these at startup** (grep on-demand instead):
    - `docs/PRD.md` - Only grep specific requirements when needed
    - `docs/ARCHITECTURE.md` - Grep for specific sections during implementation
    - `docs/SCHEMA.md` - Grep for table definitions when needed
