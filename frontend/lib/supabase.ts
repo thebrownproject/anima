@@ -16,6 +16,3 @@ export function createClerkSupabaseClient(
     accessToken: getToken,
   })
 }
-
-// Legacy client for migration (remove after full integration)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
