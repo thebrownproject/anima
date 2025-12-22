@@ -2610,3 +2610,80 @@ Feature complete. Ready to move to `plans/complete/`.
 2. Choose next priority from ROADMAP
 3. Run `/superpowers:execute-plan` on selected feature
 
+---
+
+## Session 25 - 2025-12-22 - Clerk shadcn Theme Integration ✅
+
+**Feature**: clerk-shadcn-theme (new feature, completed)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Verified frontend foundation implementation**:
+  - Cross-checked all files against implementation plan
+  - All 12 tasks verified correct
+
+- [x] **Implemented Clerk shadcn theme**:
+  - Added `@clerk/themes` shadcn CSS import to globals.css
+  - Configured ClerkProvider with `baseTheme: shadcn`
+  - All Clerk modals now match shadcn new-york styling
+
+- [x] **Replaced NavUser with Clerk UserButton**:
+  - Removed static NavUser component from sidebar
+  - Added `<UserButton showName />` with sidebar-compatible styling
+  - Deleted unused `nav-user.tsx` component
+
+- [x] **Configured Clerk Waitlist mode**:
+  - Enabled waitlist in Clerk Dashboard for beta access control
+  - Sign-up now requires invitation
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Sidebar user component | Clerk UserButton | Built-in, handles auth actions automatically |
+| Custom menu items | None (Clerk default) | Simple, stays in sync with Clerk updates |
+| Beta access control | Waitlist mode | Built-in Clerk feature, no code changes |
+
+### Files Created/Modified
+
+**Modified:**
+- `frontend/app/globals.css` - Added shadcn theme CSS import
+- `frontend/app/layout.tsx` - Added shadcn baseTheme to ClerkProvider
+- `frontend/components/app-sidebar.tsx` - Replaced NavUser with UserButton
+
+**Deleted:**
+- `frontend/components/nav-user.tsx` - No longer needed
+
+### Commits
+
+```
+48a0b0f feat(frontend): apply Clerk shadcn theme
+c0ddbd2 feat(frontend): replace NavUser with Clerk UserButton in sidebar
+e039204 chore(frontend): remove unused NavUser component
+df6fb04 docs: move clerk-shadcn-theme plan to complete
+```
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| Sign-in modal | shadcn styling applied ✓ |
+| UserButton in sidebar | Shows name + avatar ✓ |
+| UserButton dropdown | Manage account + Sign out ✓ |
+| Waitlist mode | Get Started shows waitlist ✓ |
+| Build | Passes without errors ✓ |
+
+### Tasks Remaining
+
+Feature complete. Plan moved to `docs/plans/complete/clerk-shadcn-theme/`.
+
+### Next Session
+
+**Task**: Continue with OCR 3 Upgrade or Extraction Agent Frontend
+
+**Process**:
+1. Run `/continue` to load context
+2. Choose next priority from ROADMAP
+3. Run `/superpowers:execute-plan` on selected feature
+
