@@ -56,3 +56,14 @@ class HealthResponse(BaseModel):
     app_name: str
     version: str
     environment: str
+
+
+class ServiceTestResponse(BaseModel):
+    """Response from service test endpoints"""
+    status: Literal["ok", "error"]
+    service: str
+    model: str | None = None
+    response_time_ms: int | None = None
+    message: str | None = None
+    error_type: str | None = None
+    timestamp: datetime
