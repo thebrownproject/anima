@@ -25,7 +25,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider appearance={{ baseTheme: shadcn }}>
+    <ClerkProvider
+      appearance={{ baseTheme: shadcn }}
+      afterSignInUrl="/documents"
+      afterSignUpUrl="/documents"
+    >
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           {children}
