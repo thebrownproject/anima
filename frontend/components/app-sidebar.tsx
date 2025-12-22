@@ -9,10 +9,11 @@ import {
   IconStack2,
 } from "@tabler/icons-react"
 
+import { UserButton } from "@clerk/nextjs"
+
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -24,11 +25,6 @@ import {
 } from "@/components/ui/sidebar"
 
 const data = {
-  user: {
-    name: "User", // Will be replaced with Clerk user data in Phase 2
-    email: "user@example.com",
-    avatar: "",
-  },
   navMain: [
     {
       title: "Workspace",
@@ -96,7 +92,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <UserButton
+              showName
+              appearance={{
+                elements: {
+                  rootBox: "w-full",
+                  userButtonTrigger: "w-full justify-start gap-2 p-2 rounded-md hover:bg-sidebar-accent",
+                  userButtonBox: "flex-row-reverse",
+                  avatarBox: "size-8 rounded-lg",
+                }
+              }}
+            />
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   )
