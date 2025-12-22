@@ -42,18 +42,24 @@ StackDocs uses a hybrid architecture where the frontend connects directly to Sup
 
 ## Data Flows
 
-### Document Upload Flow
+### Document Upload Flow (Synchronous)
 
 ```
 1. Frontend: POST /api/document/upload (file + user_id)
-2. Backend:  Upload file to Supabase Storage
-3. Backend:  Create document record (status='processing')
-4. Backend:  Return document_id immediately
-5. Background task:
-   a. Mistral OCR → save to ocr_results (cached)
-   b. Update document status='ready'
-6. Frontend: Receives update via Supabase Realtime
+2. Backend:  Check usage limit
+3. Backend:  Upload file to Supabase Storage
+4. Backend:  Create document record (status='processing')
+5. Backend:  Run Mistral OCR (synchronous)
+   a. Extract text with OCR 3 (table_format='html')
+   b. Save to ocr_results (cached, includes html_tables)
+   c. Update document status='ocr_complete'
+6. Backend:  Return full OCR result to frontend immediately
 ```
+
+**Status values:**
+- `processing` - Upload/OCR in progress
+- `ocr_complete` - OCR done, ready for extraction
+- `failed` - Something went wrong (use /api/document/retry-ocr)
 
 ### Document Extraction Flow (Agent-based, Streaming)
 
@@ -98,29 +104,23 @@ StackDocs uses a hybrid architecture where the frontend connects directly to Sup
 
 Endpoints trigger agents with scoped context (user_id, document_id/stack_id).
 
-#### Current Endpoints (to be deprecated)
+#### Current Endpoints
 
-These endpoints exist and work, but will be replaced by the proposed endpoints below.
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Health check |
+| `/api/document/upload` | POST | Upload file + run OCR (synchronous) |
+| `/api/document/retry-ocr` | POST | Retry OCR on failed documents |
+| `/api/agent/extract` | POST | Trigger extraction_agent (SSE streaming) |
+| `/api/agent/correct` | POST | Correct via session resume |
+| `/api/agent/health` | GET | Agent health check |
+| `/api/test/claude` | GET | Test Claude Agent SDK connectivity |
+| `/api/test/mistral` | GET | Test Mistral OCR API connectivity |
 
-| Endpoint | Method | Purpose | Status |
-|----------|--------|---------|--------|
-| `/health` | GET | Health check | Keep |
-| `/api/process` | POST | Upload + OCR + extract (background) | Deprecated |
-| `/api/re-extract` | POST | Re-extract from cached OCR | Deprecated |
-| `/api/agent/extract` | POST | Extract with SSE streaming | Deprecated |
-| `/api/agent/correct` | POST | Correct via session resume | Deprecated |
-| `/api/agent/health` | GET | Agent health check | Deprecated |
-
-#### Proposed Endpoints (aligned with agents)
-
-New endpoint structure matching extraction_agent and stack_agent.
+#### Planned Endpoints (stacks)
 
 | Endpoint | Method | Purpose | Agent |
 |----------|--------|---------|-------|
-| `/health` | GET | Health check | - |
-| `/api/document/upload` | POST | Upload file + run OCR (background) | - |
-| `/api/document/extract` | POST | Trigger extraction_agent (SSE streaming) | extraction_agent |
-| `/api/document/update` | POST | Update extraction via session resume | extraction_agent |
 | `/api/stack/extract` | POST | Trigger stack_agent (SSE streaming) | stack_agent |
 | `/api/stack/update` | POST | Update stack extraction via session | stack_agent |
 

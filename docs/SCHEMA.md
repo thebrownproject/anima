@@ -92,6 +92,7 @@ CREATE TABLE ocr_results (
 
     -- OCR output
     raw_text TEXT NOT NULL,
+    html_tables JSONB,                       -- HTML table strings from OCR 3
     page_count INTEGER NOT NULL,
     layout_data JSONB,
 
@@ -272,6 +273,7 @@ Migration files are in `backend/migrations/`:
 | 005_remove_extraction_id_from_stack_rows.sql | Simplify stack_table_rows schema |
 | 006_add_extraction_status.sql | Add status column for agent workflow |
 | 007_add_extraction_rpc_functions.sql | RPC functions for JSONB field updates |
+| 008_add_html_tables.sql | Add html_tables column for OCR 3 |
 
 ---
 
