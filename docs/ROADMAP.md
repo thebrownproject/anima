@@ -61,6 +61,11 @@
 - Sidebar navigation: Workspace (Documents, Extractions) + Stacks
 - Placeholder pages ready for feature implementation
 
+**Clerk shadcn Theme Integration** (Dec 2025) ✅
+- Applied shadcn theme to all Clerk components (modals, UserButton)
+- Replaced NavUser with Clerk UserButton in sidebar
+- Enabled Waitlist mode for beta access control
+
 ---
 
 ## Future Features (P1 - Post-MVP)
