@@ -55,15 +55,10 @@ export default async function DocumentDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* AI Chat Bar - fixed at bottom */}
-      <div className="fixed bottom-0 inset-x-0 p-4 pointer-events-none z-50">
-        <div className="mx-auto max-w-2xl pointer-events-auto">
-          <AiChatBar documentId={document.id} />
-        </div>
+      {/* AI Chat Bar - inline at bottom */}
+      <div className="shrink-0 mt-6 pt-4">
+        <AiChatBar documentId={document.id} />
       </div>
-
-      {/* Spacer for fixed chat bar */}
-      <div className="h-24 shrink-0" />
     </div>
   )
 }
