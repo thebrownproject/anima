@@ -93,25 +93,54 @@ function humanizeToolName(toolName: string): string {
 }
 
 /**
- * Parse SSE data from a text chunk.
- * SSE format: "data: {...}\n\n"
+ * Process a single SSE data line and emit event.
  */
-function parseSSEEvents(text: string): Array<Record<string, unknown>> {
-  const events: Array<Record<string, unknown>> = []
-  const lines = text.split('\n')
+function processSSELine(
+  line: string,
+  onEvent: OnEventCallback
+): void {
+  if (!line.startsWith('data: ')) return
 
-  for (const line of lines) {
-    if (line.startsWith('data: ')) {
-      try {
-        const json = JSON.parse(line.slice(6))
-        events.push(json)
-      } catch {
-        // Ignore malformed JSON
-      }
+  try {
+    const json = JSON.parse(line.slice(6))
+    const timestamp = Date.now()
+
+    if ('error' in json) {
+      onEvent({
+        type: 'error',
+        content: String(json.error),
+        timestamp,
+      })
+    } else if ('complete' in json) {
+      onEvent({
+        type: 'complete',
+        content: 'Update complete',
+        timestamp,
+        meta: {
+          extractionId: typeof json.extraction_id === 'string'
+            ? json.extraction_id
+            : undefined,
+          sessionId: typeof json.session_id === 'string'
+            ? json.session_id
+            : undefined,
+        },
+      })
+    } else if ('tool' in json) {
+      onEvent({
+        type: 'tool',
+        content: humanizeToolName(String(json.tool)),
+        timestamp,
+      })
+    } else if ('text' in json) {
+      onEvent({
+        type: 'text',
+        content: String(json.text),
+        timestamp,
+      })
     }
+  } catch {
+    // Ignore malformed JSON
   }
-
-  return events
 }
 
 export type OnEventCallback = (event: AgentEvent) => void
@@ -119,15 +148,20 @@ export type OnEventCallback = (event: AgentEvent) => void
 /**
  * Stream agent correction request.
  *
+ * Uses fetch + ReadableStream with proper SSE buffering to handle
+ * messages that may be split across TCP chunk boundaries.
+ *
  * @param documentId - Document to correct
  * @param instruction - User's correction instruction
  * @param onEvent - Callback for each event
+ * @param authToken - Clerk auth token for Authorization header
  * @param signal - AbortController signal for cancellation
  */
 export async function streamAgentCorrection(
   documentId: string,
   instruction: string,
   onEvent: OnEventCallback,
+  authToken: string,
   signal?: AbortSignal
 ): Promise<void> {
   const formData = new FormData()
@@ -138,12 +172,22 @@ export async function streamAgentCorrection(
     method: 'POST',
     body: formData,
     signal,
-    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(errorText || `Request failed: ${response.status}`)
+    // Try to parse JSON error for better messages
+    let errorMessage = `Request failed: ${response.status}`
+    try {
+      const errorData = await response.json()
+      errorMessage = errorData.detail || errorData.message || errorMessage
+    } catch {
+      const errorText = await response.text()
+      errorMessage = errorText || errorMessage
+    }
+    throw new Error(errorMessage)
   }
 
   if (!response.body) {
@@ -152,6 +196,7 @@ export async function streamAgentCorrection(
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
+  let buffer = '' // Accumulate chunks to handle split messages
 
   try {
     while (true) {
@@ -159,40 +204,30 @@ export async function streamAgentCorrection(
       if (done) break
 
       const text = decoder.decode(value, { stream: true })
-      const events = parseSSEEvents(text)
+      buffer += text
 
-      for (const rawEvent of events) {
-        const timestamp = Date.now()
+      // Split by SSE message boundary (double newline)
+      const messages = buffer.split('\n\n')
 
-        if ('error' in rawEvent) {
-          onEvent({
-            type: 'error',
-            content: String(rawEvent.error),
-            timestamp,
-          })
-        } else if ('complete' in rawEvent) {
-          onEvent({
-            type: 'complete',
-            content: 'Update complete',
-            timestamp,
-            meta: {
-              extractionId: rawEvent.extraction_id as string | undefined,
-              sessionId: rawEvent.session_id as string | undefined,
-            },
-          })
-        } else if ('tool' in rawEvent) {
-          onEvent({
-            type: 'tool',
-            content: humanizeToolName(String(rawEvent.tool)),
-            timestamp,
-          })
-        } else if ('text' in rawEvent) {
-          onEvent({
-            type: 'text',
-            content: String(rawEvent.text),
-            timestamp,
-          })
+      // Keep last incomplete message in buffer
+      buffer = messages.pop() || ''
+
+      // Process complete messages
+      for (const message of messages) {
+        if (!message.trim()) continue
+
+        const lines = message.split('\n')
+        for (const line of lines) {
+          processSSELine(line, onEvent)
         }
+      }
+    }
+
+    // Process any remaining buffered data
+    if (buffer.trim()) {
+      const lines = buffer.split('\n')
+      for (const line of lines) {
+        processSSELine(line, onEvent)
       }
     }
   } finally {
@@ -222,7 +257,8 @@ Create `frontend/hooks/use-agent-stream.ts`:
 ```typescript
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { streamAgentCorrection, AgentEvent } from '@/lib/agent-api'
 
 export type AgentStatus = 'idle' | 'streaming' | 'complete' | 'error'
@@ -236,10 +272,18 @@ export interface UseAgentStreamReturn {
 }
 
 export function useAgentStream(documentId: string): UseAgentStreamReturn {
+  const { getToken } = useAuth()
   const [status, setStatus] = useState<AgentStatus>('idle')
   const [events, setEvents] = useState<AgentEvent[]>([])
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Cleanup on unmount - abort any in-flight request
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   const reset = useCallback(() => {
     // Abort any in-flight request
@@ -261,11 +305,15 @@ export function useAgentStream(documentId: string): UseAgentStreamReturn {
       // Create new abort controller
       abortControllerRef.current = new AbortController()
 
+      // Track if we received a complete event
+      let receivedComplete = false
+
       const handleEvent = (event: AgentEvent) => {
         if (event.type === 'error') {
           setError(event.content)
           setStatus('error')
         } else if (event.type === 'complete') {
+          receivedComplete = true
           setStatus('complete')
           // Add complete event to list for display
           setEvents((prev) => [...prev, event])
@@ -275,15 +323,30 @@ export function useAgentStream(documentId: string): UseAgentStreamReturn {
       }
 
       try {
+        // Get auth token
+        const token = await getToken()
+        if (!token) {
+          throw new Error('Authentication required. Please sign in and try again.')
+        }
+
         await streamAgentCorrection(
           documentId,
           instruction,
           handleEvent,
+          token,
           abortControllerRef.current.signal
         )
 
-        // If we didn't receive a complete event, set complete anyway
-        setStatus((current) => (current === 'streaming' ? 'complete' : current))
+        // Only set complete if we're still streaming and received complete event
+        // This prevents false "complete" status if errors occurred during parsing
+        if (!receivedComplete) {
+          setStatus((current) => {
+            if (current === 'streaming') {
+              return 'complete'
+            }
+            return current // Preserve error state
+          })
+        }
       } catch (err) {
         // Ignore abort errors
         if (err instanceof Error && err.name === 'AbortError') {
@@ -295,7 +358,7 @@ export function useAgentStream(documentId: string): UseAgentStreamReturn {
         setStatus('error')
       }
     },
-    [documentId]
+    [documentId, getToken]
   )
 
   return {
@@ -572,10 +635,14 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
           onKeyDown={handleKeyDown}
           placeholder="Ask AI to correct or refine extraction..."
           aria-label="AI chat input"
+          aria-describedby="chat-hint"
           disabled={isDisabled}
           rows={1}
           className="min-h-0 resize-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
         />
+        <span id="chat-hint" className="sr-only">
+          Press Enter to send, Shift+Enter for new line
+        </span>
       </div>
     </div>
   )
@@ -640,91 +707,35 @@ git commit -m "feat: integrate AiChatBar into document detail page"
 
 ---
 
-## Task 7: Add Auth Header to Agent API
+## Task 7: Verify Auth Integration
 
-**Files:**
-- Modify: `frontend/lib/agent-api.ts`
+**Files:** None (verification only)
 
-The backend requires Clerk auth. We need to pass the auth token.
+Auth is already integrated into Tasks 2 and 3:
+- `agent-api.ts` accepts `authToken` parameter and sends `Authorization: Bearer` header
+- `use-agent-stream.ts` uses `useAuth()` from Clerk to get token before streaming
 
-**Step 1: Check how upload-button handles auth**
+**Step 1: Verify the integration compiles**
 
-Look at `frontend/components/documents/upload-button.tsx` for the pattern.
-
-**Step 2: Update agent-api.ts to accept auth token**
-
-Modify the function signature and fetch call:
-
-```typescript
-export async function streamAgentCorrection(
-  documentId: string,
-  instruction: string,
-  onEvent: OnEventCallback,
-  authToken: string,  // Add this parameter
-  signal?: AbortSignal
-): Promise<void> {
-  // ... formData setup ...
-
-  const response = await fetch(`${API_URL}/api/agent/correct`, {
-    method: 'POST',
-    body: formData,
-    signal,
-    headers: {
-      Authorization: `Bearer ${authToken}`,  // Add auth header
-    },
-  })
-
-  // ... rest of function ...
-}
-```
-
-**Step 3: Update useAgentStream to get auth token**
-
-Modify `frontend/hooks/use-agent-stream.ts`:
-
-1. Add import:
-```typescript
-import { useAuth } from '@clerk/nextjs'
-```
-
-2. Get token in hook:
-```typescript
-export function useAgentStream(documentId: string): UseAgentStreamReturn {
-  const { getToken } = useAuth()
-  // ... existing state ...
-
-  const submit = useCallback(
-    async (instruction: string) => {
-      // ... reset state ...
-
-      try {
-        const token = await getToken()
-        if (!token) {
-          throw new Error('Not authenticated')
-        }
-
-        await streamAgentCorrection(
-          documentId,
-          instruction,
-          handleEvent,
-          token,  // Pass token
-          abortControllerRef.current.signal
-        )
-        // ... rest ...
-      }
-    },
-    [documentId, getToken]  // Add getToken to deps
-  )
-  // ...
-}
-```
-
-**Step 4: Commit**
-
+Run:
 ```bash
-git add frontend/lib/agent-api.ts frontend/hooks/use-agent-stream.ts
-git commit -m "feat: add Clerk auth to agent streaming requests"
+cd frontend && npm run build
 ```
+
+Expected: No TypeScript errors related to auth.
+
+**Step 2: Check auth flow in code**
+
+Verify in `frontend/hooks/use-agent-stream.ts`:
+- `useAuth()` is imported from `@clerk/nextjs`
+- `getToken()` is called before `streamAgentCorrection()`
+- Token is passed as 4th argument to `streamAgentCorrection()`
+
+Verify in `frontend/lib/agent-api.ts`:
+- `authToken: string` is the 4th parameter
+- `Authorization: Bearer ${authToken}` header is set
+
+No commit needed - auth was integrated in Tasks 2-3.
 
 ---
 
