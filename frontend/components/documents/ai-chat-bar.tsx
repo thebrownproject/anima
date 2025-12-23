@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { Textarea } from '@/components/ui/textarea'
+import { useState, useCallback } from 'react'
+import { Input } from '@/components/ui/input'
 import { AiActivityPanel } from './ai-activity-panel'
 import { useAgentStream } from '@/hooks/use-agent-stream'
 import { cn } from '@/lib/utils'
@@ -12,19 +12,9 @@ interface AiChatBarProps {
 
 export function AiChatBar({ documentId }: AiChatBarProps) {
   const [message, setMessage] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { status, events, error, submit, reset } = useAgentStream(documentId)
 
   const isDisabled = status === 'streaming'
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const textarea = textareaRef.current
-    if (textarea) {
-      textarea.style.height = 'auto'
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px` // max 4 lines
-    }
-  }, [message])
 
   const handleSubmit = useCallback(() => {
     const trimmed = message.trim()
@@ -32,15 +22,10 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
 
     submit(trimmed)
     setMessage('')
-
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
   }, [message, isDisabled, submit])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
       e.preventDefault()
       handleSubmit()
     }
@@ -56,29 +41,24 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
         onClose={reset}
       />
 
-      {/* Chat Input */}
-      <div
-        className={cn(
-          'rounded-lg border border-border bg-background px-3 py-2.5 transition-all duration-150',
-          'focus-within:ring-2 focus-within:ring-ring/20 focus-within:border-foreground/20',
-          isDisabled && 'opacity-50'
-        )}
-      >
-        <Textarea
-          ref={textareaRef}
+      {/* Chat Input - matches original style */}
+      <div className={cn(
+        'flex items-center gap-3 px-1',
+        isDisabled && 'opacity-50'
+      )}>
+        <Input
+          type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask AI to correct or refine extraction..."
           aria-label="AI chat input"
-          aria-describedby="chat-hint"
           disabled={isDisabled}
-          rows={1}
-          className="min-h-0 resize-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+          className="flex-1 border-none bg-transparent shadow-none focus-visible:ring-0"
         />
-        <span id="chat-hint" className="sr-only">
-          Press Enter to send, Shift+Enter for new line
-        </span>
+        <kbd className="text-[11px] text-muted-foreground/40 font-mono px-1.5 py-0.5 rounded border border-border/50">
+          Enter
+        </kbd>
       </div>
     </div>
   )
