@@ -3,7 +3,7 @@ import { getDocumentWithExtraction } from '@/lib/queries/documents'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { ExtractedDataTable } from '@/components/documents/extracted-data-table'
 import { PreviewPanel } from '@/components/documents/preview-panel'
-import { Input } from '@/components/ui/input'
+import { AiChatBar } from '@/components/documents/ai-chat-bar'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -55,21 +55,15 @@ export default async function DocumentDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* AI Chat Bar - inline at bottom */}
-      <div className="shrink-0 mt-6 border-t pt-4">
-        <div className="flex items-center gap-3 px-1">
-          <Input
-            type="text"
-            placeholder="Ask AI to correct or refine extraction..."
-            aria-label="AI chat input (coming soon)"
-            className="flex-1 border-none bg-transparent shadow-none focus-visible:ring-0"
-            disabled
-          />
-          <kbd className="text-[11px] text-muted-foreground/40 font-mono px-1.5 py-0.5 rounded border border-border/50">
-            Enter
-          </kbd>
+      {/* AI Chat Bar - fixed at bottom */}
+      <div className="fixed bottom-0 inset-x-0 p-4 pointer-events-none z-50">
+        <div className="mx-auto max-w-2xl pointer-events-auto">
+          <AiChatBar documentId={document.id} />
         </div>
       </div>
+
+      {/* Spacer for fixed chat bar */}
+      <div className="h-24 shrink-0" />
     </div>
   )
 }
