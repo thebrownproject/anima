@@ -196,11 +196,39 @@ Right-aligned in Confidence column, small text (11-12px).
    └──────────────┴─────┴──────────┴───────────┘
 ```
 
+### TanStack Table Implementation
+
+Migrate from custom div layout to TanStack Table for consistency with documents list:
+
+- Use `useReactTable` with `getExpandedRowModel()`
+- Transform extracted fields into row data with `subRows` for nested content
+- Same shadcn `Table`, `TableRow`, `TableCell` components
+- Column definitions for Field, Value, Confidence
+
+**Data transformation:**
+```typescript
+// Transform { applicant: { name: "Fraser", ... }, document_type: "cover_letter" }
+// Into rows with optional subRows:
+[
+  { field: "document_type", value: "cover_letter", confidence: 0.98 },
+  {
+    field: "applicant",
+    value: "7 fields",
+    confidence: 0.95,
+    subRows: [
+      { field: "name", value: "Fraser Brown" },
+      { field: "email", value: "fraserbrown@live.com" },
+      ...
+    ]
+  }
+]
+```
+
 ### File Changes
 
 | File | Change |
 |------|--------|
-| `frontend/components/documents/extracted-data-table.tsx` | Full redesign with grid layout + smart renderer |
+| `frontend/components/documents/extracted-data-table.tsx` | Rewrite with TanStack Table + expanding rows |
 
 ---
 
