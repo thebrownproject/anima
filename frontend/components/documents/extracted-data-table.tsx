@@ -1,14 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,8 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
-import { FileText, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 
 interface ExtractedDataTableProps {
   fields: Record<string, unknown> | null
@@ -51,9 +42,13 @@ function NestedDataDialog({ label, data }: { label: string; data: unknown }) {
   )
 }
 
+function formatKey(key: string): string {
+  return key.replace(/_/g, ' ')
+}
+
 function renderValue(key: string, value: unknown): React.ReactNode {
   if (value === null || value === undefined) {
-    return <span className="text-muted-foreground">—</span>
+    return <span className="text-muted-foreground/50">—</span>
   }
 
   if (Array.isArray(value) || typeof value === 'object') {
@@ -65,26 +60,7 @@ function renderValue(key: string, value: unknown): React.ReactNode {
     return <span className="font-mono tabular-nums">{value}</span>
   }
 
-  return <span className="text-foreground">{String(value)}</span>
-}
-
-function ConfidenceIndicator({ score }: { score: number }) {
-  const percentage = Math.round(score * 100)
-
-  // Use CSS variables for dark mode compatibility
-  const dotColor =
-    score >= 0.9
-      ? 'bg-green-500 dark:bg-green-400'
-      : score >= 0.7
-        ? 'bg-amber-500 dark:bg-amber-400'
-        : 'bg-red-500 dark:bg-red-400'
-
-  return (
-    <div className="flex items-center gap-1.5 justify-end">
-      <span className={cn('size-1.5 rounded-full', dotColor)} />
-      <span className="text-xs tabular-nums text-muted-foreground">{percentage}%</span>
-    </div>
-  )
+  return <span>{String(value)}</span>
 }
 
 export function ExtractedDataTable({
@@ -93,12 +69,8 @@ export function ExtractedDataTable({
 }: ExtractedDataTableProps) {
   if (!fields || Object.keys(fields).length === 0) {
     return (
-      <div className="flex h-48 flex-col items-center justify-center text-muted-foreground border border-dashed rounded-lg bg-muted/20">
-        <FileText className="size-12 text-muted-foreground/50 mb-4" />
-        <p className="text-sm font-medium">No extracted data</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">
-          Run extraction to populate fields
-        </p>
+      <div className="flex h-full items-center justify-center py-12">
+        <p className="text-sm text-muted-foreground">No data extracted</p>
       </div>
     )
   }
@@ -106,47 +78,30 @@ export function ExtractedDataTable({
   const entries = Object.entries(fields)
 
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="h-10 text-sm font-normal text-muted-foreground w-1/3">
-              Field
-            </TableHead>
-            <TableHead className="h-10 text-sm font-normal text-muted-foreground">
-              Value
-            </TableHead>
-            <TableHead className="h-10 text-sm font-normal text-muted-foreground w-28 text-right">
-              Confidence
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entries.map(([key, value]) => {
-            const confidence = confidenceScores?.[key]
-            return (
-              <TableRow
-                key={key}
-                className="border-0 hover:bg-muted/50 transition-colors duration-150"
-              >
-                <TableCell className="py-3">
-                  <span className="text-sm text-muted-foreground capitalize">
-                    {key.replace(/_/g, ' ')}
-                  </span>
-                </TableCell>
-                <TableCell className="py-3">{renderValue(key, value)}</TableCell>
-                <TableCell className="py-3">
-                  {confidence !== undefined ? (
-                    <ConfidenceIndicator score={confidence} />
-                  ) : (
-                    <span className="text-muted-foreground text-xs">—</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+    <div className="divide-y divide-border/50">
+      {entries.map(([key, value]) => {
+        const confidence = confidenceScores?.[key]
+        return (
+          <div
+            key={key}
+            className="flex items-center justify-between py-2.5 px-1 group"
+          >
+            <span className="text-[13px] text-muted-foreground capitalize">
+              {formatKey(key)}
+            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[13px] text-foreground font-medium text-right">
+                {renderValue(key, value)}
+              </span>
+              {confidence !== undefined && (
+                <span className="text-[11px] text-muted-foreground/50 tabular-nums w-8 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                  {Math.round(confidence * 100)}%
+                </span>
+              )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

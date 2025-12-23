@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ExtractedDataTable } from '@/components/documents/extracted-data-table'
 import { PreviewPanel } from '@/components/documents/preview-panel'
 import { StacksDropdown } from '@/components/documents/stacks-dropdown'
-import { Edit, Download, FileText } from 'lucide-react'
+import { Edit, Download } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -37,38 +37,37 @@ export default async function DocumentDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full">
       {/* Header with breadcrumbs and actions */}
       <PageHeader
         title={document.filename}
         actions={
           <>
             <StacksDropdown assignedStacks={document.stacks} />
-            <Button variant="outline" size="sm" disabled>
-              <Edit className="mr-2 size-4" />
+            <Button variant="ghost" size="sm" disabled className="h-7 px-2 text-xs">
+              <Edit className="mr-1.5 size-3.5" />
               Edit
             </Button>
-            <Button variant="outline" size="sm" disabled>
-              <Download className="mr-2 size-4" />
+            <Button variant="ghost" size="sm" disabled className="h-7 px-2 text-xs">
+              <Download className="mr-1.5 size-3.5" />
               Export
             </Button>
           </>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left: Extracted Data */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium">Extracted Data</h2>
+      {/* Main content - asymmetric layout */}
+      <div className="flex-1 flex gap-6 mt-4">
+        {/* Left: Extracted Data - narrow fixed width */}
+        <div className="w-80 shrink-0">
           <ExtractedDataTable
             fields={document.extracted_fields}
             confidenceScores={document.confidence_scores}
           />
         </div>
 
-        {/* Right: Preview */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium">Preview</h2>
+        {/* Right: Preview - takes remaining space */}
+        <div className="flex-1 min-w-0">
           <PreviewPanel
             pdfUrl={signedUrl}
             ocrText={document.ocr_raw_text}
@@ -77,22 +76,20 @@ export default async function DocumentDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* AI Chat Bar - placeholder for now */}
-      <div className="fixed bottom-0 left-0 right-0 pb-4 pt-6 bg-gradient-to-t from-background via-background to-transparent pointer-events-none z-50">
-        <div className="mx-auto w-full max-w-2xl px-4 pointer-events-auto">
-          <div className="flex items-center gap-2 rounded-xl border bg-background/95 backdrop-blur-sm p-3 shadow-lg">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-primary/10 shrink-0">
-              <FileText className="size-4 text-primary" />
-            </div>
-            <p className="text-sm text-muted-foreground flex-1">
-              AI Chat Bar - coming soon
-            </p>
-          </div>
+      {/* AI Chat Bar - inline at bottom */}
+      <div className="mt-6 border-t pt-4">
+        <div className="flex items-center gap-3 px-1">
+          <input
+            type="text"
+            placeholder="Ask AI to correct or refine extraction..."
+            className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground/50 focus:outline-none"
+            disabled
+          />
+          <kbd className="text-[11px] text-muted-foreground/40 font-mono px-1.5 py-0.5 rounded border border-border/50">
+            Enter
+          </kbd>
         </div>
       </div>
-
-      {/* Spacer for fixed chat bar */}
-      <div className="h-24" />
     </div>
   )
 }

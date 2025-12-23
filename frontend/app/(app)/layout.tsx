@@ -14,7 +14,7 @@ export default async function AppLayout({
   const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true'
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    <SidebarProvider defaultOpen={defaultOpen} className="h-svh overflow-hidden">
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 px-4">

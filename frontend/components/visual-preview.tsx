@@ -1,5 +1,4 @@
 import Markdown, { Components } from 'react-markdown'
-import { FileText } from 'lucide-react'
 
 // Sanitize links to only allow safe protocols (prevent javascript: XSS)
 const markdownComponents: Components = {
@@ -23,12 +22,8 @@ interface VisualPreviewProps {
 export function VisualPreview({ markdown }: VisualPreviewProps) {
   if (!markdown) {
     return (
-      <div className="flex h-[600px] flex-col items-center justify-center text-muted-foreground">
-        <FileText className="size-12 text-muted-foreground/50 mb-4" />
-        <p className="text-sm font-medium">No OCR text available</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">
-          Run extraction to generate text
-        </p>
+      <div className="flex h-[600px] items-center justify-center">
+        <p className="text-sm text-muted-foreground">No OCR text available</p>
       </div>
     )
   }

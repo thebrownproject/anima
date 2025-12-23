@@ -3509,3 +3509,72 @@ See Session 29.
 2. Decide: finish AiChatBar now or defer to extraction agent frontend work
 3. If finishing: implement SSE streaming, agent endpoint calls
 4. If deferring: move to Phase 4 (integration testing)
+
+---
+
+## Session 39 - 2025-12-23 - Linear Design Refresh + Layout Debugging
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Linear-inspired design refresh**:
+  - Refactored ExtractedDataTable to use simple divs instead of Table component
+  - Removed section headers ("Extracted Data", "Preview") - context is obvious
+  - Smaller, left-aligned tabs in PreviewPanel (removed Card wrapper)
+  - Minimal empty states - just text, no icons
+  - Confidence scores show on hover only
+  - StacksDropdown simplified - plain text button instead of Badge
+  - Inline chat bar design (non-floating)
+  - Asymmetric layout: 320px left panel, flex-1 preview
+
+- [x] **Layout constraint attempt** (partial):
+  - Added `h-svh overflow-hidden` to SidebarProvider - constrains viewport
+  - Multiple attempts at flex column layout for chat bar visibility - none worked
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Design direction | Linear-inspired | User requested Linear aesthetic - minimal chrome, dense info, monochromatic |
+| Table refactor | Simple divs with divide-y | Cleaner than shadcn Table, matches Linear |
+| Confidence display | Hover-only | Reduces visual noise |
+
+### Issues Encountered
+
+**Chat bar layout not resolved**: Multiple approaches tried:
+- `min-h-0` + `shrink-0` on flex children - didn't work
+- CSS Grid `grid-rows-[auto_1fr_auto]` - didn't work
+- `h-full` on html/body - didn't work
+- `overflow-hidden` on main - didn't work
+
+Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly propagate height constraints. The `h-svh overflow-hidden` constrains the viewport but inner flex layouts don't receive proper height inheritance.
+
+### Current State
+
+- Design refresh applied and working (cleaner Linear aesthetic)
+- `h-svh overflow-hidden` on SidebarProvider in layout.tsx
+- Chat bar is NOT visible (pushed off-screen, no scroll)
+- PDF preview overflows its container slightly
+
+### Files Modified
+
+- `frontend/app/(app)/layout.tsx` - Added h-svh overflow-hidden to SidebarProvider
+- `frontend/app/(app)/documents/[id]/page.tsx` - Asymmetric layout, inline chat bar
+- `frontend/components/documents/extracted-data-table.tsx` - Div-based, hover confidence
+- `frontend/components/documents/preview-panel.tsx` - Compact tabs, no Card
+- `frontend/components/documents/stacks-dropdown.tsx` - Simplified to plain button
+- `frontend/components/visual-preview.tsx` - Minimal empty state
+
+### Next Session
+
+**Task**: Fix chat bar visibility layout issue
+
+**Context**: The shadcn sidebar layout uses `min-h-svh` which allows content to grow beyond viewport. Adding `h-svh overflow-hidden` constrains it, but the inner flex layouts don't properly allocate space for the chat bar.
+
+**Approaches to try**:
+1. Inspect browser DevTools to trace exact height inheritance chain
+2. Consider using `position: sticky` for chat bar within scrollable content area
+3. May need to modify SidebarInset component or wrap children differently
+4. Alternative: Use fixed positioning but offset by sidebar width (less ideal)
