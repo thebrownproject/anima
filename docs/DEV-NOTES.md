@@ -3130,3 +3130,67 @@ See Session 29.
 5. Test by signing up new user
 6. Verify user in Supabase `users` table
 7. Move `vercel-deployment` plan to `complete/` when done
+
+---
+
+## Session 33 - 2025-12-23 - Documents Page Plan Sharding
+
+**Feature**: documents-page (`plans/todo/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Reviewed Documents Page plan from previous session**
+  - Plan revised in Session 32 handover with 8 critical fixes
+  - 22 tasks across 4 phases, ~2000 lines total
+
+- [x] **Sharded monolithic plan into 4 phase files**
+  - `01-foundation.md` - Phase 1: Tasks 1-3 (262 lines)
+  - `02-documents-list.md` - Phase 2: Tasks 4-11 (846 lines)
+  - `03-document-detail.md` - Phase 3: Tasks 12-20 (912 lines)
+  - `04-integration.md` - Phase 4: Tasks 21-22 (168 lines)
+
+- [x] **Created README.md master index**
+  - Progress tracker with checkboxes for all 22 tasks
+  - Components table (what gets created)
+  - Pages table (routes implemented)
+  - Deferred items list
+
+- [x] **Updated each plan with navigation**
+  - Clear goal for each phase
+  - Prereq → This plan → Next links
+  - Design system reference preserved in all files
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Sharding strategy | By phase (4 files) | Natural checkpoints, each ends with working increment |
+| Index format | README.md with checkboxes | Easy progress tracking across sessions |
+| Original plan | Deleted | Redundant after sharding |
+
+### Files Created
+
+- `docs/plans/todo/documents-page/README.md` - Master index with progress tracker
+- `docs/plans/todo/documents-page/01-foundation.md` - Phase 1
+- `docs/plans/todo/documents-page/02-documents-list.md` - Phase 2
+- `docs/plans/todo/documents-page/03-document-detail.md` - Phase 3
+- `docs/plans/todo/documents-page/04-integration.md` - Phase 4
+
+### Files Deleted
+
+- `docs/plans/todo/documents-page/2025-12-22-documents-page-plan.md` - Replaced by sharded files
+
+### Next Session
+
+**Task**: Execute Documents Page Phase 1 (Foundation)
+
+**Process**:
+1. Move `docs/plans/todo/documents-page/` to `docs/plans/in-progress/`
+2. Read `README.md` for progress overview
+3. Execute `01-foundation.md` (Tasks 1-3):
+   - Install shadcn components (table, dialog, badge, tabs, popover, checkbox, card)
+   - Create page header context system
+   - Integrate into app layout
+4. Check off tasks in `README.md` as completed
+5. Continue to `02-documents-list.md`
