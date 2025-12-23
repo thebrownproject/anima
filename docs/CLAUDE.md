@@ -39,6 +39,7 @@
 | `PRD.md` | Product requirements | Product scope changes (rare) |
 | `ARCHITECTURE.md` | System design | Feature moves to `complete/` |
 | `SCHEMA.md` | Database schema | Database changes land |
+| `plans/ISSUES.md` | Lightweight issue/idea tracking | As issues are added/resolved |
 
 ---
 
@@ -71,6 +72,7 @@ docs/
 ├── ARCHITECTURE.md        # System design
 ├── SCHEMA.md              # Database schema
 └── plans/
+    ├── ISSUES.md          # Lightweight issue/idea tracking
     ├── todo/              # Features designed, ready to implement
     ├── in-progress/       # Currently being worked on
     ├── complete/          # Done
