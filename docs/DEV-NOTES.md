@@ -3748,3 +3748,66 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 1. Move filter input to header (use plan in `docs/plans/todo/header-filters/`)
 2. Continue with Phase 4 tasks from documents-page plan
 3. Start Stacks feature (uses same @header pattern)
+
+---
+
+## Session 42 - 2025-12-23 - AI Chat Bar Design & Planning ✅
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed AI chat bar design with Linear inspiration**:
+  - Discussed requirements: real-time SSE streaming, activity panel, collapsible UI
+  - Chose Option A: `{ tool }` → checkmarks, `{ text }` → bullets
+  - Fixed positioning at viewport bottom, panel expands upward
+  - Auto-collapse after 3 seconds of completion
+  - Minimal Linear-style input (no icons, no visible submit button)
+
+- [x] **Created design document**:
+  - `docs/plans/in-progress/documents-page/05-ai-chat-bar-design.md`
+  - Component architecture, visual specs, state machine
+  - Backend integration details (SSE events from `/api/agent/correct`)
+
+- [x] **Created implementation plan**:
+  - `docs/plans/in-progress/documents-page/06-ai-chat-bar-plan.md`
+  - 8 tasks: textarea install, agent API, hook, activity panel, chat bar, page integration, auth, e2e testing
+  - Full code for each component
+
+- [x] **Code review with MCP tools**:
+  - Spawned code-reviewer agent to verify plan
+  - Used shadcn MCP to verify Collapsible/Textarea patterns
+  - Used perplexity to verify SSE streaming best practices
+  - Identified 4 critical issues
+
+- [x] **Fixed critical issues in plan**:
+  - SSE buffer boundary bug (accumulate chunks, split by `\n\n`)
+  - Removed `credentials: 'include'` (conflicts with Bearer auth)
+  - Fixed race condition in completion status tracking
+  - Added `aria-describedby` for textarea accessibility
+  - Added unmount cleanup for AbortController
+  - Improved error message parsing
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| SSE approach | fetch + ReadableStream | Backend uses POST with FormData, EventSource only supports GET |
+| Panel position | Fixed viewport bottom | Matches Claude.ai/ChatGPT patterns, always visible |
+| Auto-collapse | 3 seconds after complete | Linear's "get out of the way" philosophy |
+| Event mapping | tool→checkmark, text→bullet | Simple Option A, can enhance later |
+
+### Files Created
+
+- `docs/plans/in-progress/documents-page/05-ai-chat-bar-design.md`
+- `docs/plans/in-progress/documents-page/06-ai-chat-bar-plan.md`
+
+### Next Session
+
+**Task**: Execute AI Chat Bar implementation plan
+
+**Process**:
+1. Run `/superpowers:execute-plan` with `06-ai-chat-bar-plan.md`
+2. Tasks 1-8: Install textarea, create API helper, hook, components, integrate
+3. Test end-to-end with backend running
