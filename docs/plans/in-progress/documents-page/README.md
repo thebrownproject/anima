@@ -21,17 +21,17 @@ Install shadcn components and create page header system with breadcrumbs.
 
 ---
 
-### Phase 2: Documents List (`02-documents-list.md`)
+### Phase 2: Documents List (`02-documents-list.md`) ✅
 Build the documents list page with TanStack Table, types, and data fetching.
 
-- [ ] **Task 4:** Create document type definitions
-- [ ] **Task 5:** Create data fetching function (`getDocumentsWithStacks`)
-- [ ] **Task 6:** Create FileTypeIcon component
-- [ ] **Task 7:** Create StackBadges component
-- [ ] **Task 8:** Create DocumentsTable component (full shadcn pattern with sorting, filtering, pagination, selection)
-- [ ] **Task 9:** Create DocumentsList client wrapper with breadcrumbs
-- [ ] **Task 10:** Create loading state for documents page
-- [ ] **Task 11:** Update documents page to fetch and display data
+- [x] **Task 4:** Create document type definitions
+- [x] **Task 5:** Create data fetching function (`getDocumentsWithStacks`)
+- [x] **Task 6:** Create FileTypeIcon component
+- [x] **Task 7:** Create StackBadges component
+- [x] **Task 8:** Create DocumentsTable component (sorting, filtering, pagination - no checkboxes/actions for MVP)
+- [x] **Task 9:** Create DocumentsList client wrapper
+- [x] **Task 10:** Create loading state for documents page
+- [x] **Task 11:** Update documents page to fetch and display data
 
 ---
 
