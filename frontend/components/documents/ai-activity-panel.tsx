@@ -27,12 +27,12 @@ export function AiActivityPanel({
 }: AiActivityPanelProps) {
   const [isOpen, setIsOpen] = useState(true)
 
-  // Auto-collapse 3s after completion
+  // Auto-collapse 5s after completion
   useEffect(() => {
     if (status === 'complete') {
       const timer = setTimeout(() => {
         setIsOpen(false)
-      }, 3000)
+      }, 5000)
       return () => clearTimeout(timer)
     }
   }, [status])
@@ -62,9 +62,9 @@ export function AiActivityPanel({
       <div className="rounded-xl border border-border bg-background shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3">
-          <CollapsibleTrigger asChild disabled={isStreaming}>
+          <CollapsibleTrigger asChild>
             <button
-              className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity disabled:cursor-not-allowed"
+              className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity"
               aria-expanded={isOpen}
             >
               {isStreaming && (

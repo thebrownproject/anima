@@ -25,7 +25,7 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
   }, [message, isDisabled, submit])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !isDisabled) {
       e.preventDefault()
       handleSubmit()
     }
