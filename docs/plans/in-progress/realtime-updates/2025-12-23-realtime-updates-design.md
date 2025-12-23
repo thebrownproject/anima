@@ -198,11 +198,18 @@ Right-aligned in Confidence column, small text (11-12px).
 
 ### TanStack Table Implementation
 
-Migrate from custom div layout to TanStack Table for consistency with documents list:
+Migrate from custom div layout to TanStack Table for consistency with documents list.
 
-- Use `useReactTable` with `getExpandedRowModel()`
+**Mirror `documents-table.tsx` patterns:**
+- Same shadcn components: `Table`, `TableRow`, `TableCell`, `TableHeader`, `TableHead`
+- Same styling: `hover:bg-muted/30`, `text-muted-foreground` for headers, `py-3` cells
+- Same code structure: separate columns definition, `useReactTable` hook, `flexRender`
+- Add `getExpandedRowModel()` for nested row expansion
+
+**Why**: Consistency makes future updates easier - style changes apply uniformly across tables.
+
+**Additional features:**
 - Transform extracted fields into row data with `subRows` for nested content
-- Same shadcn `Table`, `TableRow`, `TableCell` components
 - Column definitions for Field, Value, Confidence
 
 **Data transformation:**
