@@ -1,18 +1,24 @@
 'use client'
 
 import * as React from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { ChevronRight } from 'lucide-react'
+  flexRender,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useReactTable,
+  ExpandedState,
+} from '@tanstack/react-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { extractedColumns } from './extracted-columns'
+import { transformExtractedFields } from '@/lib/transform-extracted-fields'
 
 interface ExtractedDataTableProps {
   fields: Record<string, unknown> | null
@@ -20,56 +26,30 @@ interface ExtractedDataTableProps {
   changedFields?: Set<string>
 }
 
-function NestedDataDialog({ label, data }: { label: string; data: unknown }) {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-auto p-1 gap-1">
-          <Badge variant="secondary" className="font-mono text-xs">
-            {Array.isArray(data) ? `${data.length} items` : 'Object'}
-          </Badge>
-          <ChevronRight className="size-3" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle className="capitalize">{label.replace(/_/g, ' ')}</DialogTitle>
-          <DialogDescription>Nested data structure</DialogDescription>
-        </DialogHeader>
-        <pre className="mt-4 rounded-lg bg-muted p-4 text-sm overflow-auto">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function formatKey(key: string): string {
-  return key.replace(/_/g, ' ')
-}
-
-function renderValue(key: string, value: unknown): React.ReactNode {
-  if (value === null || value === undefined) {
-    return <span className="text-muted-foreground/50">—</span>
-  }
-
-  if (Array.isArray(value) || typeof value === 'object') {
-    return <NestedDataDialog label={key} data={value} />
-  }
-
-  // Format currency values
-  if (typeof value === 'string' && /^\$?[\d,]+\.?\d*$/.test(value)) {
-    return <span className="font-mono tabular-nums">{value}</span>
-  }
-
-  return <span>{String(value)}</span>
-}
-
 export function ExtractedDataTable({
   fields,
   confidenceScores,
   changedFields = new Set(),
 }: ExtractedDataTableProps) {
+  const [expanded, setExpanded] = React.useState<ExpandedState>({})
+
+  const data = React.useMemo(
+    () => transformExtractedFields(fields, confidenceScores),
+    [fields, confidenceScores]
+  )
+
+  const table = useReactTable({
+    data,
+    columns: extractedColumns,
+    state: {
+      expanded,
+    },
+    onExpandedChange: setExpanded,
+    getSubRows: (row) => row.subRows,
+    getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+  })
+
   if (!fields || Object.keys(fields).length === 0) {
     return (
       <div className="flex h-full items-center justify-center py-12">
@@ -78,36 +58,70 @@ export function ExtractedDataTable({
     )
   }
 
-  const entries = Object.entries(fields)
-
   return (
-    <div className="divide-y divide-border/50">
-      {entries.map(([key, value]) => {
-        const confidence = confidenceScores?.[key]
-        return (
-          <div
-            key={key}
-            className={cn(
-              "flex items-center justify-between py-2.5 px-1 group transition-colors duration-1000",
-              changedFields.has(key) && "bg-primary/10"
-            )}
-          >
-            <span className="text-[13px] text-muted-foreground capitalize">
-              {formatKey(key)}
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="text-[13px] text-foreground font-medium text-right">
-                {renderValue(key, value)}
-              </span>
-              {confidence !== undefined && (
-                <span className="text-[11px] text-muted-foreground/50 tabular-nums w-8 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                  {Math.round(confidence * 100)}%
-                </span>
-              )}
-            </div>
-          </div>
-        )
-      })}
+    <div className="rounded-lg border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  className="h-10 text-sm font-normal text-muted-foreground"
+                  style={{ width: header.column.getSize() }}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => {
+              // Check if this row or its parent is in changedFields
+              const rootId = row.original.id.split('-')[0]
+              const isChanged = changedFields.has(rootId)
+
+              return (
+                <TableRow
+                  key={row.id}
+                  className={cn(
+                    'hover:bg-muted/30 transition-colors',
+                    row.getCanExpand() && 'cursor-pointer',
+                    isChanged && 'animate-highlight-fade'
+                  )}
+                  onClick={() => {
+                    if (row.getCanExpand()) {
+                      row.toggleExpanded()
+                    }
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="py-2.5">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              )
+            })
+          ) : (
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={extractedColumns.length} className="h-24 text-center">
+                <p className="text-sm text-muted-foreground">No data extracted</p>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   )
 }
