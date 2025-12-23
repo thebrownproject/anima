@@ -70,6 +70,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
                 size="sm"
                 disabled={pageNumber <= 1}
                 onClick={() => setPageNumber((p) => p - 1)}
+                aria-label="Previous page"
               >
                 <ChevronLeft className="size-4" />
               </Button>
@@ -81,6 +82,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
                 size="sm"
                 disabled={pageNumber >= numPages}
                 onClick={() => setPageNumber((p) => p + 1)}
+                aria-label="Next page"
               >
                 <ChevronRight className="size-4" />
               </Button>

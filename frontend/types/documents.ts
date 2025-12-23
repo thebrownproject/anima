@@ -21,5 +21,5 @@ export interface DocumentWithExtraction extends Document {
   confidence_scores: Record<string, number> | null
   session_id: string | null
   ocr_raw_text: string | null
-  file_path: string
+  file_path: string | null
 }

@@ -3418,12 +3418,12 @@ See Session 29.
 
 ### Tasks Remaining
 
-- [ ] Task 15: Create Preview Panel Component
-- [ ] Task 16: Create Extracted Data Table Component
-- [ ] Task 17: Create Stacks Dropdown Component
-- [ ] Task 18: Create Document Detail Page Client Component
-- [ ] Task 19: Create AI Chat Bar Component (Stub)
-- [ ] Task 20: Create Document Detail Page and Loading State
+- [x] Task 15: Create Preview Panel Component
+- [x] Task 16: Create Extracted Data Table Component
+- [x] Task 17: Create Stacks Dropdown Component
+- [x] Task 18: Create Document Detail Page Client Component (wired directly to page.tsx)
+- [ ] Task 19: Create AI Chat Bar Component (Stub) - placeholder in page.tsx
+- [x] Task 20: Create Document Detail Page and Loading State
 
 ### Next Session
 
@@ -3434,3 +3434,78 @@ See Session 29.
 2. Execute Tasks 15-17 (Batch 2)
 3. Execute Tasks 18-20 (Batch 3)
 4. Test document detail page end-to-end
+
+---
+
+## Session 38 - 2025-12-23 - Documents Page Phase 3 Complete (Tasks 15-20) ✅
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 15: Create PreviewPanel component**
+  - Created `frontend/components/documents/preview-panel.tsx`
+  - Tabs for PDF and Visual (markdown) preview
+  - Dynamic import of PdfViewer for SSR compatibility
+
+- [x] **Task 16: Create ExtractedDataTable component**
+  - Created `frontend/components/documents/extracted-data-table.tsx`
+  - Field/value/confidence display with colored indicators
+  - Expandable nested data dialog for objects/arrays
+  - Empty state with dashed border
+
+- [x] **Task 17: Create StacksDropdown component**
+  - Created `frontend/components/documents/stacks-dropdown.tsx`
+  - Displays assigned stacks as badge with dropdown
+  - Checkbox items for stack assignment (read-only for now)
+
+- [x] **Task 20: Create document detail page + loading state**
+  - Created `frontend/app/(app)/documents/[id]/page.tsx`
+  - Created `frontend/app/(app)/documents/[id]/loading.tsx`
+  - Server component fetches data + signed URL
+  - Wired up all components directly (skipped separate DocumentDetail wrapper)
+
+- [x] **Bug fix: Supabase Storage RLS policies**
+  - Fixed storage policies to use `auth.jwt()->>'sub'` for Clerk
+  - Was using `auth.uid()` which expects UUID, not Clerk TEXT IDs
+
+- [x] **Enhancement: Markdown rendering for OCR text**
+  - Added `react-markdown` and `@tailwindcss/typography`
+  - Visual preview now renders markdown properly
+
+- [x] **Code review fixes**
+  - Added aria-labels to PDF pagination buttons
+  - Added link sanitization to prevent javascript: XSS in markdown
+  - Fixed `file_path` type to be nullable
+  - Removed debug console.logs
+  - Added try/catch for graceful degradation on signed URL errors
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Skip DocumentDetail wrapper | Wire directly to page.tsx | Simpler architecture, PageHeader already handles breadcrumbs |
+| Markdown renderer | react-markdown | Most popular, well-maintained, good enough for OCR text |
+| Link sanitization | Custom component filter | Prevents javascript:/data: XSS while allowing http/mailto |
+
+### Issues Logged
+
+- #6: OCR images not rendering - Mistral returns `![img-0.jpeg](img-0.jpeg)` but we don't store images
+- #7: Investigate Mistral markdown output quality
+
+### Tasks Remaining
+
+- [ ] Task 19: Create AI Chat Bar Component (full implementation)
+  - Currently placeholder in page.tsx
+  - Needs SSE streaming to extraction agent
+
+### Next Session
+
+**Task**: Either finish AiChatBar (Task 19) or move to Phase 4 Integration
+
+**Process**:
+1. Run `/continue`
+2. Decide: finish AiChatBar now or defer to extraction agent frontend work
+3. If finishing: implement SSE streaming, agent endpoint calls
+4. If deferring: move to Phase 4 (integration testing)

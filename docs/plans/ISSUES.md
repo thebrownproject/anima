@@ -16,3 +16,6 @@ Lightweight tracking for items that don't need immediate action.
   - Clerk docs: https://clerk.com/docs/authentication/social-connections/google
 - [ ] #4 `bug` Sign-in page flashes briefly after login before redirecting to /documents (2025-12-23)
 - [ ] #5 `tech-debt` Documents table accessibility: add keyboard navigation (Enter/Space) and ARIA labels to clickable rows (2025-12-23)
+- [ ] #6 `feature` OCR images not rendering in Visual preview - Mistral OCR extracts images as `![img-0.jpeg](img-0.jpeg)` but we don't store/serve them (2025-12-23)
+  - Options: Store extracted images to Supabase Storage during OCR, or strip/hide image markdown
+- [ ] #7 `feature` Investigate Mistral OCR markdown output - currently exporting as raw text, check if API supports structured markdown output (2025-12-23)

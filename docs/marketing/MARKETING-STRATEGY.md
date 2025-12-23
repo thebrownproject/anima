@@ -122,6 +122,236 @@ Most are free to list. Some have paid "featured" options later.
 
 ---
 
+## AI-Powered Automated Distribution
+
+The goal: Build systems that get StackDocs in front of users **without manual outreach**. Three pillars:
+
+1. **LLM SEO** - Get cited by AI assistants (ChatGPT, Claude, Perplexity)
+2. **Programmatic SEO** - Auto-generate thousands of targeted pages
+3. **Automated Directory Presence** - Bulk submission + passive discovery
+
+---
+
+### Pillar 1: LLM SEO (Answer Engine Optimization)
+
+**What it is:** Optimizing content so AI assistants cite StackDocs when users ask "what's the best tool for invoice extraction?" or similar queries.
+
+**Why it matters:**
+- AI search referrals convert **4.4x better** than traditional search
+- AI referrals grew **1,300%** for retail in 2024 holidays
+- This is where discovery is moving - get ahead now
+
+#### Key Tactics
+
+| Tactic | Implementation | Priority |
+|--------|----------------|----------|
+| **Structured Content** | Headings, bullet points, tables, lists (pages cited by ChatGPT average 14 list sections) | High |
+| **Schema Markup** | FAQ, HowTo, Organization, Article schema on all pages | High |
+| **Q&A Format** | Structure content as direct questions and answers | High |
+| **Entity Optimization** | Consistent brand mentions across credible sources | Medium |
+| **E-E-A-T Signals** | Author bios, factual accuracy, regular updates | Medium |
+| **Technical SEO** | Server-side rendering, minimal JS, fast loading | Medium |
+
+#### Content Structure for AI Citation
+
+```markdown
+## What is StackDocs?
+StackDocs is a document data extraction SaaS that uses AI to...
+
+## How does StackDocs extract data from invoices?
+StackDocs uses [specific process]...
+
+## What makes StackDocs different from [competitor]?
+Unlike [competitor], StackDocs offers Stacks - multi-document extraction...
+```
+
+#### Measurement
+- Track brand mentions in ChatGPT/Perplexity/Claude responses
+- Monitor AI referral traffic in analytics
+- Check "index coverage" by LLM crawlers
+
+---
+
+### Pillar 2: Programmatic SEO
+
+**What it is:** Auto-generating thousands of pages targeting long-tail keywords, each uniquely optimized without manual writing.
+
+**Why it matters:**
+- Case study: SaaS scaled from 67 to **2,100 monthly signups** in 10 months
+- One company launched **15,000 pages in 90 days**
+- Captures searches competitors ignore
+
+#### Implementation Approach
+
+**Step 1: Build Keyword Matrix**
+
+Create structured data with variables:
+
+| Variable | Examples |
+|----------|----------|
+| Document Type | invoice, receipt, contract, quote, purchase order |
+| Industry | construction, retail, healthcare, legal, real estate |
+| Action | extract, process, automate, digitize, convert |
+| Format | PDF, image, scan, photo |
+| Modifier | free, AI, best, online, automated |
+
+**Generates keywords like:**
+- "AI invoice extraction for construction"
+- "automate PDF receipt processing healthcare"
+- "best free contract data extraction"
+- "online quote digitization tool"
+
+**Step 2: Template System**
+
+Create page templates that auto-populate:
+
+```
+/solutions/[industry]/[document-type]/
+
+Example: /solutions/construction/invoice-extraction/
+- Dynamic H1: "AI Invoice Extraction for Construction"
+- Industry-specific pain points (auto-populated)
+- Relevant schema (auto-generated)
+- Internal links to related pages
+```
+
+**Step 3: Execution**
+
+| Phase | Action | Timeline |
+|-------|--------|----------|
+| Build | Create keyword matrix in spreadsheet | Week 1 |
+| Template | Design 3-5 page templates | Week 2 |
+| Generate | Batch create 100-200 pages | Week 3 |
+| QA | Review in staging, fix issues | Week 4 |
+| Deploy | Launch in weekly sprints of 50-100 | Ongoing |
+| Optimize | Monitor rankings, iterate on templates | Ongoing |
+
+**Tools:**
+- **Content generation:** Jasper, Claude API, or custom scripts
+- **SEO validation:** SEMrush for search volumes
+- **Automation:** WP All Import or Next.js dynamic routes
+
+#### Example Page Categories
+
+1. **Industry verticals:** `/solutions/[industry]/`
+   - construction, healthcare, legal, real estate, retail
+
+2. **Document types:** `/extract/[document-type]/`
+   - invoices, receipts, contracts, quotes, purchase orders
+
+3. **Comparisons:** `/compare/stackdocs-vs-[competitor]/`
+   - Auto-generate competitor comparison pages
+
+4. **Use cases:** `/use-cases/[specific-scenario]/`
+   - "extract line items from contractor invoices"
+   - "batch process expense receipts"
+
+---
+
+### Pillar 3: Automated Directory Presence
+
+**What it is:** Systematic submission to directories where users discover tools, creating passive inbound traffic.
+
+#### AI/SaaS Directories (Priority Order)
+
+| Directory | Why | Free? | Action |
+|-----------|-----|-------|--------|
+| **There's An AI For That** | Huge traffic, AI-focused audience | Yes | Submit first |
+| **SaaSHub** | Users searching for alternatives | Yes | High intent traffic |
+| **AlternativeTo** | Massive directory, unbiased reviews | Yes | Captures switchers |
+| **Futurepedia** | Curated AI tools | Yes | Quality audience |
+| **BetaList** | Pre-launch exposure (246 signups in 3 weeks case study) | Yes | Early adopters |
+| **OpenHunts** | 14.3% conversion rate, SEO benefits | Free-$23 | High conversion |
+| **Indie Hackers** | Founder network, ongoing exposure | Yes | Community feedback |
+| **StackShare** | Developer/CTO audience | Yes | Tech decision makers |
+| **G2/Capterra** | Enterprise credibility | Yes | Review-driven |
+
+#### Automation Approach
+
+1. **Create master submission doc:**
+   - Product name, tagline, description (short/long)
+   - Screenshots, demo video URL
+   - Pricing, category tags
+   - Founder info
+
+2. **Batch submit weekly:**
+   - Submit to 5-10 directories per week
+   - Track in spreadsheet (submitted, approved, live)
+   - Some directories feature automatically; others queue
+
+3. **Set and forget:**
+   - Once listed, directories drive passive traffic
+   - Users find StackDocs when searching for alternatives
+   - SEO backlinks compound over time
+
+---
+
+### Flywheel: How These Work Together
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   Programmatic SEO        LLM SEO           Directories         │
+│   (thousands of pages) → (structured) → (backlinks + presence) │
+│         │                    │                   │              │
+│         └────────────────────┼───────────────────┘              │
+│                              ▼                                  │
+│                     More indexed content                        │
+│                              │                                  │
+│                              ▼                                  │
+│                    Higher domain authority                      │
+│                              │                                  │
+│                              ▼                                  │
+│                   More AI citations + rankings                  │
+│                              │                                  │
+│                              ▼                                  │
+│                    More users + reviews                         │
+│                              │                                  │
+│                              ▼                                  │
+│                   Stronger brand signals                        │
+│                              │                                  │
+│                              └──────────────────────┐           │
+│                                                     ▼           │
+│                                              [LOOP REPEATS]     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key insight:** Each pillar reinforces the others. More pages = more chances for AI to cite you. More directory presence = stronger brand signals for LLMs. The system compounds.
+
+---
+
+### Implementation Priority
+
+| Phase | Focus | Effort | Impact |
+|-------|-------|--------|--------|
+| **Week 1-2** | Directory submissions (20+ directories) | Low | Medium |
+| **Week 3-4** | LLM SEO: Add schema markup, restructure key pages | Medium | High |
+| **Week 5-8** | Programmatic SEO: Build templates, generate first 200 pages | High | Very High |
+| **Ongoing** | Monitor AI citations, iterate on what works | Low | Compounds |
+
+---
+
+### Tools & Resources
+
+**LLM SEO:**
+- Schema markup generator (schema.org)
+- Structured data testing tool (Google)
+- AI referral tracking in analytics
+
+**Programmatic SEO:**
+- Keyword matrix: Google Sheets
+- Content generation: Claude API / Jasper
+- Page generation: Next.js dynamic routes or WordPress + WP All Import
+- SEO monitoring: SEMrush / Ahrefs
+
+**Directory Management:**
+- Submission tracker: Notion or spreadsheet
+- Screenshot tool: CleanShot or built-in
+- Demo video: Loom (quick) or professional later
+
+---
+
 ## Quick Win Action Plan
 
 | Week | Action |
