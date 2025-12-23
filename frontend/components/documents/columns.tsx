@@ -35,7 +35,7 @@ function formatFileSize(bytes: number): string {
 function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {
   if (isSorted === 'asc') return <ArrowUp className="ml-2 size-3" />
   if (isSorted === 'desc') return <ArrowDown className="ml-2 size-3" />
-  return <ChevronsUpDown className="ml-2 size-3 opacity-50" />
+  return <ChevronsUpDown className="ml-2 size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
 }
 
 export const columns: ColumnDef<Document>[] = [
@@ -45,7 +45,7 @@ export const columns: ColumnDef<Document>[] = [
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="-ml-4"
+        className="-ml-4 group"
       >
         Name
         <SortIcon isSorted={column.getIsSorted()} />
@@ -73,7 +73,7 @@ export const columns: ColumnDef<Document>[] = [
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="-ml-4"
+        className="-ml-4 group"
       >
         Size
         <SortIcon isSorted={column.getIsSorted()} />
@@ -91,7 +91,7 @@ export const columns: ColumnDef<Document>[] = [
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="-ml-4"
+        className="-ml-4 group"
       >
         Date
         <SortIcon isSorted={column.getIsSorted()} />
