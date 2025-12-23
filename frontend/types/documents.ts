@@ -3,12 +3,13 @@ export interface Stack {
   name: string
 }
 
-export type DocumentStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type DocumentStatus = 'processing' | 'completed' | 'failed'
 
 export interface Document {
   id: string
   filename: string
   mime_type: string
+  file_size_bytes: number
   status: DocumentStatus
   uploaded_at: string
   stacks: Stack[]

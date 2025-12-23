@@ -10,6 +10,7 @@ export async function getDocumentsWithStacks(): Promise<Document[]> {
       id,
       filename,
       mime_type,
+      file_size_bytes,
       status,
       uploaded_at,
       stack_documents (
@@ -31,6 +32,7 @@ export async function getDocumentsWithStacks(): Promise<Document[]> {
     id: doc.id,
     filename: doc.filename,
     mime_type: doc.mime_type,
+    file_size_bytes: doc.file_size_bytes,
     status: doc.status as DocumentStatus,
     uploaded_at: doc.uploaded_at,
     stacks: (doc.stack_documents || [])
@@ -50,6 +52,7 @@ export async function getDocumentWithExtraction(
       id,
       filename,
       mime_type,
+      file_size_bytes,
       status,
       uploaded_at,
       file_path,
@@ -88,6 +91,7 @@ export async function getDocumentWithExtraction(
     id: doc.id,
     filename: doc.filename,
     mime_type: doc.mime_type,
+    file_size_bytes: doc.file_size_bytes,
     status: doc.status as DocumentStatus,
     uploaded_at: doc.uploaded_at,
     file_path: doc.file_path,
