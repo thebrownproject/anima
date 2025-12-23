@@ -75,7 +75,7 @@ export function useExtractionRealtime({
     return () => {
       channel.unsubscribe()
     }
-  }, [documentId, getToken])
+  }, [documentId]) // getToken accessed via closure, not needed in deps
 
   return { status }
 }
