@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { columns } from './columns'
 import type { Document } from '@/types/documents'
-import { FileText } from 'lucide-react'
+import { FileText, Search } from 'lucide-react'
 
 interface DocumentsTableProps {
   documents: Document[]
@@ -54,14 +54,17 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     <div className="w-full">
       {/* Filter */}
       <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter documents..."
-          value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('filename')?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter documents..."
+            value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
+            onChange={(event) =>
+              table.getColumn('filename')?.setFilterValue(event.target.value)
+            }
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {/* Table */}
@@ -91,7 +94,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer border-0 hover:bg-muted/50 transition-colors duration-150"
+                  className="cursor-pointer border-0 border-l-2 border-l-transparent hover:border-l-primary hover:bg-muted/30 transition-colors duration-150"
                   onClick={() => router.push(`/documents/${row.original.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -102,15 +105,15 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columns.length} className="h-48">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <FileText className="size-12 text-muted-foreground/50 mb-4" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                      No documents
-                    </p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      Upload your first document to get started
+                  <div className="flex flex-col items-center justify-center text-center py-8">
+                    <div className="rounded-full bg-muted/50 p-4 mb-4">
+                      <FileText className="size-8 text-muted-foreground/60" />
+                    </div>
+                    <p className="text-sm font-medium">No documents yet</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+                      Upload a document to start extracting data
                     </p>
                   </div>
                 </TableCell>

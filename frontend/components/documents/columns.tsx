@@ -1,7 +1,7 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-import { ArrowUpDown } from 'lucide-react'
+import { ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTypeIcon } from '@/components/file-type-icon'
 import { StackBadges } from '@/components/stack-badges'
@@ -32,6 +32,12 @@ function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
+function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {
+  if (isSorted === 'asc') return <ArrowUp className="ml-2 size-3" />
+  if (isSorted === 'desc') return <ArrowDown className="ml-2 size-3" />
+  return <ChevronsUpDown className="ml-2 size-3 opacity-50" />
+}
+
 export const columns: ColumnDef<Document>[] = [
   {
     accessorKey: 'filename',
@@ -42,7 +48,7 @@ export const columns: ColumnDef<Document>[] = [
         className="-ml-4"
       >
         Name
-        <ArrowUpDown className="ml-2 size-4" />
+        <SortIcon isSorted={column.getIsSorted()} />
       </Button>
     ),
     cell: ({ row }) => {
@@ -70,11 +76,11 @@ export const columns: ColumnDef<Document>[] = [
         className="-ml-4"
       >
         Size
-        <ArrowUpDown className="ml-2 size-4" />
+        <SortIcon isSorted={column.getIsSorted()} />
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="text-muted-foreground">
+      <span className="font-mono text-sm tabular-nums text-muted-foreground">
         {formatFileSize(row.original.file_size_bytes)}
       </span>
     ),
@@ -88,7 +94,7 @@ export const columns: ColumnDef<Document>[] = [
         className="-ml-4"
       >
         Date
-        <ArrowUpDown className="ml-2 size-4" />
+        <SortIcon isSorted={column.getIsSorted()} />
       </Button>
     ),
     cell: ({ row }) => (
