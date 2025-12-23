@@ -54,7 +54,8 @@ export function useExtractionRealtime({
   }, [onUpdate])
 
   useEffect(() => {
-    const supabase = createClerkSupabaseClient(getToken)
+    // Fix #1: Wrap getToken in arrow function - createClerkSupabaseClient expects () => Promise<string | null>
+    const supabase = createClerkSupabaseClient(() => getToken())
 
     const channel = supabase
       .channel(`extraction:${documentId}`)
@@ -67,13 +68,19 @@ export function useExtractionRealtime({
           filter: `document_id=eq.${documentId}`,
         },
         (payload) => {
-          const newData = payload.new as {
-            extracted_fields: Record<string, unknown>
-            confidence_scores: Record<string, number>
+          // Fix #2: Validate payload before accessing properties
+          const newData = payload.new
+          if (!newData || typeof newData !== 'object') {
+            console.error('Invalid realtime payload:', payload)
+            return
           }
+
+          const extracted_fields = (newData as Record<string, unknown>).extracted_fields as Record<string, unknown> | undefined
+          const confidence_scores = (newData as Record<string, unknown>).confidence_scores as Record<string, number> | undefined
+
           onUpdateRef.current({
-            extracted_fields: newData.extracted_fields,
-            confidence_scores: newData.confidence_scores,
+            extracted_fields: extracted_fields || {},
+            confidence_scores: confidence_scores || {},
           })
         }
       )
@@ -125,7 +132,7 @@ git commit -m "feat: add useExtractionRealtime hook for Supabase subscription"
 ```typescript
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useExtractionRealtime, ExtractionUpdate } from '@/hooks/use-extraction-realtime'
 import { ExtractedDataTable } from './extracted-data-table'
 import { PreviewPanel } from './preview-panel'
@@ -144,11 +151,17 @@ export function DocumentDetailClient({
   const [document, setDocument] = useState(initialDocument)
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
 
+  // Fix #3: Use ref to access current document state without recreating callback
+  const documentRef = useRef(document)
+  useEffect(() => {
+    documentRef.current = document
+  }, [document])
+
   const handleExtractionUpdate = useCallback(
     (update: ExtractionUpdate) => {
-      // Find which fields changed
+      // Find which fields changed - use ref to avoid stale closure
       const newChangedFields = new Set<string>()
-      const oldFields = document.extracted_fields || {}
+      const oldFields = documentRef.current.extracted_fields || {}
       const newFields = update.extracted_fields || {}
 
       for (const key of Object.keys(newFields)) {
@@ -167,7 +180,7 @@ export function DocumentDetailClient({
       // Set changed fields for highlight animation
       setChangedFields(newChangedFields)
     },
-    [document.extracted_fields]
+    [] // Stable callback - no dependencies since we use ref
   )
 
   // Clear changed fields after animation (1.5s)
@@ -386,6 +399,9 @@ export interface ExtractedFieldRow {
   dataShape: DataShape
   subRows?: ExtractedFieldRow[]
   depth: number
+  // Fix #5: Add properties for object-array rendering
+  _columns?: string[]
+  _values?: unknown[]
 }
 
 function isPrimitive(value: unknown): boolean {
@@ -516,26 +532,29 @@ function transformObjectArray(
   // Get all unique keys from objects
   const allKeys = [...new Set(arr.flatMap((obj) => Object.keys(obj)))]
 
-  return arr.map((obj, index) => ({
+  return arr.map((obj, index): ExtractedFieldRow => ({
     id: `${parentId}-${index}`,
     field: allKeys.map((k) => obj[k]).join(' | '),
     value: obj,
     displayValue: '',
     dataShape: 'primitive' as DataShape,
     depth,
-    // Store columns for table rendering
+    // Store columns for table rendering (now properly typed in interface)
     _columns: allKeys,
     _values: allKeys.map((k) => obj[k]),
-  })) as ExtractedFieldRow[]
+  }))
 }
 
 export function transformExtractedFields(
   fields: Record<string, unknown> | null,
   confidenceScores: Record<string, number> | null
 ): ExtractedFieldRow[] {
-  if (!fields) return []
+  // Fix #10: Add null safety - validate fields object
+  if (!fields || typeof fields !== 'object') return []
 
-  return Object.entries(fields).map(([key, value]) => {
+  return Object.entries(fields)
+    .filter(([_, value]) => value !== undefined) // Skip undefined values
+    .map(([key, value]) => {
     const shape = detectDataShape(value)
     const confidence = confidenceScores?.[key]
 
@@ -633,6 +652,9 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
                 row.toggleExpanded()
               }}
               className="p-0.5 hover:bg-muted rounded"
+              // Fix #7: Add ARIA attributes for accessibility
+              aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+              aria-expanded={isExpanded}
             >
               {isExpanded ? (
                 <ChevronDown className="size-3.5 text-muted-foreground" />
@@ -909,6 +931,8 @@ Add to `globals.css`:
 
 .animate-highlight-fade {
   animation: highlight-fade 1.5s ease-out forwards;
+  /* Fix #8: Hint browser for GPU acceleration */
+  will-change: background-color;
 }
 ```
 
