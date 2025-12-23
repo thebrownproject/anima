@@ -3578,3 +3578,89 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 2. Consider using `position: sticky` for chat bar within scrollable content area
 3. May need to modify SidebarInset component or wrap children differently
 4. Alternative: Use fixed positioning but offset by sidebar width (less ideal)
+
+---
+
+## Session 40 - 2025-12-23 - Layout Debugging & PageHeader Architecture
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Fixed chat bar visibility**:
+  - Changed inner `<main>` to `<div>` in layout.tsx (was nested `<main>` inside SidebarInset which is already `<main>`)
+  - Added `flex flex-1 flex-col min-h-0` to content wrapper
+  - Added `min-h-0 overflow-auto` to main content area in page
+  - Added `shrink-0` to chat bar
+  - Chat bar now visible at bottom of viewport
+
+- [x] **Identified duplicate PageHeader issue**:
+  - Layout.tsx had `<PageHeader />` in header
+  - Page.tsx ALSO had `<PageHeader title={...} actions={...} />`
+  - This created "window within window" visual effect
+
+- [x] **Attempted context-based solution** (later reverted):
+  - Created `page-header-context.tsx` with PageHeaderProvider
+  - Created `document-header.tsx` client bridge component
+  - Pages set title/actions via context, layout's PageHeader reads from context
+  - Code reviewer flagged: violates Next.js data flow, hydration risks
+
+- [x] **Refactored to composition pattern** (current state):
+  - Deleted context files
+  - Layout header now only has SidebarTrigger + Separator (no PageHeader)
+  - Pages render their own PageHeader with props
+  - BUT: PageHeader now renders in content area, not header bar
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Nested main fix | Changed to `<div>` | Invalid HTML, broke flex chain |
+| Context vs Composition | Tried both, neither ideal | Context works but anti-pattern; Composition puts header in wrong location |
+
+### Issues Remaining (BLOCKING)
+
+**PageHeader location problem**: The core Next.js App Router challenge:
+- Layout renders header bar (has sidebar toggle, separator)
+- Pages have title/actions data
+- PageHeader needs to be IN header bar but with page-specific data
+
+**Options for next session**:
+1. **Context approach** - Works, puts things in right place, but has code reviewer concerns
+2. **Portal pattern** - PageHeader in page, portals content into header slot
+3. **Parallel routes** - Most "correct" but complex
+
+### Current State
+
+- Chat bar IS visible (flex layout fixed)
+- But PageHeader is in content area, not header bar (looks wrong)
+- Need to resolve PageHeader architecture before proceeding
+
+### Files Modified
+
+- `frontend/app/(app)/layout.tsx` - Removed PageHeader from header, fixed flex
+- `frontend/app/(app)/documents/[id]/page.tsx` - Renders PageHeader directly with props
+- `frontend/components/layout/page-header.tsx` - Changed `flex-1` to `shrink-0`, props-based
+
+### Files Deleted (during refactor)
+
+- `frontend/components/layout/page-header-context.tsx`
+- `frontend/app/(app)/documents/[id]/document-header.tsx`
+
+### Next Session
+
+**Task**: Resolve PageHeader architecture - must be in header bar with page-specific data
+
+**Critical for**: Document detail page AND upcoming Stacks feature (same pattern needed)
+
+**Options to evaluate**:
+1. **Go back to context** - Accept the trade-offs, it worked
+2. **Portal pattern** - More elegant than context
+3. **Accept current layout** - PageHeader in content area (user rejected this)
+
+**Process**:
+1. Decide on approach (context vs portal vs other)
+2. Implement cleanly
+3. Verify works on document detail page
+4. Document pattern for future pages

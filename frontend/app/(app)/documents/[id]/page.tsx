@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
 import { getDocumentWithExtraction } from '@/lib/queries/documents'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { PageHeader } from '@/components/layout/page-header'
-import { Button } from '@/components/ui/button'
 import { ExtractedDataTable } from '@/components/documents/extracted-data-table'
 import { PreviewPanel } from '@/components/documents/preview-panel'
+import { PageHeader } from '@/components/layout/page-header'
+import { Button } from '@/components/ui/button'
 import { StacksDropdown } from '@/components/documents/stacks-dropdown'
 import { Edit, Download } from 'lucide-react'
 
@@ -37,8 +37,8 @@ export default async function DocumentDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header with breadcrumbs and actions */}
+    <div className="flex flex-1 flex-col min-h-0">
+      {/* Page header with title and actions */}
       <PageHeader
         title={document.filename}
         actions={
@@ -57,7 +57,7 @@ export default async function DocumentDetailPage({ params }: PageProps) {
       />
 
       {/* Main content - asymmetric layout */}
-      <div className="flex-1 flex gap-6 mt-4">
+      <div className="flex-1 flex gap-6 min-h-0 overflow-auto mt-6">
         {/* Left: Extracted Data - narrow fixed width */}
         <div className="w-80 shrink-0">
           <ExtractedDataTable
@@ -77,7 +77,7 @@ export default async function DocumentDetailPage({ params }: PageProps) {
       </div>
 
       {/* AI Chat Bar - inline at bottom */}
-      <div className="mt-6 border-t pt-4">
+      <div className="shrink-0 mt-6 border-t pt-4">
         <div className="flex items-center gap-3 px-1">
           <input
             type="text"

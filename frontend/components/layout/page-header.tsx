@@ -34,9 +34,9 @@ function formatSegment(segment: string): string {
 }
 
 interface PageHeaderProps {
-  /** Override the last breadcrumb segment (e.g., document name instead of ID) */
+  /** Override the last breadcrumb label (defaults to formatted URL segment) */
   title?: string
-  /** Action buttons to display on the right */
+  /** Action buttons to render on the right side */
   actions?: ReactNode
 }
 
@@ -58,14 +58,14 @@ export function PageHeader({ title, actions }: PageHeaderProps) {
   // Root route ('/') - no breadcrumbs shown (sidebar provides navigation)
   if (breadcrumbs.length === 0) {
     return actions ? (
-      <div className="flex items-center justify-end flex-1">
+      <div className="flex items-center justify-end shrink-0">
         <div className="flex items-center gap-2">{actions}</div>
       </div>
     ) : null
   }
 
   return (
-    <div className="flex items-center justify-between flex-1">
+    <div className="flex items-center justify-between shrink-0">
       <Breadcrumb>
         <BreadcrumbList>
           {breadcrumbs.map((item, index) => (
