@@ -1,5 +1,16 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import type { Document, DocumentWithExtraction, DocumentStatus } from '@/types/documents'
+import type { Document, DocumentWithExtraction, DocumentStatus, Stack } from '@/types/documents'
+
+// Helper to extract stacks from Supabase nested join response
+function extractStacks(
+  stackDocuments: Array<{ stacks: unknown }> | null
+): Stack[] {
+  if (!stackDocuments) return []
+
+  return stackDocuments
+    .map((sd) => sd.stacks as Stack | null)
+    .filter((s): s is Stack => s !== null)
+}
 
 export async function getDocumentsWithStacks(): Promise<Document[]> {
   const supabase = await createServerSupabaseClient()
@@ -27,7 +38,6 @@ export async function getDocumentsWithStacks(): Promise<Document[]> {
     return []
   }
 
-  // Transform the nested structure
   return (data || []).map((doc) => ({
     id: doc.id,
     filename: doc.filename,
@@ -35,9 +45,7 @@ export async function getDocumentsWithStacks(): Promise<Document[]> {
     file_size_bytes: doc.file_size_bytes,
     status: doc.status as DocumentStatus,
     uploaded_at: doc.uploaded_at,
-    stacks: (doc.stack_documents || [])
-      .map((sd: { stacks: { id: string; name: string } | null }) => sd.stacks)
-      .filter((s): s is { id: string; name: string } => s !== null),
+    stacks: extractStacks(doc.stack_documents),
   }))
 }
 
@@ -71,21 +79,21 @@ export async function getDocumentWithExtraction(
     return null
   }
 
-  // Get latest extraction
+  // Get latest extraction (maybeSingle - document may not have extraction yet)
   const { data: extraction } = await supabase
     .from('extractions')
     .select('id, extracted_fields, confidence_scores, session_id')
     .eq('document_id', documentId)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
-  // Get OCR text
+  // Get OCR text (maybeSingle - OCR may still be processing)
   const { data: ocr } = await supabase
     .from('ocr_results')
     .select('raw_text')
     .eq('document_id', documentId)
-    .single()
+    .maybeSingle()
 
   return {
     id: doc.id,
@@ -95,13 +103,11 @@ export async function getDocumentWithExtraction(
     status: doc.status as DocumentStatus,
     uploaded_at: doc.uploaded_at,
     file_path: doc.file_path,
-    stacks: (doc.stack_documents || [])
-      .map((sd: { stacks: { id: string; name: string } | null }) => sd.stacks)
-      .filter((s): s is { id: string; name: string } => s !== null),
-    extraction_id: extraction?.id || null,
-    extracted_fields: extraction?.extracted_fields || null,
-    confidence_scores: extraction?.confidence_scores || null,
-    session_id: extraction?.session_id || null,
-    ocr_raw_text: ocr?.raw_text || null,
+    stacks: extractStacks(doc.stack_documents),
+    extraction_id: extraction?.id ?? null,
+    extracted_fields: extraction?.extracted_fields ?? null,
+    confidence_scores: extraction?.confidence_scores ?? null,
+    session_id: extraction?.session_id ?? null,
+    ocr_raw_text: ocr?.raw_text ?? null,
   }
 }
