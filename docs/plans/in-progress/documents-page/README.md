@@ -12,12 +12,12 @@ Build the documents list page and document detail page with extracted data viewi
 
 ## Progress Tracker
 
-### Phase 1: Foundation (`01-foundation.md`)
+### Phase 1: Foundation (`01-foundation.md`) ✅
 Install shadcn components and create page header system with breadcrumbs.
 
-- [ ] **Task 1:** Install required shadcn components (table, dialog, badge, tabs, popover, checkbox, card) + TanStack Table
-- [ ] **Task 2:** Create page header context system (`PageHeaderProvider`, `useBreadcrumbs`)
-- [ ] **Task 3:** Integrate page header into app layout
+- [x] **Task 1:** Install required shadcn components (table, dialog, badge, tabs, popover, checkbox, card) + TanStack Table
+- [x] **Task 2:** Create page header system (used `usePathname` approach instead of Context - simpler)
+- [x] **Task 3:** Integrate page header into app layout
 
 ---
 
@@ -62,8 +62,7 @@ Run build, fix issues, and verify all features work end-to-end.
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| `PageHeaderProvider` | `contexts/page-header-context.tsx` | React Context for breadcrumbs |
-| `PageHeader` | `components/page-header.tsx` | Header with breadcrumbs + actions slot |
+| `PageHeader` | `components/layout/page-header.tsx` | Auto-generates breadcrumbs from URL via `usePathname` |
 | `DocumentsTable` | `components/documents/documents-table.tsx` | TanStack Table with full features |
 | `FileTypeIcon` | `components/file-type-icon.tsx` | PDF/image icon by mime type |
 | `StackBadges` | `components/stack-badges.tsx` | Badge chips with overflow |
