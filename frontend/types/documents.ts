@@ -3,7 +3,7 @@ export interface Stack {
   name: string
 }
 
-export type DocumentStatus = 'processing' | 'completed' | 'failed'
+export type DocumentStatus = 'processing' | 'ocr_complete' | 'completed' | 'failed'
 
 export interface Document {
   id: string
