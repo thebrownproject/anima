@@ -5,8 +5,10 @@ import { Separator } from '@/components/ui/separator'
 
 export default async function AppLayout({
   children,
+  header,
 }: {
   children: React.ReactNode
+  header: React.ReactNode
 }) {
   // Sidebar state persistence
   const cookieStore = await cookies()
@@ -19,7 +21,7 @@ export default async function AppLayout({
         <header className="flex h-16 shrink-0 items-center gap-2 px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-          {/* Pages render their own PageHeader with title and actions */}
+          {header}
         </header>
         <div className="flex flex-1 flex-col min-h-0 p-4 pt-0">
           {children}

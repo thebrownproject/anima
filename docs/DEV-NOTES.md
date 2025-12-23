@@ -3664,3 +3664,87 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 2. Implement cleanly
 3. Verify works on document detail page
 4. Document pattern for future pages
+
+---
+
+## Session 41 - 2025-12-23 - Parallel Routes PageHeader Architecture ✅
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Implemented parallel routes @header slot architecture**:
+  - Researched approaches: context, portals, parallel routes
+  - Chose Next.js parallel routes (idiomatic, server-component friendly)
+  - Created `@header/` slot directory structure
+  - Layout accepts `header` prop alongside `children`
+
+- [x] **Created header slots for documents routes**:
+  - `@header/default.tsx` - Root fallback (returns null)
+  - `@header/documents/page.tsx` - Documents list header with Upload button
+  - `@header/documents/default.tsx` - Documents route fallback
+  - `@header/documents/[id]/page.tsx` - Document detail header with title + actions
+  - `@header/documents/[id]/loading.tsx` - Loading skeleton
+  - `@header/documents/[id]/error.tsx` - Error boundary with retry
+
+- [x] **Fixed data deduplication with React cache()**:
+  - Wrapped `getDocumentWithExtraction` with `cache()`
+  - Both page and header slot share same fetch (no duplicate queries)
+  - Added JSDoc explaining cache behavior
+
+- [x] **Moved Upload button to header**:
+  - Added `variant` prop to UploadButton (`default` | `header`)
+  - Header variant uses ghost styling to match Edit/Export
+  - Removed from documents-list.tsx (now in header slot)
+
+- [x] **shadcn compliance fixes**:
+  - Changed raw `<input>` to shadcn `<Input>` in document page
+  - Changed raw `<button>` to shadcn `<Button>` in StacksDropdown
+  - Added aria-labels for accessibility
+
+- [x] **Layout fixes**:
+  - Changed PageHeader from `shrink-0` to `flex-1` for full width
+  - Actions now properly align to right side of header bar
+
+- [x] **Created future feature plan**:
+  - `docs/plans/todo/header-filters/` - URL-based filtering design
+  - Uses nuqs library for type-safe URL state
+  - Enables filter input in header bar
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Header architecture | Parallel routes | Next.js native pattern, server-component friendly, no hydration issues |
+| Data deduplication | React cache() | Single fetch shared across slots per request |
+| Filter architecture | URL search params (future) | Shareable URLs, works with parallel routes |
+
+### Files Created
+
+- `frontend/app/(app)/@header/default.tsx`
+- `frontend/app/(app)/@header/documents/page.tsx`
+- `frontend/app/(app)/@header/documents/default.tsx`
+- `frontend/app/(app)/@header/documents/[id]/page.tsx`
+- `frontend/app/(app)/@header/documents/[id]/loading.tsx`
+- `frontend/app/(app)/@header/documents/[id]/error.tsx`
+- `docs/plans/todo/header-filters/2025-12-23-header-filters-design.md`
+
+### Files Modified
+
+- `frontend/app/(app)/layout.tsx` - Added header prop
+- `frontend/app/(app)/documents/[id]/page.tsx` - Removed PageHeader, added Input
+- `frontend/lib/queries/documents.ts` - Added cache() wrapper
+- `frontend/components/layout/page-header.tsx` - Changed to flex-1
+- `frontend/components/documents/stacks-dropdown.tsx` - shadcn Button + aria-label
+- `frontend/components/documents/upload-button.tsx` - Added variant prop
+- `frontend/components/documents/documents-list.tsx` - Removed UploadButton
+
+### Next Session
+
+**Task**: Continue Documents Page Phase 4 or implement header filters
+
+**Options**:
+1. Move filter input to header (use plan in `docs/plans/todo/header-filters/`)
+2. Continue with Phase 4 tasks from documents-page plan
+3. Start Stacks feature (uses same @header pattern)

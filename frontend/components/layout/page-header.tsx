@@ -58,14 +58,14 @@ export function PageHeader({ title, actions }: PageHeaderProps) {
   // Root route ('/') - no breadcrumbs shown (sidebar provides navigation)
   if (breadcrumbs.length === 0) {
     return actions ? (
-      <div className="flex items-center justify-end shrink-0">
+      <div className="flex flex-1 items-center justify-end">
         <div className="flex items-center gap-2">{actions}</div>
       </div>
     ) : null
   }
 
   return (
-    <div className="flex items-center justify-between shrink-0">
+    <div className="flex flex-1 items-center justify-between">
       <Breadcrumb>
         <BreadcrumbList>
           {breadcrumbs.map((item, index) => (

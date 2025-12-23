@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
 import type { Stack } from '@/types/documents'
 import { ChevronDown } from 'lucide-react'
 
@@ -40,10 +41,15 @@ export function StacksDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted/50">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Manage stacks. Currently assigned: ${assignedStacks.map(s => s.name).join(', ')}`}
+          className="h-auto px-2 py-1 text-xs text-muted-foreground hover:text-foreground gap-1"
+        >
           {displayText}
           <ChevronDown className="size-3" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">

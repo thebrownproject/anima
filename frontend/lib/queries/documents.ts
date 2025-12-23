@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import type { Document, DocumentWithExtraction, DocumentStatus, Stack } from '@/types/documents'
 
@@ -49,7 +50,16 @@ export async function getDocumentsWithStacks(): Promise<Document[]> {
   }))
 }
 
-export async function getDocumentWithExtraction(
+/**
+ * Fetch document with extraction data, OCR text, and assigned stacks.
+ * Wrapped with React cache() to deduplicate requests across parallel routes
+ * (e.g., page + header slot both fetching the same document).
+ *
+ * Note: cache() only persists for a single server request. Each navigation
+ * gets fresh data. Realtime updates trigger router.refresh() which creates
+ * a new request and bypasses the cache.
+ */
+export const getDocumentWithExtraction = cache(async function getDocumentWithExtraction(
   documentId: string
 ): Promise<DocumentWithExtraction | null> {
   const supabase = await createServerSupabaseClient()
@@ -110,4 +120,4 @@ export async function getDocumentWithExtraction(
     session_id: extraction?.session_id ?? null,
     ocr_raw_text: ocr?.raw_text ?? null,
   }
-}
+})

@@ -6,11 +6,16 @@ import { useAuth } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Upload, Loader2 } from 'lucide-react'
 
+interface UploadButtonProps {
+  /** Use 'header' variant for smaller styling in the page header */
+  variant?: 'default' | 'header'
+}
+
 /**
- * Temporary upload button for testing the documents table.
- * TODO: Replace with proper upload dialog/dropzone in future.
+ * Upload button that triggers file picker and uploads to backend.
+ * Supports 'header' variant for compact styling in page headers.
  */
-export function UploadButton() {
+export function UploadButton({ variant = 'default' }: UploadButtonProps) {
   const router = useRouter()
   const { getToken } = useAuth()
   const [isUploading, setIsUploading] = React.useState(false)
@@ -73,15 +78,21 @@ export function UploadButton() {
         className="hidden"
         aria-label="Upload document file"
       />
-      <Button onClick={handleClick} disabled={isUploading}>
+      <Button
+        variant={variant === 'header' ? 'ghost' : 'default'}
+        size={variant === 'header' ? 'sm' : 'default'}
+        onClick={handleClick}
+        disabled={isUploading}
+        className={variant === 'header' ? 'h-7 px-2 text-xs' : undefined}
+      >
         {isUploading ? (
           <>
-            <Loader2 className="mr-2 size-4 animate-spin" />
-            Uploading...
+            <Loader2 className={variant === 'header' ? 'mr-1.5 size-3.5 animate-spin' : 'mr-2 size-4 animate-spin'} />
+            {variant === 'header' ? 'Uploading' : 'Uploading...'}
           </>
         ) : (
           <>
-            <Upload className="mr-2 size-4" />
+            <Upload className={variant === 'header' ? 'mr-1.5 size-3.5' : 'mr-2 size-4'} />
             Upload
           </>
         )}

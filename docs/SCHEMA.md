@@ -1,8 +1,8 @@
 # Database Schema
 
 **Product:** StackDocs MVP - Document Data Extractor
-**Version:** 1.1
-**Last Updated:** 2025-12-22
+**Version:** 1.2
+**Last Updated:** 2025-12-23
 **Database:** Supabase PostgreSQL
 
 ---
@@ -56,6 +56,7 @@ CREATE TABLE public.users (
 );
 ```
 
+
 ---
 
 ## Table: `documents`
@@ -72,9 +73,15 @@ CREATE TABLE documents (
     mime_type VARCHAR(100) NOT NULL,
     mode VARCHAR(20) NOT NULL,              -- 'auto' or 'custom'
     status VARCHAR(20) DEFAULT 'processing', -- 'processing', 'ocr_complete', 'completed', 'failed'
-    session_id VARCHAR,                      -- Claude Agent SDK session for corrections
+    session_id VARCHAR(50),                  -- Claude Agent SDK session for corrections
     uploaded_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Indexes
+CREATE INDEX idx_documents_user_id ON documents(user_id, uploaded_at DESC);
+CREATE INDEX idx_documents_status ON documents(status);
+CREATE INDEX idx_documents_user_status ON documents(user_id, status);
+CREATE INDEX idx_documents_session_id ON documents(session_id) WHERE session_id IS NOT NULL;
 ```
 
 **Note:** `session_id` enables session resume for natural language corrections via Agent SDK.
@@ -100,11 +107,16 @@ CREATE TABLE ocr_results (
     -- Performance & usage tracking
     processing_time_ms INTEGER NOT NULL,
     usage_info JSONB NOT NULL,
-    model VARCHAR NOT NULL,                  -- e.g., 'mistral-ocr-latest'
+    model VARCHAR(50) NOT NULL,              -- e.g., 'mistral-ocr-latest'
     ocr_engine VARCHAR(20) DEFAULT 'mistral',
 
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Indexes
+CREATE UNIQUE INDEX ocr_results_document_id_key ON ocr_results(document_id);
+CREATE INDEX idx_ocr_results_document_id ON ocr_results(document_id);
+CREATE INDEX idx_ocr_results_user_id ON ocr_results(user_id, created_at DESC);
 ```
 
 ---
@@ -128,15 +140,21 @@ CREATE TABLE extractions (
     custom_fields TEXT[],                    -- Field names if mode='custom'
 
     -- Tracking
-    model VARCHAR NOT NULL,                  -- 'claude-haiku-4-5' or 'claude-agent-sdk'
+    model VARCHAR(50) NOT NULL,              -- 'claude-haiku-4-5' or 'claude-agent-sdk'
     processing_time_ms INTEGER NOT NULL,
-    session_id VARCHAR,                      -- Agent SDK session ID
+    session_id VARCHAR(50),                  -- Agent SDK session ID
     is_correction BOOLEAN DEFAULT false,     -- True if created via /api/agent/correct
     status VARCHAR(20) DEFAULT 'completed',  -- pending, in_progress, completed, failed
 
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Indexes
+CREATE INDEX idx_extractions_document_id ON extractions(document_id, created_at DESC);
+CREATE INDEX idx_extractions_user_id ON extractions(user_id, created_at DESC);
+CREATE INDEX idx_extractions_session_id ON extractions(session_id) WHERE session_id IS NOT NULL;
+CREATE INDEX idx_extractions_fields ON extractions USING GIN(extracted_fields);
 ```
 
 **Note:** Latest extraction = most recent by `created_at`, no `is_latest` flag needed.
@@ -153,12 +171,15 @@ Document groupings for batch extraction.
 CREATE TABLE stacks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
-    name VARCHAR NOT NULL,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    status VARCHAR DEFAULT 'active',         -- 'active', 'archived'
+    status VARCHAR(20) DEFAULT 'active',     -- 'active', 'archived'
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Indexes
+CREATE INDEX idx_stacks_user_id ON stacks(user_id, created_at DESC);
 ```
 
 ### Table: `stack_documents`
@@ -170,8 +191,14 @@ CREATE TABLE stack_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     stack_id UUID NOT NULL REFERENCES stacks(id),
     document_id UUID NOT NULL REFERENCES documents(id),
-    added_at TIMESTAMP DEFAULT NOW()
+    added_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(stack_id, document_id)  -- Prevent duplicate links
 );
+
+-- Indexes
+CREATE INDEX idx_stack_documents_stack ON stack_documents(stack_id);
+CREATE INDEX idx_stack_documents_document ON stack_documents(document_id);
 ```
 
 ### Table: `stack_tables`
@@ -185,18 +212,23 @@ CREATE TABLE stack_tables (
     user_id TEXT NOT NULL DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
 
     -- Table definition
-    name VARCHAR NOT NULL DEFAULT 'Master Data',
-    mode VARCHAR NOT NULL DEFAULT 'auto',    -- 'auto' or 'custom'
+    name VARCHAR(255) NOT NULL DEFAULT 'Master Data',
+    mode VARCHAR(20) NOT NULL DEFAULT 'auto', -- 'auto' or 'custom'
     custom_columns TEXT[],                   -- User-specified column names
     columns JSONB,                           -- Defined columns after extraction
 
     -- Session & status
-    session_id VARCHAR,                      -- Agent SDK session for corrections
-    status VARCHAR DEFAULT 'pending',        -- 'pending', 'processing', 'completed', 'failed'
+    session_id VARCHAR(50),                  -- Agent SDK session for corrections
+    status VARCHAR(20) DEFAULT 'pending',    -- 'pending', 'processing', 'completed', 'failed'
 
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Indexes
+CREATE INDEX idx_stack_tables_stack ON stack_tables(stack_id);
+CREATE INDEX idx_stack_tables_user ON stack_tables(user_id);
+CREATE INDEX idx_stack_tables_session ON stack_tables(session_id) WHERE session_id IS NOT NULL;
 ```
 
 ### Table: `stack_table_rows`
@@ -215,8 +247,15 @@ CREATE TABLE stack_table_rows (
     confidence_scores JSONB,
 
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(table_id, document_id)  -- One row per document per table
 );
+
+-- Indexes
+CREATE INDEX idx_stack_table_rows_table ON stack_table_rows(table_id);
+CREATE INDEX idx_stack_table_rows_document ON stack_table_rows(document_id);
+CREATE INDEX idx_stack_table_rows_user ON stack_table_rows(user_id);
 ```
 
 ---
@@ -336,6 +375,50 @@ CREATE POLICY stack_tables_clerk_isolation ON stack_tables
 CREATE POLICY stack_table_rows_clerk_isolation ON stack_table_rows
     FOR ALL TO authenticated
     USING ((SELECT auth.jwt()->>'sub') = user_id);
+```
+
+---
+
+## Storage Policies
+
+The `documents` bucket uses folder-based isolation where each user's files are stored in `{user_id}/`.
+
+```sql
+-- SELECT: Users can view their own documents
+CREATE POLICY "Users can view their own documents"
+ON storage.objects FOR SELECT
+USING (
+    bucket_id = 'documents'
+    AND (storage.foldername(name))[1] = (SELECT auth.jwt()->>'sub')
+);
+
+-- INSERT: Users can upload to their own folder
+CREATE POLICY "Users can upload to their own folder"
+ON storage.objects FOR INSERT
+WITH CHECK (
+    bucket_id = 'documents'
+    AND (storage.foldername(name))[1] = (SELECT auth.jwt()->>'sub')
+);
+
+-- UPDATE: Users can update their own documents
+CREATE POLICY "Users can update their own documents"
+ON storage.objects FOR UPDATE
+USING (
+    bucket_id = 'documents'
+    AND (storage.foldername(name))[1] = (SELECT auth.jwt()->>'sub')
+)
+WITH CHECK (
+    bucket_id = 'documents'
+    AND (storage.foldername(name))[1] = (SELECT auth.jwt()->>'sub')
+);
+
+-- DELETE: Users can delete their own documents
+CREATE POLICY "Users can delete their own documents"
+ON storage.objects FOR DELETE
+USING (
+    bucket_id = 'documents'
+    AND (storage.foldername(name))[1] = (SELECT auth.jwt()->>'sub')
+);
 ```
 
 ---
