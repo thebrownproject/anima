@@ -32,17 +32,18 @@ export function useExtractionRealtime({
   }, [onUpdate])
 
   useEffect(() => {
+    let mounted = true
     let supabaseClient: ReturnType<typeof createClerkSupabaseClient> | null = null
     let refreshInterval: NodeJS.Timeout | null = null
 
     const setupRealtime = async () => {
-      // Get token first to ensure we have auth
       const token = await getToken()
-      console.log('[Realtime] Token fetched:', token ? 'yes' : 'no')
+
+      // Don't continue if unmounted during token fetch
+      if (!mounted) return
 
       supabaseClient = createClerkSupabaseClient(() => getToken())
 
-      // Explicitly set auth on realtime connection
       if (token) {
         supabaseClient.realtime.setAuth(token)
       }
@@ -58,10 +59,10 @@ export function useExtractionRealtime({
             filter: `document_id=eq.${documentId}`,
           },
           (payload) => {
-            console.log('[Realtime] Received update')
+            if (!mounted) return
+
             const newData = payload.new
             if (!newData || typeof newData !== 'object') {
-              console.error('[Realtime] Invalid payload:', payload)
               return
             }
 
@@ -74,8 +75,9 @@ export function useExtractionRealtime({
             })
           }
         )
-        .subscribe((status, err) => {
-          console.log('[Realtime] Status:', status, err || '')
+        .subscribe((status) => {
+          if (!mounted) return
+
           if (status === 'SUBSCRIBED') {
             setStatus('connected')
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
@@ -83,14 +85,19 @@ export function useExtractionRealtime({
           }
         })
 
+      if (!mounted) {
+        channel.unsubscribe()
+        return
+      }
+
       channelRef.current = channel
 
       // Refresh auth every 50 seconds (before Clerk's 60s expiry)
       refreshInterval = setInterval(async () => {
+        if (!mounted) return
         const newToken = await getToken()
         if (newToken && supabaseClient) {
           supabaseClient.realtime.setAuth(newToken)
-          console.log('[Realtime] Token refreshed')
         }
       }, 50000)
     }
@@ -98,14 +105,16 @@ export function useExtractionRealtime({
     setupRealtime()
 
     return () => {
+      mounted = false
       if (refreshInterval) {
         clearInterval(refreshInterval)
       }
       if (channelRef.current) {
         channelRef.current.unsubscribe()
+        channelRef.current = null
       }
     }
-  }, [documentId]) // getToken accessed via closure, not needed in deps
+  }, [documentId, getToken])
 
   return { status }
 }
