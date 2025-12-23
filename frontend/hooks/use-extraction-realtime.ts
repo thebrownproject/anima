@@ -32,48 +32,78 @@ export function useExtractionRealtime({
   }, [onUpdate])
 
   useEffect(() => {
-    // Fix #1: Wrap getToken in arrow function - createClerkSupabaseClient expects () => Promise<string | null>
-    const supabase = createClerkSupabaseClient(() => getToken())
+    let supabaseClient: ReturnType<typeof createClerkSupabaseClient> | null = null
+    let refreshInterval: NodeJS.Timeout | null = null
 
-    const channel = supabase
-      .channel(`extraction:${documentId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'extractions',
-          filter: `document_id=eq.${documentId}`,
-        },
-        (payload) => {
-          // Fix #2: Validate payload before accessing properties
-          const newData = payload.new
-          if (!newData || typeof newData !== 'object') {
-            console.error('Invalid realtime payload:', payload)
-            return
+    const setupRealtime = async () => {
+      // Get token first to ensure we have auth
+      const token = await getToken()
+      console.log('[Realtime] Token fetched:', token ? 'yes' : 'no')
+
+      supabaseClient = createClerkSupabaseClient(() => getToken())
+
+      // Explicitly set auth on realtime connection
+      if (token) {
+        supabaseClient.realtime.setAuth(token)
+      }
+
+      const channel = supabaseClient
+        .channel(`extraction:${documentId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'extractions',
+            filter: `document_id=eq.${documentId}`,
+          },
+          (payload) => {
+            console.log('[Realtime] Received update')
+            const newData = payload.new
+            if (!newData || typeof newData !== 'object') {
+              console.error('[Realtime] Invalid payload:', payload)
+              return
+            }
+
+            const extracted_fields = (newData as Record<string, unknown>).extracted_fields as Record<string, unknown> | undefined
+            const confidence_scores = (newData as Record<string, unknown>).confidence_scores as Record<string, number> | undefined
+
+            onUpdateRef.current({
+              extracted_fields: extracted_fields || {},
+              confidence_scores: confidence_scores || {},
+            })
           }
+        )
+        .subscribe((status, err) => {
+          console.log('[Realtime] Status:', status, err || '')
+          if (status === 'SUBSCRIBED') {
+            setStatus('connected')
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            setStatus('disconnected')
+          }
+        })
 
-          const extracted_fields = (newData as Record<string, unknown>).extracted_fields as Record<string, unknown> | undefined
-          const confidence_scores = (newData as Record<string, unknown>).confidence_scores as Record<string, number> | undefined
+      channelRef.current = channel
 
-          onUpdateRef.current({
-            extracted_fields: extracted_fields || {},
-            confidence_scores: confidence_scores || {},
-          })
+      // Refresh auth every 50 seconds (before Clerk's 60s expiry)
+      refreshInterval = setInterval(async () => {
+        const newToken = await getToken()
+        if (newToken && supabaseClient) {
+          supabaseClient.realtime.setAuth(newToken)
+          console.log('[Realtime] Token refreshed')
         }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setStatus('connected')
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          setStatus('disconnected')
-        }
-      })
+      }, 50000)
+    }
 
-    channelRef.current = channel
+    setupRealtime()
 
     return () => {
-      channel.unsubscribe()
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+      }
+      if (channelRef.current) {
+        channelRef.current.unsubscribe()
+      }
     }
   }, [documentId]) // getToken accessed via closure, not needed in deps
 
