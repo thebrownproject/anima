@@ -27,8 +27,8 @@ export default function RootLayout({
   return (
     <ClerkProvider
       appearance={{ baseTheme: shadcn }}
-      afterSignInUrl="/documents"
-      afterSignUpUrl="/documents"
+      signInFallbackRedirectUrl="/documents"
+      signUpFallbackRedirectUrl="/documents"
     >
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
