@@ -18,12 +18,13 @@
 - Frontend: Complete (AI chat bar with SSE streaming)
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
-### Todo
+**Realtime Updates & Table Redesign** (`plans/in-progress/realtime-updates/`)
+- Design: Complete (design doc + implementation plan)
+- Stage 1: Supabase realtime subscription for extraction updates
+- Stage 2: TanStack Table with smart renderers, spreadsheet-style UX
+- Ready for implementation
 
-**Realtime Updates & Document Enhancements** (`plans/todo/realtime-updates/`)
-- Supabase realtime subscription for extraction updates
-- Improved extracted fields table UX (inline preview, flatten common fields)
-- Not yet designed
+### Todo
 
 **Stacks Feature** (`plans/todo/stacks/`)
 - Database: Ready (migrations 004 & 005 applied)

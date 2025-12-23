@@ -3939,3 +3939,66 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 1. Run `/superpowers:brainstorm` to design realtime updates
 2. Create implementation plan
 3. Execute plan
+
+---
+
+## Session 45 - 2025-12-23 - Realtime Updates Design & Planning ✅
+
+**Feature**: Realtime Updates (`docs/plans/in-progress/realtime-updates/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed realtime updates feature**:
+  - Defined two-stage approach: Stage 1 (realtime subscription), Stage 2 (table redesign)
+  - Chose client wrapper pattern (server fetches, client subscribes)
+  - Designed changed field highlight animation
+  - Designed spreadsheet-style TanStack Table with smart renderers
+
+- [x] **Created design document**:
+  - `docs/plans/in-progress/realtime-updates/2025-12-23-realtime-updates-design.md`
+  - Architecture, data flow, styling decisions documented
+
+- [x] **Created implementation plan**:
+  - `docs/plans/in-progress/realtime-updates/2025-12-23-realtime-updates-plan.md`
+  - 9 tasks with detailed code, exact file paths, test steps
+
+- [x] **Code review and fixes**:
+  - Ran code review agent on plan
+  - Applied 7 fixes for type safety, accessibility, performance
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Realtime approach | Supabase subscription on `extractions` table | Direct - AI updates extraction, subscription fires |
+| Page architecture | Client wrapper with server-fetched initial data | SSR benefits + realtime subscription |
+| Table styling | shadcn TanStack Table style (horizontal dividers only) | Match documents list table, familiar UX |
+| Nested data | Smart renderer detects shape (key-value, arrays, grouped arrays) | Handle varied extraction structures automatically |
+| Confidence display | Always visible, color-coded (green/amber/red) | Trust indicators matter for data extraction |
+
+### Code Review Fixes Applied
+
+1. Supabase client creation: `() => getToken()` wrapper
+2. Payload null check before accessing realtime data
+3. Ref pattern for stable callback (prevent subscription churn)
+4. Added `_columns`/`_values` to ExtractedFieldRow type
+5. ARIA attributes for expand buttons
+6. `will-change` for animation performance
+7. Null safety in transform function
+
+### Files Created
+
+- `docs/plans/in-progress/realtime-updates/2025-12-23-realtime-updates-design.md`
+- `docs/plans/in-progress/realtime-updates/2025-12-23-realtime-updates-plan.md`
+
+### Next Session
+
+**Task**: Execute realtime updates implementation plan
+
+**Process**:
+1. Run `/superpowers:execute-plan` or use subagent-driven development
+2. Implement Task 1-4 (Stage 1: Realtime Updates)
+3. Test realtime subscription with AI chat bar
+4. Implement Task 5-8 (Stage 2: Table Redesign)
+5. Integration test full flow
