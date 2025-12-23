@@ -12,10 +12,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ExtractedDataTableProps {
   fields: Record<string, unknown> | null
   confidenceScores: Record<string, number> | null
+  changedFields?: Set<string>
 }
 
 function NestedDataDialog({ label, data }: { label: string; data: unknown }) {
@@ -66,6 +68,7 @@ function renderValue(key: string, value: unknown): React.ReactNode {
 export function ExtractedDataTable({
   fields,
   confidenceScores,
+  changedFields = new Set(),
 }: ExtractedDataTableProps) {
   if (!fields || Object.keys(fields).length === 0) {
     return (
@@ -84,7 +87,10 @@ export function ExtractedDataTable({
         return (
           <div
             key={key}
-            className="flex items-center justify-between py-2.5 px-1 group"
+            className={cn(
+              "flex items-center justify-between py-2.5 px-1 group transition-colors duration-1000",
+              changedFields.has(key) && "bg-primary/10"
+            )}
           >
             <span className="text-[13px] text-muted-foreground capitalize">
               {formatKey(key)}
