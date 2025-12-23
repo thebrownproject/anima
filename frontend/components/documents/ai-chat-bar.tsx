@@ -32,18 +32,20 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Activity Panel */}
-      <AiActivityPanel
-        status={status}
-        events={events}
-        error={error}
-        onClose={reset}
-      />
+    <div className="relative">
+      {/* Activity Panel - floats above input without affecting layout */}
+      <div className="absolute bottom-full left-0 right-0 mb-3">
+        <AiActivityPanel
+          status={status}
+          events={events}
+          error={error}
+          onClose={reset}
+        />
+      </div>
 
       {/* Chat Input - matches original style */}
       <div className={cn(
-        'flex items-center gap-3 px-1',
+        'flex items-center gap-3 px-1 border-t pt-4',
         isDisabled && 'opacity-50'
       )}>
         <Input

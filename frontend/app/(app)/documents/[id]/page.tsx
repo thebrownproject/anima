@@ -56,7 +56,7 @@ export default async function DocumentDetailPage({ params }: PageProps) {
       </div>
 
       {/* AI Chat Bar - inline at bottom */}
-      <div className="shrink-0 mt-6 border-t pt-4">
+      <div className="shrink-0 mt-6">
         <AiChatBar documentId={document.id} />
       </div>
     </div>
