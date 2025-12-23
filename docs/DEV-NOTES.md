@@ -3252,3 +3252,80 @@ See Session 29.
    - Create loading state
    - Wire up documents page
 3. Check off tasks in README.md as completed
+
+---
+
+## Session 35 - 2025-12-23 - Documents Page Phase 2 Complete ✅
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 2: Documents List - All 8 tasks complete**
+  - Task 4: Created document type definitions
+  - Task 5: Created data fetching function (`getDocumentsWithStacks`)
+  - Task 6: Created FileTypeIcon component
+  - Task 7: Created StackBadges component
+  - Task 8: Created DocumentsTable with TanStack Table
+  - Task 9: Created DocumentsList client wrapper
+  - Task 10: Created loading skeleton
+  - Task 11: Wired up documents page with server-side data fetching
+
+- [x] **Schema alignment** - Cross-checked types against SCHEMA.md
+  - Removed `'pending'` from DocumentStatus (not in DB)
+  - Added `file_size_bytes` to Document type
+  - Fixed `.single()` → `.maybeSingle()` for optional data
+
+- [x] **Design refinements** (frontend-design skill)
+  - Sort indicators: hidden until hover, directional when active
+  - Search icon in filter input
+  - Row hover: left border accent + subtle background
+  - Monospace for file sizes with tabular-nums
+  - Polished empty state with icon container
+
+- [x] **Code review** - Agent found no critical issues
+  - Added accessibility tech-debt item (#5) for keyboard navigation
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Status column | Removed for MVP | User preference - click to view detail instead |
+| Checkboxes | Removed for MVP | No bulk actions yet |
+| Actions dropdown | Removed for MVP | Row click navigates to detail |
+| Date format | Relative ("Today", "Yesterday", "3 days ago") | More human-friendly, falls back to absolute for older dates |
+| File size column | Added | User requested after schema review |
+
+### Files Created
+
+- `frontend/types/documents.ts` - Document, Stack, DocumentStatus types
+- `frontend/lib/queries/documents.ts` - Supabase data fetching with nested joins
+- `frontend/components/file-type-icon.tsx` - PDF/image icon by mime type
+- `frontend/components/stack-badges.tsx` - Badge chips with overflow
+- `frontend/components/documents/columns.tsx` - TanStack Table column definitions
+- `frontend/components/documents/documents-table.tsx` - Main table with filter, sort, pagination
+- `frontend/components/documents/documents-list.tsx` - Client wrapper
+- `frontend/app/(app)/documents/loading.tsx` - Loading skeleton
+
+### Files Modified
+
+- `frontend/app/(app)/documents/page.tsx` - Server component with data fetching
+- `docs/plans/in-progress/documents-page/README.md` - Marked Phase 2 complete
+- `docs/plans/ISSUES.md` - Added accessibility tech-debt (#5)
+
+### Next Session
+
+**Task**: Execute Documents Page Phase 3 (Document Detail)
+
+**Process**:
+1. Read `docs/plans/in-progress/documents-page/03-document-detail.md`
+2. Execute Tasks 12-20:
+   - Install react-pdf
+   - Create PdfViewer, VisualPreview, PreviewPanel components
+   - Create ExtractedDataTable component
+   - Create StacksDropdown component
+   - Create DocumentDetail client component
+   - Create AiChatBar stub
+   - Create document detail page and loading state
+3. Check off tasks in README.md as completed
