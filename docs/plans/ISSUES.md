@@ -15,3 +15,4 @@ Lightweight tracking for items that don't need immediate action.
   - Microsoft: Azure Portal → App Registrations → Create app → Add to Clerk
   - Clerk docs: https://clerk.com/docs/authentication/social-connections/google
 - [ ] #4 `bug` Sign-in page flashes briefly after login before redirecting to /documents (2025-12-23)
+- [ ] #5 `tech-debt` Documents table accessibility: add keyboard navigation (Enter/Space) and ARIA labels to clickable rows (2025-12-23)
