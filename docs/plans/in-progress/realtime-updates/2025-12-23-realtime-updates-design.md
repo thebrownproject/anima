@@ -123,10 +123,11 @@ Three-column grid:
 
 ### Styling
 
-- **Grid aesthetic**: Subtle cell borders (`border-border/50`), clean header row
+- **shadcn TanStack Table style**: Header row, horizontal dividers only (no cell borders)
+- **No vertical borders**: Columns defined by spacing and alignment, not grid lines
 - **Typography**: Monospace for values, `tabular-nums` for numbers/percentages
 - **Linear-inspired**: Refined minimal with tight but readable spacing
-- **Nested rows**: Indented field names, subtle background tint or left border accent
+- **Nested rows**: Indented field names, same row styling as parent
 
 ### Smart Renderer
 
