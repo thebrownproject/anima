@@ -3329,3 +3329,50 @@ See Session 29.
    - Create AiChatBar stub
    - Create document detail page and loading state
 3. Check off tasks in README.md as completed
+
+---
+
+## Session 36 - 2025-12-23 - Local Dev Environment Fixes ✅
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Fixed CORS for local development**
+  - Issue: Upload button hitting production API (`api.stackdocs.io`) instead of localhost
+  - Root cause: `NEXT_PUBLIC_API_URL` in `.env.local` was set to production
+  - Fix: Changed to `http://localhost:8000` for local dev
+  - Note: Requires Next.js restart for env changes to take effect
+
+- [x] **Fixed "User not found" error**
+  - Issue: Clerk user ID not in Supabase `users` table
+  - Root cause: Clerk webhook only fires to production URL, not localhost
+  - Fix: Manually inserted dev user via Supabase MCP
+  - User ID: `user_37B6MdDGBS3yHJJwOS7RzahZeG9`
+
+- [x] **Verified Clerk webhook implementation**
+  - Confirmed webhook approach is 2025 best practice per Clerk/Supabase docs
+  - Webhook handles: `user.created`, `user.updated`, `user.deleted`
+  - Uses upsert for idempotency
+  - Syncs minimal data (id, email) - fetch full profile on-demand
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Local user sync | Manual insert via Supabase | Webhook can't reach localhost; alternative is ngrok tunnel |
+| Webhook pattern | Keep current implementation | Matches 2025 Clerk best practices |
+
+### Files Modified
+
+- `frontend/.env.local` - Changed `NEXT_PUBLIC_API_URL` to localhost (gitignored)
+
+### Next Session
+
+**Task**: Execute Documents Page Phase 3 (Document Detail)
+
+**Process**:
+1. Read `docs/plans/in-progress/documents-page/03-document-detail.md`
+2. Execute Tasks 12-20
+3. Upload pipeline is now working for testing
