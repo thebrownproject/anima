@@ -29,7 +29,7 @@ function isPrimitive(value: unknown): boolean {
 }
 
 function isStringArray(value: unknown): boolean {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+  return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string')
 }
 
 function isObjectArray(value: unknown): boolean {

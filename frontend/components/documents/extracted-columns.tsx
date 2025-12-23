@@ -39,6 +39,7 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
         >
           {canExpand ? (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 row.toggleExpanded()
