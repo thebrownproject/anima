@@ -42,10 +42,9 @@ This project uses the **superpowers workflow** for planning and implementing fea
 
 **MCP Tools Guide:**
 
-- **context7** - Fetch current library docs before writing code. Spawn agent to retrieve and report back for large docs (prevents context rot).
-- **perplexity** - Verify latest versions, APIs, and best practices before implementing (training data may be outdated).
-- **supabase** - Direct database access. May be disconnected - ask user to activate if needed.
-- **claude-in-chrome** - Browser automation for frontend testing and navigation.
+- **context7** - Fetch current library docs before writing code
+- **perplexity** - Verify latest versions, APIs, and best practices
+- **supabase** - Direct database access (ask user to activate if disconnected)
 
 **Reference Docs:**
 
@@ -58,20 +57,6 @@ This project uses the **superpowers workflow** for planning and implementing fea
 | `docs/DEV-NOTES.md`    | Session history & decisions (NEVER read full - grep for context) |
 | `docs/CLAUDE.md`       | Planning index, workflow details           |
 | `docs/plans/ISSUES.md` | Lightweight issue/idea tracking            |
-
----
-
-## Tech Stack
-
-| Component  | Technology                                      |
-| ---------- | ----------------------------------------------- |
-| Frontend   | Next.js 16 + TypeScript + Tailwind              |
-| Backend    | FastAPI (Python 3.11+)                          |
-| Database   | Supabase PostgreSQL                             |
-| Storage    | Supabase Storage                                |
-| Auth       | Clerk (not yet integrated)                      |
-| OCR        | Mistral OCR API                                 |
-| Extraction | Claude Agent SDK (migrating from Anthropic SDK) |
 
 ---
 
@@ -100,7 +85,35 @@ This project uses the **superpowers workflow** for planning and implementing fea
 └───────────────────────────────┘
 ```
 
-See `docs/ARCHITECTURE.md` for detailed system design.
+---
+
+## Frontend
+
+Next.js 16 (App Router) with Clerk auth and shadcn/ui components. Uses Supabase directly for data reads/writes, calls FastAPI only for AI operations.
+
+```
+frontend/
+├── app/(app)/          # Protected routes with @header parallel slots
+├── components/         # shadcn/ui + feature components
+└── lib/                # Supabase clients, queries
+```
+
+See `frontend/CLAUDE.md` for patterns and directory structure.
+
+---
+
+## Backend
+
+FastAPI with Claude Agent SDK for AI extraction. Agents use custom tools to read OCR text and write structured data to Supabase.
+
+```
+backend/
+├── app/routes/         # API endpoints (document, agent, test)
+├── app/services/       # OCR, storage, usage
+└── app/agents/         # extraction_agent, stack_agent
+```
+
+See `backend/CLAUDE.md` for agents, endpoints, and deployment.
 
 ---
 
@@ -123,197 +136,20 @@ See `docs/ARCHITECTURE.md` for detailed system design.
 
 **Storage:** `documents` bucket (private, signed URLs)
 
-**Auth:** Clerk (not yet integrated)
-
-**Test Users:**
-
-- `test1@stackdocs.com` / `password123`
-- `test2@stackdocs.com` / `password123`
-
 **DO NOT** create tables/buckets - they already exist.
 
 See `docs/SCHEMA.md` for complete database schema.
 
 ---
 
-## Agents (in progress)
-
-Built with Claude Agent SDK using custom database tools. Defined in `backend/app/agents/`.
-
-Agents operate autonomously using a full agentic workflow (like Claude Code):
-
-1. **User gives task** → "Extract data from this document"
-2. **Agent reads data** → Uses tools to fetch OCR text, current state
-3. **Agent acts via tools** → Tools perform real DB operations
-4. **Agent summarizes** → Tells user what was accomplished
-
----
-
-**extraction_agent** - Single document extraction
-
-Extracts structured data from a single document. Reads OCR text, determines what fields to extract (auto mode) or uses user-specified fields (custom mode), writes structured JSONB to the extractions table. Supports session resume for corrections/updates.
-
-```
-┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│   ocr_results   │  READ   │ extraction_agent│  WRITE  │   extractions   │
-│                 │────────▶│                 │────────▶│                 │
-│  (Mistral OCR)  │         │  (Claude SDK)   │         │  (structured)   │
-└─────────────────┘         └─────────────────┘         └─────────────────┘
-```
-
-| Tool              | Table         | Purpose                       |
-| ----------------- | ------------- | ----------------------------- |
-| `read_ocr`        | `ocr_results` | Fetch OCR text for document   |
-| `read_extraction` | `extractions` | Read current extraction JSONB |
-| `save_extraction` | `extractions` | Write full extraction         |
-| `set_field`       | `extractions` | Update value at JSON path     |
-| `delete_field`    | `extractions` | Remove field at JSON path     |
-| `complete`        | `documents`   | Mark extraction complete      |
-
----
-
-**stack_agent** - Multi-document batch extraction
-
-Extracts structured data across multiple documents into a unified table. Reads all documents in a stack, creates/manages table schema, extracts one row per document. Enables cross-document analysis (e.g., all invoices from a vendor).
-
-```
-┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│ stack_documents │  READ   │   stack_agent   │  WRITE  │  stack_tables   │
-│ + ocr_results   │────────▶│                 │────────▶│ stack_table_rows│
-└─────────────────┘         └─────────────────┘         └─────────────────┘
-```
-
-| Tool               | Table                       | Purpose                        |
-| ------------------ | --------------------------- | ------------------------------ |
-| `read_documents`   | `stack_documents`           | List documents in stack        |
-| `read_ocr`         | `ocr_results`               | Fetch OCR text for document    |
-| `read_tables`      | `stack_tables`              | Read table definitions         |
-| `create_table`     | `stack_tables`              | Create new table               |
-| `add_column`       | `stack_tables.columns`      | Add column to table            |
-| `set_column`       | `stack_tables.columns`      | Modify column definition       |
-| `delete_column`    | `stack_tables.columns`      | Remove column from table       |
-| `read_rows`        | `stack_table_rows`          | Read existing rows             |
-| `create_row`       | `stack_table_rows`          | Insert new row                 |
-| `set_row_field`    | `stack_table_rows.row_data` | Update value at JSON path      |
-| `delete_row_field` | `stack_table_rows.row_data` | Remove field at JSON path      |
-| `complete`         | `stack_tables`              | Mark stack extraction complete |
-
----
-
-## API Endpoints
-
-Routes defined in `backend/app/routes/`. Endpoints trigger agents with scoped context (user_id, document_id).
-
-### Document Endpoints
-
-| Endpoint                       | Purpose                                                    |
-| ------------------------------ | ---------------------------------------------------------- |
-| `POST /api/document/upload`    | Upload file to Supabase Storage, run Mistral OCR, save to `ocr_results` |
-| `POST /api/document/retry-ocr` | Retry OCR on failed documents (uses already-uploaded file) |
-
-### Agent Endpoints
-
-| Endpoint                  | Purpose                                                              |
-| ------------------------- | -------------------------------------------------------------------- |
-| `POST /api/agent/extract` | Extract from `ocr_results`, agent uses tools to write to `extractions` (SSE streaming) |
-| `POST /api/agent/correct` | Resume session, agent makes changes based on natural language instruction (SSE streaming) |
-| `GET /api/agent/health`   | Agent health check                                                   |
-
-### Test Endpoints
-
-| Endpoint              | Purpose                           |
-| --------------------- | --------------------------------- |
-| `GET /api/test/claude`  | Test Claude Agent SDK connectivity |
-| `GET /api/test/mistral` | Test Mistral OCR API connectivity  |
-
-### Utility Endpoints
-
-| Endpoint      | Purpose      |
-| ------------- | ------------ |
-| `GET /health` | Health check |
-
-### Planned Endpoints (stacks feature)
-
-| Endpoint                 | Purpose                                  | Agent       |
-| ------------------------ | ---------------------------------------- | ----------- |
-| `POST /api/stack/extract` | Trigger stack_agent (SSE streaming)      | stack_agent |
-| `POST /api/stack/update`  | Update stack extraction via session      | stack_agent |
-
-**Frontend uses Supabase directly for:** reading documents/extractions, editing fields, usage stats, auth.
-
----
-
-## Frontend (planned)
-
-Next.js 16 (App Router) + TypeScript + Tailwind. Uses Supabase directly for data, calls backend API for agent operations.
-
-**URL:** `www.stackdocs.io` (Vercel)
-
-**UI Stack:**
-
-- shadcn/ui - Tailwind-native components (Button, Card, Badge, Dialog, etc.)
-- TanStack Table - Headless data table with sorting, filtering, dynamic columns
-
-**Key Features:**
-
-- Real-time agent streaming via SSE (see AI thinking as it extracts)
-- Dynamic columns generated from extraction schema
-- Inline expansion for nested data (arrays, objects)
-- AI-first editing - corrections via natural language, not manual forms
-
-**Data Flow:**
-
-```
-┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│    Frontend     │  SSE    │  FastAPI        │  Tools  │    Supabase     │
-│  www.stackdocs  │────────▶│ api.stackdocs   │────────▶│                 │
-│  shadcn + React │◀────────│  (Agent SDK)    │◀────────│  (PostgreSQL)   │
-└─────────────────┘ stream  └─────────────────┘         └─────────────────┘
-        │                                                        ▲
-        └────────────────── Direct reads/writes ─────────────────┘
-```
-
----
-
-## Environment Variables
-
-**Backend `.env`:**
-
-```
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_KEY=your_service_role_key
-MISTRAL_API_KEY=your_mistral_key
-ANTHROPIC_API_KEY=sk-ant-xxx
-CLAUDE_MODEL=claude-haiku-4-5
-```
-
----
-
 ## Deployment
 
-**Frontend:** Vercel
+| Component | URL | Host |
+|-----------|-----|------|
+| Frontend  | `www.stackdocs.io` | Vercel |
+| Backend   | `api.stackdocs.io` | DigitalOcean |
 
-- URL: `www.stackdocs.io`
-- CI/CD: Automatic on push to `main`
-
-**Backend:** DigitalOcean Droplet (2GB, Sydney region)
-
-- URL: `api.stackdocs.io`
-- Reverse proxy: Caddy
-- Container runs on port 8001 internally
-
-**Backend CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`)
-
-- Triggers on push to `main` when `backend/**` changes
-- Builds Docker image → pushes to GitHub Container Registry (ghcr.io)
-
-**Container Management:**
-
-```bash
-docker logs stackdocs-api -f    # View logs
-docker restart stackdocs-api    # Restart
-docker ps | grep stackdocs      # Check status
-```
+See `backend/CLAUDE.md` for deployment details and commands.
 
 ---
 

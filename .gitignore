@@ -70,9 +70,8 @@ tmp/
 temp/
 *.tmp
 
-# Claude Code (ignore entire directory and project instructions)
-.claude/
-CLAUDE.md
+# Claude Code
+.claude/settings.local.json
 .kilocode/
 
 # Document uploads (will be in Supabase Storage, not local)

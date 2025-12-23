@@ -3811,3 +3811,68 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 1. Run `/superpowers:execute-plan` with `06-ai-chat-bar-plan.md`
 2. Tasks 1-8: Install textarea, create API helper, hook, components, integrate
 3. Test end-to-end with backend running
+
+---
+
+## Session 43 - 2025-12-23 - CLAUDE.md Documentation Restructure ✅
+
+**Feature**: Documentation improvement (not feature-specific)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Created `frontend/CLAUDE.md`**:
+  - Quick facts: Next.js 16, Tailwind, shadcn/ui, Clerk
+  - Directory structure with annotations
+  - Key patterns: @header parallel routes, data fetching, shadcn components
+
+- [x] **Created `backend/CLAUDE.md`**:
+  - Quick facts: FastAPI, Claude Agent SDK, Mistral OCR
+  - Directory structure with annotations
+  - Agents section with tool tables (extraction_agent, stack_agent)
+  - API endpoints, environment variables, deployment details
+
+- [x] **Slimmed root `CLAUDE.md`**:
+  - Reduced from ~340 lines to ~170 lines
+  - Moved detailed agent/endpoint docs to backend CLAUDE.md
+  - Added brief Frontend/Backend sections with directory overview
+  - Removed test users, kept high-level architecture
+
+- [x] **Trimmed `docs/CLAUDE.md`**:
+  - Reduced from ~80 lines to ~57 lines
+  - Removed "Current Focus" (duplicates ROADMAP.md)
+  - Removed "Reference Docs" table (duplicates root)
+  - Kept: Override note, superpowers workflow, DEV-NOTES tips, folder structure
+
+- [x] **Updated `.gitignore` to track Claude Code files**:
+  - Removed blanket ignore on `.claude/` and `CLAUDE.md`
+  - Now only ignores `.claude/settings.local.json`
+  - Enables tracking slash commands and all CLAUDE.md files
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Doc structure | Root overview + subdirectory details | Smaller context window when working in specific areas |
+| What to track | Commands + CLAUDE.md, not settings.local.json | Commands are project assets, settings are personal |
+| docs/CLAUDE.md | Keep unique content only | Avoid drift with root, focus on planning workflow |
+
+### Files Created
+
+- `frontend/CLAUDE.md`
+- `backend/CLAUDE.md`
+
+### Files Modified
+
+- `CLAUDE.md` (root) - slimmed down
+- `docs/CLAUDE.md` - trimmed to unique content
+- `.gitignore` - track Claude Code files
+
+### Next Session
+
+**Task**: Continue Documents Page Phase 4 or execute AI Chat Bar plan
+
+**Options**:
+1. Run `/superpowers:execute-plan` with `06-ai-chat-bar-plan.md`
+2. Continue with Phase 4 tasks from documents-page plan
+3. Implement header filters (`docs/plans/todo/header-filters/`)

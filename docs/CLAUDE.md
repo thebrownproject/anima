@@ -1,16 +1,8 @@
 # StackDocs Planning
 
-## Current Focus
-
-**Active Work:**
-- **Extraction Agent** → `plans/in-progress/extraction-agent/`
-
-**Todo:**
-- **Stacks Feature** → `plans/todo/stacks/`
-
----
-
 ## Superpowers Workflow
+
+> **Override:** The `/superpowers:brainstorm` and `/superpowers:write-plan` skills specify saving to `docs/plans/YYYY-MM-DD-<feature>.md`. **Ignore this.** Instead, save to `docs/plans/todo/<feature>/` or `docs/plans/in-progress/<feature>/` as described below.
 
 ### Creating New Features
 1. `/superpowers:brainstorm` → creates design doc
@@ -27,27 +19,12 @@
 - Not ready to start? Move to `plans/todo/`
 - Abandoned? Move to `plans/archive/`
 
-> **Override:** The `/superpowers:brainstorm` and `/superpowers:write-plan` skills specify saving to `docs/plans/YYYY-MM-DD-<feature>.md`. **Ignore this.** Instead, save to `docs/plans/todo/<feature>/` or `docs/plans/in-progress/<feature>/` as described above.
-
 ---
 
-## Reference Docs
+## DEV-NOTES.md
 
-| Doc | Purpose | Update Trigger |
-|-----|---------|----------------|
-| `ROADMAP.md` | Feature priorities | Priorities shift or feature completes |
-| `PRD.md` | Product requirements | Product scope changes (rare) |
-| `ARCHITECTURE.md` | System design | Feature moves to `complete/` |
-| `SCHEMA.md` | Database schema | Database changes land |
-| `plans/ISSUES.md` | Lightweight issue/idea tracking | As issues are added/resolved |
+Never read in full. Grep to find what you need:
 
----
-
-## Session Continuity
-
-Use `/continue` to resume work - reads ROADMAP.md and latest DEV-NOTES session, then waits for your direction.
-
-**DEV-NOTES.md**: Never read in full. Grep to find what you need:
 ```bash
 # List all sessions (shows date + what was done)
 grep "^## Session" docs/DEV-NOTES.md
@@ -57,7 +34,6 @@ grep "^## Session.*OCR\|^## Session.*Migration" docs/DEV-NOTES.md
 
 # Then read specific session with offset
 ```
-Use proactively when you need context on past decisions.
 
 ---
 
@@ -65,12 +41,13 @@ Use proactively when you need context on past decisions.
 
 ```
 docs/
-├── CLAUDE.md              # This file - index + workflow
-├── DEV-NOTES.md           # Session continuity
-├── ROADMAP.md             # Prioritized features
+├── CLAUDE.md              # This file - planning workflow
+├── DEV-NOTES.md           # Session history
+├── ROADMAP.md             # Feature priorities
 ├── PRD.md                 # Product requirements
 ├── ARCHITECTURE.md        # System design
 ├── SCHEMA.md              # Database schema
+├── marketing/             # Marketing assets
 └── plans/
     ├── ISSUES.md          # Lightweight issue/idea tracking
     ├── todo/              # Features designed, ready to implement
