@@ -127,11 +127,17 @@ export async function streamAgentCorrection(
     // Try to parse JSON error for better messages
     let errorMessage = `Request failed: ${response.status}`
     try {
-      const errorData = await response.json()
-      errorMessage = errorData.detail || errorData.message || errorMessage
+      // Get raw text first (body can only be consumed once)
+      const text = await response.text()
+      try {
+        const errorData = JSON.parse(text)
+        errorMessage = errorData.detail || errorData.message || text
+      } catch {
+        // Not JSON, use raw text
+        errorMessage = text || errorMessage
+      }
     } catch {
-      const errorText = await response.text()
-      errorMessage = errorText || errorMessage
+      // Failed to read body at all
     }
     throw new Error(errorMessage)
   }
