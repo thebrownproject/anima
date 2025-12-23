@@ -71,6 +71,7 @@ export function UploadButton() {
         accept=".pdf,.jpg,.jpeg,.png"
         onChange={handleFileChange}
         className="hidden"
+        aria-label="Upload document file"
       />
       <Button onClick={handleClick} disabled={isUploading}>
         {isUploading ? (
