@@ -28,6 +28,10 @@ export function UploadButton() {
 
     try {
       const token = await getToken()
+      if (!token) {
+        throw new Error('Not authenticated')
+      }
+
       const formData = new FormData()
       formData.append('file', file)
 

@@ -71,7 +71,7 @@ CREATE TABLE documents (
     file_size_bytes INTEGER NOT NULL,
     mime_type VARCHAR(100) NOT NULL,
     mode VARCHAR(20) NOT NULL,              -- 'auto' or 'custom'
-    status VARCHAR(20) DEFAULT 'processing', -- 'processing', 'completed', 'failed'
+    status VARCHAR(20) DEFAULT 'processing', -- 'processing', 'ocr_complete', 'completed', 'failed'
     session_id VARCHAR,                      -- Claude Agent SDK session for corrections
     uploaded_at TIMESTAMP DEFAULT NOW()
 );
