@@ -14,5 +14,8 @@ export function createClerkSupabaseClient(
 ): SupabaseClient {
   return createClient(supabaseUrl, supabaseAnonKey, {
     accessToken: getToken,
+    realtime: {
+      accessToken: getToken,
+    },
   })
 }
