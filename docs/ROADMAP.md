@@ -1,6 +1,6 @@
 # StackDocs Roadmap
 
-**Last Updated:** 2025-12-22
+**Last Updated:** 2025-12-23
 
 ---
 
@@ -15,16 +15,15 @@
 
 **Extraction Agent Frontend** (`plans/in-progress/extraction-agent/`)
 - Backend: Complete (Claude Agent SDK integration, SSE streaming, session resume)
-- Frontend: Pending (Phase 6-7)
+- Frontend: Complete (AI chat bar with SSE streaming)
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
 ### Todo
 
-**Documents Page** (`plans/todo/documents-page/`)
-- Design: Complete (list page + detail page)
-- Implementation plan: Complete (22 tasks across 5 phases)
-- Frontend: Not started
-- Enables: View/manage documents, see extracted data, PDF preview, AI chat for corrections
+**Realtime Updates & Document Enhancements** (`plans/todo/realtime-updates/`)
+- Supabase realtime subscription for extraction updates
+- Improved extracted fields table UX (inline preview, flatten common fields)
+- Not yet designed
 
 **Stacks Feature** (`plans/todo/stacks/`)
 - Database: Ready (migrations 004 & 005 applied)
@@ -35,6 +34,13 @@
 ---
 
 ## Completed
+
+**Documents Page** (Dec 2025) ✅
+- Documents list with TanStack Table (sorting, filtering, pagination, selection)
+- Document detail page with extracted data table and PDF/Visual preview
+- AI chat bar with SSE streaming for natural language corrections
+- Page header system with breadcrumbs and actions
+- Enables: View/manage documents, see extracted data, ask AI to correct extractions
 
 **Auth Fixes** (Dec 2025) ✅
 - Edge middleware route protection with Clerk
