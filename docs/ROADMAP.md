@@ -1,6 +1,6 @@
 # StackDocs Roadmap
 
-**Last Updated:** 2025-12-23
+**Last Updated:** 2025-12-24
 
 ---
 
@@ -18,12 +18,6 @@
 - Frontend: Complete (AI chat bar with SSE streaming)
 - Enables: Real-time streaming of Claude's thinking, natural language corrections
 
-**Realtime Updates & Table Redesign** (`plans/in-progress/realtime-updates/`)
-- Design: Complete (design doc + implementation plan)
-- Stage 1: Supabase realtime subscription for extraction updates
-- Stage 2: TanStack Table with smart renderers, spreadsheet-style UX
-- Ready for implementation
-
 ### Todo
 
 **Stacks Feature** (`plans/todo/stacks/`)
@@ -35,6 +29,14 @@
 ---
 
 ## Completed
+
+**Realtime Updates & Table Redesign** (Dec 2025) ✅
+- Supabase realtime subscription for extraction updates (auto-refresh when AI updates)
+- TanStack Table with expanding rows for nested data
+- Data shape detection (key-value, arrays, grouped arrays, object arrays)
+- Token refresh to keep WebSocket alive (Clerk JWT expires every 60s)
+- Known issue: Highlight animation not visible (see ISSUES.md #8)
+- Enables: Live updates to extracted data without page refresh
 
 **Documents Page** (Dec 2025) ✅
 - Documents list with TanStack Table (sorting, filtering, pagination, selection)

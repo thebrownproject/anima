@@ -4002,3 +4002,70 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 3. Test realtime subscription with AI chat bar
 4. Implement Task 5-8 (Stage 2: Table Redesign)
 5. Integration test full flow
+
+---
+
+## Session 46 - 2025-12-24 - Realtime Updates Implementation ✅
+
+**Feature**: Realtime Updates (`docs/plans/in-progress/realtime-updates/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Stage 1: Realtime Subscription**:
+  - Created `useExtractionRealtime` hook with Supabase subscription
+  - Created `DocumentDetailClient` wrapper (server fetches, client subscribes)
+  - Updated page.tsx to use client wrapper pattern
+  - Added token refresh every 50s to keep WebSocket alive (Clerk JWT expires ~60s)
+
+- [x] **Stage 2: TanStack Table Redesign**:
+  - Created data transformation utilities (`transform-extracted-fields.ts`)
+  - Smart data shape detection: primitive, key-value, string-array, grouped-arrays, object-array
+  - Created TanStack column definitions with expanding rows
+  - Rewrote `ExtractedDataTable` with TanStack Table and `getExpandedRowModel()`
+
+- [x] **Supabase Configuration**:
+  - Enabled realtime on `extractions` table: `ALTER PUBLICATION supabase_realtime ADD TABLE extractions`
+  - Set replica identity to FULL: `ALTER TABLE extractions REPLICA IDENTITY FULL`
+  - Configured `realtime.accessToken` in Supabase client for RLS
+
+- [x] **Bug Fixes During Implementation**:
+  - Fixed WebSocket not authenticated (added `realtime.accessToken` + `setAuth()`)
+  - Fixed token expiry causing disconnect (added 50s refresh interval)
+  - Fixed race conditions in hook (added `mounted` flag)
+  - Fixed button accessibility (added `type="button"`)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Token refresh | 50s interval | Clerk JWT expires ~60s, need to refresh before expiry |
+| setAuth vs accessToken | Both | `accessToken` for initial connect, `setAuth()` for refresh |
+| Data shape detection | Cascade checks | Check in order: primitive → string-array → object-array → grouped-arrays → key-value |
+
+### Known Issues
+
+- [ ] Highlight animation not visible (ISSUES.md #8) - animation exists but too subtle
+
+### Files Created/Modified
+
+**New Files:**
+- `frontend/hooks/use-extraction-realtime.ts`
+- `frontend/components/documents/document-detail-client.tsx`
+- `frontend/components/documents/extracted-columns.tsx`
+- `frontend/lib/transform-extracted-fields.ts`
+
+**Modified Files:**
+- `frontend/app/(app)/documents/[id]/page.tsx`
+- `frontend/components/documents/extracted-data-table.tsx`
+- `frontend/lib/supabase.ts`
+- `frontend/app/globals.css`
+
+### Next Session
+
+**Task**: Stacks feature or Vercel deployment
+
+**Process**:
+1. Run `/continue` to get context
+2. Choose next feature from ROADMAP
+3. Use superpowers workflow (brainstorm → plan → execute)
