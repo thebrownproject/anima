@@ -33,8 +33,8 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
 
   return (
     <div className="relative">
-      {/* Activity Panel - floats above input without affecting layout */}
-      <div className="absolute bottom-full left-0 mb-3 max-w-md">
+      {/* Activity Panel - floats above input, centered, fixed width */}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-96">
         <AiActivityPanel
           status={status}
           events={events}
