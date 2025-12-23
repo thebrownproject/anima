@@ -3376,3 +3376,61 @@ See Session 29.
 1. Read `docs/plans/in-progress/documents-page/03-document-detail.md`
 2. Execute Tasks 12-20
 3. Upload pipeline is now working for testing
+
+---
+
+## Session 37 - 2025-12-23 - Documents Page Phase 3 Partial (Tasks 12-14) ✅
+
+**Feature**: Documents Page (`docs/plans/in-progress/documents-page/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 12: Install react-pdf**
+  - Added react-pdf v10.2.0 dependency
+  - Commit: `6dfcf96`
+
+- [x] **Task 13: Create PDF Viewer Component**
+  - Created `frontend/components/pdf-viewer.tsx`
+  - Features: pagination, loading state, error handling
+  - Uses `import.meta.url` worker config for Next.js compatibility
+  - Commit: `b6fc785`, fixed in `739ac06`
+
+- [x] **Task 14: Create Visual Preview Component**
+  - Created `frontend/components/visual-preview.tsx`
+  - Displays OCR text with empty state
+  - Commit: `07048da`
+
+- [x] **Code review fixes**
+  - Fixed auth token null check in upload-button.tsx
+  - Updated SCHEMA.md with `ocr_complete` status
+  - Changed worker config from CDN to `import.meta.url` pattern
+  - Added `aria-label` for accessibility on file input
+  - Commits: `b35b2a4`, `739ac06`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| PDF library | react-pdf | Lightweight, free, supports future highlighting feature |
+| Worker config | import.meta.url | Next.js recommended pattern, avoids CSP issues |
+| ocr_complete status | Keep in TypeScript type | Backend uses it, SCHEMA.md docs were outdated |
+
+### Tasks Remaining
+
+- [ ] Task 15: Create Preview Panel Component
+- [ ] Task 16: Create Extracted Data Table Component
+- [ ] Task 17: Create Stacks Dropdown Component
+- [ ] Task 18: Create Document Detail Page Client Component
+- [ ] Task 19: Create AI Chat Bar Component (Stub)
+- [ ] Task 20: Create Document Detail Page and Loading State
+
+### Next Session
+
+**Task**: Continue Documents Page Phase 3 (Tasks 15-20)
+
+**Process**:
+1. Run `/continue` with handover prompt below
+2. Execute Tasks 15-17 (Batch 2)
+3. Execute Tasks 18-20 (Batch 3)
+4. Test document detail page end-to-end
