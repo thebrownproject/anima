@@ -125,3 +125,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Highlight fade animation for realtime updates */
+@keyframes highlight-fade {
+  0% {
+    background-color: hsl(var(--primary) / 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-highlight-fade {
+  animation: highlight-fade 1.5s ease-out forwards;
+  will-change: background-color;
+}
