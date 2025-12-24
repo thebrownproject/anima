@@ -49,7 +49,7 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
       </div>
 
       {/* Content without Card wrapper - subtle container */}
-      <TabsContent value="pdf" className="flex-1 mt-0 rounded-lg border bg-muted/20 overflow-hidden">
+      <TabsContent value="pdf" className="flex-1 mt-0 border bg-muted/20 overflow-hidden">
         {isPdf && pdfUrl ? (
           <PdfViewer url={pdfUrl} />
         ) : (
@@ -59,7 +59,7 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
         )}
       </TabsContent>
 
-      <TabsContent value="visual" className="flex-1 mt-0 rounded-lg border bg-muted/20 overflow-hidden">
+      <TabsContent value="visual" className="flex-1 mt-0 border bg-muted/20 overflow-hidden">
         <VisualPreview markdown={ocrText} />
       </TabsContent>
     </Tabs>
