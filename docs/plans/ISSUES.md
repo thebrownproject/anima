@@ -28,3 +28,9 @@ Lightweight tracking for items that don't need immediate action.
 - [ ] #12 `feature` Inline stack creation during upload - "+ New Stack" chip in upload dialog to create stack without leaving flow (2025-12-24)
 - [x] #13 `bug` Clerk auth() not detecting clerkMiddleware() - server-side Supabase client fails on routes not matched by middleware (2025-12-24)
   - Fix: Next.js 16 requires `export function proxy(req)` wrapper around `clerkMiddleware()` in `proxy.ts`
+- [ ] #14 `feature` Support JPG/PNG image uploads - Mistral OCR already handles images, just need to update accepted file types in upload dialog (2025-12-24)
+- [x] #15 `bug` Production RLS failing - Supabase third-party auth only had dev Clerk domain (`worthy-rodent-66.clerk.accounts.dev`), needed to add production domain (`clerk.stackdocs.io`) (2025-12-24)
+- [ ] #16 `bug` Document status stuck at `ocr_complete` - extraction agent saves data but doesn't call `complete` tool, so document/extraction status never updates to `completed` (2025-12-24)
+  - Files: `backend/app/agents/extraction_agent/agent.py`, `backend/app/agents/extraction_agent/tools/complete.py`
+  - Agent needs to reliably call `complete` tool after saving extraction
+- [ ] #17 `tech-debt` Branding consistency - use "Stackdocs" not "StackDocs" across codebase and marketing (2025-12-24)

@@ -68,7 +68,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       </div>
 
       {/* Table */}
-      <div className={/* "rounded-lg border" */undefined}>
+      <div>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

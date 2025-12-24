@@ -86,6 +86,13 @@ export function UploadDialogContent({ onClose }: UploadDialogContentProps) {
       setUploadError(null)
       setStep('configure')
 
+      // Reset extraction state from previous upload
+      setExtractionMethod('auto')
+      setCustomFields([])
+      setExtractionStatus('idle')
+      setExtractionError(null)
+      setExtractionEvents([])
+
       try {
         const token = await getToken()
         if (!token) {
