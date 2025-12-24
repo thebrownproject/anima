@@ -96,6 +96,26 @@ function processSSELine(
 export type OnEventCallback = (event: AgentEvent) => void
 
 /**
+ * Extract error message from failed fetch response.
+ * Attempts to parse JSON error, falls back to text or status code.
+ */
+async function getResponseError(response: Response): Promise<string> {
+  let errorMessage = `Request failed: ${response.status}`
+  try {
+    const text = await response.text()
+    try {
+      const errorData = JSON.parse(text)
+      errorMessage = errorData.detail || errorData.message || text
+    } catch {
+      errorMessage = text || errorMessage
+    }
+  } catch {
+    // Failed to read body
+  }
+  return errorMessage
+}
+
+/**
  * Stream agent correction request.
  *
  * Uses fetch + ReadableStream with proper SSE buffering to handle
@@ -128,22 +148,7 @@ export async function streamAgentCorrection(
   })
 
   if (!response.ok) {
-    // Try to parse JSON error for better messages
-    let errorMessage = `Request failed: ${response.status}`
-    try {
-      // Get raw text first (body can only be consumed once)
-      const text = await response.text()
-      try {
-        const errorData = JSON.parse(text)
-        errorMessage = errorData.detail || errorData.message || text
-      } catch {
-        // Not JSON, use raw text
-        errorMessage = text || errorMessage
-      }
-    } catch {
-      // Failed to read body at all
-    }
-    throw new Error(errorMessage)
+    throw new Error(await getResponseError(response))
   }
 
   if (!response.body) {
@@ -211,6 +216,11 @@ export async function streamAgentExtraction(
   authToken: string,
   signal?: AbortSignal
 ): Promise<void> {
+  // Validate custom fields when mode requires them
+  if (mode === 'custom' && (!customFields || customFields.length === 0)) {
+    throw new Error('Custom fields are required when mode is "custom"')
+  }
+
   const formData = new FormData()
   formData.append('document_id', documentId)
   formData.append('mode', mode)
@@ -228,19 +238,7 @@ export async function streamAgentExtraction(
   })
 
   if (!response.ok) {
-    let errorMessage = `Request failed: ${response.status}`
-    try {
-      const text = await response.text()
-      try {
-        const errorData = JSON.parse(text)
-        errorMessage = errorData.detail || errorData.message || text
-      } catch {
-        errorMessage = text || errorMessage
-      }
-    } catch {
-      // Failed to read body
-    }
-    throw new Error(errorMessage)
+    throw new Error(await getResponseError(response))
   }
 
   if (!response.body) {

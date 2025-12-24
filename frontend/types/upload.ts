@@ -31,12 +31,12 @@ export interface UploadDialogState {
   extractionMethod: ExtractionMethod
 
   // From Step 3 (if custom)
-  customFields: CustomField[]
+  readonly customFields: readonly CustomField[]
 
   // Extraction progress
   extractionStatus: ExtractionStatus
   extractionError: string | null
-  extractionEvents: AgentEvent[]
+  readonly extractionEvents: readonly AgentEvent[]
 }
 
 export interface UploadDialogActions {
