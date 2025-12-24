@@ -11,7 +11,7 @@
 **Upload Dialog** (`plans/in-progress/upload-dialog/`)
 - Design: Complete (multi-step wizard with extraction config)
 - Plan: Complete (17 tasks across 3 phases, reviewed and sharded)
-- Implementation: Not started
+- Implementation: Complete (16/17 tasks, pending manual testing)
 - Enables: Upload documents with extraction options (auto/custom fields)
 
 **Vercel Deployment** (`plans/in-progress/vercel-deployment/`)

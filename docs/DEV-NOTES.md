@@ -4198,7 +4198,7 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 
 ---
 
-## Session 49 - 2025-12-24 - Linear-Style Preview Sidebar Implementation ✅
+## Session 50 - 2025-12-24 - Linear-Style Preview Sidebar Implementation ✅
 
 **Feature**: linear-style-preview-sidebar
 **Branch**: main
@@ -4278,7 +4278,7 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 
 ---
 
-## Session 49 - 2025-12-24 - Upload Dialog Implementation ✅
+## Session 50 - 2025-12-24 - Upload Dialog Implementation ✅
 
 **Feature**: upload-dialog (`docs/plans/in-progress/upload-dialog/`)
 **Branch**: main
