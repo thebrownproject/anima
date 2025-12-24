@@ -692,7 +692,7 @@ Insert this after the opening `<div className="flex flex-1 flex-col min-h-0">`:
     </>
   }
   right={
-    <DocumentDetailActions assignedStacks={document.stacks || []} />
+    <DocumentDetailActions assignedStacks={document.stacks ?? []} />
   }
 />
 ```
