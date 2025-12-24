@@ -19,10 +19,11 @@
 - Configure Clerk webhook for production URL
 - Test user sync to Supabase
 
-**Extraction Agent Frontend** (`plans/in-progress/extraction-agent/`)
-- Backend: Complete (Claude Agent SDK integration, SSE streaming, session resume)
-- Frontend: Complete (AI chat bar with SSE streaming)
-- Enables: Real-time streaming of Claude's thinking, natural language corrections
+**Sub-bar Toolbar** (`plans/in-progress/sub-bar-toolbar/`)
+- Design: Complete (Linear-style sub-bar with filter, search, actions)
+- Plan: Complete (17 tasks across 5 phases, code reviewed)
+- Implementation: Not started
+- Enables: Consistent toolbar pattern, row selection with bulk actions, expandable search
 
 ### Todo
 
@@ -35,6 +36,11 @@
 ---
 
 ## Completed
+
+**Extraction Agent Frontend** (Dec 2025) ✅
+- Backend: Claude Agent SDK integration, SSE streaming, session resume
+- Frontend: AI chat bar with SSE streaming
+- Enables: Real-time streaming of Claude's thinking, natural language corrections
 
 **Realtime Updates & Table Redesign** (Dec 2025) ✅
 - Supabase realtime subscription for extraction updates (auto-refresh when AI updates)

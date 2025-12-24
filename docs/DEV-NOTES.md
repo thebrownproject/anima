@@ -4368,3 +4368,86 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 6. Verify SSE streaming progress display
 7. Verify navigation to document detail page after extraction
 8. Test edge cases: ESC to cancel, back navigation, error states
+
+---
+
+## Session 51 - 2025-12-24 - Sub-bar Toolbar Design & Planning ✅
+
+**Feature**: sub-bar-toolbar (`docs/plans/in-progress/sub-bar-toolbar/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed Linear-style sub-bar design**:
+  - Analyzed Linear's UI patterns (filter, display, sub-bar layout)
+  - Decided on consistent sub-bar pattern for both documents list and detail pages
+  - Sub-bar height matches main header (h-12 / 48px)
+
+- [x] **Defined layout structure**:
+  - Main header: Navigation + layout controls (breadcrumbs, preview toggle)
+  - Sub-bar left: Filter button + expandable search pill
+  - Sub-bar right: Context-specific actions
+
+- [x] **Documents List page design**:
+  - Filter + Search on left
+  - Selection count + Actions + Upload on right
+  - Checkboxes appear on row hover (Linear-style)
+  - Bulk actions: Delete, Add to Stack
+
+- [x] **Document Detail page design**:
+  - Filter + Search on left (filters extracted field names)
+  - Stacks dropdown, Edit, Export on right
+  - Preview toggle remains in main header
+
+- [x] **Created design doc**:
+  - `docs/plans/in-progress/sub-bar-toolbar/2024-12-24-sub-bar-toolbar-design.md`
+
+- [x] **Created implementation plan**:
+  - 17 tasks across 5 phases
+  - Researched shadcn patterns via MCP
+  - Researched TanStack Table row selection via context7
+  - `docs/plans/in-progress/sub-bar-toolbar/2024-12-24-sub-bar-toolbar-plan.md`
+
+- [x] **Code review of plan**:
+  - Fixed checkbox indeterminate state pattern
+  - Fixed selection count API (use getFilteredSelectedRowModel)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Actions location | Sub-bar, not header | Header = navigation/layout, sub-bar = data actions |
+| Filter vs Search order | Filter first, then Search | Search expands into free space |
+| Checkboxes visibility | Hover to show | Cleaner UI, matches Linear |
+| Selection UI | Sub-bar right side | No floating elements, consistent placement |
+| Upload button | Moved to sub-bar | It's a data action, belongs with other actions |
+
+### Files Created
+
+**Design:**
+- `docs/plans/in-progress/sub-bar-toolbar/2024-12-24-sub-bar-toolbar-design.md`
+
+**Plan:**
+- `docs/plans/in-progress/sub-bar-toolbar/2024-12-24-sub-bar-toolbar-plan.md`
+
+### Tasks Remaining
+
+- [ ] Execute implementation plan (17 tasks)
+- [ ] Manual testing
+
+### Next Session
+
+**Task**: Execute sub-bar toolbar implementation plan
+
+**Process**:
+1. Run `/continue` to load context
+2. Use `/superpowers:execute-plan` or subagent-driven development
+3. Implement Phase 1: Foundation components (expandable search, filter button, sub-bar)
+4. Implement Phase 2: Documents list row selection and sub-bar
+5. Implement Phase 3: Document detail sub-bar
+6. Phase 4: Bug fixes (table scroll)
+7. Phase 5: Manual testing
+
+**Also remember**:
+- Table scroll bug needs fixing (can't scroll in document detail TanStack)
+- Update skeletons after layout changes
