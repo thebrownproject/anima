@@ -14,11 +14,6 @@
 - Implementation: Complete (16/17 tasks, pending manual testing)
 - Enables: Upload documents with extraction options (auto/custom fields)
 
-**Vercel Deployment** (`plans/in-progress/vercel-deployment/`)
-- Deploy frontend to Vercel with environment variables
-- Configure Clerk webhook for production URL
-- Test user sync to Supabase
-
 **Sub-bar Toolbar** (`plans/in-progress/sub-bar-toolbar/`)
 - Design: Complete (Linear-style sub-bar with filter, search, actions)
 - Plan: Complete (17 tasks across 5 phases, code reviewed)
@@ -37,80 +32,23 @@
 
 ## Completed
 
-**Extraction Agent Frontend** (Dec 2025) ✅
-- Backend: Claude Agent SDK integration, SSE streaming, session resume
-- Frontend: AI chat bar with SSE streaming
-- Enables: Real-time streaming of Claude's thinking, natural language corrections
-
-**Realtime Updates & Table Redesign** (Dec 2025) ✅
-- Supabase realtime subscription for extraction updates (auto-refresh when AI updates)
-- TanStack Table with expanding rows for nested data
-- Data shape detection (key-value, arrays, grouped arrays, object arrays)
-- Token refresh to keep WebSocket alive (Clerk JWT expires every 60s)
-- Known issue: Highlight animation not visible (see ISSUES.md #8)
-- Enables: Live updates to extracted data without page refresh
-
-**Documents Page** (Dec 2025) ✅
-- Documents list with TanStack Table (sorting, filtering, pagination, selection)
-- Document detail page with extracted data table and PDF/Visual preview
-- AI chat bar with SSE streaming for natural language corrections
-- Page header system with breadcrumbs and actions
-- Enables: View/manage documents, see extracted data, ask AI to correct extractions
-
-**Auth Fixes** (Dec 2025) ✅
-- Edge middleware route protection with Clerk
-- Webhook handler for user sync to Supabase (`/api/webhooks/clerk`)
-- Sign-out redirect to homepage
-- Removed redundant layout auth check
-- Removed legacy unauthenticated Supabase client
-- Enables: Complete Clerk auth flow with automatic user data sync
-
-**Clerk + Supabase Integration** (Dec 2025) ✅
-- Database: All user_id columns changed to TEXT for Clerk IDs
-- RLS: 8 policies using `auth.jwt()->>'sub'` for Clerk JWT
-- Frontend: Clerk-authenticated Supabase clients (client + server + hook)
-- Backend: FastAPI routes protected with Clerk auth dependency
-- Enables: Secure multi-tenant data access with Clerk authentication
-
-**OCR 3 Upgrade + Document Upload Endpoint** (Dec 2025) ✅
-- Upgraded from Mistral OCR 2 to OCR 3 (`mistral-ocr-latest`)
-- New `POST /api/document/upload` endpoint (sync upload + OCR)
-- New `POST /api/document/retry-ocr` endpoint (retry failed OCR)
-- Deleted deprecated `/api/process` and `/api/re-extract`
-- HTML tables stored in `ocr_results.html_tables` for document preview
-
-**Service Test Endpoints** (Dec 2025) ✅
-- `GET /api/test/claude` - Test Claude Agent SDK connectivity
-- `GET /api/test/mistral` - Test Mistral OCR API connectivity
-
-**Backend Core** (Nov 2025)
-- FastAPI setup with Supabase integration
-- Mistral OCR for text extraction
-- Claude extraction (auto + custom modes)
-- Background processing with status updates
-
-**Architecture Migration** (Dec 2025)
-- Migrated from LangChain to Anthropic SDK direct
-- Reduced to 2 core endpoints (`/api/process`, `/api/re-extract`)
-- Added Claude Agent SDK endpoints (`/api/agent/extract`, `/api/agent/correct`)
-
-**Planning Reorganization** (Dec 2025)
-- Consolidated docs into kanban structure
-- Refactored plans to superpowers format
-- Cleaned up archive
-
-**Next.js Frontend Foundation** (Dec 2025) ✅
-- Next.js 16 + shadcn/ui (new-york style, sidebar-08)
-- Clerk authentication with modal sign-in/sign-up
-- Supabase client configured
-- Route groups: `(app)/` for protected routes
-- Sidebar navigation: Workspace (Documents, Extractions) + Stacks
-- Placeholder pages ready for feature implementation
-
-**Clerk shadcn Theme Integration** (Dec 2025) ✅
-- Applied shadcn theme to all Clerk components (modals, UserButton)
-- Replaced NavUser with Clerk UserButton in sidebar
-- Enabled Waitlist mode for beta access control
+| Feature | Date | Summary |
+|---------|------|---------|
+| Vercel Deployment | Dec 2025 | Frontend deployed to Vercel, Clerk webhook configured |
+| Linear-style Preview Sidebar | Dec 2025 | Document preview panel with Linear-inspired design |
+| Extraction Agent | Dec 2025 | Claude Agent SDK with SSE streaming, session resume, AI chat bar |
+| Realtime Updates | Dec 2025 | Supabase realtime subscriptions, TanStack Table with expanding rows |
+| Documents Page | Dec 2025 | Document list/detail views, PDF preview, AI corrections |
+| Issues Tracking | Dec 2025 | Lightweight issue tracking in ISSUES.md |
+| Auth Fixes | Dec 2025 | Clerk middleware protection, webhook user sync |
+| Clerk + Supabase Integration | Dec 2025 | RLS policies with Clerk JWT, authenticated clients |
+| OCR 3 Upgrade | Dec 2025 | Mistral OCR 3, document upload/retry endpoints |
+| Service Test Endpoints | Dec 2025 | Claude and Mistral API connectivity tests |
+| Next.js Frontend Foundation | Dec 2025 | Next.js 16 + shadcn/ui + Clerk auth |
+| Clerk shadcn Theme | Dec 2025 | shadcn theme applied to Clerk components |
+| Planning Reorganization | Dec 2025 | Kanban docs structure, superpowers workflow |
+| Architecture Migration | Dec 2025 | LangChain to Anthropic SDK direct |
+| Backend Core | Nov 2025 | FastAPI + Supabase + Mistral OCR + Claude extraction |
 
 ---
 
