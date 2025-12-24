@@ -36,6 +36,25 @@ frontend/
 
 ## Key Patterns
 
+### Clerk Auth with Next.js 16 (proxy.ts)
+
+Next.js 16 renamed `middleware.ts` to `proxy.ts` and requires the exported function to be named `proxy`. Clerk's `clerkMiddleware()` must be wrapped:
+
+```typescript
+// proxy.ts - CORRECT for Next.js 16
+export function proxy(req: NextRequest) {
+  return clerkMiddleware(async (auth, request) => {
+    if (!isPublicRoute(request)) {
+      await auth.protect()
+    }
+  })(req)
+}
+```
+
+**Do NOT use** `export default clerkMiddleware()` - this pattern from Clerk docs is for Next.js 15 and earlier. Next.js 16 won't detect it, causing `auth()` calls in server components to fail with "clerkMiddleware not detected" errors.
+
+If you see this error, check that `proxy.ts` uses `export function proxy(...)` wrapper.
+
 ### Page Headers (@header parallel route)
 
 Page-specific headers live in `app/(app)/@header/` as a parallel route slot. The layout renders the `header` prop in the PageHeader component.

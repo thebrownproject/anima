@@ -4134,3 +4134,64 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 2. Spawn execution agents for each phase (can run Phase 1 & 2 in parallel)
 3. Review and test after each phase
 4. Complete Phase 3 integration and manual testing
+
+---
+
+## Session 48 - 2025-12-24 - Linear-Style Preview Sidebar Design ✅
+
+**Feature**: linear-style-preview-sidebar
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **UI Refinements**:
+  - Added `border-b` to nav header in layout
+  - Reduced header height from `h-16` (64px) to `h-12` (48px) for Linear-like compactness
+  - Removed `p-4` padding from content wrapper for edge-to-edge lines
+  - Removed `rounded-lg border` from extracted-data-table (commented for restoration)
+  - Removed `rounded-lg border` from documents-table (commented for restoration)
+  - Removed left border hover effect from documents table rows
+
+- [x] **Resizable Component Setup**:
+  - Installed shadcn resizable component (`npx shadcn@latest add resizable`)
+  - Component uses `react-resizable-panels` library under the hood
+
+- [x] **Implementation Plan Creation**:
+  - Researched `react-resizable-panels` API via context7 MCP
+  - Created comprehensive 8-task implementation plan
+  - Code review identified 4 critical issues (wrong API usage)
+  - Fixed all critical and important issues in plan
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| State persistence | localStorage (manual) | Library's `useDefaultLayout` doesn't exist as documented; manual `onLayout` callback instead |
+| Panel type import | `ImperativeHandle as PanelImperativeHandle` | Correct type name from library |
+| Layout data format | `number[]` array | `onLayout` returns array of sizes, not object with panel IDs |
+| Collapsed state sync | React Context with localStorage | Header toggle and panel need to share state; persist preference |
+| Preview on list page | No (keep navigation) | Documents need full screen for preview + extracted data + AI chat |
+
+### Files Created
+
+**Plan:**
+- `docs/plans/in-progress/linear-style-preview-sidebar/2024-12-24-linear-style-preview-sidebar.md`
+
+**Component:**
+- `frontend/components/ui/resizable.tsx` (shadcn)
+
+### Files Modified
+
+- `frontend/app/(app)/layout.tsx` - Header height, border, content padding
+- `frontend/components/documents/extracted-data-table.tsx` - Removed border
+- `frontend/components/documents/documents-table.tsx` - Removed border and hover effect
+
+### Next Session
+
+**Task**: Execute Linear-style preview sidebar implementation plan
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Use `superpowers:executing-plans` to implement task-by-task
+3. Tasks: Create context, toggle button, update detail client with resizable panels, update styles, add provider layout, add toggle to header
+4. Manual testing after implementation
