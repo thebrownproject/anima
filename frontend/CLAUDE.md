@@ -42,12 +42,12 @@ Next.js 16 renamed `middleware.ts` to `proxy.ts` and requires the exported funct
 
 ```typescript
 // proxy.ts - CORRECT for Next.js 16
-export function proxy(req: NextRequest) {
+export function proxy(req: NextRequest, event: NextFetchEvent) {
   return clerkMiddleware(async (auth, request) => {
     if (!isPublicRoute(request)) {
       await auth.protect()
     }
-  })(req)
+  })(req, event)
 }
 ```
 
