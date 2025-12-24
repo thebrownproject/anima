@@ -68,7 +68,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className={/* "rounded-lg border" */undefined}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -94,7 +94,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer border-0 border-l-2 border-l-transparent hover:border-l-primary hover:bg-muted/30 transition-colors duration-150"
+                  className="cursor-pointer hover:bg-muted/30 transition-colors duration-150"
                   onClick={() => router.push(`/documents/${row.original.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (

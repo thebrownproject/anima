@@ -26,7 +26,14 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider
-      appearance={{ baseTheme: shadcn }}
+      appearance={{
+        baseTheme: shadcn,
+        elements: {
+          userButtonPopoverRootBox: {
+            pointerEvents: 'auto',
+          },
+        },
+      }}
       signInFallbackRedirectUrl="/documents"
       signUpFallbackRedirectUrl="/documents"
     >

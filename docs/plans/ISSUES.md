@@ -26,3 +26,4 @@ Lightweight tracking for items that don't need immediate action.
 - [ ] #10 `feature` Global context to persist SSE streams across navigation - currently if user navigates away mid-extraction/correction, progress panel is lost (agent continues server-side) (2025-12-24)
 - [ ] #11 `feature` Drag-and-drop anywhere on documents page - drop file anywhere to start upload, skip dialog step 1, jump straight to extraction config (2025-12-24)
 - [ ] #12 `feature` Inline stack creation during upload - "+ New Stack" chip in upload dialog to create stack without leaving flow (2025-12-24)
+- [ ] #13 `bug` Clerk auth() not detecting clerkMiddleware() - server-side Supabase client fails on routes not matched by middleware (2025-12-24)

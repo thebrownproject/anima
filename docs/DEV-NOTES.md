@@ -4069,3 +4069,68 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 1. Run `/continue` to get context
 2. Choose next feature from ROADMAP
 3. Use superpowers workflow (brainstorm → plan → execute)
+
+---
+
+## Session 47 - 2025-12-24 - Upload Dialog Design & Planning ✅
+
+**Feature**: Upload Dialog (`docs/plans/in-progress/upload-dialog/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Upload Dialog Design**:
+  - Brainstormed multi-step upload dialog flow with user wireframes
+  - Designed 3-step wizard: Dropzone → Configure → Fields
+  - Key decisions: upload starts immediately, tag-based field input, SSE streaming in dialog
+  - Created design doc: `2025-12-24-upload-dialog-design.md`
+
+- [x] **Implementation Plan Creation**:
+  - Generated 17-task implementation plan with code snippets
+  - Spawned code review agent to verify plan quality
+  - Fixed critical issues: duplicate state management, React hooks deps, JSON validation
+  - Applied all suggestions: escape key cancel, better error messages, field input focus
+
+- [x] **Plan Sharding**:
+  - Split monolithic plan into 3 phases for easier execution
+  - Phase 1: Foundation (types, SSE, config) - Tasks 1-3
+  - Phase 2: Components (7 UI components) - Tasks 4-10
+  - Phase 3: Integration (dialog, backend, testing) - Tasks 11-17
+  - Created README.md with task summary and key patterns
+
+- [x] **ISSUES.md Updates**:
+  - #10: Global SSE context for stream persistence
+  - #11: Drag-and-drop anywhere on documents page
+  - #12: Inline stack creation during upload
+  - Updated #2: Field type definitions with more detail
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Step order | Dropzone first | Upload starts immediately, OCR runs while user configures |
+| State management | Self-contained in UploadDialogContent | Simpler than hook-based, no external state needed |
+| Custom fields format | `{name, description}` JSON | Descriptions help AI understand extraction intent |
+| Dialog behavior | Stay open until extraction complete | Simpler than cross-page stream management |
+| Plan structure | 3 phases | Easier to execute, review checkpoints between phases |
+
+### Files Created
+
+**Design:**
+- `docs/plans/in-progress/upload-dialog/2025-12-24-upload-dialog-design.md`
+
+**Plan (sharded):**
+- `docs/plans/in-progress/upload-dialog/README.md`
+- `docs/plans/in-progress/upload-dialog/phase-1-foundation.md`
+- `docs/plans/in-progress/upload-dialog/phase-2-components.md`
+- `docs/plans/in-progress/upload-dialog/phase-3-integration.md`
+
+### Next Session
+
+**Task**: Execute upload dialog implementation plan
+
+**Process**:
+1. Run `/continue` to get context
+2. Spawn execution agents for each phase (can run Phase 1 & 2 in parallel)
+3. Review and test after each phase
+4. Complete Phase 3 integration and manual testing
