@@ -1,130 +1,36 @@
 # Sub-bar Toolbar Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Updated:** 2024-12-24 (brainstorm session - use shadcn components, sub-bar in page content)
 
-**Goal:** Add Linear-style sub-bar toolbar to documents list and document detail pages with expandable search, filter placeholder, row selection, and relocated actions.
+**Goal:** Add Linear-style sub-bar toolbar to documents list and document detail pages with search, filter placeholder, row selection, and relocated actions.
 
-**Architecture:** Create reusable sub-bar component that renders below the main header. Documents list gets row selection with bulk actions. Document detail gets relocated Stacks/Edit/Export. Both get expandable search pill and filter placeholder. Fix table scroll issues.
+**Architecture:** Create reusable sub-bar component that renders **in page content** (inside DocumentsTable/DocumentDetailClient). Documents list gets row selection with bulk actions. Document detail gets relocated Stacks/Edit/Export. Both get search input and filter placeholder. Fix table scroll issues.
 
-**Tech Stack:** React 19, Next.js 16, shadcn/ui (dropdown-menu, checkbox, button), TanStack Table (row selection), Tailwind CSS
+**Tech Stack:** React 19, Next.js 16, shadcn/ui (input-group, dropdown-menu, checkbox, button), TanStack Table (row selection), Tailwind CSS
 
 ---
 
 ## Phase 1: Foundation Components
 
-### Task 1: Create Expandable Search Component
+### Task 1: Install shadcn InputGroup
 
-**Files:**
-- Create: `frontend/components/ui/expandable-search.tsx`
+**Step 1: Install the InputGroup component from shadcn**
 
-**Step 1: Create the expandable search component**
-
-```tsx
-'use client'
-
-import * as React from 'react'
-import { Search, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
-
-interface ExpandableSearchProps {
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  className?: string
-}
-
-export function ExpandableSearch({
-  value,
-  onChange,
-  placeholder = 'Search...',
-  className,
-}: ExpandableSearchProps) {
-  const [isExpanded, setIsExpanded] = React.useState(false)
-  const inputRef = React.useRef<HTMLInputElement>(null)
-
-  const handleExpand = () => {
-    setIsExpanded(true)
-    // Focus after state update
-    setTimeout(() => inputRef.current?.focus(), 0)
-  }
-
-  const handleCollapse = () => {
-    if (!value) {
-      setIsExpanded(false)
-    }
-  }
-
-  const handleClear = () => {
-    onChange('')
-    inputRef.current?.focus()
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onChange('')
-      setIsExpanded(false)
-    }
-  }
-
-  return (
-    <div
-      className={cn(
-        'flex items-center rounded-md border border-input bg-background transition-[width] duration-200 ease-in-out',
-        isExpanded ? 'w-52' : 'w-9',
-        className
-      )}
-    >
-      <button
-        type="button"
-        onClick={handleExpand}
-        className={cn(
-          'flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors',
-          isExpanded && 'pointer-events-none'
-        )}
-        aria-label="Search"
-      >
-        <Search className="size-4" />
-      </button>
-
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={handleCollapse}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        className={cn(
-          'h-9 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground transition-[width,opacity] duration-200',
-          isExpanded ? 'w-full opacity-100 pr-2' : 'w-0 opacity-0'
-        )}
-      />
-
-      {isExpanded && value && (
-        <button
-          type="button"
-          onClick={handleClear}
-          className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
-          aria-label="Clear search"
-        >
-          <X className="size-3.5" />
-        </button>
-      )}
-    </div>
-  )
-}
+Run:
+```bash
+cd /Users/fraserbrown/stackdocs/frontend && npx shadcn@latest add input-group
 ```
 
-**Step 2: Verify component compiles**
+**Step 2: Verify installation**
 
-Run: `cd /Users/fraserbrown/stackdocs/frontend && npx tsc --noEmit`
-Expected: No errors
+Check that `frontend/components/ui/input-group.tsx` was created.
 
 **Step 3: Commit**
 
 ```bash
-git add frontend/components/ui/expandable-search.tsx
-git commit -m "feat(ui): add expandable search component"
+git add frontend/components/ui/input-group.tsx
+git commit -m "feat(ui): add shadcn input-group component"
 ```
 
 ---
@@ -132,9 +38,11 @@ git commit -m "feat(ui): add expandable search component"
 ### Task 2: Create Filter Button Component
 
 **Files:**
-- Create: `frontend/components/ui/filter-button.tsx`
+- Create: `frontend/components/documents/filter-button.tsx`
 
 **Step 1: Create the filter button placeholder component**
+
+Uses shadcn Button + DropdownMenu. Located in `components/documents/` (not `ui/`).
 
 ```tsx
 'use client'
@@ -179,8 +87,8 @@ Expected: No errors
 **Step 3: Commit**
 
 ```bash
-git add frontend/components/ui/filter-button.tsx
-git commit -m "feat(ui): add filter button placeholder component"
+git add frontend/components/documents/filter-button.tsx
+git commit -m "feat(documents): add filter button placeholder component"
 ```
 
 ---
@@ -462,11 +370,16 @@ git commit -m "feat(documents): add selection actions component"
 **Step 1: Add imports for sub-bar components**
 
 ```tsx
+import { Search } from 'lucide-react'
 import { SubBar } from './sub-bar'
-import { ExpandableSearch } from '@/components/ui/expandable-search'
-import { FilterButton } from '@/components/ui/filter-button'
+import { FilterButton } from './filter-button'
 import { SelectionActions } from './selection-actions'
 import { UploadDialogTrigger } from './upload-dialog'
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupAddon,
+} from '@/components/ui/input-group'
 ```
 
 **Step 2: Replace existing filter div with sub-bar**
@@ -479,11 +392,16 @@ Remove the existing filter div (lines ~56-68) and replace with:
   left={
     <>
       <FilterButton />
-      <ExpandableSearch
-        value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
-        onChange={(value) => table.getColumn('filename')?.setFilterValue(value)}
-        placeholder="Search documents..."
-      />
+      <InputGroup className="w-64">
+        <InputGroupInput
+          placeholder="Search documents..."
+          value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
+          onChange={(e) => table.getColumn('filename')?.setFilterValue(e.target.value)}
+        />
+        <InputGroupAddon>
+          <Search className="size-4" />
+        </InputGroupAddon>
+      </InputGroup>
     </>
   }
   right={
@@ -722,10 +640,15 @@ git commit -m "refactor(header): move stacks/edit/export to sub-bar, keep previe
 **Step 1: Add imports**
 
 ```tsx
+import { Search } from 'lucide-react'
 import { SubBar } from './sub-bar'
-import { ExpandableSearch } from '@/components/ui/expandable-search'
-import { FilterButton } from '@/components/ui/filter-button'
+import { FilterButton } from './filter-button'
 import { DocumentDetailActions } from './document-detail-actions'
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupAddon,
+} from '@/components/ui/input-group'
 ```
 
 **Step 2: Add search state and filter function**
@@ -756,11 +679,16 @@ Insert this after the opening `<div className="flex flex-1 flex-col min-h-0">`:
   left={
     <>
       <FilterButton />
-      <ExpandableSearch
-        value={fieldSearch}
-        onChange={setFieldSearch}
-        placeholder="Search fields..."
-      />
+      <InputGroup className="w-64">
+        <InputGroupInput
+          placeholder="Search fields..."
+          value={fieldSearch}
+          onChange={(e) => setFieldSearch(e.target.value)}
+        />
+        <InputGroupAddon>
+          <Search className="size-4" />
+        </InputGroupAddon>
+      </InputGroup>
     </>
   }
   right={
@@ -1046,12 +974,14 @@ git commit -m "feat(documents): complete sub-bar toolbar implementation"
 
 ## Files Summary
 
-### New Files
-- `frontend/components/ui/expandable-search.tsx`
-- `frontend/components/ui/filter-button.tsx`
-- `frontend/components/documents/sub-bar.tsx`
-- `frontend/components/documents/selection-actions.tsx`
-- `frontend/components/documents/document-detail-actions.tsx`
+### Install from shadcn
+- `frontend/components/ui/input-group.tsx` - InputGroup for search inputs (via `npx shadcn@latest add input-group`)
+
+### New Files (in `components/documents/`)
+- `sub-bar.tsx` - Sub-bar container with left/right slots
+- `filter-button.tsx` - Filter button + dropdown (uses shadcn Button + DropdownMenu)
+- `selection-actions.tsx` - Selection count + actions dropdown
+- `document-detail-actions.tsx` - Stacks/Edit/Export for detail page
 
 ### Modified Files
 - `frontend/components/documents/columns.tsx` - Add select column

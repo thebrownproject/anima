@@ -1,6 +1,7 @@
 # Linear-Style Sub-bar Toolbar Design
 
 **Date:** 2024-12-24
+**Updated:** 2024-12-24 (brainstorm session)
 **Status:** Design Complete
 **Feature:** Sub-bar toolbar for documents pages
 
@@ -60,45 +61,45 @@ Add a Linear-style sub-bar below the main header on both documents list and docu
 
 ## Components
 
-### Expandable Search Pill
+### Sub-bar Container
 
-Icon-only pill that expands on click to reveal text input.
+Reusable layout component with left/right slots. Rendered **in page content** (inside `DocumentsTable`/`DocumentDetailClient`), not in the `@header` parallel route.
 
-```
-Collapsed:        Expanded:
-┌────┐            ┌─────────────────────────┐
-│ 🔍 │     →      │ 🔍  Search...           │
-└────┘            └─────────────────────────┘
-```
+**Why in page content:** The sub-bar controls page state (filters, selection count) which lives in client components. Keeping sub-bar close to its data avoids prop drilling or context complexity.
 
-**Behavior:**
-- Default: Search icon in rounded pill (`w-10`)
-- On click: Expands to show text input (`w-52`)
-- CSS transition on width (`transition-[width] duration-200`)
-- Click outside or ESC to collapse (if input is empty)
-- Filter positioned left so search expands into free space
+**Location:** `components/documents/sub-bar.tsx`
 
-**Implementation pattern (from Perplexity research):**
 ```tsx
-<div
-  className={cn(
-    "flex items-center rounded-full border border-input bg-background px-2 transition-[width] duration-200",
-    open ? "w-52" : "w-10"
-  )}
->
-  <Search className="h-4 w-4 cursor-pointer" onClick={() => setOpen(true)} />
-  <input
-    className={cn("ml-2 bg-transparent text-sm outline-none w-full", !open && "w-0 opacity-0")}
-    placeholder="Search..."
-  />
-</div>
+<SubBar
+  left={<><FilterButton /><InputGroup>...</InputGroup></>}
+  right={<>...page-specific actions...</>}
+/>
 ```
+
+### Search Input
+
+Uses **shadcn InputGroup** component (not a custom expandable). Always visible with search icon.
+
+**Location:** Inline using `@shadcn/input-group` (install required)
+
+```tsx
+<InputGroup>
+  <InputGroupInput placeholder="Search documents..." />
+  <InputGroupAddon>
+    <SearchIcon />
+  </InputGroupAddon>
+</InputGroup>
+```
+
+**Note:** Expandable search (collapse to icon, expand on click) deferred as nice-to-have polish.
 
 ### Filter Button
 
-Placeholder button for future filter functionality.
+Separate component using **shadcn Button + DropdownMenu**. Placeholder for future filter functionality.
 
-**Current:** Opens shadcn DropdownMenu with "Coming soon" or empty state
+**Location:** `components/documents/filter-button.tsx`
+
+**Current:** Opens shadcn DropdownMenu with "Coming soon" disabled item
 
 **Future filter options:**
 
@@ -164,18 +165,21 @@ Update loading skeletons to match new layout:
 
 ## Files to Create/Modify
 
-### New Components
-- `frontend/components/ui/expandable-search.tsx` - Reusable search pill
-- `frontend/components/documents/sub-bar.tsx` - Sub-bar container component
-- `frontend/components/documents/filter-dropdown.tsx` - Filter button + dropdown
-- `frontend/components/documents/selection-actions.tsx` - Selection count + actions
+### Install shadcn Component
+- `npx shadcn@latest add input-group` - InputGroup for search inputs
+
+### New Components (all in `components/documents/`)
+- `sub-bar.tsx` - Sub-bar container with left/right slots
+- `filter-button.tsx` - Filter button + dropdown (uses shadcn Button + DropdownMenu)
+- `selection-actions.tsx` - Selection count + actions dropdown
+- `document-detail-actions.tsx` - Stacks/Edit/Export for detail page
 
 ### Modified Files
 - `frontend/app/(app)/@header/documents/page.tsx` - Remove Upload from header
 - `frontend/app/(app)/@header/documents/[id]/page.tsx` - Keep only Preview toggle
-- `frontend/components/documents/documents-list.tsx` - Add sub-bar, checkboxes on hover
-- `frontend/components/documents/document-detail-client.tsx` - Add sub-bar, move actions
-- `frontend/components/documents/documents-table.tsx` - Add row selection checkboxes
+- `frontend/components/documents/documents-table.tsx` - Add sub-bar, row selection, remove old filter
+- `frontend/components/documents/columns.tsx` - Add selection column with hover-visible checkboxes
+- `frontend/components/documents/document-detail-client.tsx` - Add sub-bar, move actions from header
 - `frontend/components/documents/extracted-data-table.tsx` - Fix scroll, add search filter
 
 ---
@@ -188,8 +192,11 @@ Update loading skeletons to match new layout:
 | Filter then Search order | Filter first | Search expands into free space, doesn't push other elements |
 | Checkboxes on hover | Yes | Cleaner UI, matches Linear pattern |
 | Selection UI location | Sub-bar right | No floating elements, consistent placement |
-| Search pill style | Single expanding container | Cleaner than button + separate input |
 | Upload button location | Sub-bar | It's a data action, belongs with other actions |
+| Search component | shadcn InputGroup | Use shadcn primitives, expandable deferred as polish |
+| Filter button component | Separate file in `components/documents/` | Reusable, uses shadcn Button + DropdownMenu |
+| Sub-bar placement | In page content, not @header | Sub-bar controls client state (filters, selection) - keep close to data |
+| Custom components location | `components/documents/` not `components/ui/` | `ui/` reserved for shadcn primitives only |
 
 ---
 
