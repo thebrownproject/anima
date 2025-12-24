@@ -1,11 +1,19 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable'
 import { useExtractionRealtime, ExtractionUpdate } from '@/hooks/use-extraction-realtime'
 import { ExtractedDataTable } from './extracted-data-table'
 import { PreviewPanel } from './preview-panel'
 import { AiChatBar } from './ai-chat-bar'
+import { usePreviewPanel } from './preview-panel-context'
 import type { DocumentWithExtraction } from '@/types/documents'
+
+const LAYOUT_STORAGE_KEY = 'stackdocs-document-layout'
 
 interface DocumentDetailClientProps {
   initialDocument: DocumentWithExtraction
@@ -18,6 +26,30 @@ export function DocumentDetailClient({
 }: DocumentDetailClientProps) {
   const [document, setDocument] = useState(initialDocument)
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
+
+  // Preview panel collapse/expand
+  const { panelRef, setIsCollapsed } = usePreviewPanel()
+
+  // Persist panel sizes to localStorage
+  const [defaultLayout] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
+      if (saved) {
+        try {
+          return JSON.parse(saved) as number[]
+        } catch {
+          return [60, 40]
+        }
+      }
+    }
+    return [60, 40]
+  })
+
+  const handleLayoutChange = useCallback((sizes: number[]) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(sizes))
+    }
+  }, [])
 
   // Fix #3: Use ref to access current document state without recreating callback
   const documentRef = useRef(document)
@@ -68,29 +100,53 @@ export function DocumentDetailClient({
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      {/* Main content - asymmetric layout */}
-      <div className="flex-1 flex gap-6 min-h-0 overflow-auto">
-        {/* Left: Extracted Data - narrow fixed width */}
-        <div className="w-80 shrink-0">
-          <ExtractedDataTable
-            fields={document.extracted_fields}
-            confidenceScores={document.confidence_scores}
-            changedFields={changedFields}
-          />
-        </div>
+      {/* Main content - resizable layout */}
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex-1 min-h-0"
+        onLayout={handleLayoutChange}
+      >
+        {/* Left: Extracted Data - main content, expands */}
+        <ResizablePanel
+          defaultSize={defaultLayout[0]}
+          minSize={30}
+          className="overflow-auto"
+        >
+          <div className="h-full p-4">
+            <ExtractedDataTable
+              fields={document.extracted_fields}
+              confidenceScores={document.confidence_scores}
+              changedFields={changedFields}
+            />
+          </div>
+        </ResizablePanel>
 
-        {/* Right: Preview - takes remaining space */}
-        <div className="flex-1 min-w-0">
-          <PreviewPanel
-            pdfUrl={signedUrl}
-            ocrText={document.ocr_raw_text}
-            mimeType={document.mime_type}
-          />
-        </div>
-      </div>
+        <ResizableHandle withHandle />
+
+        {/* Right: Preview - collapsible sidebar */}
+        <ResizablePanel
+          ref={panelRef}
+          defaultSize={defaultLayout[1]}
+          minSize={20}
+          maxSize={60}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setIsCollapsed(true)}
+          onExpand={() => setIsCollapsed(false)}
+          className="overflow-auto"
+        >
+          <div className="h-full border-l p-4">
+            <PreviewPanel
+              pdfUrl={signedUrl}
+              ocrText={document.ocr_raw_text}
+              mimeType={document.mime_type}
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* AI Chat Bar - inline at bottom */}
-      <div className="shrink-0 mt-6">
+      <div className="shrink-0">
         <AiChatBar documentId={document.id} />
       </div>
     </div>

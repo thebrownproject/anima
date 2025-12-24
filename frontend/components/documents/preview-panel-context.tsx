@@ -1,12 +1,12 @@
 'use client'
 
 import { createContext, useContext, useRef, useState, useCallback, ReactNode } from 'react'
-import type { ImperativeHandle as PanelImperativeHandle } from 'react-resizable-panels'
+import type { ImperativePanelHandle } from 'react-resizable-panels'
 
 const STORAGE_KEY = 'stackdocs-preview-collapsed'
 
 interface PreviewPanelContextValue {
-  panelRef: React.RefObject<PanelImperativeHandle | null>
+  panelRef: React.RefObject<ImperativePanelHandle | null>
   isCollapsed: boolean
   setIsCollapsed: (collapsed: boolean) => void
   toggle: () => void
@@ -15,7 +15,7 @@ interface PreviewPanelContextValue {
 const PreviewPanelContext = createContext<PreviewPanelContextValue | null>(null)
 
 export function PreviewPanelProvider({ children }: { children: ReactNode }) {
-  const panelRef = useRef<PanelImperativeHandle | null>(null)
+  const panelRef = useRef<ImperativePanelHandle | null>(null)
 
   // Initialize from localStorage to avoid hydration mismatch
   const [isCollapsed, setIsCollapsedState] = useState(() => {
