@@ -4195,3 +4195,83 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 2. Use `superpowers:executing-plans` to implement task-by-task
 3. Tasks: Create context, toggle button, update detail client with resizable panels, update styles, add provider layout, add toggle to header
 4. Manual testing after implementation
+
+---
+
+## Session 49 - 2025-12-24 - Linear-Style Preview Sidebar Implementation ✅
+
+**Feature**: linear-style-preview-sidebar
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Created Preview Panel Context**:
+  - `preview-panel-context.tsx` with collapse state, localStorage persistence
+  - Fixed hydration mismatch by initializing to false and syncing in useEffect
+
+- [x] **Created Preview Toggle Button**:
+  - `preview-toggle.tsx` with highlighted state when panel is open
+  - Uses PanelRight icon from lucide-react
+
+- [x] **Created Document Header Actions**:
+  - `document-header-actions.tsx` - client component wrapping toggle + other actions
+  - Updated header slot to use this component
+
+- [x] **Implemented Resizable Panels**:
+  - Replaced fixed layout with ResizablePanelGroup from react-resizable-panels
+  - Panel sizes persist to localStorage
+  - Preview panel is collapsible with toggle control
+  - Downgraded react-resizable-panels to 2.1.9 for shadcn compatibility
+
+- [x] **Updated Preview Panel Styles**:
+  - Added header bar (h-[40.5px]) aligned with table header
+  - Removed rounded borders for Linear-like appearance
+  - PDF/Visual tabs in header bar
+
+- [x] **Added PreviewPanelProvider to App Layout**:
+  - Moved provider to `(app)/layout.tsx` to wrap both header slot and children
+  - Enables header toggle to control panel in page content
+
+- [x] **Made PDF Viewer Responsive**:
+  - CSS transform scale approach (no re-renders during resize)
+  - PDF renders at 600px, scales down smoothly with panel
+  - Added horizontal padding around PDF
+
+- [x] **Fixed Table Overflow Bug**:
+  - Added `whitespace-normal` to TableCell in extracted-data-table
+  - Fixes issue where expanding rows pushed panels off screen
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Library version | react-resizable-panels 2.1.9 | v4 API incompatible with shadcn wrapper |
+| Provider location | (app)/layout.tsx | Parallel routes require provider above both slots |
+| PDF scaling | CSS transform | Avoids flash during resize (no re-renders) |
+| Panel min size | 35% | Ensures PDF remains readable |
+| Overflow fix | Local override | whitespace-normal on TableCell, not global shadcn |
+
+### Files Created
+
+- `frontend/components/documents/preview-panel-context.tsx`
+- `frontend/components/documents/preview-toggle.tsx`
+- `frontend/components/documents/document-header-actions.tsx`
+
+### Files Modified
+
+- `frontend/components/documents/document-detail-client.tsx`
+- `frontend/components/documents/preview-panel.tsx`
+- `frontend/components/documents/extracted-data-table.tsx`
+- `frontend/components/pdf-viewer.tsx`
+- `frontend/components/visual-preview.tsx`
+- `frontend/app/(app)/layout.tsx`
+- `frontend/app/(app)/@header/documents/[id]/page.tsx`
+
+### Next Session
+
+**Task**: Update breadcrumbs styling/functionality
+
+**Also consider**:
+- Keyboard shortcut (Cmd+B) for preview toggle
+- Error boundary for PDF viewer
+- Test panel collapse state persistence

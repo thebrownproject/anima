@@ -29,8 +29,8 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
 
   return (
     <Tabs defaultValue={isPdf ? 'pdf' : 'visual'} className="flex flex-col h-full">
-      {/* Compact left-aligned tabs */}
-      <div className="flex items-center mb-3">
+      {/* Header bar - matches table header height */}
+      <div className="flex h-[40.5px] shrink-0 items-center px-4 border-b">
         <TabsList className="h-7 p-0.5 bg-muted/50">
           <TabsTrigger
             value="pdf"
@@ -48,8 +48,8 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
         </TabsList>
       </div>
 
-      {/* Content without Card wrapper - subtle container */}
-      <TabsContent value="pdf" className="flex-1 mt-0 border bg-muted/20 overflow-hidden">
+      {/* Content area */}
+      <TabsContent value="pdf" className="flex-1 mt-0 overflow-hidden">
         {isPdf && pdfUrl ? (
           <PdfViewer url={pdfUrl} />
         ) : (
@@ -59,7 +59,7 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
         )}
       </TabsContent>
 
-      <TabsContent value="visual" className="flex-1 mt-0 border bg-muted/20 overflow-hidden">
+      <TabsContent value="visual" className="flex-1 mt-0 overflow-hidden">
         <VisualPreview markdown={ocrText} />
       </TabsContent>
     </Tabs>

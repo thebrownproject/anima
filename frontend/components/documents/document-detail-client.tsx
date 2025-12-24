@@ -112,7 +112,7 @@ export function DocumentDetailClient({
           minSize={30}
           className="overflow-auto"
         >
-          <div className="h-full p-4">
+          <div className="h-full">
             <ExtractedDataTable
               fields={document.extracted_fields}
               confidenceScores={document.confidence_scores}
@@ -121,13 +121,13 @@ export function DocumentDetailClient({
           </div>
         </ResizablePanel>
 
-        <ResizableHandle withHandle />
+        <ResizableHandle />
 
         {/* Right: Preview - collapsible sidebar */}
         <ResizablePanel
           ref={panelRef}
           defaultSize={defaultLayout[1]}
-          minSize={20}
+          minSize={35}
           maxSize={60}
           collapsible
           collapsedSize={0}
@@ -135,7 +135,7 @@ export function DocumentDetailClient({
           onExpand={() => setIsCollapsed(false)}
           className="overflow-auto"
         >
-          <div className="h-full border-l p-4">
+          <div className="h-full">
             <PreviewPanel
               pdfUrl={signedUrl}
               ocrText={document.ocr_raw_text}

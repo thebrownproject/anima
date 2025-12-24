@@ -59,7 +59,7 @@ export function ExtractedDataTable({
   }
 
   return (
-    <div className={/* "rounded-lg border" */undefined}>
+    <div>
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -103,7 +103,7 @@ export function ExtractedDataTable({
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-2.5">
+                    <TableCell key={cell.id} className="py-2.5 whitespace-normal">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

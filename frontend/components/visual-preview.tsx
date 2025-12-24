@@ -22,14 +22,14 @@ interface VisualPreviewProps {
 export function VisualPreview({ markdown }: VisualPreviewProps) {
   if (!markdown) {
     return (
-      <div className="flex h-[600px] items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground">No OCR text available</p>
       </div>
     )
   }
 
   return (
-    <div className="max-h-[600px] overflow-auto p-4">
+    <div className="h-full overflow-auto p-4">
       <div className="prose prose-sm dark:prose-invert max-w-none
         prose-headings:font-medium prose-headings:text-foreground
         prose-p:text-foreground prose-p:leading-relaxed
