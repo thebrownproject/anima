@@ -4275,3 +4275,96 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 - Keyboard shortcut (Cmd+B) for preview toggle
 - Error boundary for PDF viewer
 - Test panel collapse state persistence
+
+---
+
+## Session 49 - 2025-12-24 - Upload Dialog Implementation ✅
+
+**Feature**: upload-dialog (`docs/plans/in-progress/upload-dialog/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 1: Foundation**:
+  - Created type definitions (`frontend/types/upload.ts`)
+  - Added `streamAgentExtraction()` SSE function to `agent-api.ts`
+  - Created upload configuration constants (`frontend/lib/upload-config.ts`)
+  - Code review: Fixed DRY (extracted `getResponseError` helper), validation, readonly arrays
+
+- [x] **Phase 2: UI Components** (via sub-agent):
+  - `upload-status.tsx` - Progress indicator
+  - `extraction-method-card.tsx` - Selectable card for auto/custom
+  - `field-tag-input.tsx` - Tag input with badges and tooltips
+  - `steps/dropzone-step.tsx` - File drag-and-drop
+  - `steps/configure-step.tsx` - Method selection
+  - `steps/fields-step.tsx` - Custom fields input
+  - `extraction-progress.tsx` - SSE event display
+  - Code review: No real issues (false positives identified)
+
+- [x] **Phase 3: Integration** (via sub-agent):
+  - `upload-dialog-trigger.tsx` - Button that opens dialog
+  - `upload-dialog-content.tsx` - Main dialog with state management
+  - `index.ts` - Barrel export
+  - Updated `@header/documents/page.tsx` to use new trigger
+  - Updated backend `agent.py` with JSON custom_fields parsing
+  - Updated `extraction_agent/agent.py` to handle field objects with descriptions
+  - Deleted deprecated `upload-button.tsx`
+  - Code review: Fixed dialog state management, race condition, backend validation
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Type location | `@/types/upload` instead of co-located | Consistent with existing `types/` folder pattern |
+| Code review false positives | Identified 3/3 Phase 2 "critical" issues as non-issues | TooltipProvider built into Tooltip, buttons have native keyboard support, type cast is valid |
+| Dialog state | Controlled via parent with `onClose` callback | Dialog needs to close after navigation |
+| Race condition fix | Added `mountedRef` | Prevent navigation after component unmount |
+
+### Files Created
+
+**Types:**
+- `frontend/types/upload.ts`
+
+**Lib:**
+- `frontend/lib/upload-config.ts`
+
+**Components:**
+- `frontend/components/documents/upload-dialog/upload-status.tsx`
+- `frontend/components/documents/upload-dialog/extraction-method-card.tsx`
+- `frontend/components/documents/upload-dialog/field-tag-input.tsx`
+- `frontend/components/documents/upload-dialog/extraction-progress.tsx`
+- `frontend/components/documents/upload-dialog/upload-dialog-trigger.tsx`
+- `frontend/components/documents/upload-dialog/upload-dialog-content.tsx`
+- `frontend/components/documents/upload-dialog/index.ts`
+- `frontend/components/documents/upload-dialog/steps/dropzone-step.tsx`
+- `frontend/components/documents/upload-dialog/steps/configure-step.tsx`
+- `frontend/components/documents/upload-dialog/steps/fields-step.tsx`
+
+### Files Modified
+
+- `frontend/lib/agent-api.ts` - Added `streamAgentExtraction()`, `getResponseError()` helper, tool label
+- `frontend/app/(app)/@header/documents/page.tsx` - Use UploadDialogTrigger
+- `backend/app/routes/agent.py` - JSON custom_fields parsing with validation
+- `backend/app/agents/extraction_agent/agent.py` - Handle field objects with descriptions
+
+### Files Deleted
+
+- `frontend/components/documents/upload-button.tsx` (replaced by upload-dialog)
+
+### Tasks Remaining
+
+- [ ] Manual testing of upload dialog flow
+
+### Next Session
+
+**Task**: Manual testing of upload dialog
+
+**Process**:
+1. Start frontend (`npm run dev`) and backend (`uvicorn app.main:app --reload`)
+2. Navigate to `/documents` and click Upload
+3. Test dropzone (drag-drop, file picker, validation errors)
+4. Test auto extraction flow
+5. Test custom fields flow (add/remove fields, tooltips)
+6. Verify SSE streaming progress display
+7. Verify navigation to document detail page after extraction
+8. Test edge cases: ESC to cancel, back navigation, error states
