@@ -1,9 +1,11 @@
 /**
- * Agent API helper for streaming corrections.
+ * Agent API helper for streaming corrections and extractions.
  *
  * Uses fetch + ReadableStream (not EventSource) because
  * the backend expects POST with FormData.
  */
+
+import type { CustomField } from '@/types/upload'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -33,6 +35,8 @@ function humanizeToolName(toolName: string): string {
     set_field: 'Updating field',
     delete_field: 'Removing field',
     complete: 'Completing',
+    // Extraction agent tools
+    analyze_document: 'Analyzing document',
   }
 
   return toolLabels[name] || name.replace(/_/g, ' ')
@@ -176,6 +180,97 @@ export async function streamAgentCorrection(
     }
 
     // Process any remaining buffered data
+    if (buffer.trim()) {
+      const lines = buffer.split('\n')
+      for (const line of lines) {
+        processSSELine(line, onEvent)
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+/**
+ * Stream agent extraction request.
+ *
+ * Uses fetch + ReadableStream with proper SSE buffering.
+ *
+ * @param documentId - Document to extract from (must have OCR cached)
+ * @param mode - "auto" or "custom"
+ * @param customFields - Array of custom fields (required if mode=custom)
+ * @param onEvent - Callback for each event
+ * @param authToken - Clerk auth token for Authorization header
+ * @param signal - AbortController signal for cancellation
+ */
+export async function streamAgentExtraction(
+  documentId: string,
+  mode: 'auto' | 'custom',
+  customFields: CustomField[] | null,
+  onEvent: OnEventCallback,
+  authToken: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const formData = new FormData()
+  formData.append('document_id', documentId)
+  formData.append('mode', mode)
+  if (customFields && customFields.length > 0) {
+    formData.append('custom_fields', JSON.stringify(customFields))
+  }
+
+  const response = await fetch(`${API_URL}/api/agent/extract`, {
+    method: 'POST',
+    body: formData,
+    signal,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    let errorMessage = `Request failed: ${response.status}`
+    try {
+      const text = await response.text()
+      try {
+        const errorData = JSON.parse(text)
+        errorMessage = errorData.detail || errorData.message || text
+      } catch {
+        errorMessage = text || errorMessage
+      }
+    } catch {
+      // Failed to read body
+    }
+    throw new Error(errorMessage)
+  }
+
+  if (!response.body) {
+    throw new Error('No response body')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const text = decoder.decode(value, { stream: true })
+      buffer += text
+
+      const messages = buffer.split('\n\n')
+      buffer = messages.pop() || ''
+
+      for (const message of messages) {
+        if (!message.trim()) continue
+        const lines = message.split('\n')
+        for (const line of lines) {
+          processSSELine(line, onEvent)
+        }
+      }
+    }
+
     if (buffer.trim()) {
       const lines = buffer.split('\n')
       for (const line of lines) {
