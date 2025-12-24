@@ -4451,3 +4451,75 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 **Also remember**:
 - Table scroll bug needs fixing (can't scroll in document detail TanStack)
 - Update skeletons after layout changes
+
+---
+
+## Session 52 - 2025-12-25 - Sub-bar Toolbar Plan Refinement ✅
+
+**Feature**: sub-bar-toolbar (`docs/plans/in-progress/sub-bar-toolbar/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed component architecture**:
+  - Decided to use shadcn InputGroup instead of custom expandable search
+  - Confirmed filter-button should be separate component in `components/documents/`
+  - Decided sub-bar renders in page content (not @header parallel route)
+
+- [x] **Updated design doc with decisions**:
+  - Added "Sub-bar Container" section explaining placement rationale
+  - Changed search component to use shadcn InputGroup
+  - Updated file locations (all custom components in `components/documents/`)
+  - Added 4 new decisions to decision table
+
+- [x] **Updated implementation plan**:
+  - Task 1: Changed from custom expandable search to installing shadcn InputGroup
+  - Task 2: Changed filter-button path from `ui/` to `documents/`
+  - Task 7 & 12: Updated imports to use InputGroup and correct paths
+  - Updated Files Summary section
+
+- [x] **Code reviewed plan**:
+  - Verified TanStack Table APIs are correct
+  - Verified shadcn Checkbox indeterminate pattern is correct
+  - Fixed `||` to `??` for nullish coalescing (line 695)
+
+- [x] **Tracked new issues**:
+  - #14: Support JPG/PNG image uploads
+  - #15: Production RLS fixed (added prod Clerk domain)
+  - #16: Document status stuck at ocr_complete
+  - #17: Branding consistency (Stackdocs vs StackDocs)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Search component | shadcn InputGroup | Use shadcn primitives, expandable deferred as polish |
+| Filter button location | `components/documents/` | Reusable, but not a shadcn primitive |
+| Sub-bar placement | In page content | Controls client state (filters, selection) - keep close to data |
+| Custom component location | `components/documents/` not `ui/` | `ui/` reserved for shadcn primitives only |
+
+### Files Modified
+
+- `docs/plans/in-progress/sub-bar-toolbar/2024-12-24-sub-bar-toolbar-design.md`
+- `docs/plans/in-progress/sub-bar-toolbar/2024-12-24-sub-bar-toolbar-plan.md`
+- `docs/plans/ISSUES.md`
+- `frontend/components/documents/documents-table.tsx` (cleanup)
+- `frontend/components/documents/upload-dialog/upload-dialog-content.tsx` (reset state fix)
+
+### Tasks Remaining
+
+- [ ] Execute implementation plan Phase 1 (3 tasks)
+- [ ] Execute implementation plan Phase 2-5 (14 tasks)
+- [ ] Manual testing
+
+### Next Session
+
+**Task**: Execute sub-bar toolbar implementation plan Phase 1
+
+**Process**:
+1. Run `/continue` to load context
+2. Install shadcn InputGroup: `npx shadcn@latest add input-group`
+3. Create filter-button.tsx in `components/documents/`
+4. Create sub-bar.tsx in `components/documents/`
+5. Verify with `npx tsc --noEmit`
+6. Continue to Phase 2 if time permits
