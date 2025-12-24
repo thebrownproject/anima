@@ -1,5 +1,5 @@
 import { PageHeader } from '@/components/layout/page-header'
-import { UploadButton } from '@/components/documents/upload-button'
+import { UploadDialogTrigger } from '@/components/documents/upload-dialog'
 
 /**
  * Header slot for documents list page.
@@ -8,7 +8,7 @@ import { UploadButton } from '@/components/documents/upload-button'
 export default function DocumentsHeaderSlot() {
   return (
     <PageHeader
-      actions={<UploadButton variant="header" />}
+      actions={<UploadDialogTrigger variant="header" />}
     />
   )
 }

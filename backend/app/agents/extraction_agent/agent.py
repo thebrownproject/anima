@@ -32,7 +32,7 @@ async def extract_with_agent(
     user_id: str,
     db: Client,
     mode: str = "auto",
-    custom_fields: list[str] | None = None
+    custom_fields: list[dict] | list[str] | None = None
 ) -> AsyncIterator[dict[str, Any]]:
     """
     Extract data using Agent SDK with streaming.
@@ -43,7 +43,8 @@ async def extract_with_agent(
         user_id: User who owns the document
         db: Supabase client
         mode: "auto" for automatic extraction, "custom" for specific fields
-        custom_fields: List of field names (required if mode="custom")
+        custom_fields: List of field names or field objects with name/description
+                       (required if mode="custom")
 
     Yields:
         {"text": "..."} - Claude's user-facing response
@@ -64,8 +65,23 @@ async def extract_with_agent(
     if mode == "auto":
         task_prompt = "Extract all relevant data from this document."
     else:
-        fields_str = ", ".join(custom_fields or [])
-        task_prompt = f"Extract these specific fields from the document: {fields_str}"
+        # Format custom fields - handle both string and object formats
+        if custom_fields:
+            fields_text = []
+            for field in custom_fields:
+                if isinstance(field, dict):
+                    name = field.get('name', '')
+                    desc = field.get('description', '')
+                    if desc:
+                        fields_text.append(f"- {name}: {desc}")
+                    else:
+                        fields_text.append(f"- {name}")
+                else:
+                    fields_text.append(f"- {field}")
+            fields_prompt = "\n".join(fields_text)
+            task_prompt = f"Extract these specific fields from the document:\n{fields_prompt}"
+        else:
+            task_prompt = "Extract the requested fields from the document."
 
     task_prompt += "\n\nStart by using read_ocr to read the document text."
 

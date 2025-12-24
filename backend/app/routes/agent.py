@@ -71,10 +71,24 @@ async def extract_with_streaming(
     if not ocr.data:
         raise HTTPException(status_code=400, detail="No cached OCR. Process document first.")
 
-    # Parse custom fields
-    fields_list: list[str] | None = None
+    # Parse custom fields - supports both JSON format and comma-separated
+    fields_list: list[dict] | list[str] | None = None
     if custom_fields:
-        fields_list = [f.strip() for f in custom_fields.split(",") if f.strip()]
+        try:
+            # Try JSON format first: [{"name": "...", "description": "..."}]
+            parsed = json.loads(custom_fields)
+            if isinstance(parsed, list) and len(parsed) > 0:
+                # Validate structure - all items must be dicts with 'name' key
+                if all(isinstance(item, dict) and 'name' in item for item in parsed):
+                    fields_list = parsed
+                else:
+                    # Invalid structure, fall back to comma-separated
+                    fields_list = [f.strip() for f in custom_fields.split(",") if f.strip()]
+            else:
+                fields_list = []
+        except json.JSONDecodeError:
+            # Fall back to comma-separated format for backwards compatibility
+            fields_list = [f.strip() for f in custom_fields.split(",") if f.strip()]
 
     # Create extraction record BEFORE starting agent
     start_time = time.time()
