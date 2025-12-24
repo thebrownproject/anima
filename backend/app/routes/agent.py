@@ -78,8 +78,17 @@ async def extract_with_streaming(
             # Try JSON format first: [{"name": "...", "description": "..."}]
             parsed = json.loads(custom_fields)
             if isinstance(parsed, list) and len(parsed) > 0:
-                # Validate structure - all items must be dicts with 'name' key
-                if all(isinstance(item, dict) and 'name' in item for item in parsed):
+                # Validate structure - all items must be dicts with string 'name' key
+                def is_valid_field(item) -> bool:
+                    return (
+                        isinstance(item, dict)
+                        and 'name' in item
+                        and isinstance(item['name'], str)
+                        and item['name'].strip() != ''
+                        and ('description' not in item or isinstance(item.get('description'), str))
+                    )
+
+                if all(is_valid_field(item) for item in parsed):
                     fields_list = parsed
                 else:
                     # Invalid structure, fall back to comma-separated

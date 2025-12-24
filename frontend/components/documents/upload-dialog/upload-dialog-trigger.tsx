@@ -1,6 +1,7 @@
 // frontend/components/documents/upload-dialog/upload-dialog-trigger.tsx
 'use client'
 
+import { useState } from 'react'
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
@@ -18,8 +19,10 @@ interface UploadDialogTriggerProps {
 export function UploadDialogTrigger({
   variant = 'default',
 }: UploadDialogTriggerProps) {
+  const [open, setOpen] = useState(false)
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant={variant === 'header' ? 'ghost' : 'default'}
@@ -32,7 +35,7 @@ export function UploadDialogTrigger({
           Upload
         </Button>
       </DialogTrigger>
-      <UploadDialogContent />
+      <UploadDialogContent onClose={() => setOpen(false)} />
     </Dialog>
   )
 }

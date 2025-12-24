@@ -22,15 +22,21 @@ import type {
   CustomField,
 } from '@/types/upload'
 
+interface UploadDialogContentProps {
+  /** Callback to close the dialog */
+  onClose?: () => void
+}
+
 /**
  * Upload dialog content with internal state management.
  * Manages the full upload and extraction flow.
  */
-export function UploadDialogContent() {
+export function UploadDialogContent({ onClose }: UploadDialogContentProps) {
   const { getToken } = useAuth()
   const router = useRouter()
   const abortControllerRef = useRef<AbortController | null>(null)
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const mountedRef = useRef(true)
 
   // State
   const [step, setStep] = useState<UploadStep>('dropzone')
@@ -48,6 +54,7 @@ export function UploadDialogContent() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      mountedRef.current = false
       abortControllerRef.current?.abort()
       if (navigationTimeoutRef.current) {
         clearTimeout(navigationTimeoutRef.current)
@@ -139,10 +146,13 @@ export function UploadDialogContent() {
         } else if (event.type === 'complete') {
           setExtractionStatus('complete')
           setExtractionEvents((prev) => [...prev, event])
-          // Navigate after brief delay with cleanup
+          // Close dialog and navigate after brief delay
           navigationTimeoutRef.current = setTimeout(() => {
-            router.push(`/documents/${documentId}`)
-            router.refresh()
+            if (mountedRef.current) {
+              onClose?.()
+              router.push(`/documents/${documentId}`)
+              router.refresh()
+            }
           }, 1000)
         } else {
           setExtractionEvents((prev) => [...prev, event])
@@ -172,7 +182,7 @@ export function UploadDialogContent() {
         setExtractionStatus('error')
       }
     },
-    [documentId, extractionMethod, customFields, getToken, router]
+    [documentId, extractionMethod, customFields, getToken, router, onClose]
   )
 
   // Add custom field
