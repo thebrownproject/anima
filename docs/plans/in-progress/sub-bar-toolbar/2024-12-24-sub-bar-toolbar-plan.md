@@ -252,8 +252,11 @@ Add this column at the beginning of the columns array (before the filename colum
     <div className="px-1">
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomePageRowsSelected()
+            ? 'indeterminate'
+            : false
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
@@ -486,7 +489,7 @@ Remove the existing filter div (lines ~56-68) and replace with:
   right={
     <>
       <SelectionActions
-        selectedCount={Object.keys(rowSelection).length}
+        selectedCount={table.getFilteredSelectedRowModel().rows.length}
       />
       <UploadDialogTrigger variant="subbar" />
     </>
