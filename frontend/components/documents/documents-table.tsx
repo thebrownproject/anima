@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ColumnFiltersState,
   SortingState,
+  RowSelectionState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -34,19 +35,23 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   const router = useRouter()
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
   const table = useReactTable({
     data: documents,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    enableRowSelection: true,
     state: {
       sorting,
       columnFilters,
+      rowSelection,
     },
   })
 
@@ -72,7 +77,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              <TableRow key={headerGroup.id} className="hover:bg-transparent group/header">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
@@ -94,7 +99,8 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer hover:bg-muted/30 transition-colors duration-150"
+                  className="cursor-pointer hover:bg-muted/30 transition-colors duration-150 group/row"
+                  data-state={row.getIsSelected() && 'selected'}
                   onClick={() => router.push(`/documents/${row.original.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
