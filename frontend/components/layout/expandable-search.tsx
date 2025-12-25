@@ -27,6 +27,12 @@ export function ExpandableSearch({
     setTimeout(() => inputRef.current?.focus(), 0)
   }
 
+  const handleBlur = () => {
+    if (!value) {
+      setIsExpanded(false)
+    }
+  }
+
   const handleClear = () => {
     onChange('')
     setIsExpanded(false)
@@ -48,6 +54,7 @@ export function ExpandableSearch({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={handleBlur}
         placeholder={placeholder}
         className="h-7 w-48 pl-7 pr-7 text-xs"
       />
