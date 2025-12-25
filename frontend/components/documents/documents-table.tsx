@@ -22,8 +22,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupAddon,
+} from '@/components/ui/input-group'
 import { columns } from './columns'
+import { SubBar } from './sub-bar'
+import { FilterButton } from './filter-button'
+import { SelectionActions } from './selection-actions'
+import { UploadDialogTrigger } from './upload-dialog'
 import type { Document } from '@/types/documents'
 import { FileText, Search } from 'lucide-react'
 
@@ -57,20 +65,32 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
 
   return (
     <div className="w-full">
-      {/* Filter */}
-      <div className="flex items-center py-4">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Filter documents..."
-            value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
-            onChange={(event) =>
-              table.getColumn('filename')?.setFilterValue(event.target.value)
-            }
-            className="pl-9"
-          />
-        </div>
-      </div>
+      {/* Sub-bar */}
+      <SubBar
+        left={
+          <>
+            <FilterButton />
+            <InputGroup className="w-64">
+              <InputGroupInput
+                placeholder="Search documents..."
+                value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
+                onChange={(e) => table.getColumn('filename')?.setFilterValue(e.target.value)}
+              />
+              <InputGroupAddon>
+                <Search className="size-4" />
+              </InputGroupAddon>
+            </InputGroup>
+          </>
+        }
+        right={
+          <>
+            <SelectionActions
+              selectedCount={table.getFilteredSelectedRowModel().rows.length}
+            />
+            <UploadDialogTrigger variant="subbar" />
+          </>
+        }
+      />
 
       {/* Table */}
       <div>
