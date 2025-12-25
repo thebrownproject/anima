@@ -34,3 +34,4 @@ Lightweight tracking for items that don't need immediate action.
   - Files: `backend/app/agents/extraction_agent/agent.py`, `backend/app/agents/extraction_agent/tools/complete.py`
   - Agent needs to reliably call `complete` tool after saving extraction
 - [ ] #17 `tech-debt` Branding consistency - use "Stackdocs" not "StackDocs" across codebase and marketing (2025-12-24)
+- [ ] #18 `feature` Undo/Redo navigation in sidebar header - Linear-style back/forward/history buttons above search, requires navigation history system (2025-12-25)
