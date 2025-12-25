@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { Search, X } from 'lucide-react'
+import { ActionButton } from './action-button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -18,14 +19,32 @@ export function ExpandableSearch({
   placeholder = 'Search...',
   className,
 }: ExpandableSearchProps) {
+  const [isExpanded, setIsExpanded] = React.useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const handleExpand = () => {
+    setIsExpanded(true)
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
   const handleClear = () => {
     onChange('')
+    setIsExpanded(false)
+  }
+
+  if (!isExpanded && !value) {
+    return (
+      <ActionButton icon={<Search />} onClick={handleExpand}>
+        Search
+      </ActionButton>
+    )
   }
 
   return (
     <div className={cn('relative flex items-center', className)}>
       <Search className="absolute left-2 size-3.5 text-muted-foreground" />
       <Input
+        ref={inputRef}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
