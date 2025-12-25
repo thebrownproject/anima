@@ -24,12 +24,12 @@ export function SelectionActions({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">
+      <span className="text-xs text-muted-foreground">
         {selectedCount} selected
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-foreground">
             Actions
           </Button>
         </DropdownMenuTrigger>

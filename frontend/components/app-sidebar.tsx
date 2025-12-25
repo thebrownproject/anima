@@ -35,10 +35,12 @@ const data = {
         {
           title: "Documents",
           url: "/documents",
+          icon: IconFileText,
         },
         {
           title: "Extractions",
           url: "/extractions",
+          icon: IconLayersLinked,
         },
       ],
     },

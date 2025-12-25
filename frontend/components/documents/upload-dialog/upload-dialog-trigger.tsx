@@ -21,16 +21,17 @@ export function UploadDialogTrigger({
 }: UploadDialogTriggerProps) {
   const [open, setOpen] = useState(false)
 
-  const buttonVariant = variant === 'header' ? 'ghost' : 'default'
-  const buttonSize = variant === 'default' ? 'default' : 'sm'
-  const buttonClassName = variant === 'header' ? 'h-7 px-2 text-xs' : undefined
-  const iconClassName = variant === 'header' ? 'mr-1.5 size-3.5' : 'mr-1.5 size-4'
+  const isCompact = variant === 'header' || variant === 'subbar'
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={buttonVariant} size={buttonSize} className={buttonClassName}>
-          <Upload className={iconClassName} />
+        <Button
+          variant={isCompact ? 'ghost' : 'default'}
+          size={isCompact ? 'sm' : 'default'}
+          className={isCompact ? 'h-7 px-2 text-xs text-foreground' : undefined}
+        >
+          <Upload className={isCompact ? 'mr-1 size-3.5' : 'mr-1.5 size-4'} />
           Upload
         </Button>
       </DialogTrigger>
