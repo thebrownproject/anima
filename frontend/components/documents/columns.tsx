@@ -3,6 +3,7 @@
 import { ColumnDef } from '@tanstack/react-table'
 import { ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { FileTypeIcon } from '@/components/file-type-icon'
 import { StackBadges } from '@/components/stack-badges'
 import type { Document } from '@/types/documents'
@@ -39,6 +40,38 @@ function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {
 }
 
 export const columns: ColumnDef<Document>[] = [
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <div className="px-1">
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected()
+              ? true
+              : table.getIsSomePageRowsSelected()
+              ? 'indeterminate'
+              : false
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="opacity-0 group-hover/header:opacity-100 data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100 transition-opacity"
+        />
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="px-1">
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          onClick={(e) => e.stopPropagation()}
+          className="opacity-0 group-hover/row:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+        />
+      </div>
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: 'filename',
     header: ({ column }) => (
