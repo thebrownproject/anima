@@ -22,7 +22,7 @@ export function ActionButton({
       className={cn('h-7 px-2 text-xs text-foreground', className)}
       {...props}
     >
-      {icon && <span className="mr-1 size-3.5 [&>svg]:size-full">{icon}</span>}
+      {icon && <span className="mr-0.5 size-3.5 [&>svg]:size-full">{icon}</span>}
       {children}
     </Button>
   )

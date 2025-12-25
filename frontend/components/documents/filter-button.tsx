@@ -1,6 +1,6 @@
 'use client'
 
-import { Filter } from 'lucide-react'
+import { SlidersHorizontal } from 'lucide-react'
 import { ActionButton } from '@/components/layout/action-button'
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ export function FilterButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <ActionButton icon={<Filter />}>
+        <ActionButton icon={<SlidersHorizontal />}>
           Filter
         </ActionButton>
       </DropdownMenuTrigger>
