@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { ActionButton } from '@/components/layout/action-button'
 import { UploadDialogContent } from './upload-dialog-content'
 
 interface UploadDialogTriggerProps {
@@ -26,14 +27,16 @@ export function UploadDialogTrigger({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant={isCompact ? 'ghost' : 'default'}
-          size={isCompact ? 'sm' : 'default'}
-          className={isCompact ? 'h-7 px-2 text-xs text-foreground' : undefined}
-        >
-          <Upload className={isCompact ? 'mr-1 size-3.5' : 'mr-1.5 size-4'} />
-          Upload
-        </Button>
+        {isCompact ? (
+          <ActionButton icon={<Upload />}>
+            Upload
+          </ActionButton>
+        ) : (
+          <Button>
+            <Upload className="mr-1.5 size-4" />
+            Upload
+          </Button>
+        )}
       </DialogTrigger>
       <UploadDialogContent onClose={() => setOpen(false)} />
     </Dialog>
