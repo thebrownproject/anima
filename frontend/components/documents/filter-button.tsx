@@ -1,7 +1,7 @@
 'use client'
 
 import { Filter } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ActionButton } from '@/components/layout/action-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,18 +9,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-interface FilterButtonProps {
-  className?: string
-}
-
-export function FilterButton({ className }: FilterButtonProps) {
+export function FilterButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className={className}>
-          <Filter className="mr-1.5 size-4" />
+        <ActionButton icon={<Filter />}>
           Filter
-        </Button>
+        </ActionButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuItem disabled>

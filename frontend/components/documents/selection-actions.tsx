@@ -1,7 +1,7 @@
 'use client'
 
-import { Trash2, FolderPlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Trash2, FolderPlus, ChevronDown } from 'lucide-react'
+import { ActionButton } from '@/components/layout/action-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,9 +29,9 @@ export function SelectionActions({
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-foreground">
+          <ActionButton icon={<ChevronDown />}>
             Actions
-          </Button>
+          </ActionButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={onAddToStack} disabled>
