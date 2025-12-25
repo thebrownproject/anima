@@ -3,40 +3,19 @@
 
 import { useState } from 'react'
 import { Upload } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { ActionButton } from '@/components/layout/action-button'
 import { UploadDialogContent } from './upload-dialog-content'
 
-interface UploadDialogTriggerProps {
-  /** Use 'header' for page header, 'subbar' for sub-bar toolbar */
-  variant?: 'default' | 'header' | 'subbar'
-}
-
-/**
- * Button that opens the upload dialog.
- * Replaces the old UploadButton component.
- */
-export function UploadDialogTrigger({
-  variant = 'default',
-}: UploadDialogTriggerProps) {
+export function UploadDialogTrigger() {
   const [open, setOpen] = useState(false)
-
-  const isCompact = variant === 'header' || variant === 'subbar'
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {isCompact ? (
-          <ActionButton icon={<Upload />}>
-            Upload
-          </ActionButton>
-        ) : (
-          <Button>
-            <Upload className="mr-1.5 size-4" />
-            Upload
-          </Button>
-        )}
+        <ActionButton icon={<Upload />}>
+          Upload
+        </ActionButton>
       </DialogTrigger>
       <UploadDialogContent onClose={() => setOpen(false)} />
     </Dialog>

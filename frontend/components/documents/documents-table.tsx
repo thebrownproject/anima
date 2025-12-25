@@ -22,18 +22,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import {
-  InputGroup,
-  InputGroupInput,
-  InputGroupAddon,
-} from '@/components/ui/input-group'
+import { ExpandableSearch } from '@/components/layout/expandable-search'
 import { columns } from './columns'
 import { SubBar } from './sub-bar'
 import { FilterButton } from './filter-button'
 import { SelectionActions } from './selection-actions'
 import { UploadDialogTrigger } from './upload-dialog'
 import type { Document } from '@/types/documents'
-import { FileText, Search } from 'lucide-react'
+import { FileText } from 'lucide-react'
 
 interface DocumentsTableProps {
   documents: Document[]
@@ -70,16 +66,11 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
         left={
           <>
             <FilterButton />
-            <InputGroup className="w-64">
-              <InputGroupInput
-                placeholder="Search documents..."
-                value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
-                onChange={(e) => table.getColumn('filename')?.setFilterValue(e.target.value)}
-              />
-              <InputGroupAddon>
-                <Search className="size-4" />
-              </InputGroupAddon>
-            </InputGroup>
+            <ExpandableSearch
+              value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
+              onChange={(value) => table.getColumn('filename')?.setFilterValue(value)}
+              placeholder="Search documents..."
+            />
           </>
         }
         right={
@@ -87,7 +78,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
             <SelectionActions
               selectedCount={table.getFilteredSelectedRowModel().rows.length}
             />
-            <UploadDialogTrigger variant="subbar" />
+            <UploadDialogTrigger />
           </>
         }
       />
