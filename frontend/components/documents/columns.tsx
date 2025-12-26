@@ -25,14 +25,6 @@ function formatRelativeDate(dateString: string): string {
   })
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
 function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {
   if (isSorted === 'asc') return <ArrowUp className="ml-2 size-3" />
   if (isSorted === 'desc') return <ArrowDown className="ml-2 size-3" />
@@ -42,38 +34,41 @@ function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {
 export const columns: ColumnDef<Document>[] = [
   {
     id: 'select',
+    enableResizing: false,
+    size: 40,
+    minSize: 40,
+    maxSize: 40,
     header: ({ table }) => (
-      <div className="px-1">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected()
-              ? true
-              : table.getIsSomePageRowsSelected()
-              ? 'indeterminate'
-              : false
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="opacity-0 group-hover/header:opacity-100 data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100 transition-opacity"
-        />
-      </div>
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomePageRowsSelected()
+            ? 'indeterminate'
+            : false
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        className="opacity-0 group-hover/header:opacity-100 data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100 transition-opacity"
+      />
     ),
     cell: ({ row }) => (
-      <div className="px-1">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-          onClick={(e) => e.stopPropagation()}
-          className="opacity-0 group-hover/row:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
-        />
-      </div>
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        onClick={(e) => e.stopPropagation()}
+        className="opacity-0 group-hover/row:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+      />
     ),
     enableSorting: false,
     enableHiding: false,
   },
   {
     accessorKey: 'filename',
+    enableResizing: true,
+    size: 300,
+    minSize: 150,
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -96,30 +91,19 @@ export const columns: ColumnDef<Document>[] = [
   },
   {
     accessorKey: 'stacks',
+    enableResizing: true,
+    size: 150,
+    minSize: 100,
     header: 'Stacks',
     cell: ({ row }) => <StackBadges stacks={row.original.stacks} />,
     enableSorting: false,
   },
   {
-    accessorKey: 'file_size_bytes',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="-ml-4 group"
-      >
-        Size
-        <SortIcon isSorted={column.getIsSorted()} />
-      </Button>
-    ),
-    cell: ({ row }) => (
-      <span className="font-mono text-sm tabular-nums text-muted-foreground">
-        {formatFileSize(row.original.file_size_bytes)}
-      </span>
-    ),
-  },
-  {
     accessorKey: 'uploaded_at',
+    enableResizing: false,
+    size: 100,
+    minSize: 100,
+    maxSize: 100,
     header: ({ column }) => (
       <Button
         variant="ghost"

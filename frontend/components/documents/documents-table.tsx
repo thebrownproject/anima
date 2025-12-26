@@ -4,12 +4,12 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ColumnFiltersState,
+  ColumnSizingState,
   SortingState,
   RowSelectionState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
 import { ExpandableSearch } from '@/components/layout/expandable-search'
 import { columns } from './columns'
 import { SubBar } from './sub-bar'
@@ -30,6 +29,9 @@ import { SelectionActions } from './selection-actions'
 import { UploadDialogTrigger } from './upload-dialog'
 import type { Document } from '@/types/documents'
 import { FileText } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+const COLUMN_SIZING_KEY = 'stackdocs-doc-list-columns'
 
 interface DocumentsTableProps {
   documents: Document[]
@@ -40,15 +42,40 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+  // Initialize with empty state (same on server and client to prevent hydration mismatch)
+  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({})
+
+  // Read from localStorage after mount (client-only)
+  React.useEffect(() => {
+    const saved = localStorage.getItem(COLUMN_SIZING_KEY)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setColumnSizing(parsed)
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+  }, [])
 
   const table = useReactTable({
     data: documents,
     columns,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: setRowSelection,
+    onColumnSizingChange: (updater) => {
+      setColumnSizing((old) => {
+        const newSizing = typeof updater === 'function' ? updater(old) : updater
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(COLUMN_SIZING_KEY, JSON.stringify(newSizing))
+        }
+        return newSizing
+      })
+    },
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     enableRowSelection: true,
@@ -56,6 +83,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       sorting,
       columnFilters,
       rowSelection,
+      columnSizing,
     },
   })
 
@@ -85,14 +113,19 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <Table>
+        <Table className="w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent group/header">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="h-10 text-sm font-normal text-muted-foreground"
+                    className="h-10 text-sm font-normal text-muted-foreground relative"
+                    style={{
+                      width: header.column.getCanResize() ? header.getSize() : undefined,
+                      minWidth: header.column.getCanResize() ? undefined : header.getSize(),
+                      maxWidth: header.column.getCanResize() ? undefined : header.getSize(),
+                    }}
                   >
                     {header.isPlaceholder
                       ? null
@@ -100,6 +133,17 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                           header.column.columnDef.header,
                           header.getContext()
                         )}
+                    {header.column.getCanResize() && (
+                      <div
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        className={cn(
+                          'absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
+                          'hover:bg-primary/50',
+                          header.column.getIsResizing() && 'bg-primary'
+                        )}
+                      />
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -115,7 +159,15 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                   onClick={() => router.push(`/documents/${row.original.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3">
+                    <TableCell
+                      key={cell.id}
+                      className="py-3"
+                      style={{
+                        width: cell.column.getCanResize() ? cell.column.getSize() : undefined,
+                        minWidth: cell.column.getCanResize() ? undefined : cell.column.getSize(),
+                        maxWidth: cell.column.getCanResize() ? undefined : cell.column.getSize(),
+                      }}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -140,30 +192,6 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
         </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} document(s)
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }

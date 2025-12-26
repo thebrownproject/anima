@@ -4700,3 +4700,81 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 2. Use `/superpowers:execute-plan` with `phase-1-global-foundation.md`
 3. Work through phases sequentially
 4. Run manual testing checklist after each phase
+
+---
+
+## Session 55 - 2025-12-26 - Layout Alignment Phase 1-2 Partial (Blocked)
+
+**Feature**: layout-alignment (`docs/plans/in-progress/layout-alignment/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 1: Breadcrumb Icons (Tasks 1-2)**:
+  - Added `segmentIcons` mapping to PageHeader (FileText, Layers, Settings, Upload)
+  - Added `icon` prop to PageHeader for custom last-breadcrumb icons
+  - Document detail now shows FileTypeIcon in breadcrumb
+  - Committed: `1e0f9cd`
+
+- [x] **Phase 2 Tasks 3-5**:
+  - Removed Size column and pagination from documents table
+  - Removed unused `formatFileSize` function and `getPaginationRowModel`
+  - Added column sizing configuration (enableResizing, size, minSize)
+  - Removed px-1 wrapper from checkbox cells
+
+### Blocker: Column Resizing Not Working Correctly
+
+**Issue**: TanStack Table column resizing with fixed + resizable columns is broken
+
+**Attempted fixes that failed**:
+1. `table-layout: fixed` with `width: table.getTotalSize()` - fixed columns still redistribute
+2. Adding `minWidth`/`maxWidth` to fixed columns - didn't help with table-layout: fixed
+3. Using `minSize`/`maxSize` in column definitions - still redistributes
+4. Removing `table-layout: fixed` entirely - resizing stops working
+5. Various combinations of width/minWidth on headers and cells
+
+**Root cause**: HTML table layout fundamentally conflicts with the requirements:
+- Want fixed columns (checkbox, date) that NEVER resize
+- Want resizable columns (name, stacks) that only affect themselves
+- Want table to fill 100% container width
+
+These three requirements conflict - if table fills 100%, resizing one column must take space from somewhere.
+
+**Current state**: Code is in broken state with resizing not functional. Needs fresh debugging approach.
+
+### Files Modified (uncommitted)
+
+- `frontend/components/documents/columns.tsx` - Added size configs, removed Size column
+- `frontend/components/documents/documents-table.tsx` - Attempted resizing fixes (broken)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Remove Size column | Yes | Design spec - simplify table |
+| Remove pagination | Yes | Design spec - infinite scroll preferred |
+| Column resizing approach | BLOCKED | Multiple approaches failed |
+
+### Tasks Remaining
+
+- [ ] **BLOCKER**: Fix column resizing (may need different approach entirely)
+- [ ] Task 6: Row click for preview vs filename click for navigate
+- [ ] Task 7: Add preview panel to documents list
+- [ ] Phase 3: Document detail changes (Tasks 8-12)
+- [ ] Phase 4: Polish and testing (Tasks 13-14)
+
+### Next Session
+
+**Task**: Debug and fix TanStack Table column resizing
+
+**Approach options to try**:
+1. Use CSS Grid instead of HTML table for the layout
+2. Accept that resizing takes space from adjacent columns (like Linear does)
+3. Use a dedicated data-grid library (AG Grid, React Table with flex layout)
+4. Make only Name column resizable, others truly fixed
+
+**Process**:
+1. Revert documents-table.tsx to simpler state
+2. Research how Linear/Gmail actually handle table column resizing
+3. Implement solution that accepts constraints of HTML tables
+4. Continue with Tasks 6-7 after resizing works
