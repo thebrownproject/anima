@@ -60,7 +60,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   })
 
   return (
-    <div className="w-full">
+    <div className="flex flex-1 flex-col min-h-0">
       {/* Sub-bar */}
       <SubBar
         left={

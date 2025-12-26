@@ -8,5 +8,9 @@ interface DocumentsListProps {
 }
 
 export function DocumentsList({ documents }: DocumentsListProps) {
-  return <DocumentsTable documents={documents} />
+  return (
+    <div className="flex flex-1 flex-col min-h-0">
+      <DocumentsTable documents={documents} />
+    </div>
+  )
 }

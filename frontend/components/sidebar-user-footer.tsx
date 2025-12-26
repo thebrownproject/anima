@@ -39,17 +39,14 @@ export function SidebarUserFooter() {
       <SidebarMenu>
         <SidebarMenuItem>
           <div className="flex items-center justify-between w-full h-8 px-2">
-            {/* Left: Avatar + Name (clickable to open profile) */}
-            <button
-              onClick={() => openUserProfile()}
-              className="flex items-center gap-2 min-w-0 rounded-md px-1 -ml-1 hover:bg-sidebar-accent transition-colors"
-            >
+            {/* Left: Avatar + Name */}
+            <div className="flex items-center gap-2 min-w-0">
               <Avatar className="size-6">
                 <AvatarImage src={user.imageUrl} alt={displayName} />
                 <AvatarFallback className="text-xs">{initials}</AvatarFallback>
               </Avatar>
               <span className="text-sm truncate">{displayName}</span>
-            </button>
+            </div>
 
             {/* Right: Icon Buttons */}
             <div className="flex items-center gap-1">
