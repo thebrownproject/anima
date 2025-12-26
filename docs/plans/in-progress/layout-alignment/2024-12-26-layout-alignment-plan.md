@@ -107,32 +107,44 @@ interface PageHeaderProps {
 
 **Step 2: Use icon prop in last breadcrumb**
 
-Update the last breadcrumb rendering:
+Update the last breadcrumb rendering to support custom icon prop:
 
 ```tsx
 {item.isLast ? (
   <BreadcrumbPage className="flex items-center gap-1.5">
-    {icon ? icon : Icon && <Icon className="size-4" />}
+    {icon || (Icon && <Icon className="size-4" />)}
     {item.label}
   </BreadcrumbPage>
 ) : (
-  // ... existing link code
+  <BreadcrumbLink asChild>
+    <Link href={item.href} className="flex items-center gap-1.5">
+      {Icon && <Icon className="size-4" />}
+      {item.label}
+    </Link>
+  </BreadcrumbLink>
 )}
 ```
 
 **Step 3: Pass file type icon from document detail header**
 
-In `frontend/app/(app)/@header/documents/[id]/page.tsx`:
+In `frontend/app/(app)/@header/documents/[id]/page.tsx`, add FileTypeIcon import and pass as icon prop:
 
 ```tsx
+// Add this import to the existing imports
 import { FileTypeIcon } from '@/components/file-type-icon'
+
+// Existing imports to preserve:
+// import { notFound } from 'next/navigation'
+// import { getDocumentWithExtraction } from '@/lib/queries/documents'
+// import { PageHeader } from '@/components/layout/page-header'
+// import { DocumentHeaderActions } from '@/components/documents/document-header-actions'
 
 export default async function DocumentHeaderSlot({ params }: Props) {
   const { id } = await params
-  const document = await getDocument(id)
+  const document = await getDocumentWithExtraction(id)
 
   if (!document) {
-    return <PageHeader title="Document not found" />
+    notFound()
   }
 
   return (
@@ -159,6 +171,8 @@ git commit -m "feat: add file type icon to document detail breadcrumb"
 ---
 
 ## Phase 2: Documents List Page
+
+> **Note:** Throughout Phase 2, the `cn` utility from `@/lib/utils` is used in code snippets. This import already exists in the files being modified.
 
 ### Task 3: Remove Size Column and Pagination Footer
 
@@ -253,8 +267,22 @@ Update columns.tsx to add size constraints:
 
 **Step 2: Add column resizing state to documents-table.tsx**
 
+Add `ColumnSizingState` to the existing TanStack Table imports (don't create a separate import):
+
 ```tsx
-import { ColumnSizingState } from '@tanstack/react-table'
+// Update the existing import at the top of the file:
+import {
+  ColumnFiltersState,
+  ColumnSizingState,  // Add this
+  SortingState,
+  RowSelectionState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
 
 const COLUMN_SIZING_KEY = 'stackdocs-doc-list-columns'
 
@@ -303,7 +331,7 @@ const table = useReactTable({
 
 **Step 4: Add resize handle to table headers**
 
-Update TableHead rendering:
+Update TableHead rendering (note: `cn` utility already imported):
 
 ```tsx
 <TableHead
@@ -386,9 +414,9 @@ In columns.tsx, update select column cell:
 },
 ```
 
-**Step 2: Update filename column header to align with text**
+**Step 2: Verify filename column header alignment**
 
-The "Name" header should align with filename text, not the icon:
+The "Name" header should align with filename text, not the icon. The current code already has this (`className="-ml-4 group"`), so this step is verifying existing behavior:
 
 ```tsx
 {
@@ -397,7 +425,7 @@ The "Name" header should align with filename text, not the icon:
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      className="-ml-4 group"
+      className="-ml-4 group"  // This negative margin aligns "Name" with text
     >
       Name
       <SortIcon isSorted={column.getIsSorted()} />
@@ -414,6 +442,8 @@ The "Name" header should align with filename text, not the icon:
   },
 },
 ```
+
+**Note:** No changes needed to this column - the alignment is already correct.
 
 **Step 3: Verify alignment**
 
@@ -446,11 +476,13 @@ const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
 
 **Step 2: Update filename cell to be clickable link**
 
-In columns.tsx, add Link import and make filename a clickable link:
+In columns.tsx, add Link to the existing imports at the top of the file:
 
 ```tsx
+// Add to existing imports at top:
 import Link from 'next/link'
 
+// Then update the filename cell:
 cell: ({ row }) => {
   const doc = row.original
   return (
@@ -468,7 +500,26 @@ cell: ({ row }) => {
 },
 ```
 
-**Step 3: Update row click behavior**
+**Step 3: Clear selection when preview closes**
+
+Add logic to clear selectedDocId when preview panel is collapsed:
+
+```tsx
+// Import the preview panel context
+import { usePreviewPanel } from './preview-panel-context'
+
+// Inside component, get preview state:
+const { isCollapsed } = usePreviewPanel()
+
+// Clear selection when preview closes
+React.useEffect(() => {
+  if (isCollapsed) {
+    setSelectedDocId(null)
+  }
+}, [isCollapsed])
+```
+
+**Step 4: Update row click behavior**
 
 In documents-table.tsx, change row onClick:
 
@@ -484,7 +535,7 @@ In documents-table.tsx, change row onClick:
 >
 ```
 
-**Step 4: Remove cursor-pointer from row, keep on checkbox**
+**Step 5: Remove cursor-pointer from row, keep on checkbox**
 
 Update row className to not have cursor-pointer:
 
@@ -495,13 +546,14 @@ className={cn(
 )}
 ```
 
-**Step 5: Verify interactions**
+**Step 6: Verify interactions**
 
 - Click row anywhere except filename → row highlights (preview will show)
 - Click filename → navigates to detail page
 - Filename shows underline on hover
+- Close preview → row highlight clears
 
-**Step 6: Commit**
+**Step 7: Commit**
 
 ```bash
 git add frontend/components/documents/columns.tsx frontend/components/documents/documents-table.tsx
@@ -524,12 +576,15 @@ In documents-table.tsx:
 ```tsx
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 import { PreviewPanel } from './preview-panel'
-import { PreviewPanelProvider, usePreviewPanel } from './preview-panel-context'
+import { usePreviewPanel } from './preview-panel-context'
 
 const LAYOUT_STORAGE_KEY = 'stackdocs-doc-list-layout'
 
-// Inside component, add selected document state:
-const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
+// Inside component, get preview panel ref and state:
+const { panelRef, setIsCollapsed } = usePreviewPanel()
+
+// Selected document state is already added in Task 6
+// const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
 
 // Find selected document from the documents array
 const selectedDoc = React.useMemo(() => {
@@ -538,7 +593,8 @@ const selectedDoc = React.useMemo(() => {
 }, [selectedDocId, documents])
 
 // TODO: Fetch signed URL and OCR text for preview when selectedDocId changes
-// For now, preview will show "PDF preview not available" until this is implemented
+// This will be implemented during Task 7 or as a follow-up task
+// For now, preview will show "PDF preview not available" message
 
 // Add layout persistence:
 const [defaultLayout] = React.useState(() => {
@@ -583,13 +639,16 @@ return (
       <ResizableHandle />
 
       <ResizablePanel
+        ref={panelRef}
         defaultSize={defaultLayout[1]}
         minSize={25}
         maxSize={50}
         collapsible
         collapsedSize={0}
+        onCollapse={() => setIsCollapsed(true)}
+        onExpand={() => setIsCollapsed(false)}
       >
-        <div className="h-full">
+        <div className="h-full overflow-auto">
           <PreviewPanel
             pdfUrl={selectedDoc ? `${selectedDoc.file_path}` : null}
             ocrText={null}
@@ -601,6 +660,8 @@ return (
   </div>
 )
 ```
+
+**Note:** The `ref`, `onCollapse`, and `onExpand` props are needed to sync the panel state with the preview context. This allows the preview toggle button to programmatically collapse/expand the panel.
 
 **Step 3: Add preview toggle to header**
 
@@ -617,13 +678,26 @@ export default function DocumentsHeaderSlot() {
 
 **Step 4: Update PreviewToggle to be icon-only**
 
-In preview-toggle.tsx, remove the text:
+In preview-toggle.tsx, update to icon-only (remove "Preview" text):
 
 ```tsx
-<ActionButton onClick={handleToggle} aria-label={isCollapsed ? 'Show preview' : 'Hide preview'}>
-  <PanelRight className="size-4" />
-</ActionButton>
+export function PreviewToggle() {
+  const { isCollapsed, toggle } = usePreviewPanel()
+
+  return (
+    <ActionButton
+      onClick={toggle}
+      aria-label={isCollapsed ? 'Show preview' : 'Hide preview'}
+      aria-pressed={!isCollapsed}
+      className={!isCollapsed ? 'bg-accent text-accent-foreground' : undefined}
+    >
+      <PanelRight className="size-4" />
+    </ActionButton>
+  )
+}
 ```
+
+**Note:** The ActionButton component currently requires `children` prop. This implementation passes the icon as a child, which works but shows the icon with text spacing. If you want a true icon-only button, you may need to update ActionButton to make `children` optional or create a separate `IconButton` component.
 
 **Step 5: Verify preview panel works**
 
@@ -641,6 +715,8 @@ git commit -m "feat: add preview panel to documents list page"
 ---
 
 ## Phase 3: Document Detail Page
+
+> **Note:** Throughout Phase 3, the `cn` utility from `@/lib/utils` is used in code snippets. This import already exists in extracted-columns.tsx and extracted-data-table.tsx.
 
 ### Task 8: Add Checkboxes to Extracted Data Table
 
@@ -671,7 +747,10 @@ const table = useReactTable({
 
 **Step 2: Add select column to extracted-columns.tsx**
 
+Add Checkbox import to the existing imports:
+
 ```tsx
+// Add to existing imports at top:
 import { Checkbox } from '@/components/ui/checkbox'
 
 export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
@@ -745,6 +824,8 @@ git commit -m "feat: add row selection checkboxes to extracted data table"
 
 **Step 1: Create ConfidenceCircle component**
 
+Add this helper component in extracted-columns.tsx (note: `cn` already imported):
+
 ```tsx
 function ConfidenceCircle({ confidence }: { confidence?: number }) {
   if (confidence === undefined) return null
@@ -770,7 +851,7 @@ function ConfidenceCircle({ confidence }: { confidence?: number }) {
 
 **Step 2: Create combined indicator column**
 
-Add new column after select:
+Add new column after select (note: ChevronRight/ChevronDown already imported from lucide-react):
 
 ```tsx
 {
@@ -895,8 +976,20 @@ git commit -m "feat: move chevron/confidence to indicator column, remove Conf. c
 
 **Step 1: Add column sizing state with persistence**
 
+Add `ColumnSizingState` to existing TanStack Table imports:
+
 ```tsx
-import { ColumnSizingState } from '@tanstack/react-table'
+// Update existing import to include ColumnSizingState:
+import {
+  ColumnDef,
+  ColumnSizingState,  // Add this
+  ExpandedState,
+  flexRender,
+  getCoreRowModel,
+  getExpandedRowModel,
+  getFilteredRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
 
 const COLUMN_SIZING_KEY = 'stackdocs-extracted-columns'
 
@@ -1042,7 +1135,7 @@ return (
 
 **Step 2: Update document-detail-client layout**
 
-Move chat bar outside of ResizablePanelGroup:
+Move chat bar outside of ResizablePanelGroup (two-layer wrapper pattern):
 
 ```tsx
 return (
@@ -1074,12 +1167,18 @@ return (
     </ResizablePanelGroup>
 
     {/* AI Chat Bar - floating at bottom, outside panels */}
+    {/* Outer wrapper: Page margins (px-4 pb-4 pt-2) */}
+    {/* Inner wrapper (in ai-chat-bar.tsx): Card styling (rounded-xl border shadow-sm) */}
     <div className="shrink-0 px-4 pb-4 pt-2">
       <AiChatBar documentId={document.id} />
     </div>
   </div>
 )
 ```
+
+**Note:** The double-wrapper pattern is intentional:
+- Outer `<div>` (document-detail-client.tsx): Adds page margins and spacing from panels
+- Inner wrapper (ai-chat-bar.tsx Step 1): Adds floating card styling (rounded corners, border, shadow)
 
 **Step 3: Verify floating chat bar**
 
@@ -1119,12 +1218,17 @@ export function PreviewToggle() {
       onClick={toggle}
       aria-label={isCollapsed ? 'Show preview' : 'Hide preview'}
       aria-pressed={!isCollapsed}
+      className={!isCollapsed ? 'bg-accent text-accent-foreground' : undefined}
     >
       <PanelRight className="size-4" />
     </ActionButton>
   )
 }
 ```
+
+**Note:** The current ActionButton component has an optional `icon` prop and requires `children`. This code passes the icon as `children`, which works but may have different spacing than intended. If you want a true icon-only button, consider:
+1. Making ActionButton's `children` prop optional, OR
+2. Creating a dedicated `IconButton` component for icon-only actions
 
 **Step 2: Verify icon-only toggle**
 
