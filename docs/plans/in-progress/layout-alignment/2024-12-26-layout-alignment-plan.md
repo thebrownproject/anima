@@ -446,26 +446,23 @@ const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
 
 **Step 2: Update filename cell to be clickable link**
 
-In columns.tsx, make filename a separate clickable element:
+In columns.tsx, add Link import and make filename a clickable link:
 
 ```tsx
+import Link from 'next/link'
+
 cell: ({ row }) => {
   const doc = row.original
   return (
     <div className="flex items-center gap-2">
       <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          // This will be handled by parent - navigate to detail
-          const event = new CustomEvent('navigate-document', { detail: doc.id })
-          window.dispatchEvent(event)
-        }}
-        className="font-medium hover:underline cursor-pointer text-left"
+      <Link
+        href={`/documents/${doc.id}`}
+        onClick={(e) => e.stopPropagation()}
+        className="font-medium hover:underline"
       >
         {doc.filename}
-      </button>
+      </Link>
     </div>
   )
 },
@@ -487,21 +484,7 @@ In documents-table.tsx, change row onClick:
 >
 ```
 
-**Step 4: Listen for navigate event**
-
-```tsx
-React.useEffect(() => {
-  const handleNavigate = (e: CustomEvent<string>) => {
-    router.push(`/documents/${e.detail}`)
-  }
-  window.addEventListener('navigate-document', handleNavigate as EventListener)
-  return () => {
-    window.removeEventListener('navigate-document', handleNavigate as EventListener)
-  }
-}, [router])
-```
-
-**Step 5: Remove cursor-pointer from row, keep on checkbox**
+**Step 4: Remove cursor-pointer from row, keep on checkbox**
 
 Update row className to not have cursor-pointer:
 
@@ -512,13 +495,13 @@ className={cn(
 )}
 ```
 
-**Step 6: Verify interactions**
+**Step 5: Verify interactions**
 
 - Click row anywhere except filename → row highlights (preview will show)
 - Click filename → navigates to detail page
 - Filename shows underline on hover
 
-**Step 7: Commit**
+**Step 6: Commit**
 
 ```bash
 git add frontend/components/documents/columns.tsx frontend/components/documents/documents-table.tsx
@@ -545,7 +528,19 @@ import { PreviewPanelProvider, usePreviewPanel } from './preview-panel-context'
 
 const LAYOUT_STORAGE_KEY = 'stackdocs-doc-list-layout'
 
-// Inside component, add layout persistence:
+// Inside component, add selected document state:
+const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
+
+// Find selected document from the documents array
+const selectedDoc = React.useMemo(() => {
+  if (!selectedDocId) return null
+  return documents.find(d => d.id === selectedDocId) ?? null
+}, [selectedDocId, documents])
+
+// TODO: Fetch signed URL and OCR text for preview when selectedDocId changes
+// For now, preview will show "PDF preview not available" until this is implemented
+
+// Add layout persistence:
 const [defaultLayout] = React.useState(() => {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
@@ -596,9 +591,9 @@ return (
       >
         <div className="h-full">
           <PreviewPanel
-            pdfUrl={selectedDoc?.signedUrl}
-            ocrText={selectedDoc?.ocrText}
-            mimeType={selectedDoc?.mimeType}
+            pdfUrl={selectedDoc ? `${selectedDoc.file_path}` : null}
+            ocrText={null}
+            mimeType={selectedDoc?.mime_type ?? ''}
           />
         </div>
       </ResizablePanel>
@@ -1079,7 +1074,7 @@ return (
     </ResizablePanelGroup>
 
     {/* AI Chat Bar - floating at bottom, outside panels */}
-    <div className="shrink-0 pt-2">
+    <div className="shrink-0 px-4 pb-4 pt-2">
       <AiChatBar documentId={document.id} />
     </div>
   </div>
@@ -1117,22 +1112,11 @@ import { ActionButton } from '@/components/layout/action-button'
 import { usePreviewPanel } from './preview-panel-context'
 
 export function PreviewToggle() {
-  const { panelRef, isCollapsed } = usePreviewPanel()
-
-  const handleToggle = () => {
-    const panel = panelRef.current
-    if (panel) {
-      if (isCollapsed) {
-        panel.expand()
-      } else {
-        panel.collapse()
-      }
-    }
-  }
+  const { isCollapsed, toggle } = usePreviewPanel()
 
   return (
     <ActionButton
-      onClick={handleToggle}
+      onClick={toggle}
       aria-label={isCollapsed ? 'Show preview' : 'Hide preview'}
       aria-pressed={!isCollapsed}
     >

@@ -174,9 +174,13 @@ No changes - Filter, Search, Stacks/Edit/Export remain.
 ```tsx
 const table = useReactTable({
   enableColumnResizing: true,
-  columnResizingMode: 'onChange',
-  onColumnSizingChange: (sizing) => {
-    localStorage.setItem('table-column-sizing', JSON.stringify(sizing))
+  columnResizeMode: 'onChange',
+  onColumnSizingChange: (updater) => {
+    setColumnSizing((old) => {
+      const newSizing = typeof updater === 'function' ? updater(old) : updater
+      localStorage.setItem('table-column-sizing', JSON.stringify(newSizing))
+      return newSizing
+    })
   },
   state: {
     columnSizing: savedColumnSizing,
