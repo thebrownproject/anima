@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,12 +75,21 @@ export const columns: ColumnDef<Document>[] = [
         <SortIcon isSorted={column.getIsSorted()} />
       </Button>
     ),
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <FileTypeIcon mimeType={row.original.mime_type} />
-        <span className="font-medium">{row.original.filename}</span>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const doc = row.original;
+      return (
+        <div className="flex items-center gap-2 max-w-full">
+          <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
+          <Link
+            href={`/documents/${doc.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="font-medium hover:underline truncate"
+          >
+            {doc.filename}
+          </Link>
+        </div>
+      );
+    },
   },
   {
     accessorKey: "stacks",
@@ -95,7 +105,7 @@ export const columns: ColumnDef<Document>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="group"
       >
-        <SortIcon isSorted={column.getIsSorted()} position="left" />
+        <SortIcon isSorted={column.getIsSorted()} />
         Date
       </Button>
     ),

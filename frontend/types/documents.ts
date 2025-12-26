@@ -10,6 +10,7 @@ export interface Document {
   filename: string
   mime_type: string
   file_size_bytes: number
+  file_path: string | null
   status: DocumentStatus
   uploaded_at: string
   stacks: Stack[]
@@ -21,5 +22,4 @@ export interface DocumentWithExtraction extends Document {
   confidence_scores: Record<string, number> | null
   session_id: string | null
   ocr_raw_text: string | null
-  file_path: string | null
 }
