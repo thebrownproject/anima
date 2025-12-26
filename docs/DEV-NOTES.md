@@ -4523,3 +4523,98 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 4. Create sub-bar.tsx in `components/documents/`
 5. Verify with `npx tsc --noEmit`
 6. Continue to Phase 2 if time permits
+
+---
+
+## Session 53 - 2025-12-26 - Sub-bar Toolbar Implementation ✅
+
+**Feature**: sub-bar-toolbar (`docs/plans/in-progress/sub-bar-toolbar/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 1: Foundation Components**:
+  - Installed shadcn InputGroup (`components/ui/input-group.tsx`)
+  - Created `filter-button.tsx` with SlidersHorizontal icon
+  - Created `sub-bar.tsx` container with left/right slots
+
+- [x] **Phase 2: Documents List - Row Selection & Sub-bar**:
+  - Added selection column with hover-visible checkboxes
+  - Added row selection state to documents table
+  - Created `selection-actions.tsx` with Actions dropdown
+  - Integrated sub-bar into documents table
+  - Removed upload from documents header (moved to sub-bar)
+
+- [x] **Phase 3: Document Detail - Sub-bar & Header Cleanup**:
+  - Created `document-detail-actions.tsx` for Stacks/Edit/Export
+  - Updated `document-header-actions.tsx` to keep only PreviewToggle
+  - Added sub-bar to `document-detail-client.tsx`
+  - Added search filter to `extracted-data-table.tsx`
+
+- [x] **Phase 4: Bug Fixes & Polish**:
+  - Fixed table scroll issues with `overflow-auto`
+  - Updated documents list wrapper for proper flex height (`min-h-0`)
+
+- [x] **Created ActionButton component**:
+  - Reusable compact ghost button in `components/layout/action-button.tsx`
+  - Updated all toolbar buttons to use ActionButton consistently
+  - Filter, Actions, Upload, Edit, Export, Preview all use it now
+
+- [x] **Created ExpandableSearch component**:
+  - `components/layout/expandable-search.tsx`
+  - Collapses to ActionButton when empty
+  - Expands to input on click
+  - Collapses on blur when empty
+
+- [x] **Accessibility fix**:
+  - Added `aria-label="Clear search"` to ExpandableSearch clear button
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| ActionButton location | `components/layout/` | Used in headers and sub-bars, not a shadcn primitive |
+| Button styling | ghost, h-7, px-2, text-xs, mr-0.5 icon gap | Match Linear's compact toolbar style |
+| Filter icon | SlidersHorizontal | Matches Linear's filter icon |
+| Actions icon | ChevronDown | Indicates dropdown menu |
+| ExpandableSearch | Custom with ActionButton | Linear-style collapse/expand behavior |
+| Remove disabled from Edit/Export | Yes | Match Preview button color, not greyed out |
+
+### Files Created
+
+- `frontend/components/layout/action-button.tsx`
+- `frontend/components/layout/expandable-search.tsx`
+- `frontend/components/documents/sub-bar.tsx`
+- `frontend/components/documents/filter-button.tsx`
+- `frontend/components/documents/selection-actions.tsx`
+- `frontend/components/documents/document-detail-actions.tsx`
+
+### Files Modified
+
+- `frontend/components/documents/columns.tsx` - Added select column
+- `frontend/components/documents/documents-table.tsx` - Sub-bar, row selection, flex layout
+- `frontend/components/documents/documents-list.tsx` - Flex wrapper
+- `frontend/components/documents/document-detail-client.tsx` - Sub-bar integration
+- `frontend/components/documents/extracted-data-table.tsx` - Search filter, scroll fix
+- `frontend/components/documents/document-header-actions.tsx` - PreviewToggle only
+- `frontend/components/documents/preview-toggle.tsx` - Uses ActionButton
+- `frontend/components/documents/upload-dialog/upload-dialog-trigger.tsx` - Simplified
+- `frontend/app/(app)/@header/documents/page.tsx` - Removed upload
+- `frontend/app/(app)/@header/documents/[id]/page.tsx` - Removed stacks prop
+
+### Tasks Remaining
+
+- [ ] Fix table alignment (Name column should align with Filter text)
+- [ ] Task 16: Update skeletons for new layout (optional)
+- [ ] Task 17: Manual testing checklist
+
+### Next Session
+
+**Task**: Fix table alignment and complete sub-bar toolbar feature
+
+**Process**:
+1. Run `/continue` to load context
+2. Fix table content alignment with sub-bar (Name should align with Filter)
+3. Consider approach: remove sub-bar padding + add to parent, or restructure table
+4. Run manual testing checklist
+5. Move feature to complete if done
