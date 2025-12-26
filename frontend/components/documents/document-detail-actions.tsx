@@ -12,10 +12,10 @@ export function DocumentDetailActions({ assignedStacks }: DocumentDetailActionsP
   return (
     <>
       <StacksDropdown assignedStacks={assignedStacks} />
-      <ActionButton icon={<Edit />} disabled>
+      <ActionButton icon={<Edit />}>
         Edit
       </ActionButton>
-      <ActionButton icon={<Download />} disabled>
+      <ActionButton icon={<Download />}>
         Export
       </ActionButton>
     </>
