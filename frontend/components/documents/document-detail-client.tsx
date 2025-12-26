@@ -11,6 +11,10 @@ import { ExtractedDataTable } from './extracted-data-table'
 import { PreviewPanel } from './preview-panel'
 import { AiChatBar } from './ai-chat-bar'
 import { usePreviewPanel } from './preview-panel-context'
+import { SubBar } from './sub-bar'
+import { FilterButton } from './filter-button'
+import { DocumentDetailActions } from './document-detail-actions'
+import { ExpandableSearch } from '@/components/layout/expandable-search'
 import type { DocumentWithExtraction } from '@/types/documents'
 
 const LAYOUT_STORAGE_KEY = 'stackdocs-document-layout'
@@ -26,6 +30,7 @@ export function DocumentDetailClient({
 }: DocumentDetailClientProps) {
   const [document, setDocument] = useState(initialDocument)
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
+  const [fieldSearch, setFieldSearch] = useState('')
 
   // Preview panel collapse/expand
   const { panelRef, setIsCollapsed } = usePreviewPanel()
@@ -100,6 +105,23 @@ export function DocumentDetailClient({
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
+      {/* Sub-bar */}
+      <SubBar
+        left={
+          <>
+            <FilterButton />
+            <ExpandableSearch
+              value={fieldSearch}
+              onChange={setFieldSearch}
+              placeholder="Search fields..."
+            />
+          </>
+        }
+        right={
+          <DocumentDetailActions assignedStacks={document.stacks ?? []} />
+        }
+      />
+
       {/* Main content - resizable layout */}
       <ResizablePanelGroup
         direction="horizontal"
@@ -117,6 +139,7 @@ export function DocumentDetailClient({
               fields={document.extracted_fields}
               confidenceScores={document.confidence_scores}
               changedFields={changedFields}
+              searchFilter={fieldSearch}
             />
           </div>
         </ResizablePanel>

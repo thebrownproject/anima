@@ -5,6 +5,7 @@ import {
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,
+  getFilteredRowModel,
   useReactTable,
   ExpandedState,
 } from '@tanstack/react-table'
@@ -24,12 +25,14 @@ interface ExtractedDataTableProps {
   fields: Record<string, unknown> | null
   confidenceScores: Record<string, number> | null
   changedFields?: Set<string>
+  searchFilter?: string
 }
 
 export function ExtractedDataTable({
   fields,
   confidenceScores,
   changedFields = new Set(),
+  searchFilter = '',
 }: ExtractedDataTableProps) {
   const [expanded, setExpanded] = React.useState<ExpandedState>({})
 
@@ -43,11 +46,17 @@ export function ExtractedDataTable({
     columns: extractedColumns,
     state: {
       expanded,
+      globalFilter: searchFilter,
     },
     onExpandedChange: setExpanded,
     getSubRows: (row) => row.subRows,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const fieldName = row.original.field?.toLowerCase() ?? ''
+      return fieldName.includes(filterValue.toLowerCase())
+    },
   })
 
   if (!fields || Object.keys(fields).length === 0) {
