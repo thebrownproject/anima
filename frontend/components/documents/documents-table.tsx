@@ -71,19 +71,34 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       return
     }
 
+    // Track if this effect has been superseded by a newer one
+    let isCancelled = false
+
     const fetchSignedUrl = async () => {
       try {
         const supabase = createClerkSupabaseClient(getToken)
         const { data } = await supabase.storage
           .from('documents')
           .createSignedUrl(filePath, 3600) // 1 hour expiry
-        setSignedUrl(data?.signedUrl ?? null)
-      } catch {
-        setSignedUrl(null)
+
+        // Only update state if this request is still current
+        if (!isCancelled) {
+          setSignedUrl(data?.signedUrl ?? null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch signed URL:', error)
+        if (!isCancelled) {
+          setSignedUrl(null)
+        }
       }
     }
 
     fetchSignedUrl()
+
+    // Cleanup: mark this effect as cancelled when a new one starts
+    return () => {
+      isCancelled = true
+    }
   }, [selectedDocId, selectedDoc?.file_path, getToken])
 
   // Layout persistence for resizable panels
@@ -107,12 +122,8 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     }
   }, [])
 
-  // Clear selection when preview panel closes
-  React.useEffect(() => {
-    if (isCollapsed) {
-      setSelectedDocId(null)
-    }
-  }, [isCollapsed])
+  // Note: We intentionally do NOT clear selection when preview collapses
+  // This allows the user to toggle preview and see the same document again
 
   const table = useReactTable({
     data: documents,
@@ -199,17 +210,22 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                       key={row.id}
                       className={cn(
                         "h-12 hover:bg-muted/30 transition-colors duration-150 group/row",
-                        selectedDocId === row.original.id && "bg-muted/50"
+                        selectedDocId === row.original.id && !isCollapsed && "bg-muted/50"
                       )}
                       data-state={row.getIsSelected() && 'selected'}
                       onClick={() => {
-                        // Toggle: if clicking same row, collapse; otherwise expand
                         if (selectedDocId === row.original.id) {
-                          panelRef.current?.collapse()
+                          // Same row clicked - toggle the panel
+                          if (panelRef.current?.isCollapsed()) {
+                            panelRef.current?.expand()
+                          } else {
+                            panelRef.current?.collapse()
+                          }
                         } else {
+                          // Different row clicked - select and ensure panel is open
                           setSelectedDocId(row.original.id)
                           if (panelRef.current?.isCollapsed()) {
-                            panelRef.current.expand()
+                            panelRef.current?.expand()
                           }
                         }
                       }}

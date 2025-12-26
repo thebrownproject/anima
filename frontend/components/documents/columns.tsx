@@ -5,6 +5,11 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FileTypeIcon } from "@/components/file-type-icon";
 import { StackBadges } from "@/components/stack-badges";
 import type { Document } from "@/types/documents";
@@ -80,13 +85,20 @@ export const columns: ColumnDef<Document>[] = [
       return (
         <div className="flex items-center gap-2 max-w-full">
           <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
-          <Link
-            href={`/documents/${doc.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="font-medium hover:underline truncate"
-          >
-            {doc.filename}
-          </Link>
+          <Tooltip delayDuration={500}>
+            <TooltipTrigger asChild>
+              <Link
+                href={`/documents/${doc.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium hover:underline truncate"
+              >
+                {doc.filename}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Open {doc.filename}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       );
     },

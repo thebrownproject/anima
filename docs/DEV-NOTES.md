@@ -4778,3 +4778,82 @@ These three requirements conflict - if table fills 100%, resizing one column mus
 2. Research how Linear/Gmail actually handle table column resizing
 3. Implement solution that accepts constraints of HTML tables
 4. Continue with Tasks 6-7 after resizing works
+
+---
+
+## Session 56 - 2025-12-27 - Layout Alignment Phase 2 Complete
+
+**Feature**: layout-alignment (`docs/plans/in-progress/layout-alignment/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 6: Row click for preview vs filename click for navigate**:
+  - Added `selectedDocId` state for row selection
+  - Filename wrapped in `<Link>` with `stopPropagation` for navigation
+  - Row click toggles preview panel (expand/collapse)
+  - Added shadcn Tooltip on filename ("Open <filename>", 500ms delay, side="right")
+
+- [x] **Task 7: Add preview panel to documents list**:
+  - Added ResizablePanelGroup with PreviewPanel
+  - Client-side signed URL fetching with race condition protection
+  - Added `file_path` to Document type and query
+  - PreviewToggle added to documents list header
+  - Layout persistence to localStorage (`stackdocs-doc-list-layout`)
+
+- [x] **Table overflow fix**:
+  - Used `max-w-0` CSS trick for dynamic column truncation
+  - Filename and Stacks columns now share space and truncate properly
+  - Fixed PDF viewer overflow with `overflow-hidden` on panels
+
+- [x] **Code quality fixes**:
+  - Race condition fix with `isCancelled` flag pattern
+  - Error logging in catch blocks
+  - Consistent optional chaining on panelRef methods
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Column resizing | Skip (Tasks 4-5) | TanStack Table resizing conflicts with HTML table layout fundamentals |
+| Dynamic truncation | `max-w-0` trick | Forces table cells to shrink and respect truncation |
+| Preview state | Shared via layout provider | Single PreviewPanelProvider in app layout, shared between list and detail pages |
+| Row highlight | Only when panel open | Clearer UX - highlight indicates active preview |
+| Tooltip delay | 500ms | Prevents accidental triggers, feels responsive |
+
+### Bugs Fixed
+
+| Bug | Fix |
+|-----|-----|
+| Filename hover not showing full name | Added shadcn Tooltip with 500ms delay |
+| Toggle preview shows blank | Removed useEffect that cleared selection on collapse |
+| Can't re-open preview on selected row | Fixed toggle logic to check isCollapsed state |
+| Highlight persists when panel closed | Made highlight conditional on `!isCollapsed` |
+
+### Known Issues
+
+- [ ] Visual tab shows "No OCR text available" - need to fetch OCR text when document selected
+
+### Tasks Remaining
+
+- [ ] Phase 3: Document detail changes (Tasks 8-12)
+- [ ] Phase 4: Polish and testing (Tasks 13-14)
+
+### Next Session
+
+**Task**: Phase 3 - Document Detail Page (Tasks 8-9, 11-12)
+
+**Process**:
+1. Task 8: Add checkboxes to extracted data table
+2. Task 9: Move chevron/confidence to indicator column
+3. Task 11: Implement floating AI chat bar
+4. Task 12: Update preview toggle to icon-only
+5. Consider: Fetch OCR text for preview Visual tab
+
+### Files Modified
+
+- `frontend/components/documents/documents-table.tsx` - Major changes (preview panel, row selection)
+- `frontend/components/documents/columns.tsx` - Filename Link with Tooltip
+- `frontend/app/(app)/@header/documents/page.tsx` - Added DocumentHeaderActions
+- `frontend/lib/queries/documents.ts` - Added file_path to query
+- `frontend/types/documents.ts` - Added file_path to Document type

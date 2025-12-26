@@ -23,22 +23,24 @@
 
 ## Task Summary
 
-### Phase 1: Global Foundation
+### Phase 1: Global Foundation ✅
 
-| Task | Description | Files |
-|------|-------------|-------|
-| 1 | Add icons to breadcrumb component | `page-header.tsx` |
-| 2 | Support dynamic icons for document detail | `page-header.tsx`, `@header/documents/[id]/page.tsx` |
+| Task | Description | Files | Status |
+|------|-------------|-------|--------|
+| 1 | Add icons to breadcrumb component | `page-header.tsx` | ✅ |
+| 2 | Support dynamic icons for document detail | `page-header.tsx`, `@header/documents/[id]/page.tsx` | ✅ |
 
-### Phase 2: Documents List Page
+### Phase 2: Documents List Page ✅
 
-| Task | Description | Files |
-|------|-------------|-------|
-| 3 | Remove Size column and pagination | `columns.tsx`, `documents-table.tsx` |
-| 4 | Implement column resizing with localStorage | `columns.tsx`, `documents-table.tsx` |
-| 5 | Align columns and tighten spacing | `columns.tsx`, `documents-table.tsx` |
-| 6 | Row click for preview vs filename click for navigate | `columns.tsx`, `documents-table.tsx` |
-| 7 | Add preview panel to documents list | `documents-table.tsx`, `@header/documents/page.tsx` |
+| Task | Description | Files | Status |
+|------|-------------|-------|--------|
+| 3 | Remove Size column and pagination | `columns.tsx`, `documents-table.tsx` | ✅ |
+| 4 | Implement column resizing with localStorage | `columns.tsx`, `documents-table.tsx` | ⏭️ SKIP |
+| 5 | Align columns and tighten spacing | `columns.tsx`, `documents-table.tsx` | ⏭️ SKIP |
+| 6 | Row click for preview vs filename click for navigate | `columns.tsx`, `documents-table.tsx` | ✅ |
+| 7 | Add preview panel to documents list | `documents-table.tsx`, `@header/documents/page.tsx` | ✅ |
+
+> **Note:** Tasks 4-5 skipped - TanStack Table column resizing conflicts with HTML table layout. Used `max-w-0` trick for dynamic truncation instead.
 
 ### Phase 3: Document Detail Page
 
