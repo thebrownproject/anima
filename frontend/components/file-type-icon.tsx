@@ -10,12 +10,12 @@ export function FileTypeIcon({ mimeType, className }: FileTypeIconProps) {
   const iconClass = cn('size-4', className)
 
   if (mimeType === 'application/pdf') {
-    return <FileText className={cn(iconClass, 'text-red-500 dark:text-red-400')} />
+    return <FileText className={iconClass} />
   }
 
   if (mimeType.startsWith('image/')) {
-    return <Image className={cn(iconClass, 'text-blue-500 dark:text-blue-400')} />
+    return <Image className={iconClass} />
   }
 
-  return <FileText className={cn(iconClass, 'text-muted-foreground')} />
+  return <FileText className={iconClass} />
 }
