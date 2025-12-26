@@ -43,7 +43,7 @@ export const columns: ColumnDef<Document>[] = [
   {
     id: 'select',
     header: ({ table }) => (
-      <div className="pl-4 pr-1">
+      <div className="px-1">
         <Checkbox
           checked={
             table.getIsAllPageRowsSelected()
@@ -59,7 +59,7 @@ export const columns: ColumnDef<Document>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <div className="pl-4 pr-1">
+      <div className="px-1">
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
