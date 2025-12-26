@@ -1,12 +1,18 @@
 # StackDocs Roadmap
 
-**Last Updated:** 2025-12-24
+**Last Updated:** 2025-12-26
 
 ---
 
 ## Current Focus
 
 ### In Progress
+
+**Layout Alignment System** (`plans/in-progress/layout-alignment/`)
+- Design: Complete (Linear-inspired 3-column grid system)
+- Plan: Complete (14 tasks across 4 phases, code reviewed, sharded)
+- Implementation: Not started
+- Enables: Consistent alignment across pages, column resizing, floating chat bar, preview panel on list page
 
 **Upload Dialog** (`plans/in-progress/upload-dialog/`)
 - Design: Complete (multi-step wizard with extraction config)
@@ -17,7 +23,7 @@
 **Sub-bar Toolbar** (`plans/in-progress/sub-bar-toolbar/`)
 - Design: Complete (Linear-style sub-bar with filter, search, actions)
 - Plan: Complete (17 tasks across 5 phases, code reviewed)
-- Implementation: Not started
+- Implementation: Complete (Phase 1-4, pending alignment fix)
 - Enables: Consistent toolbar pattern, row selection with bulk actions, expandable search
 
 ### Todo

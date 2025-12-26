@@ -4618,3 +4618,85 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
 3. Consider approach: remove sub-bar padding + add to parent, or restructure table
 4. Run manual testing checklist
 5. Move feature to complete if done
+
+---
+
+## Session 54 - 2025-12-26 - Layout Alignment System Design & Planning ✅
+
+**Feature**: layout-alignment (`docs/plans/in-progress/layout-alignment/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed Layout Alignment System**:
+  - Designed Linear-inspired 3-column alignment system (checkbox | icon | content)
+  - Discussed breadcrumb icons, table alignment, row interactions
+  - Designed floating AI chat bar (Claude/OpenAI/Perplexity style)
+  - Designed preview panel for documents list page
+
+- [x] **Created Design Document**:
+  - `2024-12-26-layout-alignment-design.md`
+  - Documents list page changes (remove size/pagination, add preview)
+  - Document detail page changes (checkboxes, indicators, floating chat)
+  - localStorage persistence for column widths
+
+- [x] **Created Implementation Plan**:
+  - `2024-12-26-layout-alignment-plan.md`
+  - 14 tasks across 4 phases
+  - Used context7 MCP for TanStack Table column resizing docs
+  - Used shadcn MCP to verify component patterns
+
+- [x] **Code Review Round 1**:
+  - Spawned code-reviewer agent
+  - Found 6 critical issues, 4 important issues
+  - Fixed: CustomEvent→Link, missing selectedDoc fetch, API name typo, padding
+
+- [x] **Code Review Round 2**:
+  - Found 14 critical issues, 6 important issues (mostly import completeness)
+  - Fixed: function names, ResizablePanel props, preview toggle, cn imports
+
+- [x] **Sharded Plan into Phases**:
+  - Created README.md with overview and task summary
+  - phase-1-global-foundation.md (Tasks 1-2)
+  - phase-2-documents-list.md (Tasks 3-7)
+  - phase-3-document-detail.md (Tasks 8-12)
+  - phase-4-polish-testing.md (Tasks 13-14)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| 3-column grid | checkbox \| icon \| content | Matches Linear's alignment system |
+| Row click behavior | Click row→preview, click filename→navigate | Email client pattern, good UX |
+| Filename hover | Underline + pointer | Universal link affordance, no layout shift |
+| Confidence display | Colored circle in Col 2, hover/selected visible | Replaces separate Conf. column |
+| Floating chat bar | Full-width below panels, rounded corners | Modern AI assistant pattern |
+| Preview panel (list) | Reuse existing PreviewPanel component | DRY - same component as detail page |
+| Column resizing | TanStack Table + localStorage persistence | User preference retention |
+
+### Files Created
+
+- `docs/plans/in-progress/layout-alignment/2024-12-26-layout-alignment-design.md`
+- `docs/plans/in-progress/layout-alignment/2024-12-26-layout-alignment-plan.md`
+- `docs/plans/in-progress/layout-alignment/README.md`
+- `docs/plans/in-progress/layout-alignment/phase-1-global-foundation.md`
+- `docs/plans/in-progress/layout-alignment/phase-2-documents-list.md`
+- `docs/plans/in-progress/layout-alignment/phase-3-document-detail.md`
+- `docs/plans/in-progress/layout-alignment/phase-4-polish-testing.md`
+
+### Tasks Remaining
+
+- [ ] Implement Phase 1: Breadcrumb icons (Tasks 1-2)
+- [ ] Implement Phase 2: Documents list changes (Tasks 3-7)
+- [ ] Implement Phase 3: Document detail changes (Tasks 8-12)
+- [ ] Implement Phase 4: Polish and testing (Tasks 13-14)
+
+### Next Session
+
+**Task**: Implement Layout Alignment System starting with Phase 1
+
+**Process**:
+1. Run `/continue` to load context
+2. Use `/superpowers:execute-plan` with `phase-1-global-foundation.md`
+3. Work through phases sequentially
+4. Run manual testing checklist after each phase
