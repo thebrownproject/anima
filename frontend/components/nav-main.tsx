@@ -36,7 +36,7 @@ export function NavMain({
     <>
       {items.map((item) => (
         <Collapsible key={item.title} defaultOpen={item.isActive} className="group/collapsible">
-          <SidebarGroup>
+          <SidebarGroup className="pt-0">
             <SidebarGroupLabel asChild>
               <CollapsibleTrigger className="flex w-full items-center hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors cursor-pointer">
                 {item.title}
@@ -48,7 +48,7 @@ export function NavMain({
                 <SidebarMenu>
                   {item.items?.map((subItem) => (
                     <SidebarMenuItem key={subItem.title}>
-                      <SidebarMenuButton asChild>
+                      <SidebarMenuButton asChild className="gap-1.5">
                         <Link href={subItem.url}>
                           {subItem.icon && <subItem.icon className="size-4" />}
                           <span>{subItem.title}</span>

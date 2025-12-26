@@ -57,7 +57,7 @@ export function NavProjects({
             <SidebarMenu>
               {projects.map((item) => (
                 <SidebarMenuItem key={item.name}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="gap-1.5">
                     <a href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.name}</span>

@@ -59,28 +59,43 @@ export function useExtractionRealtime({
             filter: `document_id=eq.${documentId}`,
           },
           (payload) => {
+            // DEBUG: Log all incoming realtime events
+            console.log('[Realtime Debug] Received UPDATE event:', {
+              eventType: payload.eventType,
+              table: payload.table,
+              hasNew: !!payload.new,
+              status: (payload.new as Record<string, unknown>)?.status,
+              fieldCount: Object.keys((payload.new as Record<string, unknown>)?.extracted_fields || {}).length,
+            })
+
             if (!mounted) return
 
             const newData = payload.new
             if (!newData || typeof newData !== 'object') {
+              console.warn('[Realtime Debug] Invalid payload, skipping')
               return
             }
 
             const extracted_fields = (newData as Record<string, unknown>).extracted_fields as Record<string, unknown> | undefined
             const confidence_scores = (newData as Record<string, unknown>).confidence_scores as Record<string, number> | undefined
 
+            console.log('[Realtime Debug] Calling onUpdate with fields:', Object.keys(extracted_fields || {}))
             onUpdateRef.current({
               extracted_fields: extracted_fields || {},
               confidence_scores: confidence_scores || {},
             })
           }
         )
-        .subscribe((status) => {
+        .subscribe((status, err) => {
           if (!mounted) return
+
+          // DEBUG: Log all subscription state changes
+          console.log(`[Realtime Debug] Channel status: ${status}`, err ? `Error: ${err.message}` : '')
 
           if (status === 'SUBSCRIBED') {
             setStatus('connected')
-          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error(`[Realtime Debug] Channel failed: ${status}`, err)
             setStatus('disconnected')
           }
         })
@@ -95,9 +110,16 @@ export function useExtractionRealtime({
       // Refresh auth every 50 seconds (before Clerk's 60s expiry)
       refreshInterval = setInterval(async () => {
         if (!mounted) return
-        const newToken = await getToken()
-        if (newToken && supabaseClient) {
-          supabaseClient.realtime.setAuth(newToken)
+        try {
+          const newToken = await getToken()
+          if (newToken && supabaseClient) {
+            supabaseClient.realtime.setAuth(newToken)
+            console.log('[Realtime Debug] Token refreshed successfully')
+          } else {
+            console.warn('[Realtime Debug] Token refresh failed - no token returned')
+          }
+        } catch (err) {
+          console.error('[Realtime Debug] Token refresh error:', err)
         }
       }, 50000)
     }

@@ -62,6 +62,7 @@ export function ExpandableSearch({
         <button
           type="button"
           onClick={handleClear}
+          aria-label="Clear search"
           className="absolute right-2 text-muted-foreground hover:text-foreground"
         >
           <X className="size-3.5" />
