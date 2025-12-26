@@ -9,7 +9,8 @@ interface PageProps {
 
 /**
  * Header slot for document detail page.
- * Renders PageHeader with document title and actions in the layout's header bar.
+ * Renders PageHeader with document title and preview toggle.
+ * Stacks/Edit/Export moved to sub-bar in page content.
  */
 export default async function DocumentHeaderSlot({ params }: PageProps) {
   const { id } = await params
@@ -22,7 +23,7 @@ export default async function DocumentHeaderSlot({ params }: PageProps) {
   return (
     <PageHeader
       title={document.filename}
-      actions={<DocumentHeaderActions assignedStacks={document.stacks} />}
+      actions={<DocumentHeaderActions />}
     />
   )
 }
