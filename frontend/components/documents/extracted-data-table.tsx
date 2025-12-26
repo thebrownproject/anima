@@ -68,7 +68,7 @@ export function ExtractedDataTable({
   }
 
   return (
-    <div>
+    <div className="h-full overflow-auto">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

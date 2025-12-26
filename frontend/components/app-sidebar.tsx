@@ -7,17 +7,13 @@ import {
   IconStack2,
 } from "@tabler/icons-react";
 
-import { UserButton } from "@clerk/nextjs";
-
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { SidebarHeaderMenu } from "@/components/sidebar-header-menu";
+import { SidebarUserFooter } from "@/components/sidebar-user-footer";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
 const data = {
@@ -60,26 +56,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={data.navMain} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <UserButton
-              showName
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  rootBox: "w-full",
-                  userButtonTrigger:
-                    "w-full h-8 justify-start px-2 rounded-md hover:bg-sidebar-accent transition-colors",
-                  userButtonBox: "flex-row-reverse gap-0",
-                  avatarBox: "size-6 rounded-full",
-                  userButtonOuterIdentifier: "text-sm",
-                },
-              }}
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <SidebarUserFooter />
     </Sidebar>
   );
 }

@@ -17,6 +17,7 @@ import {
 } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
+import { Dialog } from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,18 +30,19 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SidebarHeader, SidebarMenuButton } from "@/components/ui/sidebar"
 import { GlobalSearchDialog } from "@/components/global-search-dialog"
+import { UploadDialogContent } from "@/components/documents/upload-dialog/upload-dialog-content"
 
-interface SidebarHeaderMenuProps {
-  onUploadClick?: () => void
-}
-
-export function SidebarHeaderMenu({ onUploadClick }: SidebarHeaderMenuProps) {
+export function SidebarHeaderMenu() {
   const { theme, setTheme } = useTheme()
   const [searchOpen, setSearchOpen] = React.useState(false)
+  const [uploadOpen, setUploadOpen] = React.useState(false)
 
   return (
     <>
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <UploadDialogContent onClose={() => setUploadOpen(false)} />
+      </Dialog>
       <SidebarHeader className="h-[47px] flex flex-row items-center justify-between gap-2 px-2 py-0">
         {/* Logo + Name + Dropdown */}
         <DropdownMenu>
@@ -111,7 +113,7 @@ export function SidebarHeaderMenu({ onUploadClick }: SidebarHeaderMenuProps) {
             variant="ghost"
             size="icon"
             className="size-8"
-            onClick={onUploadClick}
+            onClick={() => setUploadOpen(true)}
           >
             <IconUpload className="size-4" />
             <span className="sr-only">Upload</span>

@@ -84,7 +84,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       />
 
       {/* Table */}
-      <div>
+      <div className="flex-1 overflow-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
