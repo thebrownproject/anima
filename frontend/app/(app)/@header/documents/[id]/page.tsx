@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getDocumentWithExtraction } from '@/lib/queries/documents'
 import { PageHeader } from '@/components/layout/page-header'
 import { DocumentHeaderActions } from '@/components/documents/document-header-actions'
+import { FileTypeIcon } from '@/components/file-type-icon'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -23,6 +24,7 @@ export default async function DocumentHeaderSlot({ params }: PageProps) {
   return (
     <PageHeader
       title={document.filename}
+      icon={<FileTypeIcon mimeType={document.mime_type} />}
       actions={<DocumentHeaderActions />}
     />
   )

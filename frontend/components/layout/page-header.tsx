@@ -3,6 +3,7 @@
 import { Fragment, ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { FileText, Layers, Settings, Upload } from 'lucide-react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,6 +19,14 @@ const segmentLabels: Record<string, string> = {
   stacks: 'Stacks',
   settings: 'Settings',
   upload: 'Upload',
+}
+
+// Map route segments to icons
+const segmentIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  documents: FileText,
+  stacks: Layers,
+  settings: Settings,
+  upload: Upload,
 }
 
 function formatSegment(segment: string): string {
@@ -36,11 +45,13 @@ function formatSegment(segment: string): string {
 interface PageHeaderProps {
   /** Override the last breadcrumb label (defaults to formatted URL segment) */
   title?: string
+  /** Icon component for the last breadcrumb (e.g., file type icon) */
+  icon?: ReactNode
   /** Action buttons to render on the right side */
   actions?: ReactNode
 }
 
-export function PageHeader({ title, actions }: PageHeaderProps) {
+export function PageHeader({ title, icon, actions }: PageHeaderProps) {
   const pathname = usePathname()
 
   // Parse pathname into segments (filter out empty strings)
@@ -68,20 +79,30 @@ export function PageHeader({ title, actions }: PageHeaderProps) {
     <div className="flex flex-1 items-center justify-between">
       <Breadcrumb>
         <BreadcrumbList>
-          {breadcrumbs.map((item, index) => (
-            <Fragment key={item.href}>
-              {index > 0 && <BreadcrumbSeparator />}
-              <BreadcrumbItem>
-                {item.isLast ? (
-                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink asChild>
-                    <Link href={item.href}>{item.label}</Link>
-                  </BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-            </Fragment>
-          ))}
+          {breadcrumbs.map((item, index) => {
+            const Icon = segmentIcons[item.segment]
+
+            return (
+              <Fragment key={item.href}>
+                {index > 0 && <BreadcrumbSeparator />}
+                <BreadcrumbItem>
+                  {item.isLast ? (
+                    <BreadcrumbPage className="flex items-center gap-1.5">
+                      {icon || (Icon && <Icon className="size-4" />)}
+                      {item.label}
+                    </BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link href={item.href} className="flex items-center gap-1.5">
+                        {Icon && <Icon className="size-4" />}
+                        {item.label}
+                      </Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </Fragment>
+            )
+          })}
         </BreadcrumbList>
       </Breadcrumb>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
