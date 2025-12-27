@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SidebarHeader, SidebarMenuButton } from "@/components/ui/sidebar"
-import { GlobalSearchDialog } from "@/components/global-search-dialog"
+import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
 import { UploadDialogContent } from "@/components/documents/upload-dialog/upload-dialog-content"
 
 export function SidebarHeaderMenu() {

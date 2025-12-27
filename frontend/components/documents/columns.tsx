@@ -10,8 +10,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FileTypeIcon } from "@/components/file-type-icon";
-import { StackBadges } from "@/components/stack-badges";
+import { FileTypeIcon } from "@/components/shared/file-type-icon";
+import { StackBadges } from "@/components/shared/stack-badges";
 import type { Document } from "@/types/documents";
 
 function formatRelativeDate(dateString: string): string {

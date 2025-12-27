@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getDocumentWithExtraction } from '@/lib/queries/documents'
 import { PageHeader } from '@/components/layout/page-header'
 import { DocumentHeaderActions } from '@/components/documents/document-header-actions'
-import { FileTypeIcon } from '@/components/file-type-icon'
+import { FileTypeIcon } from '@/components/shared/file-type-icon'
 
 interface PageProps {
   params: Promise<{ id: string }>
