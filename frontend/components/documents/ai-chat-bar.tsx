@@ -61,7 +61,7 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
           isDisabled && "opacity-50"
         )}
       >
-        <Icons.BrandDatabricks
+        <Icons.Stack
           className={cn(
             "size-4 transition-colors shrink-0",
             message
