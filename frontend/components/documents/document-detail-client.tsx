@@ -152,7 +152,7 @@ export function DocumentDetailClient({
           ref={panelRef}
           defaultSize={panelWidth}
           minSize={30}
-          maxSize={60}
+          maxSize={50}
           collapsible
           collapsedSize={0}
           onCollapse={() => setIsCollapsed(true)}
