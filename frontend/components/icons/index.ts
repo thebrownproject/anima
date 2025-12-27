@@ -11,6 +11,7 @@ export {
   // Checkmarks & validation
   IconCheck as Check,
   IconCircle as Circle,
+  IconAlertCircle as AlertCircle,
 
   // Navigation & chevrons
   IconChevronRight as ChevronRight,
@@ -28,24 +29,33 @@ export {
 
   // Layout & panels
   IconLayoutSidebar as PanelLeft,
+  IconLayoutSidebarRight as PanelRight,
+  IconAdjustmentsHorizontal as SlidersHorizontal,
 
   // Search
   IconSearch as Search,
 
   // Files & documents
   IconFileText as FileText,
+  IconFiles as Files,
   IconPhoto as Image,
   IconUpload as Upload,
   IconFolder as Folder,
+  IconFolderPlus as FolderPlus,
+  IconDownload as Download,
+  IconEdit as Edit,
+  IconFilter as Filter,
 
   // App-specific
   IconStack2 as Stack,
+  IconLayersIntersect as Layers,
   IconLayersLinked as LayersLinked,
   IconSettings as Settings,
   IconLifebuoy as Lifebuoy,
   IconSend as Send,
   IconShare as Share,
   IconTrash as Trash,
+  IconBrandDatabricks as BrandDatabricks,
 
   // Theme
   IconSun as Sun,

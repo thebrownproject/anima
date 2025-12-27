@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2, FolderPlus, ChevronDown } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { ActionButton } from '@/components/layout/action-button'
 import {
   DropdownMenu,
@@ -29,13 +29,13 @@ export function SelectionActions({
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <ActionButton icon={<ChevronDown />}>
+          <ActionButton icon={<Icons.ChevronDown />}>
             Actions
           </ActionButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={onAddToStack} disabled>
-            <FolderPlus className="mr-2 size-4" />
+            <Icons.FolderPlus className="mr-2 size-4" />
             Add to Stack
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -43,7 +43,7 @@ export function SelectionActions({
             disabled
             className="text-destructive focus:text-destructive"
           >
-            <Trash2 className="mr-2 size-4" />
+            <Icons.Trash className="mr-2 size-4" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>

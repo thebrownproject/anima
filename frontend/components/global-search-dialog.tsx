@@ -2,13 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import {
-  IconFileText,
-  IconLayersLinked,
-  IconStack2,
-  IconSettings,
-  IconUpload,
-} from "@tabler/icons-react"
+import * as Icons from "@/components/icons"
 
 import {
   CommandDialog,
@@ -60,19 +54,19 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
           <CommandItem
             onSelect={() => runCommand(() => router.push("/documents"))}
           >
-            <IconFileText className="size-4" />
+            <Icons.Files className="size-4" />
             <span>Documents</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push("/extractions"))}
           >
-            <IconLayersLinked className="size-4" />
+            <Icons.LayersLinked className="size-4" />
             <span>Extractions</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push("/stacks"))}
           >
-            <IconStack2 className="size-4" />
+            <Icons.Stack className="size-4" />
             <span>Stacks</span>
           </CommandItem>
         </CommandGroup>
@@ -86,11 +80,11 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
               console.log("Open upload dialog")
             })}
           >
-            <IconUpload className="size-4" />
+            <Icons.Upload className="size-4" />
             <span>Upload Document</span>
           </CommandItem>
           <CommandItem disabled>
-            <IconSettings className="size-4" />
+            <Icons.Settings className="size-4" />
             <span>Settings</span>
           </CommandItem>
         </CommandGroup>

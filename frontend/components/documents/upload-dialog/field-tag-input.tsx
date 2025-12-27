@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -122,7 +122,7 @@ function FieldBadge({ field, onRemove }: FieldBadgeProps) {
         className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
         aria-label={`Remove ${field.name}`}
       >
-        <X className="size-3" />
+        <Icons.X className="size-3" />
       </button>
     </Badge>
   )

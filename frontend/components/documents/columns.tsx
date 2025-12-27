@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import * as Icons from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -32,10 +32,10 @@ function formatRelativeDate(dateString: string): string {
 }
 
 function SortIcon({ isSorted }: { isSorted: false | "asc" | "desc" }) {
-  if (isSorted === "asc") return <ArrowUp className="ml-2 size-3" />;
-  if (isSorted === "desc") return <ArrowDown className="ml-2 size-3" />;
+  if (isSorted === "asc") return <Icons.ArrowUp className="ml-2 size-3" />;
+  if (isSorted === "desc") return <Icons.ArrowDown className="ml-2 size-3" />;
   return (
-    <ChevronsUpDown className="ml-2 size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+    <Icons.ChevronsUpDown className="ml-2 size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
   );
 }
 

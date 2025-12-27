@@ -1,7 +1,7 @@
 // frontend/components/documents/upload-dialog/extraction-progress.tsx
 'use client'
 
-import { Check, Loader2, AlertCircle } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import type { AgentEvent } from '@/lib/agent-api'
 import type { ExtractionStatus } from '@/types/upload'
@@ -37,19 +37,19 @@ export function ExtractionProgress({
       <div className="flex items-center gap-2 mb-3">
         {isExtracting && (
           <>
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            <Icons.Loader2 className="size-4 animate-spin text-muted-foreground" />
             <span className="text-sm font-medium">Extracting...</span>
           </>
         )}
         {isComplete && (
           <>
-            <Check className="size-4 text-green-500" />
+            <Icons.Check className="size-4 text-green-500" />
             <span className="text-sm font-medium">Extraction complete</span>
           </>
         )}
         {isError && (
           <>
-            <AlertCircle className="size-4 text-destructive" />
+            <Icons.AlertCircle className="size-4 text-destructive" />
             <span className="text-sm font-medium">Extraction failed</span>
           </>
         )}
@@ -71,7 +71,7 @@ export function ExtractionProgress({
                 'animate-in fade-in duration-150'
               )}
             >
-              <Check className="size-3 text-green-500 shrink-0" />
+              <Icons.Check className="size-3 text-green-500 shrink-0" />
               <span>{event.content}</span>
             </div>
           ))}

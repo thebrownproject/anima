@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -80,7 +80,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
                 onLoadError={onDocumentLoadError}
                 loading={
                   <div className="flex h-[600px] items-center justify-center">
-                    <Loader2 className="size-8 animate-spin text-muted-foreground" />
+                    <Icons.Loader2 className="size-8 animate-spin text-muted-foreground" />
                   </div>
                 }
               >
@@ -103,7 +103,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
                 onClick={() => setPageNumber((p) => p - 1)}
                 aria-label="Previous page"
               >
-                <ChevronLeft className="size-4" />
+                <Icons.ChevronLeft className="size-4" />
               </Button>
               <span className="text-sm text-muted-foreground tabular-nums">
                 Page {pageNumber} of {numPages}
@@ -115,7 +115,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
                 onClick={() => setPageNumber((p) => p + 1)}
                 aria-label="Next page"
               >
-                <ChevronRight className="size-4" />
+                <Icons.ChevronRight className="size-4" />
               </Button>
             </div>
           )}

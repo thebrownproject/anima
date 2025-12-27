@@ -1,11 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  IconFileText,
-  IconLayersLinked,
-  IconStack2,
-} from "@tabler/icons-react";
+import * as Icons from "@/components/icons";
 
 import { UserButton } from "@clerk/nextjs";
 
@@ -25,18 +21,18 @@ const data = {
     {
       title: "Workspace",
       url: "#",
-      icon: IconStack2,
+      icon: Icons.Stack,
       isActive: true,
       items: [
         {
           title: "Documents",
           url: "/documents",
-          icon: IconFileText,
+          icon: Icons.Files,
         },
         {
           title: "Extractions",
           url: "/extractions",
-          icon: IconLayersLinked,
+          icon: Icons.LayersLinked,
         },
       ],
     },
@@ -47,7 +43,7 @@ const data = {
     {
       name: "All Stacks",
       url: "/stacks",
-      icon: IconLayersLinked,
+      icon: Icons.LayersLinked,
     },
   ],
 };

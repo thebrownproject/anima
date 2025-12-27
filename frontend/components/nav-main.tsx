@@ -1,6 +1,7 @@
 "use client"
 
-import { IconChevronRight, type Icon } from "@tabler/icons-react"
+import * as Icons from "@/components/icons"
+import type { Icon } from "@/components/icons"
 import Link from "next/link"
 
 import {
@@ -40,7 +41,7 @@ export function NavMain({
             <SidebarGroupLabel asChild>
               <CollapsibleTrigger className="flex w-full items-center hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors cursor-pointer">
                 {item.title}
-                <IconChevronRight className="ml-1 size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                <Icons.ChevronRight className="ml-1 size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
               </CollapsibleTrigger>
             </SidebarGroupLabel>
             <CollapsibleContent>

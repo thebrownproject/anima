@@ -1,13 +1,7 @@
 "use client"
 
-import {
-  IconFolder,
-  IconDotsVertical,
-  IconShare,
-  IconTrash,
-  IconChevronRight,
-  type Icon,
-} from "@tabler/icons-react"
+import * as Icons from "@/components/icons"
+import type { Icon } from "@/components/icons"
 
 import {
   Collapsible,
@@ -49,7 +43,7 @@ export function NavProjects({
         <SidebarGroupLabel asChild>
           <CollapsibleTrigger className="flex w-full items-center hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors cursor-pointer">
             Stacks
-            <IconChevronRight className="ml-1 size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+            <Icons.ChevronRight className="ml-1 size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
           </CollapsibleTrigger>
         </SidebarGroupLabel>
         <CollapsibleContent>
@@ -66,7 +60,7 @@ export function NavProjects({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <SidebarMenuAction showOnHover>
-                        <IconDotsVertical className="size-4" />
+                        <Icons.DotsVertical className="size-4" />
                         <span className="sr-only">More</span>
                       </SidebarMenuAction>
                     </DropdownMenuTrigger>
@@ -76,16 +70,16 @@ export function NavProjects({
                       align={isMobile ? "end" : "start"}
                     >
                       <DropdownMenuItem>
-                        <IconFolder className="text-muted-foreground size-4" />
+                        <Icons.Folder className="text-muted-foreground size-4" />
                         <span>View Stack</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
-                        <IconShare className="text-muted-foreground size-4" />
+                        <Icons.Share className="text-muted-foreground size-4" />
                         <span>Share Stack</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>
-                        <IconTrash className="text-muted-foreground size-4" />
+                        <Icons.Trash className="text-muted-foreground size-4" />
                         <span>Delete Stack</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>

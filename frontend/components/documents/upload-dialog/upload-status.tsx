@@ -1,7 +1,7 @@
 // frontend/components/documents/upload-dialog/upload-status.tsx
 'use client'
 
-import { Check, Loader2, X } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import type { UploadStatus as UploadStatusType } from '@/types/upload'
 
@@ -24,28 +24,28 @@ export function UploadStatus({ status, error, className }: UploadStatusProps) {
     <div className={cn('flex items-center gap-2 text-sm', className)}>
       {status === 'uploading' && (
         <>
-          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <Icons.Loader2 className="size-3.5 animate-spin text-muted-foreground" />
           <span className="text-muted-foreground">Uploading document...</span>
         </>
       )}
 
       {status === 'processing_ocr' && (
         <>
-          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <Icons.Loader2 className="size-3.5 animate-spin text-muted-foreground" />
           <span className="text-muted-foreground">Processing OCR...</span>
         </>
       )}
 
       {status === 'ready' && (
         <>
-          <Check className="size-3.5 text-green-500" />
+          <Icons.Check className="size-3.5 text-green-500" />
           <span className="text-muted-foreground">Ready</span>
         </>
       )}
 
       {status === 'error' && (
         <>
-          <X className="size-3.5 text-destructive" />
+          <Icons.X className="size-3.5 text-destructive" />
           <span className="text-destructive">{error || 'Upload failed'}</span>
         </>
       )}

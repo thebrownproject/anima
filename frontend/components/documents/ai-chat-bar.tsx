@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ArrowUp } from "lucide-react";
-import { IconBrandDatabricks } from "@tabler/icons-react";
+import * as Icons from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -62,7 +61,7 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
           isDisabled && "opacity-50"
         )}
       >
-        <IconBrandDatabricks
+        <Icons.BrandDatabricks
           className={cn(
             "size-4 transition-colors shrink-0",
             message
@@ -102,7 +101,7 @@ export function AiChatBar({ documentId }: AiChatBarProps) {
               className="size-8 rounded-full shrink-0"
               aria-label="Send message"
             >
-              <ArrowUp className="size-4" />
+              <Icons.ArrowUp className="size-5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">Send message</TooltipContent>

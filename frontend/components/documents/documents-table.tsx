@@ -36,7 +36,7 @@ import { PreviewPanel } from './preview-panel'
 import { usePreviewPanel } from './preview-panel-context'
 import { useSelectedDocument } from './selected-document-context'
 import type { Document } from '@/types/documents'
-import { FileText } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 interface DocumentsTableProps {
@@ -238,7 +238,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
                     <TableCell colSpan={columns.length} className="h-48">
                       <div className="flex flex-col items-center justify-center text-center py-8">
                         <div className="rounded-full bg-muted/50 p-4 mb-4">
-                          <FileText className="size-8 text-muted-foreground/60" />
+                          <Icons.FileText className="size-8 text-muted-foreground/60" />
                         </div>
                         <p className="text-sm font-medium">No documents yet</p>
                         <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">

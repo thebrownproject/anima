@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Upload } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { ActionButton } from '@/components/layout/action-button'
 import { UploadDialogContent } from './upload-dialog-content'
@@ -13,7 +13,7 @@ export function UploadDialogTrigger() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <ActionButton icon={<Upload />}>
+        <ActionButton icon={<Icons.Upload />}>
           Upload
         </ActionButton>
       </DialogTrigger>

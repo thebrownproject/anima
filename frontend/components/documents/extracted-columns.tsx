@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import * as Icons from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -92,9 +92,9 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
               aria-label={isExpanded ? "Collapse" : "Expand"}
             >
               {isExpanded ? (
-                <ChevronDown className="size-3.5 text-muted-foreground" />
+                <Icons.ChevronDown className="size-3.5 text-muted-foreground" />
               ) : (
-                <ChevronRight className="size-3.5 text-muted-foreground" />
+                <Icons.ChevronRight className="size-3.5 text-muted-foreground" />
               )}
             </button>
           ) : (

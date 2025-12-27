@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VisualPreview } from '@/components/visual-preview'
 import { usePreviewPanel } from './preview-panel-context'
-import { Loader2 } from 'lucide-react'
+import * as Icons from '@/components/icons'
 
 // Dynamic import to avoid SSR issues with react-pdf
 const PdfViewer = dynamic(
@@ -13,7 +13,7 @@ const PdfViewer = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-[600px] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-muted-foreground/50" />
+        <Icons.Loader2 className="size-6 animate-spin text-muted-foreground/50" />
       </div>
     ),
   }

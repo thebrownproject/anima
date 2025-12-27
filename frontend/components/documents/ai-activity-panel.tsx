@@ -7,7 +7,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronDown, Loader2, X, AlertCircle } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import type { AgentEvent } from '@/lib/agent-api'
 import type { AgentStatus } from '@/hooks/use-agent-stream'
@@ -68,10 +68,10 @@ export function AiActivityPanel({
               aria-expanded={isOpen}
             >
               {isStreaming && (
-                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                <Icons.Loader2 className="size-4 animate-spin text-muted-foreground" />
               )}
-              {isComplete && <Check className="size-4 text-green-500" />}
-              {isError && <AlertCircle className="size-4 text-destructive" />}
+              {isComplete && <Icons.Check className="size-4 text-green-500" />}
+              {isError && <Icons.AlertCircle className="size-4 text-destructive" />}
 
               <span>
                 {isStreaming && 'Processing...'}
@@ -79,7 +79,7 @@ export function AiActivityPanel({
                 {isError && 'Error'}
               </span>
 
-              <ChevronDown
+              <Icons.ChevronDown
                 className={cn(
                   'size-4 text-muted-foreground transition-transform duration-150',
                   isOpen && 'rotate-180'
@@ -95,7 +95,7 @@ export function AiActivityPanel({
             onClick={onClose}
             aria-label="Close activity panel"
           >
-            <X className="size-4 text-muted-foreground" />
+            <Icons.X className="size-4 text-muted-foreground" />
           </Button>
         </div>
 
@@ -115,7 +115,7 @@ export function AiActivityPanel({
                     key={`tool-${i}`}
                     className="flex items-center gap-2 text-sm text-muted-foreground animate-in fade-in duration-150"
                   >
-                    <Check className="size-3.5 text-green-500 shrink-0" />
+                    <Icons.Check className="size-3.5 text-green-500 shrink-0" />
                     <span>{event.content}</span>
                   </div>
                 ))}

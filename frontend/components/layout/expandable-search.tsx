@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Search, X } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { ActionButton } from './action-button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -40,7 +40,7 @@ export function ExpandableSearch({
 
   if (!isExpanded && !value) {
     return (
-      <ActionButton icon={<Search />} onClick={handleExpand}>
+      <ActionButton icon={<Icons.Search />} onClick={handleExpand}>
         Search
       </ActionButton>
     )
@@ -48,7 +48,7 @@ export function ExpandableSearch({
 
   return (
     <div className={cn('relative flex items-center', className)}>
-      <Search className="absolute left-2 size-3.5 text-muted-foreground" />
+      <Icons.Search className="absolute left-2 size-3.5 text-muted-foreground" />
       <Input
         ref={inputRef}
         type="text"
@@ -65,7 +65,7 @@ export function ExpandableSearch({
           aria-label="Clear search"
           className="absolute right-2 text-muted-foreground hover:text-foreground"
         >
-          <X className="size-3.5" />
+          <Icons.X className="size-3.5" />
         </button>
       )}
     </div>

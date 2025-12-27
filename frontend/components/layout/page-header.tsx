@@ -3,7 +3,7 @@
 import { Fragment, ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileText, Layers, Settings, Upload } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,10 +23,10 @@ const segmentLabels: Record<string, string> = {
 
 // Map route segments to icons
 const segmentIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  documents: FileText,
-  stacks: Layers,
-  settings: Settings,
-  upload: Upload,
+  documents: Icons.Files,
+  stacks: Icons.Layers,
+  settings: Icons.Settings,
+  upload: Icons.Upload,
 }
 
 function formatSegment(segment: string): string {

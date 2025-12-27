@@ -4,7 +4,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { DropzoneStep } from './steps/dropzone-step'
@@ -264,7 +264,7 @@ export function UploadDialogContent({ onClose }: UploadDialogContentProps) {
               className="size-7"
               onClick={handleBack}
             >
-              <ChevronLeft className="size-4" />
+              <Icons.ChevronLeft className="size-4" />
               <span className="sr-only">Go back</span>
             </Button>
           )}

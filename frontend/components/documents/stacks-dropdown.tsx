@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import type { Stack } from '@/types/documents'
-import { ChevronDown } from 'lucide-react'
+import * as Icons from '@/components/icons'
 
 interface StacksDropdownProps {
   assignedStacks: Stack[]
@@ -48,7 +48,7 @@ export function StacksDropdown({
           className="h-auto px-2 py-1 text-xs text-muted-foreground hover:text-foreground gap-1"
         >
           {displayText}
-          <ChevronDown className="size-3" />
+          <Icons.ChevronDown className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">

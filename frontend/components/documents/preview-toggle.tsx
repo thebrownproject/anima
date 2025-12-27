@@ -1,6 +1,6 @@
 'use client'
 
-import { PanelRight } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { usePreviewPanel } from './preview-panel-context'
@@ -17,7 +17,7 @@ export function PreviewToggle() {
       aria-label={isCollapsed ? 'Show preview' : 'Hide preview'}
       aria-pressed={!isCollapsed}
     >
-      <PanelRight />
+      <Icons.PanelRight />
       <span className="sr-only">Toggle Preview</span>
     </Button>
   )

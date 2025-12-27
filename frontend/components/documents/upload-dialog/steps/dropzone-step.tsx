@@ -2,7 +2,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { Upload } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { UPLOAD_CONSTRAINTS } from '@/lib/upload-config'
 
@@ -104,7 +104,7 @@ export function DropzoneStep({ onFileSelect }: DropzoneStepProps) {
         )}
       >
         <div className="rounded-full bg-muted p-3">
-          <Upload className="size-6 text-muted-foreground" />
+          <Icons.Upload className="size-6 text-muted-foreground" />
         </div>
         <div className="text-center">
           <p className="text-sm font-medium">
