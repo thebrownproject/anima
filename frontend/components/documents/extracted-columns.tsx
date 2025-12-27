@@ -1,49 +1,54 @@
-'use client'
+"use client";
 
-import { ColumnDef } from '@tanstack/react-table'
-import { ChevronRight, ChevronDown } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Checkbox } from '@/components/ui/checkbox'
+import { ColumnDef } from "@tanstack/react-table";
+import { ChevronRight, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
-import type { ExtractedFieldRow } from '@/lib/transform-extracted-fields'
+} from "@/components/ui/tooltip";
+import type { ExtractedFieldRow } from "@/lib/transform-extracted-fields";
 
 function ConfidenceDot({ confidence }: { confidence?: number }) {
-  if (confidence === undefined) return null
+  // No confidence data - show neutral gray dot (no tooltip)
+  if (confidence === undefined) {
+    return (
+      <div className="size-2.5 rounded-full shrink-0 mr-0.5 bg-muted-foreground/30" />
+    );
+  }
 
-  const percentage = Math.round(confidence * 100)
+  const percentage = Math.round(confidence * 100);
   const colorClass =
     percentage >= 90
-      ? 'bg-emerald-500'
+      ? "bg-emerald-500"
       : percentage >= 70
-        ? 'bg-amber-500'
-        : 'bg-red-500'
+      ? "bg-amber-500"
+      : "bg-red-500";
 
   return (
     <Tooltip delayDuration={300}>
       <TooltipTrigger asChild>
-        <div className={cn('size-2 rounded-full shrink-0', colorClass)} />
+        <div className={cn("size-2.5 rounded-full shrink-0 mr-0.5", colorClass)} />
       </TooltipTrigger>
       <TooltipContent side="right">
         <p>{percentage}% confidence</p>
       </TooltipContent>
     </Tooltip>
-  )
+  );
 }
 
 export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
   {
-    id: 'select',
+    id: "select",
     header: ({ table }) => (
       <Checkbox
         checked={
           table.getIsAllPageRowsSelected()
             ? true
             : table.getIsSomePageRowsSelected()
-            ? 'indeterminate'
+            ? "indeterminate"
             : false
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
@@ -54,6 +59,7 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
         onClick={(e) => e.stopPropagation()}
@@ -64,29 +70,26 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'field',
+    accessorKey: "field",
     header: () => <span className="text-muted-foreground">Field</span>,
     cell: ({ row }) => {
-      const depth = row.original.depth
-      const canExpand = row.getCanExpand()
-      const isExpanded = row.getIsExpanded()
-      const confidence = row.original.confidence
+      const depth = row.original.depth;
+      const canExpand = row.getCanExpand();
+      const isExpanded = row.getIsExpanded();
+      const confidence = row.original.confidence;
 
       return (
-        <div
-          className="flex items-center gap-2"
-          style={{ paddingLeft: `${depth * 16}px` }}
-        >
+        <div className="flex items-center gap-2">
           {/* Indicator: chevron for expandable, confidence dot for leaf */}
           {canExpand ? (
             <button
               type="button"
               onClick={(e) => {
-                e.stopPropagation()
-                row.toggleExpanded()
+                e.stopPropagation();
+                row.toggleExpanded();
               }}
-              className="p-0.5 hover:bg-muted rounded shrink-0"
-              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+              className="py-0.5 pl-0.5 -ml-1 -mr-0 hover:bg-muted rounded shrink-0"
+              aria-label={isExpanded ? "Collapse" : "Expand"}
             >
               {isExpanded ? (
                 <ChevronDown className="size-3.5 text-muted-foreground" />
@@ -97,46 +100,51 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
           ) : (
             <ConfidenceDot confidence={confidence} />
           )}
-          <span className={cn(depth === 0 ? 'font-medium' : 'text-muted-foreground')}>
+          <span
+            className={cn(
+              depth === 0 ? "font-medium" : "text-muted-foreground"
+            )}
+          >
             {row.original.field}
           </span>
         </div>
-      )
+      );
     },
   },
   {
-    accessorKey: 'displayValue',
+    accessorKey: "displayValue",
     header: () => <span className="text-muted-foreground">Value</span>,
     cell: ({ row }) => {
-      const { displayValue, dataShape } = row.original
+      const { displayValue, dataShape } = row.original;
 
       // For string arrays shown inline
-      if (dataShape === 'string-array' && row.original.depth > 0) {
+      if (dataShape === "string-array" && row.original.depth > 0) {
         return (
           <span className="text-sm text-muted-foreground">{displayValue}</span>
-        )
+        );
       }
 
       // For primitives (currency, numbers, etc.)
-      if (dataShape === 'primitive') {
+      if (dataShape === "primitive") {
         const isCurrency =
-          typeof displayValue === 'string' && /^\$?[\d,]+\.?\d*$/.test(displayValue)
+          typeof displayValue === "string" &&
+          /^\$?[\d,]+\.?\d*$/.test(displayValue);
         return (
           <span
             className={cn(
-              'text-sm',
-              isCurrency ? 'font-mono tabular-nums' : ''
+              "text-sm",
+              isCurrency ? "font-mono tabular-nums" : ""
             )}
           >
-            {displayValue || '—'}
+            {displayValue || "—"}
           </span>
-        )
+        );
       }
 
       // Summary for expandable rows
       return (
         <span className="text-sm text-muted-foreground">{displayValue}</span>
-      )
+      );
     },
   },
-]
+];

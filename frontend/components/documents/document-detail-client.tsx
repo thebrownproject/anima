@@ -14,6 +14,7 @@ import { usePreviewPanel } from './preview-panel-context'
 import { SubBar } from './sub-bar'
 import { FilterButton } from './filter-button'
 import { DocumentDetailActions } from './document-detail-actions'
+import { SelectionActions } from './selection-actions'
 import { ExpandableSearch } from '@/components/layout/expandable-search'
 import type { DocumentWithExtraction } from '@/types/documents'
 
@@ -31,6 +32,7 @@ export function DocumentDetailClient({
   const [document, setDocument] = useState(initialDocument)
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
   const [fieldSearch, setFieldSearch] = useState('')
+  const [selectedFieldCount, setSelectedFieldCount] = useState(0)
 
   // Preview panel collapse/expand
   const { panelRef, setIsCollapsed } = usePreviewPanel()
@@ -118,7 +120,10 @@ export function DocumentDetailClient({
           </>
         }
         right={
-          <DocumentDetailActions assignedStacks={document.stacks ?? []} />
+          <>
+            <SelectionActions selectedCount={selectedFieldCount} />
+            <DocumentDetailActions assignedStacks={document.stacks ?? []} />
+          </>
         }
       />
 
@@ -140,6 +145,7 @@ export function DocumentDetailClient({
               confidenceScores={document.confidence_scores}
               changedFields={changedFields}
               searchFilter={fieldSearch}
+              onSelectionChange={setSelectedFieldCount}
             />
           </div>
         </ResizablePanel>

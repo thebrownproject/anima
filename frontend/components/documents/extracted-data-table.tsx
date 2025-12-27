@@ -27,6 +27,7 @@ interface ExtractedDataTableProps {
   confidenceScores: Record<string, number> | null
   changedFields?: Set<string>
   searchFilter?: string
+  onSelectionChange?: (count: number) => void
 }
 
 export function ExtractedDataTable({
@@ -34,6 +35,7 @@ export function ExtractedDataTable({
   confidenceScores,
   changedFields = new Set(),
   searchFilter = '',
+  onSelectionChange,
 }: ExtractedDataTableProps) {
   const [expanded, setExpanded] = React.useState<ExpandedState>({})
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
@@ -63,6 +65,12 @@ export function ExtractedDataTable({
       return fieldName.includes(filterValue.toLowerCase())
     },
   })
+
+  // Notify parent of selection changes (same pattern as documents-table)
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length
+  React.useEffect(() => {
+    onSelectionChange?.(selectedCount)
+  }, [selectedCount, onSelectionChange])
 
   if (!fields || Object.keys(fields).length === 0) {
     return (
@@ -107,6 +115,7 @@ export function ExtractedDataTable({
               return (
                 <TableRow
                   key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
                   className={cn(
                     'hover:bg-muted/30 transition-colors group/row',
                     row.getCanExpand() && 'cursor-pointer',
