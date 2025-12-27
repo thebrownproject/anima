@@ -75,7 +75,7 @@ export const columns: ColumnDef<Document>[] = [
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 group"
+        className="-ml-3 group font-normal"
       >
         Name
         <SortIcon isSorted={column.getIsSorted()} />
@@ -116,7 +116,7 @@ export const columns: ColumnDef<Document>[] = [
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="group"
+        className="group font-normal"
       >
         <SortIcon isSorted={column.getIsSorted()} />
         Date
