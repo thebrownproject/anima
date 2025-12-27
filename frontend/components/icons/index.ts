@@ -44,7 +44,7 @@ export {
   IconFolderPlus as FolderPlus,
   IconDownload as Download,
   IconEdit as Edit,
-  IconFilter as Filter,
+  IconFilter2 as Filter,
 
   // App-specific
   IconStack2 as Stack,
