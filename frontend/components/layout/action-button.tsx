@@ -1,12 +1,13 @@
-'use client'
+"use client";
 
-import * as React from 'react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-interface ActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  icon?: React.ReactNode
-  children: React.ReactNode
+interface ActionButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  icon?: React.ReactNode;
+  children: React.ReactNode;
 }
 
 export function ActionButton({
@@ -19,11 +20,15 @@ export function ActionButton({
     <Button
       variant="ghost"
       size="sm"
-      className={cn('h-7 px-2 text-xs text-foreground', className)}
+      className={cn("h-7 px-2 text-xs text-foreground", className)}
       {...props}
     >
-      {icon && <span className="mr-0.5 size-3.5 [&>svg]:size-full">{icon}</span>}
+      {icon && (
+        <span className="mr-0.5 inline-flex items-center size-3.5 [&>svg]:size-full">
+          {icon}
+        </span>
+      )}
       {children}
     </Button>
-  )
+  );
 }

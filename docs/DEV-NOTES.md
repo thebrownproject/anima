@@ -5109,3 +5109,61 @@ These three requirements conflict - if table fills 100%, resizing one column mus
 1. Run `/continue` to load context
 2. Choose between frontend-cleanup or upload-dialog manual testing
 3. Execute plan with `/superpowers:execute-plan`
+
+---
+
+## Session 62 - 2025-12-28 - Frontend Cleanup: Icon Migration
+
+**Feature**: Frontend Cleanup
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 1: Create icons barrel file**:
+  - Created `frontend/components/icons/index.ts` with Tabler icon re-exports
+  - Pattern: `import * as Icons from "@/components/icons"`
+  - Strips `Icon` prefix for cleaner usage (e.g., `IconStack2` → `Stack`)
+  - Exports type: `import type { Icon } from "@/components/icons"`
+
+- [x] **Tasks 2-9: Migrate shadcn UI components**:
+  - Updated checkbox, command, dialog, sheet, dropdown-menu, breadcrumb, resizable, sidebar
+  - All lucide-react imports replaced with icon barrel
+
+- [x] **Tasks 10-13: Migrate app components**:
+  - Updated columns.tsx, file-type-icon.tsx, pdf-viewer.tsx
+  - Updated all sidebar components (app-sidebar, nav-main, nav-projects, sidebar-header-menu, global-search-dialog)
+  - Total: 36 files migrated
+
+- [x] **Icon refinements (user requests)**:
+  - Documents icon: Changed to `IconFiles` for sidebar and breadcrumbs
+  - Filter icon: Changed to `IconFilter2` (horizontal lines style)
+  - AI chat bar: Icon changed to `IconStack2` (consistency with sidebar logo)
+  - AI chat bar: Send arrow enlarged to `size-5`
+
+- [x] **ActionButton centering fix**:
+  - Fixed vertical alignment of icons with text
+  - Added `inline-flex items-center` to icon span
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Keep lucide-react installed | Skip Task 14 | User requested keeping it "just in case" |
+| Documents icon | IconFiles | Better represents multiple documents |
+| Filter icon | IconFilter2 | Horizontal lines match UI pattern |
+| AI chat bar icon | IconStack2 | Consistency with sidebar logo |
+
+### Files Modified
+
+- `frontend/components/icons/index.ts` - New centralized barrel file
+- 36 files with icon import migrations
+- `frontend/components/layout/action-button.tsx` - Centering fix
+
+### Next Session
+
+**Task**: Continue Frontend Cleanup Phase 4+ (component organization, tooltips)
+
+**Process**:
+1. Run `/continue` to load context
+2. Resume with Task 15 (folder structure) or skip to Phase 5 (tooltips)
+3. Execute remaining tasks
