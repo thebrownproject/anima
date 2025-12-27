@@ -34,11 +34,10 @@ import { SelectionActions } from './selection-actions'
 import { UploadDialogTrigger } from './upload-dialog'
 import { PreviewPanel } from './preview-panel'
 import { usePreviewPanel } from './preview-panel-context'
+import { useSelectedDocument } from './selected-document-context'
 import type { Document } from '@/types/documents'
 import { FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const LAYOUT_STORAGE_KEY = 'stackdocs-doc-list-layout'
 
 interface DocumentsTableProps {
   documents: Document[]
@@ -48,14 +47,16 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
-  const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
-  const [signedUrl, setSignedUrl] = React.useState<string | null>(null)
 
   // Auth for Supabase client
   const { getToken } = useAuth()
 
-  // Preview panel integration
-  const { panelRef, isCollapsed, setIsCollapsed } = usePreviewPanel()
+  // Shared state from contexts
+  const { selectedDocId, setSelectedDocId, signedUrl, setSignedUrl } = useSelectedDocument()
+  const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
+
+  // Panel width from context (percentage for preview panel)
+  const mainPanelSize = 100 - panelWidth
 
   // Find selected document from documents array
   const selectedDoc = React.useMemo(() => {
@@ -99,28 +100,14 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     return () => {
       isCancelled = true
     }
-  }, [selectedDocId, selectedDoc?.file_path, getToken])
+  }, [selectedDocId, selectedDoc?.file_path, getToken, setSignedUrl])
 
-  // Layout persistence for resizable panels
-  const [defaultLayout] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
-      if (saved) {
-        try {
-          return JSON.parse(saved) as number[]
-        } catch {
-          return [70, 30]
-        }
-      }
-    }
-    return [70, 30]
-  })
-
+  // Update panel width in context when resized
   const handleLayoutChange = React.useCallback((sizes: number[]) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(sizes))
+    if (sizes[1] !== undefined) {
+      setPanelWidth(sizes[1])
     }
-  }, [])
+  }, [setPanelWidth])
 
   // Note: We intentionally do NOT clear selection when preview collapses
   // This allows the user to toggle preview and see the same document again
@@ -174,7 +161,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       >
         {/* Left: Documents table - main content */}
         <ResizablePanel
-          defaultSize={defaultLayout[0]}
+          defaultSize={mainPanelSize}
           minSize={40}
           className="overflow-hidden min-w-0"
         >
@@ -271,8 +258,8 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
         {/* Right: Preview - collapsible sidebar */}
         <ResizablePanel
           ref={panelRef}
-          defaultSize={defaultLayout[1]}
-          minSize={25}
+          defaultSize={panelWidth}
+          minSize={30}
           maxSize={50}
           collapsible
           collapsedSize={0}
