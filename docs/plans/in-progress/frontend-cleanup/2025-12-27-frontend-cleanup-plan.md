@@ -979,9 +979,82 @@ git commit -m "feat: add tooltip to sidebar trigger"
 
 ---
 
-## Phase 6: Final Verification
+## Phase 6: Documentation & Final Verification
 
-### Task 23: Full build and verification
+### Task 23: Update frontend CLAUDE.md
+
+**Files:**
+- Modify: `frontend/CLAUDE.md`
+
+**Step 1: Update Directory Structure section**
+
+Replace the components section in the directory structure with:
+
+```markdown
+├── components/
+│   ├── documents/                # Document-specific components
+│   │   └── upload-dialog/        # Multi-step upload wizard
+│   ├── icons/                    # Centralized icon exports
+│   ├── layout/                   # App layout components
+│   │   └── sidebar/              # Sidebar and navigation
+│   ├── providers/                # Context providers (theme)
+│   ├── search/                   # Global search dialog
+│   ├── shared/                   # Shared components (file icons, badges)
+│   └── ui/                       # shadcn/ui primitives
+```
+
+**Step 2: Add Icons section under Key Patterns**
+
+Add new section after "### Components":
+
+```markdown
+### Icons
+
+All icons come from Tabler Icons via a centralized barrel export:
+
+```typescript
+import * as Icons from "@/components/icons"
+
+<Icons.Check className="size-4" />
+<Icons.Search className="size-4" />
+```
+
+- **Never import directly** from `@tabler/icons-react`
+- **Naming**: Icon prefix stripped (IconCheck → Check)
+- **Type imports**: `import type { Icon } from "@/components/icons"`
+
+### Tooltips
+
+Use shadcn tooltips for icon-only buttons and interactive elements:
+
+```tsx
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button variant="ghost" size="icon">
+      <Icons.Search className="size-4" />
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent>
+    <p>Search (⌘K)</p>
+  </TooltipContent>
+</Tooltip>
+```
+
+Each tooltip auto-wraps in its own provider - no root-level TooltipProvider needed.
+```
+
+**Step 3: Commit**
+
+```bash
+git add frontend/CLAUDE.md
+git commit -m "docs: update frontend CLAUDE.md with new structure and patterns"
+```
+
+---
+
+### Task 24: Full build and verification
 
 **Step 1: Run TypeScript check**
 
@@ -1021,6 +1094,6 @@ git commit -m "chore: frontend cleanup complete"
 | 3 | 10-14 | Migrate app components, remove lucide |
 | 4 | 15-18.5 | Reorganize folder structure + fix upload dialog |
 | 5 | 19-22 | Add tooltips |
-| 6 | 23 | Final verification |
+| 6 | 23-24 | Documentation & verification |
 
-**Total: 24 tasks** (includes task 18.5 for upload dialog fix)
+**Total: 25 tasks** (includes task 18.5 for upload dialog fix, task 23 for docs update)
