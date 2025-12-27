@@ -83,9 +83,14 @@ export function PreviewPanelProvider({ children }: { children: ReactNode }) {
 
   const persistState = useCallback((updates: Partial<PreviewPanelState>) => {
     if (typeof window === 'undefined') return
-    const saved = localStorage.getItem(STORAGE_KEY)
-    const current = saved ? JSON.parse(saved) : DEFAULT_STATE
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...updates }))
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      const current = saved ? JSON.parse(saved) : DEFAULT_STATE
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...updates }))
+    } catch {
+      // Reset to defaults if localStorage is corrupted
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULT_STATE, ...updates }))
+    }
   }, [])
 
   const setIsCollapsed = useCallback((collapsed: boolean) => {

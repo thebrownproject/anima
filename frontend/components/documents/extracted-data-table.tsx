@@ -66,11 +66,13 @@ export function ExtractedDataTable({
     },
   })
 
-  // Notify parent of selection changes (same pattern as documents-table)
-  const selectedCount = table.getFilteredSelectedRowModel().rows.length
+  // Notify parent of selection changes
+  // Note: Use rowSelection state directly since getFilteredSelectedRowModel()
+  // may not work correctly with nested/expandable rows
   React.useEffect(() => {
+    const selectedCount = Object.keys(rowSelection).filter(key => rowSelection[key]).length
     onSelectionChange?.(selectedCount)
-  }, [selectedCount, onSelectionChange])
+  }, [rowSelection, onSelectionChange])
 
   if (!fields || Object.keys(fields).length === 0) {
     return (
