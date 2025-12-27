@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useRef, useState, useCallback, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo, ReactNode } from 'react'
 import type { ImperativePanelHandle } from 'react-resizable-panels'
 
 const STORAGE_KEY = 'stackdocs-preview-panel'
@@ -93,19 +93,21 @@ export function PreviewPanelProvider({ children }: { children: ReactNode }) {
     } else {
       panel.collapse()
     }
-  }, [])
+  }, [panelRef])
+
+  const contextValue = useMemo(() => ({
+    panelRef,
+    isCollapsed,
+    setIsCollapsed,
+    toggle,
+    panelWidth,
+    setPanelWidth,
+    activeTab,
+    setActiveTab,
+  }), [panelRef, isCollapsed, setIsCollapsed, toggle, panelWidth, setPanelWidth, activeTab, setActiveTab])
 
   return (
-    <PreviewPanelContext.Provider value={{
-      panelRef,
-      isCollapsed,
-      setIsCollapsed,
-      toggle,
-      panelWidth,
-      setPanelWidth,
-      activeTab,
-      setActiveTab,
-    }}>
+    <PreviewPanelContext.Provider value={contextValue}>
       {children}
     </PreviewPanelContext.Provider>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
 
 interface SelectedDocumentContextValue {
   selectedDocId: string | null
@@ -31,14 +31,16 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setSignedUrlState(null)
   }, [])
 
+  const contextValue = useMemo(() => ({
+    selectedDocId,
+    setSelectedDocId,
+    signedUrl,
+    setSignedUrl,
+    clearSelection,
+  }), [selectedDocId, setSelectedDocId, signedUrl, setSignedUrl, clearSelection])
+
   return (
-    <SelectedDocumentContext.Provider value={{
-      selectedDocId,
-      setSelectedDocId,
-      signedUrl,
-      setSignedUrl,
-      clearSelection,
-    }}>
+    <SelectedDocumentContext.Provider value={contextValue}>
       {children}
     </SelectedDocumentContext.Provider>
   )
