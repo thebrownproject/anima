@@ -3,6 +3,7 @@
 import { ColumnDef } from '@tanstack/react-table'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { ExtractedFieldRow } from '@/lib/transform-extracted-fields'
 
 function ConfidenceBadge({ confidence }: { confidence?: number }) {
@@ -24,6 +25,34 @@ function ConfidenceBadge({ confidence }: { confidence?: number }) {
 }
 
 export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomePageRowsSelected()
+            ? 'indeterminate'
+            : false
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        className="opacity-0 group-hover/header:opacity-100 data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100 transition-opacity"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        onClick={(e) => e.stopPropagation()}
+        className="opacity-0 group-hover/row:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: 'field',
     header: () => <span className="text-muted-foreground">Field</span>,

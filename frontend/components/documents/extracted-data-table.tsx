@@ -8,6 +8,7 @@ import {
   getFilteredRowModel,
   useReactTable,
   ExpandedState,
+  RowSelectionState,
 } from '@tanstack/react-table'
 import {
   Table,
@@ -35,6 +36,7 @@ export function ExtractedDataTable({
   searchFilter = '',
 }: ExtractedDataTableProps) {
   const [expanded, setExpanded] = React.useState<ExpandedState>({})
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
   const data = React.useMemo(
     () => transformExtractedFields(fields, confidenceScores),
@@ -44,9 +46,12 @@ export function ExtractedDataTable({
   const table = useReactTable({
     data,
     columns: extractedColumns,
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
     state: {
       expanded,
       globalFilter: searchFilter,
+      rowSelection,
     },
     onExpandedChange: setExpanded,
     getSubRows: (row) => row.subRows,
@@ -72,12 +77,14 @@ export function ExtractedDataTable({
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+            <TableRow key={headerGroup.id} className="hover:bg-transparent group/header">
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className="h-10 text-sm font-normal text-muted-foreground"
-                  style={{ width: header.column.getSize() }}
+                  className={cn(
+                    "h-10 text-sm font-normal text-muted-foreground",
+                    header.column.id === 'select' && "w-4"
+                  )}
                 >
                   {header.isPlaceholder
                     ? null
@@ -101,7 +108,7 @@ export function ExtractedDataTable({
                 <TableRow
                   key={row.id}
                   className={cn(
-                    'hover:bg-muted/30 transition-colors',
+                    'hover:bg-muted/30 transition-colors group/row',
                     row.getCanExpand() && 'cursor-pointer',
                     isChanged && 'animate-highlight-fade'
                   )}
@@ -112,7 +119,13 @@ export function ExtractedDataTable({
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-2.5 whitespace-normal">
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        "py-2.5 whitespace-normal",
+                        cell.column.id === 'select' && "w-4"
+                      )}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
