@@ -25,8 +25,13 @@ Create the centralized icon export first - this unblocks all subsequent file mov
 // frontend/components/icons/index.ts
 
 // Re-export Tabler icons with stripped prefixes for cleaner usage
-// Usage: import * as Icons from "@/components/icons"
-//        <Icons.Check className="size-4" />
+//
+// Usage:
+//   import * as Icons from "@/components/icons"
+//   <Icons.Check className="size-4" />
+//
+// Type imports:
+//   import type { Icon } from "@/components/icons"
 
 export {
   // Checkmarks & validation
@@ -43,7 +48,7 @@ export {
 
   // Close & actions
   IconX as X,
-  IconDotsHorizontal as MoreHorizontal,
+  IconDotsHorizontal as DotsHorizontal,
   IconDotsVertical as DotsVertical,
   IconGripVertical as GripVertical,
 
@@ -74,7 +79,7 @@ export {
   IconDeviceDesktop as DeviceDesktop,
 
   // Loading
-  IconLoader2 as Loader,
+  IconLoader2 as Loader2,
 } from "@tabler/icons-react"
 
 // Re-export the Icon type for component props
@@ -264,7 +269,7 @@ import * as Icons from "@/components/icons"
 
 Replace:
 - `<ChevronRight` → `<Icons.ChevronRight`
-- `<MoreHorizontal` → `<Icons.MoreHorizontal`
+- `<MoreHorizontal` → `<Icons.DotsHorizontal`
 
 **Step 2: Commit**
 
@@ -322,7 +327,11 @@ import * as Icons from "@/components/icons"
 
 Replace all `<PanelLeftIcon` with `<Icons.PanelLeft`.
 
-**Step 2: Commit**
+**Step 2: Verify build**
+
+Run: `cd frontend && npx tsc --noEmit`
+
+**Step 3: Commit**
 
 ```bash
 git add frontend/components/ui/sidebar.tsx
@@ -433,7 +442,7 @@ import * as Icons from '@/components/icons'
 Replace:
 - `<ChevronLeft` → `<Icons.ChevronLeft`
 - `<ChevronRight` → `<Icons.ChevronRight`
-- `<Loader2` → `<Icons.Loader`
+- `<Loader2` → `<Icons.Loader2`
 
 **Step 2: Commit**
 
@@ -523,6 +532,8 @@ Replace all icon usages.
 
 Run: `cd frontend && npx tsc --noEmit`
 
+If there are errors, fix them before committing.
+
 **Step 7: Commit**
 
 ```bash
@@ -539,9 +550,15 @@ git commit -m "refactor: migrate sidebar components to icon barrel"
 
 **Step 1: Verify no lucide imports remain**
 
-Run: `grep -r "lucide-react" frontend/components frontend/app --include="*.tsx" --include="*.ts"`
+Run the following commands to check all relevant directories:
 
-Expected: No output (no remaining imports)
+```bash
+grep -r "lucide-react" frontend/components --include="*.tsx" --include="*.ts"
+grep -r "lucide-react" frontend/components/ui --include="*.tsx"
+grep -r "lucide-react" frontend/app --include="*.tsx" --include="*.ts"
+```
+
+Expected: No output (no remaining imports from lucide-react)
 
 **Step 2: Remove the dependency**
 
@@ -713,7 +730,43 @@ git commit -m "refactor: move search, shared, and provider components"
 
 ---
 
+### Task 18.5: Fix upload dialog wrapper in sidebar-header-menu
+
+**Files:**
+- Modify: `frontend/components/layout/sidebar/sidebar-header-menu.tsx`
+
+**Step 1: Add Dialog wrapper for upload**
+
+The file has `uploadOpen` state but no Dialog component wrapper. Add the following after the GlobalSearchDialog component:
+
+```tsx
+<Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+  <UploadDialogContent />
+</Dialog>
+```
+
+This should be placed in the JSX return statement, after the GlobalSearchDialog component.
+
+**Step 2: Verify Dialog and UploadDialogContent imports exist**
+
+Check that the file imports:
+```typescript
+import { Dialog } from "@/components/ui/dialog"
+import { UploadDialogContent } from "@/components/upload-dialog-content" // or wherever it's imported from
+```
+
+**Step 3: Commit**
+
+```bash
+git add frontend/components/layout/sidebar/sidebar-header-menu.tsx
+git commit -m "fix: add missing Dialog wrapper for upload in sidebar header"
+```
+
+---
+
 ## Phase 5: Add Tooltips
+
+> **Note on TooltipProvider:** Our custom `tooltip.tsx` component automatically wraps each `<Tooltip>` in its own `<TooltipProvider>`, so we don't need a root-level provider in the app layout. This is why we can use tooltips directly without additional setup.
 
 ### Task 19: Add tooltips to sidebar header buttons
 
@@ -760,7 +813,7 @@ With:
     </Button>
   </TooltipTrigger>
   <TooltipContent>
-    <p>Search</p>
+    <p>Search (⌘K)</p>
   </TooltipContent>
 </Tooltip>
 ```
@@ -801,7 +854,7 @@ header: ({ column }) => (
       </Button>
     </TooltipTrigger>
     <TooltipContent>
-      <p>Sort by name</p>
+      <p>Click to sort by name</p>
     </TooltipContent>
   </Tooltip>
 ),
@@ -809,7 +862,27 @@ header: ({ column }) => (
 
 **Step 2: Wrap Date column sort button**
 
-Same pattern for Date column with content "Sort by date".
+Update the Date column header to match the pattern, with the icon AFTER the text:
+
+```tsx
+header: ({ column }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="-ml-3 group"
+      >
+        Date
+        <SortIcon isSorted={column.getIsSorted()} />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p>Click to sort by date</p>
+    </TooltipContent>
+  </Tooltip>
+),
+```
 
 **Step 3: Commit**
 
@@ -946,8 +1019,8 @@ git commit -m "chore: frontend cleanup complete"
 | 1 | 1 | Create icon barrel |
 | 2 | 2-9 | Migrate shadcn ui to icon barrel |
 | 3 | 10-14 | Migrate app components, remove lucide |
-| 4 | 15-18 | Reorganize folder structure |
+| 4 | 15-18.5 | Reorganize folder structure + fix upload dialog |
 | 5 | 19-22 | Add tooltips |
 | 6 | 23 | Final verification |
 
-**Total: 23 tasks**
+**Total: 24 tasks** (includes task 18.5 for upload dialog fix)
