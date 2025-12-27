@@ -85,12 +85,12 @@ export function ExtractedDataTable({
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent group/header">
+            <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30 group/header">
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
                   className={cn(
-                    "h-10 text-sm font-normal text-muted-foreground",
+                    "h-9 text-sm font-normal text-muted-foreground",
                     header.column.id === 'select' && "w-4"
                   )}
                 >
@@ -105,7 +105,7 @@ export function ExtractedDataTable({
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody>
+        <TableBody className="[&_tr:last-child]:border-b">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               // Check if this row or its parent is in changedFields
@@ -117,7 +117,7 @@ export function ExtractedDataTable({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className={cn(
-                    'hover:bg-muted/30 transition-colors group/row',
+                    'h-12 hover:bg-muted/30 transition-colors group/row',
                     row.getCanExpand() && 'cursor-pointer',
                     isChanged && 'animate-highlight-fade'
                   )}
@@ -131,7 +131,7 @@ export function ExtractedDataTable({
                     <TableCell
                       key={cell.id}
                       className={cn(
-                        "py-2.5 whitespace-normal",
+                        "py-3 whitespace-normal",
                         cell.column.id === 'select' && "w-4"
                       )}
                     >
