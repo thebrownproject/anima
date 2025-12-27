@@ -5,9 +5,9 @@ import * as Icons from "@/components/icons";
 
 import { UserButton } from "@clerk/nextjs";
 
-import { NavMain } from "@/components/nav-main";
-import { NavProjects } from "@/components/nav-projects";
-import { SidebarHeaderMenu } from "@/components/sidebar-header-menu";
+import { NavMain } from "@/components/layout/sidebar/nav-main";
+import { NavProjects } from "@/components/layout/sidebar/nav-projects";
+import { SidebarHeaderMenu } from "@/components/layout/sidebar/sidebar-header-menu";
 import {
   Sidebar,
   SidebarContent,

@@ -4,7 +4,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/layout/sidebar/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { PreviewPanelProvider } from "@/components/documents/preview-panel-context";
 import { SelectedDocumentProvider } from "@/components/documents/selected-document-context";
