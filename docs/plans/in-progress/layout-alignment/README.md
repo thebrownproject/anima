@@ -44,13 +44,15 @@
 
 ### Phase 3: Document Detail Page
 
-| Task | Description | Files |
-|------|-------------|-------|
-| 8 | Add checkboxes to extracted data table | `extracted-columns.tsx`, `extracted-data-table.tsx` |
-| 9 | Move chevron/confidence to column 2 | `extracted-columns.tsx` |
-| 10 | Add column resizing to extracted data table | `extracted-data-table.tsx` |
-| 11 | Implement floating AI chat bar | `ai-chat-bar.tsx`, `document-detail-client.tsx` |
-| 12 | Update preview toggle to icon-only | `preview-toggle.tsx` |
+| Task | Description | Files | Status |
+|------|-------------|-------|--------|
+| 8 | Add checkboxes to extracted data table | `extracted-columns.tsx`, `extracted-data-table.tsx` | ✅ |
+| 9 | Move chevron/confidence to Field column | `extracted-columns.tsx` | ✅ |
+| 10 | Add column resizing to extracted data table | `extracted-data-table.tsx` | ⏭️ SKIP |
+| 11 | Implement floating AI chat bar | `ai-chat-bar.tsx`, `document-detail-client.tsx` | |
+| 12 | Update preview toggle to icon-only | `preview-toggle.tsx` | |
+
+> **Note:** Task 9 changed from "column 2" to merging chevron/confidence into Field column (like documents table icon+filename pattern). Task 10 skipped - same column resizing conflict as Phase 2.
 
 ### Phase 4: Polish & Testing
 

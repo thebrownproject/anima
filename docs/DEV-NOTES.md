@@ -4857,3 +4857,85 @@ These three requirements conflict - if table fills 100%, resizing one column mus
 - `frontend/app/(app)/@header/documents/page.tsx` - Added DocumentHeaderActions
 - `frontend/lib/queries/documents.ts` - Added file_path to query
 - `frontend/types/documents.ts` - Added file_path to Document type
+
+---
+
+## Session 57 - 2025-12-27 - Extracted Data Table Checkboxes & Selection
+
+**Feature**: layout-alignment (`docs/plans/in-progress/layout-alignment/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 8: Add checkboxes to extracted data table**:
+  - Added row selection with `RowSelectionState` and `enableRowSelection`
+  - Added select column matching documents table pattern
+  - Added `group/header` and `group/row` classes for hover-reveal behavior
+  - Checkboxes appear on row hover, stay visible when selected
+
+- [x] **Task 9: Move chevron/confidence to Field column**:
+  - Merged indicator (chevron for expandable, confidence dot for leaf) into Field column
+  - Matches documents table pattern (icon in same column as name)
+  - ConfidenceDot with tooltip showing percentage (green/amber/red)
+  - Gray placeholder dot for fields without confidence data
+  - Fine-tuned alignment with negative margins (`-ml-1`, `mr-0.5`)
+
+- [x] **Selection actions integration**:
+  - Added `onSelectionChange` callback to ExtractedDataTable
+  - Uses `table.getFilteredSelectedRowModel().rows.length` pattern from documents
+  - Added SelectionActions to document detail sub-bar
+  - Actions (Add to Stack, Delete) are placeholders/disabled
+
+- [x] **Code review fixes**:
+  - Added `disabled={!row.getCanSelect()}` to both columns.tsx and extracted-columns.tsx
+  - Added `data-state={row.getIsSelected() && "selected"}` to TableRow
+  - Fixed ResizablePanel to use `forwardRef` for proper ref forwarding
+
+- [x] **Style consistency with documents-table**:
+  - Header row: `bg-muted/30 hover:bg-muted/30`
+  - Header height: `h-9` (was h-10)
+  - Row height: `h-12` (was unset)
+  - Cell padding: `py-3` (was py-2.5)
+  - TableBody: `[&_tr:last-child]:border-b`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Indicator column | Merge into Field column | Matches documents table icon+filename pattern, cleaner alignment |
+| Column resizing (Task 10) | Skip | Same HTML table conflict as Phase 2 |
+| Confidence display | Colored dot with tooltip | Less visual clutter than inline percentage |
+| No-confidence fields | Gray placeholder dot | Maintains visual alignment |
+| Selection state exposure | Callback prop | Allows parent to control SelectionActions |
+
+### Bugs Fixed
+
+| Bug | Fix |
+|-----|-----|
+| ResizablePanel ref not forwarding | Added `forwardRef` to ResizablePanel component |
+| Chevron/dot misaligned | Fine-tuned with `-ml-1`, `py-0.5 pl-0.5`, `mr-0.5` |
+| Nested fields no indicator | ConfidenceDot returns gray dot when confidence undefined |
+
+### Tasks Remaining
+
+- [ ] Task 11: Implement floating AI chat bar
+- [ ] Task 12: Update preview toggle to icon-only
+- [ ] Phase 4: Loading skeletons and testing
+
+### Next Session
+
+**Task**: Phase 3 Tasks 11-12 (Floating chat bar, icon-only preview toggle)
+
+**Process**:
+1. Task 11: Update ai-chat-bar.tsx with floating design (rounded-xl, shadow-sm)
+2. Task 11: Move chat bar outside ResizablePanelGroup in document-detail-client.tsx
+3. Task 12: Update preview-toggle.tsx to icon-only (PanelRight icon, no text)
+4. Test both changes work correctly with panel collapse/expand
+
+### Files Modified
+
+- `frontend/components/documents/extracted-columns.tsx` - Select column, Field column with chevron/confidence
+- `frontend/components/documents/extracted-data-table.tsx` - Row selection, styling, onSelectionChange
+- `frontend/components/documents/document-detail-client.tsx` - SelectionActions integration
+- `frontend/components/documents/columns.tsx` - Added disabled prop to checkbox
+- `frontend/components/ui/resizable.tsx` - Fixed forwardRef on ResizablePanel
