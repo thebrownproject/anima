@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { GlobalSearchDialog } from "@/components/layout/global-search-dialog"
-import { UploadDialogContent } from "@/components/documents/upload-dialog/upload-dialog-content"
+import { UploadDialogContent } from "@/components/layout/upload-dialog/upload-dialog-content"
 
 export function SidebarHeaderMenu() {
   const { theme, setTheme } = useTheme()
