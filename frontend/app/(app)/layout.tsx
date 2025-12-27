@@ -6,6 +6,11 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/sidebar/app-sidebar";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PreviewPanelProvider } from "@/components/documents/preview-panel-context";
 import { SelectedDocumentProvider } from "@/components/documents/selected-document-context";
 
@@ -30,7 +35,14 @@ export default async function AppLayout({
         <PreviewPanelProvider>
           <SelectedDocumentProvider>
             <header className="flex h-12 shrink-0 items-center gap-2 px-4 border-b">
-              <SidebarTrigger className="ml-2.5" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarTrigger className="ml-2.5" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Toggle sidebar
+                </TooltipContent>
+              </Tooltip>
               <Separator
                 orientation="vertical"
                 className="mr-2 data-[orientation=vertical]:h-4"

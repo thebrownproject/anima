@@ -39,14 +39,21 @@ export function SidebarHeaderMenu() {
       <SidebarHeader className="h-[47px] flex flex-row items-center justify-between gap-2 px-2 py-0">
         {/* Logo + Name + Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton className="flex-1 h-8 gap-1.5 data-[state=open]:bg-sidebar-accent">
-              <Icons.Stack className="size-6" />
-              <span className="font-semibold">Stackdocs</span>
-              <Icons.ChevronDown className="size-4 text-muted-foreground" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton className="flex-1 h-8 gap-1.5 data-[state=open]:bg-sidebar-accent">
+                  <Icons.Stack className="size-6" />
+                  <span className="font-semibold">Stackdocs</span>
+                  <Icons.ChevronDown className="size-4 text-muted-foreground" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Workspace settings
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="start" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
             <DropdownMenuItem disabled>
               <Icons.Settings className="size-4" />
               <span>Settings</span>

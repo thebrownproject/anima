@@ -15,6 +15,11 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const data = {
   navMain: [
@@ -59,20 +64,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <UserButton
-              showName
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  rootBox: "w-full",
-                  userButtonTrigger:
-                    "w-full h-8 justify-start px-2 rounded-md hover:bg-sidebar-accent transition-colors",
-                  userButtonBox: "flex-row-reverse gap-0",
-                  avatarBox: "size-6 rounded-full",
-                  userButtonOuterIdentifier: "text-sm",
-                },
-              }}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <UserButton
+                    showName
+                    afterSignOutUrl="/"
+                    appearance={{
+                      elements: {
+                        rootBox: "w-full",
+                        userButtonTrigger:
+                          "w-full h-8 justify-start px-2 rounded-md hover:bg-sidebar-accent transition-colors",
+                        userButtonBox: "flex-row-reverse gap-0",
+                        avatarBox: "size-6 rounded-full",
+                        userButtonOuterIdentifier: "text-sm",
+                      },
+                    }}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                Account settings
+              </TooltipContent>
+            </Tooltip>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

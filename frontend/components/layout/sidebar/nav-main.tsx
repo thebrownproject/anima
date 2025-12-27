@@ -17,6 +17,11 @@ import {
   SidebarMenuItem,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export function NavMain({
   items,
@@ -49,12 +54,19 @@ export function NavMain({
                 <SidebarMenu>
                   {item.items?.map((subItem) => (
                     <SidebarMenuItem key={subItem.title}>
-                      <SidebarMenuButton asChild className="gap-1.5">
-                        <Link href={subItem.url}>
-                          {subItem.icon && <subItem.icon className="size-4" />}
-                          <span>{subItem.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <SidebarMenuButton asChild className="gap-1.5">
+                            <Link href={subItem.url}>
+                              {subItem.icon && <subItem.icon className="size-4" />}
+                              <span>{subItem.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Go to {subItem.title}
+                        </TooltipContent>
+                      </Tooltip>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>

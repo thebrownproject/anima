@@ -84,7 +84,7 @@ export const columns: ColumnDef<Document>[] = [
     cell: ({ row }) => {
       const doc = row.original;
       return (
-        <div className="flex items-center gap-2 max-w-full">
+        <div className="flex items-center gap-2 max-w-full -ml-px">
           <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
           <Tooltip delayDuration={500}>
             <TooltipTrigger asChild>

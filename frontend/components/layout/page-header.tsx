@@ -12,6 +12,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 // Map route segments to display labels
 const segmentLabels: Record<string, string> = {
@@ -92,12 +97,19 @@ export function PageHeader({ title, icon, actions }: PageHeaderProps) {
                       {item.label}
                     </BreadcrumbPage>
                   ) : (
-                    <BreadcrumbLink asChild>
-                      <Link href={item.href} className="flex items-center gap-1.5">
-                        {Icon && <Icon className="size-4" />}
-                        {item.label}
-                      </Link>
-                    </BreadcrumbLink>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <BreadcrumbLink asChild>
+                          <Link href={item.href} className="flex items-center gap-1.5">
+                            {Icon && <Icon className="size-4" />}
+                            {item.label}
+                          </Link>
+                        </BreadcrumbLink>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Go to {item.label}
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </BreadcrumbItem>
               </Fragment>

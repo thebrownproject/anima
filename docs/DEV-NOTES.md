@@ -5244,3 +5244,61 @@ components/
 2. Execute Tasks 20-22 (tooltips for table, PDF viewer, sidebar trigger)
 3. Update frontend CLAUDE.md with new structure
 4. Run final verification build
+
+---
+
+## Session 64 - 2025-12-28 - Frontend Cleanup: Tooltip Implementation
+
+**Feature**: Frontend Cleanup
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 22: Sidebar trigger tooltip**:
+  - Added "Toggle sidebar" tooltip (bottom)
+
+- [x] **Global tooltip delay**:
+  - Changed default from 0ms to 700ms in `tooltip.tsx`
+
+- [x] **Stackdocs dropdown tooltip**:
+  - Added "Workspace settings" tooltip (bottom)
+  - Fixed focus issue with `onCloseAutoFocus={(e) => e.preventDefault()}`
+
+- [x] **Nav items tooltips**:
+  - Added "Go to Documents" / "Go to Extractions" tooltips (right)
+
+- [x] **Clerk UserButton tooltip**:
+  - Added "Account settings" tooltip (top)
+
+- [x] **Breadcrumb links tooltips**:
+  - Added "Go to {label}" tooltips (bottom)
+
+- [x] **PreviewToggle tooltip**:
+  - Added dynamic "Show preview" / "Hide preview" tooltip (left)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Tooltip delay | 700ms global default | User preference, feels less intrusive |
+| Stackdocs focus fix | `onCloseAutoFocus` prevent | Stops focus returning to trigger after dropdown closes |
+| PreviewToggle tooltip side | left | User preference, avoids edge collision |
+
+### Tasks Remaining
+
+- [ ] Task 20: Add tooltips to table column sort buttons
+- [ ] Task 21: Add tooltip to PDF viewer navigation
+- [ ] Sub-bar tooltips: Need brainstorm on ActionButton items
+- [ ] Task 23: Update frontend CLAUDE.md
+- [ ] Task 24: Full build and verification
+
+### Next Session
+
+**Task**: Brainstorm sub-bar tooltips, then complete Tasks 20-21
+
+**Process**:
+1. Run `/continue` to load context
+2. Discuss what tooltips make sense for Filter, Search, Edit, Export ActionButtons
+3. Complete Tasks 20-21 (table columns, PDF viewer)
+4. Update frontend CLAUDE.md
+5. Run final verification build

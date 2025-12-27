@@ -18,10 +18,10 @@
 | Phase 2: Migrate shadcn UI | ✅ DONE | Tasks 2-9 complete |
 | Phase 3: Migrate App Components | ✅ DONE | Tasks 10-13 complete; Task 14 skipped (keep lucide-react) |
 | Phase 4: Component Organization | ✅ DONE | Tasks 15-18.5 complete + extra layout moves |
-| Phase 5: Add Tooltips | ⏳ PARTIAL | Task 19 complete; Tasks 20-22 remaining |
+| Phase 5: Add Tooltips | ⏳ PARTIAL | Task 19, 22 complete + extra tooltips; Tasks 20-21 remaining |
 | Phase 6: Documentation | ⏳ TODO | Tasks 23-24 |
 
-**Resume from:** Task 20 (Add tooltips to table column sort buttons)
+**Resume from:** Sub-bar tooltips brainstorm, then Tasks 20-21
 
 **Session 63 additions (not in original plan):**
 - Moved ai-chat-bar, ai-activity-panel → layout/
@@ -29,6 +29,14 @@
 - Moved sub-bar, filter-button, selection-actions → layout/
 - Moved global-search-dialog → layout/ (instead of search/)
 - Removed upload-dialog barrel file (direct imports)
+
+**Session 64 additions (not in original plan):**
+- Set global tooltip delay to 700ms (was 0)
+- Added tooltip to Stackdocs dropdown with `onCloseAutoFocus` fix
+- Added tooltips to Documents/Extractions nav items ("Go to X")
+- Added tooltip to Clerk UserButton ("Account settings")
+- Added tooltips to breadcrumb links ("Go to X")
+- Added tooltip to PreviewToggle (dynamic "Show/Hide preview")
 
 ---
 
