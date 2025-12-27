@@ -56,7 +56,7 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
       {/* Content area */}
       <TabsContent value="pdf" className="flex-1 mt-0 overflow-hidden">
         {isPdf && pdfUrl ? (
-          <PdfViewer url={pdfUrl} />
+          <PdfViewer key={pdfUrl} url={pdfUrl} />
         ) : (
           <div className="flex h-[600px] items-center justify-center">
             <p className="text-sm text-muted-foreground">PDF preview not available</p>

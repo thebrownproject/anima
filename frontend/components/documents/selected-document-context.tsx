@@ -18,8 +18,8 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
 
   const setSelectedDocId = useCallback((id: string | null) => {
     setSelectedDocIdState(id)
-    // Always clear URL - will be fetched by consumer if needed
-    setSignedUrlState(null)
+    // Don't clear URL here - causes race condition with react-pdf
+    // Consumer will fetch new URL and call setSignedUrl when ready
   }, [])
 
   const setSignedUrl = useCallback((url: string | null) => {
