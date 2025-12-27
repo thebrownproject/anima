@@ -186,11 +186,9 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
 
   const setSelectedDocId = useCallback((id: string | null) => {
     setSelectedDocIdState(id)
-    // Clear URL when selection changes - will be fetched by consumer
-    if (id !== selectedDocId) {
-      setSignedUrlState(null)
-    }
-  }, [selectedDocId])
+    // Always clear URL - will be fetched by consumer if needed
+    setSignedUrlState(null)
+  }, [])
 
   const setSignedUrl = useCallback((url: string | null) => {
     setSignedUrlState(url)
@@ -384,53 +382,291 @@ git commit -m "feat: update PreviewPanel to use activeTab from context"
 **Files:**
 - Modify: `frontend/components/documents/documents-table.tsx`
 
-**Step 1: Replace local state with context**
+**Step 1: Replace entire file with context-integrated version**
 
-Update imports at top (add):
 ```tsx
+'use client'
+
+import * as React from 'react'
+import { useAuth } from '@clerk/nextjs'
+import {
+  ColumnFiltersState,
+  SortingState,
+  RowSelectionState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { ExpandableSearch } from '@/components/layout/expandable-search'
+import { createClerkSupabaseClient } from '@/lib/supabase'
+import { columns } from './columns'
+import { SubBar } from './sub-bar'
+import { FilterButton } from './filter-button'
+import { SelectionActions } from './selection-actions'
+import { UploadDialogTrigger } from './upload-dialog'
+import { PreviewPanel } from './preview-panel'
+import { usePreviewPanel } from './preview-panel-context'
 import { useSelectedDocument } from './selected-document-context'
-```
+import type { Document } from '@/types/documents'
+import { FileText } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-Remove this line:
-```tsx
-const LAYOUT_STORAGE_KEY = 'stackdocs-doc-list-layout'
-```
+interface DocumentsTableProps {
+  documents: Document[]
+}
 
-Replace the local state declarations (lines ~48-52) - change from:
-```tsx
-const [selectedDocId, setSelectedDocId] = React.useState<string | null>(null)
-const [signedUrl, setSignedUrl] = React.useState<string | null>(null)
-```
+export function DocumentsTable({ documents }: DocumentsTableProps) {
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
-To:
-```tsx
-const { selectedDocId, setSelectedDocId, signedUrl, setSignedUrl } = useSelectedDocument()
-```
+  // Auth for Supabase client
+  const { getToken } = useAuth()
 
-Update usePreviewPanel to also get panelWidth:
-```tsx
-const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
-```
+  // Shared state from contexts
+  const { selectedDocId, setSelectedDocId, signedUrl, setSignedUrl } = useSelectedDocument()
+  const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
 
-Replace the defaultLayout state (lines ~105-117) with context-based value:
-```tsx
-// Panel width from context (percentage for preview panel)
-const mainPanelSize = 100 - panelWidth
-```
+  // Panel width from context (percentage for preview panel)
+  const mainPanelSize = 100 - panelWidth
 
-Replace handleLayoutChange (lines ~119-123):
-```tsx
-const handleLayoutChange = React.useCallback((sizes: number[]) => {
-  // sizes[1] is the preview panel percentage
-  if (sizes[1] !== undefined) {
-    setPanelWidth(sizes[1])
-  }
-}, [setPanelWidth])
-```
+  // Find selected document from documents array
+  const selectedDoc = React.useMemo(() => {
+    if (!selectedDocId) return null
+    return documents.find((d) => d.id === selectedDocId) ?? null
+  }, [selectedDocId, documents])
 
-Update ResizablePanel defaultSize props:
-- Main panel: `defaultSize={mainPanelSize}`
-- Preview panel: `defaultSize={panelWidth}`
+  // Fetch signed URL when selected document changes
+  React.useEffect(() => {
+    const filePath = selectedDoc?.file_path
+    if (!filePath) {
+      setSignedUrl(null)
+      return
+    }
+
+    // Track if this effect has been superseded by a newer one
+    let isCancelled = false
+
+    const fetchSignedUrl = async () => {
+      try {
+        const supabase = createClerkSupabaseClient(getToken)
+        const { data } = await supabase.storage
+          .from('documents')
+          .createSignedUrl(filePath, 3600) // 1 hour expiry
+
+        // Only update state if this request is still current
+        if (!isCancelled) {
+          setSignedUrl(data?.signedUrl ?? null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch signed URL:', error)
+        if (!isCancelled) {
+          setSignedUrl(null)
+        }
+      }
+    }
+
+    fetchSignedUrl()
+
+    // Cleanup: mark this effect as cancelled when a new one starts
+    return () => {
+      isCancelled = true
+    }
+  }, [selectedDocId, selectedDoc?.file_path, getToken, setSignedUrl])
+
+  // Update panel width in context when resized
+  const handleLayoutChange = React.useCallback((sizes: number[]) => {
+    if (sizes[1] !== undefined) {
+      setPanelWidth(sizes[1])
+    }
+  }, [setPanelWidth])
+
+  // Note: We intentionally do NOT clear selection when preview collapses
+  // This allows the user to toggle preview and see the same document again
+
+  const table = useReactTable({
+    data: documents,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    enableRowSelection: true,
+    state: {
+      sorting,
+      columnFilters,
+      rowSelection,
+    },
+  })
+
+  return (
+    <div className="flex flex-1 flex-col min-h-0">
+      {/* Sub-bar */}
+      <SubBar
+        left={
+          <>
+            <FilterButton />
+            <ExpandableSearch
+              value={(table.getColumn('filename')?.getFilterValue() as string) ?? ''}
+              onChange={(value) => table.getColumn('filename')?.setFilterValue(value)}
+              placeholder="Search documents..."
+            />
+          </>
+        }
+        right={
+          <>
+            <SelectionActions
+              selectedCount={table.getFilteredSelectedRowModel().rows.length}
+            />
+            <UploadDialogTrigger />
+          </>
+        }
+      />
+
+      {/* Main content - resizable layout */}
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex-1 min-h-0 overflow-hidden"
+        onLayout={handleLayoutChange}
+      >
+        {/* Left: Documents table - main content */}
+        <ResizablePanel
+          defaultSize={mainPanelSize}
+          minSize={40}
+          className="overflow-hidden min-w-0"
+        >
+          <div className="h-full overflow-auto">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30 group/header">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={cn(
+                          "h-9 text-sm font-normal text-muted-foreground",
+                          header.column.id === 'select' && "w-4",
+                          header.column.id === 'uploaded_at' && "w-24 text-right pr-5"
+                        )}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody className="[&_tr:last-child]:border-b">
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className={cn(
+                        "h-12 hover:bg-muted/30 transition-colors duration-150 group/row",
+                        selectedDocId === row.original.id && !isCollapsed && "bg-muted/50"
+                      )}
+                      data-state={row.getIsSelected() && 'selected'}
+                      onClick={() => {
+                        if (selectedDocId === row.original.id) {
+                          // Same row clicked - toggle the panel
+                          if (panelRef.current?.isCollapsed()) {
+                            panelRef.current?.expand()
+                          } else {
+                            panelRef.current?.collapse()
+                          }
+                        } else {
+                          // Different row clicked - select and ensure panel is open
+                          setSelectedDocId(row.original.id)
+                          if (panelRef.current?.isCollapsed()) {
+                            panelRef.current?.expand()
+                          }
+                        }
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            "py-3",
+                            cell.column.id === 'select' && "w-4",
+                            cell.column.id === 'filename' && "max-w-0",
+                            cell.column.id === 'stacks' && "max-w-0",
+                            cell.column.id === 'uploaded_at' && "w-24"
+                          )}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={columns.length} className="h-48">
+                      <div className="flex flex-col items-center justify-center text-center py-8">
+                        <div className="rounded-full bg-muted/50 p-4 mb-4">
+                          <FileText className="size-8 text-muted-foreground/60" />
+                        </div>
+                        <p className="text-sm font-medium">No documents yet</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+                          Upload a document to start extracting data
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle />
+
+        {/* Right: Preview - collapsible sidebar */}
+        <ResizablePanel
+          ref={panelRef}
+          defaultSize={panelWidth}
+          minSize={30}
+          maxSize={50}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setIsCollapsed(true)}
+          onExpand={() => setIsCollapsed(false)}
+          className="overflow-hidden"
+        >
+          <div className="h-full">
+            <PreviewPanel
+              pdfUrl={signedUrl}
+              ocrText={null}
+              mimeType={selectedDoc?.mime_type ?? ''}
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
+  )
+}
+```
 
 **Step 2: Verify no TypeScript errors**
 
@@ -460,62 +696,208 @@ git commit -m "feat: update DocumentsTable to use shared contexts"
 **Files:**
 - Modify: `frontend/components/documents/document-detail-client.tsx`
 
-**Step 1: Add imports and replace local state**
+**Step 1: Replace entire file with context-integrated version**
 
-Add import:
+Note: The prop `signedUrl` is renamed to `initialSignedUrl` to avoid collision with context.
+
 ```tsx
+'use client'
+
+import { useState, useCallback, useEffect, useRef } from 'react'
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable'
+import { useExtractionRealtime, ExtractionUpdate } from '@/hooks/use-extraction-realtime'
+import { ExtractedDataTable } from './extracted-data-table'
+import { PreviewPanel } from './preview-panel'
+import { AiChatBar } from './ai-chat-bar'
+import { usePreviewPanel } from './preview-panel-context'
 import { useSelectedDocument } from './selected-document-context'
+import { SubBar } from './sub-bar'
+import { FilterButton } from './filter-button'
+import { DocumentDetailActions } from './document-detail-actions'
+import { ExpandableSearch } from '@/components/layout/expandable-search'
+import type { DocumentWithExtraction } from '@/types/documents'
+
+interface DocumentDetailClientProps {
+  initialDocument: DocumentWithExtraction
+  initialSignedUrl: string | null  // Renamed from signedUrl to avoid context collision
+}
+
+export function DocumentDetailClient({
+  initialDocument,
+  initialSignedUrl,
+}: DocumentDetailClientProps) {
+  const [document, setDocument] = useState(initialDocument)
+  const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
+  const [fieldSearch, setFieldSearch] = useState('')
+
+  // Shared state from contexts
+  const { panelRef, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
+  const { setSelectedDocId, setSignedUrl, signedUrl } = useSelectedDocument()
+
+  // Panel width from context
+  const mainPanelSize = 100 - panelWidth
+
+  // Sync selected document to context on mount
+  useEffect(() => {
+    setSelectedDocId(initialDocument.id)
+    if (initialSignedUrl) {
+      setSignedUrl(initialSignedUrl)
+    }
+  }, [initialDocument.id, initialSignedUrl, setSelectedDocId, setSignedUrl])
+
+  // Update panel width in context when resized
+  const handleLayoutChange = useCallback((sizes: number[]) => {
+    if (sizes[1] !== undefined) {
+      setPanelWidth(sizes[1])
+    }
+  }, [setPanelWidth])
+
+  // Fix #3: Use ref to access current document state without recreating callback
+  const documentRef = useRef(document)
+  useEffect(() => {
+    documentRef.current = document
+  }, [document])
+
+  const handleExtractionUpdate = useCallback(
+    (update: ExtractionUpdate) => {
+      // Find which fields changed - use ref to avoid stale closure
+      const newChangedFields = new Set<string>()
+      const oldFields = documentRef.current.extracted_fields || {}
+      const newFields = update.extracted_fields || {}
+
+      for (const key of Object.keys(newFields)) {
+        if (JSON.stringify(oldFields[key]) !== JSON.stringify(newFields[key])) {
+          newChangedFields.add(key)
+        }
+      }
+
+      // Update document state
+      setDocument((prev) => ({
+        ...prev,
+        extracted_fields: update.extracted_fields,
+        confidence_scores: update.confidence_scores,
+      }))
+
+      // Set changed fields for highlight animation
+      setChangedFields(newChangedFields)
+    },
+    [] // Stable callback - no dependencies since we use ref
+  )
+
+  // Clear changed fields after animation (1.5s)
+  useEffect(() => {
+    if (changedFields.size > 0) {
+      const timer = setTimeout(() => {
+        setChangedFields(new Set())
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [changedFields])
+
+  useExtractionRealtime({
+    documentId: document.id,
+    onUpdate: handleExtractionUpdate,
+  })
+
+  // Use context signedUrl (which was set from initialSignedUrl on mount)
+  const previewUrl = signedUrl ?? initialSignedUrl
+
+  return (
+    <div className="flex flex-1 flex-col min-h-0">
+      {/* Sub-bar */}
+      <SubBar
+        left={
+          <>
+            <FilterButton />
+            <ExpandableSearch
+              value={fieldSearch}
+              onChange={setFieldSearch}
+              placeholder="Search fields..."
+            />
+          </>
+        }
+        right={
+          <DocumentDetailActions assignedStacks={document.stacks ?? []} />
+        }
+      />
+
+      {/* Main content - resizable layout */}
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex-1 min-h-0"
+        onLayout={handleLayoutChange}
+      >
+        {/* Left: Extracted Data - main content, expands */}
+        <ResizablePanel
+          defaultSize={mainPanelSize}
+          minSize={30}
+          className="overflow-auto"
+        >
+          <div className="h-full">
+            <ExtractedDataTable
+              fields={document.extracted_fields}
+              confidenceScores={document.confidence_scores}
+              changedFields={changedFields}
+              searchFilter={fieldSearch}
+            />
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle />
+
+        {/* Right: Preview - collapsible sidebar */}
+        <ResizablePanel
+          ref={panelRef}
+          defaultSize={panelWidth}
+          minSize={30}
+          maxSize={60}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setIsCollapsed(true)}
+          onExpand={() => setIsCollapsed(false)}
+          className="overflow-auto"
+        >
+          <div className="h-full">
+            <PreviewPanel
+              pdfUrl={previewUrl}
+              ocrText={document.ocr_raw_text}
+              mimeType={document.mime_type}
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      {/* AI Chat Bar - inline at bottom */}
+      <div className="shrink-0">
+        <AiChatBar documentId={document.id} />
+      </div>
+    </div>
+  )
+}
 ```
 
-Remove this line:
+**Step 2: Update the page.tsx that renders DocumentDetailClient**
+
+The parent page component needs to pass `initialSignedUrl` instead of `signedUrl`. Find the file that renders `<DocumentDetailClient>` (likely `app/(app)/documents/[id]/page.tsx`) and update the prop name:
+
 ```tsx
-const LAYOUT_STORAGE_KEY = 'stackdocs-document-layout'
+// Change from:
+<DocumentDetailClient initialDocument={document} signedUrl={signedUrl} />
+
+// To:
+<DocumentDetailClient initialDocument={document} initialSignedUrl={signedUrl} />
 ```
 
-Update usePreviewPanel to get panelWidth:
-```tsx
-const { panelRef, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
-```
-
-Add useSelectedDocument and sync document ID on mount:
-```tsx
-const { setSelectedDocId, setSignedUrl } = useSelectedDocument()
-
-// Sync selected document ID to context on mount
-useEffect(() => {
-  setSelectedDocId(initialDocument.id)
-  if (signedUrl) {
-    setSignedUrl(signedUrl)
-  }
-}, [initialDocument.id, signedUrl, setSelectedDocId, setSignedUrl])
-```
-
-Remove the defaultLayout state block (lines ~39-51).
-
-Replace handleLayoutChange:
-```tsx
-const handleLayoutChange = useCallback((sizes: number[]) => {
-  if (sizes[1] !== undefined) {
-    setPanelWidth(sizes[1])
-  }
-}, [setPanelWidth])
-```
-
-Compute main panel size:
-```tsx
-const mainPanelSize = 100 - panelWidth
-```
-
-Update ResizablePanel defaultSize props:
-- Main panel: `defaultSize={mainPanelSize}`
-- Preview panel: `defaultSize={panelWidth}`
-
-**Step 2: Verify no TypeScript errors**
+**Step 3: Verify no TypeScript errors**
 
 Run: `cd frontend && npx tsc --noEmit`
 Expected: No errors
 
-**Step 3: Test manually**
+**Step 4: Test manually**
 
 1. Resize preview on detail page
 2. Navigate back to list
@@ -523,10 +905,10 @@ Expected: No errors
 4. Click a different document
 5. Verify it opens with same width
 
-**Step 4: Commit**
+**Step 5: Commit**
 
 ```bash
-git add frontend/components/documents/document-detail-client.tsx
+git add frontend/components/documents/document-detail-client.tsx frontend/app/\(app\)/documents/\[id\]/page.tsx
 git commit -m "feat: update DocumentDetailClient to use shared contexts"
 ```
 
