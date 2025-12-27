@@ -31,5 +31,5 @@ export default async function DocumentDetailPage({ params }: PageProps) {
     }
   }
 
-  return <DocumentDetailClient initialDocument={document} signedUrl={signedUrl} />
+  return <DocumentDetailClient initialDocument={document} initialSignedUrl={signedUrl} />
 }
