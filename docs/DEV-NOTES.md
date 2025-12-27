@@ -4939,3 +4939,59 @@ These three requirements conflict - if table fills 100%, resizing one column mus
 - `frontend/components/documents/document-detail-client.tsx` - SelectionActions integration
 - `frontend/components/documents/columns.tsx` - Added disabled prop to checkbox
 - `frontend/components/ui/resizable.tsx` - Fixed forwardRef on ResizablePanel
+
+---
+
+## Session 58 - 2025-12-27 - Floating AI Chat Bar Design
+
+**Feature**: layout-alignment (`docs/plans/in-progress/layout-alignment/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 11: Floating AI chat bar**:
+  - Redesigned chat bar with floating card design (`rounded-xl shadow-md bg-sidebar`)
+  - Added Tabler `IconBrandDatabricks` icon with conditional coloring (muted → foreground on hover/focus/text)
+  - Added circular send button with `ArrowUp` icon replacing "Enter" kbd
+  - Hover/focus states with subtle border darkening (`border-muted-foreground/30`)
+  - Conditional `border-t` based on preview panel collapse state
+  - Max-width constraint (`max-w-3xl`) with centered layout
+  - Text size increased to `text-base` (16px)
+  - Tooltips: input explains AI agent, send button shows "Send message" (500ms delay)
+  - Accessibility: `aria-label` on input and button
+
+- [x] **Code review fixes**:
+  - Added `aria-label="Send message"` to send button
+  - Added Tooltip to send button with 500ms delay
+  - Changed template literal to `cn()` for consistency in document-detail-client.tsx
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Placeholder text | "How can I help you today?" | More friendly, Claude-inspired |
+| Icon | Tabler `IconBrandDatabricks` | Distinctive AI/data icon |
+| Background | `bg-sidebar` | Matches sidebar for visual consistency |
+| Send button | Circular with ArrowUp | Modern chat UI pattern (Claude, ChatGPT) |
+| Input tooltip | Only shows when empty | Doesn't interfere when typing |
+| Hover/focus bg change | Removed | Keep consistent sidebar color |
+
+### Files Modified
+
+- `frontend/components/documents/ai-chat-bar.tsx` - Complete redesign with floating card, icon, tooltips
+- `frontend/components/documents/document-detail-client.tsx` - Added `cn()` import, conditional border-t, max-width wrapper
+
+### Tasks Remaining
+
+- [ ] Task 12: Update preview toggle to icon-only
+- [ ] Phase 4: Loading skeletons and testing
+
+### Next Session
+
+**Task**: Task 12 (icon-only preview toggle) then Phase 4
+
+**Process**:
+1. Update preview-toggle.tsx to use PanelRight icon only
+2. Remove text, add aria-label and tooltip
+3. Phase 4: Update loading skeletons
+4. Manual testing checklist
