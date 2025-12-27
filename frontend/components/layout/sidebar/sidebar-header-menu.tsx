@@ -17,7 +17,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SidebarHeader, SidebarMenuButton } from "@/components/ui/sidebar"
-import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { GlobalSearchDialog } from "@/components/layout/global-search-dialog"
 import { UploadDialogContent } from "@/components/documents/upload-dialog/upload-dialog-content"
 
 export function SidebarHeaderMenu() {
@@ -88,24 +93,38 @@ export function SidebarHeaderMenu() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={() => setSearchOpen(true)}
-          >
-            <Icons.Search className="size-4" />
-            <span className="sr-only">Search</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={() => setUploadOpen(true)}
-          >
-            <Icons.Upload className="size-4" />
-            <span className="sr-only">Upload</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => setSearchOpen(true)}
+              >
+                <Icons.Search className="size-4" />
+                <span className="sr-only">Search</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Search (⌘K)</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => setUploadOpen(true)}
+              >
+                <Icons.Upload className="size-4" />
+                <span className="sr-only">Upload</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Upload document</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </SidebarHeader>
     </>
