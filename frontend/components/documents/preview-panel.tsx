@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VisualPreview } from '@/components/visual-preview'
+import { usePreviewPanel } from './preview-panel-context'
 import { Loader2 } from 'lucide-react'
 
 // Dynamic import to avoid SSR issues with react-pdf
@@ -25,10 +26,14 @@ interface PreviewPanelProps {
 }
 
 export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
+  const { activeTab, setActiveTab } = usePreviewPanel()
   const isPdf = mimeType === 'application/pdf'
 
+  // Determine effective tab: if PDF not available and tab is 'pdf', show visual
+  const effectiveTab = (activeTab === 'pdf' && !isPdf) ? 'visual' : activeTab
+
   return (
-    <Tabs defaultValue={isPdf ? 'pdf' : 'visual'} className="flex flex-col h-full">
+    <Tabs value={effectiveTab} onValueChange={(v) => setActiveTab(v as 'pdf' | 'visual')} className="flex flex-col h-full">
       {/* Header bar - matches table header height */}
       <div className="flex h-[40.5px] shrink-0 items-center px-4 border-b">
         <TabsList className="h-7 p-0.5 bg-muted/50">
