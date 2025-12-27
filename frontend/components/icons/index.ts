@@ -37,6 +37,7 @@ export {
 
   // Files & documents
   IconFileText as FileText,
+  IconFileTypePdf as FileTypePdf,
   IconFiles as Files,
   IconPhoto as Image,
   IconUpload as Upload,
