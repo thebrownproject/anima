@@ -5045,3 +5045,67 @@ These three requirements conflict - if table fills 100%, resizing one column mus
 2. Extend PreviewPanelProvider with width and tab
 3. Create SelectedDocumentProvider
 4. Update loading skeletons to use context
+
+---
+
+## Session 60 - 2025-12-28 - Unified Preview State Complete ✅
+
+**Feature**: unified-preview-state (`docs/plans/complete/unified-preview-state/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 1-3: Context providers**:
+  - Extended `PreviewPanelProvider` with `panelWidth`, `setPanelWidth`, `activeTab`, `setActiveTab`
+  - Consolidated localStorage to single key `stackdocs-preview-panel`
+  - Created `SelectedDocumentProvider` for document selection + signed URL caching
+  - Added providers to app layout wrapping all protected routes
+
+- [x] **Task 4-6: Component updates**:
+  - Updated `PreviewPanel` to use `activeTab` from context
+  - Updated `DocumentsTable` to use shared contexts for selection/URL
+  - Updated `DocumentDetailClient` to use shared contexts, renamed prop to `initialSignedUrl`
+
+- [x] **Task 7-8: Loading skeletons**:
+  - Updated both loading skeletons to use `usePreviewPanel()` for dynamic widths
+  - Prevents layout shift when navigating between pages
+
+- [x] **Bug fixes**:
+  - Fixed react-pdf crash (`Cannot read properties of null 'sendWithPromise'`) by not clearing URL in `setSelectedDocId` and adding `key={pdfUrl}` to `PdfViewer`
+  - Fixed AI chat bar styling (restored padding, max-width, conditional border-t)
+  - Fixed panel width consistency between pages (both `maxSize={50}`)
+
+- [x] **Code review**:
+  - Identified redundant callback deps in useMemo/useEffect (anti-pattern, not bug)
+  - Confirmed code is clean and follows React conventions
+  - Discussed potential over-engineering; decided current approach is acceptable for polish
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| localStorage consolidation | Single key with object | Simpler migration, atomic updates |
+| Don't clear URL on selection change | Keep URL until new one fetched | Prevents react-pdf race condition |
+| PdfViewer key prop | `key={pdfUrl}` | Forces remount on URL change |
+| Panel maxSize | 50 for both pages | Consistent width limits |
+| Dependency array cleanup | Skipped for now | Anti-pattern but harmless, low priority |
+
+### Files Modified
+
+- `frontend/components/documents/preview-panel-context.tsx` - Extended with width/tab/localStorage
+- `frontend/components/documents/selected-document-context.tsx` - New context for document selection
+- `frontend/components/documents/preview-panel.tsx` - Uses context tab
+- `frontend/components/documents/documents-table.tsx` - Uses shared contexts
+- `frontend/components/documents/document-detail-client.tsx` - Uses shared contexts
+- `frontend/app/(app)/layout.tsx` - Added SelectedDocumentProvider
+- `frontend/app/(app)/documents/loading.tsx` - Context-aware widths
+- `frontend/app/(app)/documents/[id]/loading.tsx` - Context-aware widths
+
+### Next Session
+
+**Task**: Frontend Cleanup or Upload Dialog testing
+
+**Process**:
+1. Run `/continue` to load context
+2. Choose between frontend-cleanup or upload-dialog manual testing
+3. Execute plan with `/superpowers:execute-plan`

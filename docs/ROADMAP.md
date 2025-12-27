@@ -1,6 +1,6 @@
 # StackDocs Roadmap
 
-**Last Updated:** 2025-12-27
+**Last Updated:** 2025-12-28
 
 ---
 
@@ -19,12 +19,6 @@
 - Plan: Complete (17 tasks across 5 phases, code reviewed)
 - Implementation: Complete (Phase 1-4, pending alignment fix)
 - Enables: Consistent toolbar pattern, row selection with bulk actions, expandable search
-
-**Unified Preview State** (`plans/in-progress/unified-preview-state/`)
-- Design: Complete (shared context for panel width, tab, selection)
-- Plan: Complete (tasks for context, providers, skeleton integration)
-- Implementation: Not started
-- Enables: Seamless preview panel across navigation, no layout shift on load
 
 **Frontend Cleanup** (`plans/in-progress/frontend-cleanup/`)
 - Design: Complete (component organization, icon migration, tooltips)
@@ -46,6 +40,7 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Unified Preview State | Dec 2025 | Shared preview panel state, localStorage persistence, context-aware loading skeletons |
 | Layout Alignment System | Dec 2025 | Linear-inspired grid, icon-only toggles, floating chat bar, loading skeletons |
 | Vercel Deployment | Dec 2025 | Frontend deployed to Vercel, Clerk webhook configured |
 | Linear-style Preview Sidebar | Dec 2025 | Document preview panel with Linear-inspired design |
