@@ -2,13 +2,13 @@
 
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { VisualPreview } from '@/components/visual-preview'
+import { VisualPreview } from '@/components/documents/visual-preview'
 import { usePreviewPanel } from './preview-panel-context'
 import * as Icons from '@/components/icons'
 
 // Dynamic import to avoid SSR issues with react-pdf
 const PdfViewer = dynamic(
-  () => import('@/components/pdf-viewer').then((mod) => ({ default: mod.PdfViewer })),
+  () => import('@/components/documents/pdf-viewer').then((mod) => ({ default: mod.PdfViewer })),
   {
     ssr: false,
     loading: () => (
