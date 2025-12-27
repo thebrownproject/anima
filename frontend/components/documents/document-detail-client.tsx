@@ -16,6 +16,7 @@ import { SubBar } from './sub-bar'
 import { FilterButton } from './filter-button'
 import { DocumentDetailActions } from './document-detail-actions'
 import { ExpandableSearch } from '@/components/layout/expandable-search'
+import { cn } from '@/lib/utils'
 import type { DocumentWithExtraction } from '@/types/documents'
 
 interface DocumentDetailClientProps {
@@ -32,7 +33,7 @@ export function DocumentDetailClient({
   const [fieldSearch, setFieldSearch] = useState('')
 
   // Shared state from contexts
-  const { panelRef, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
+  const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
   const { setSelectedDocId, setSignedUrl, signedUrl } = useSelectedDocument()
 
   // Panel width from context
@@ -168,9 +169,11 @@ export function DocumentDetailClient({
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {/* AI Chat Bar - inline at bottom */}
-      <div className="shrink-0">
-        <AiChatBar documentId={document.id} />
+      {/* AI Chat Bar - floating at bottom, outside panels */}
+      <div className={cn("shrink-0 px-4 py-4", !isCollapsed && "border-t")}>
+        <div className="mx-auto max-w-3xl">
+          <AiChatBar documentId={document.id} />
+        </div>
       </div>
     </div>
   )
