@@ -4,23 +4,33 @@ import { ColumnDef } from '@tanstack/react-table'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import type { ExtractedFieldRow } from '@/lib/transform-extracted-fields'
 
-function ConfidenceBadge({ confidence }: { confidence?: number }) {
+function ConfidenceDot({ confidence }: { confidence?: number }) {
   if (confidence === undefined) return null
 
   const percentage = Math.round(confidence * 100)
   const colorClass =
     percentage >= 90
-      ? 'text-emerald-600'
+      ? 'bg-emerald-500'
       : percentage >= 70
-        ? 'text-amber-500'
-        : 'text-red-500'
+        ? 'bg-amber-500'
+        : 'bg-red-500'
 
   return (
-    <span className={cn('font-mono text-xs tabular-nums', colorClass)}>
-      {percentage}%
-    </span>
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        <div className={cn('size-2 rounded-full shrink-0', colorClass)} />
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p>{percentage}% confidence</p>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -60,12 +70,14 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
       const depth = row.original.depth
       const canExpand = row.getCanExpand()
       const isExpanded = row.getIsExpanded()
+      const confidence = row.original.confidence
 
       return (
         <div
-          className="flex items-center gap-1"
+          className="flex items-center gap-2"
           style={{ paddingLeft: `${depth * 16}px` }}
         >
+          {/* Indicator: chevron for expandable, confidence dot for leaf */}
           {canExpand ? (
             <button
               type="button"
@@ -73,9 +85,8 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
                 e.stopPropagation()
                 row.toggleExpanded()
               }}
-              className="p-0.5 hover:bg-muted rounded"
-              aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
-              aria-expanded={isExpanded}
+              className="p-0.5 hover:bg-muted rounded shrink-0"
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
             >
               {isExpanded ? (
                 <ChevronDown className="size-3.5 text-muted-foreground" />
@@ -84,7 +95,7 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
               )}
             </button>
           ) : (
-            <span className="w-4" />
+            <ConfidenceDot confidence={confidence} />
           )}
           <span className={cn(depth === 0 ? 'font-medium' : 'text-muted-foreground')}>
             {row.original.field}
@@ -127,17 +138,5 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
         <span className="text-sm text-muted-foreground">{displayValue}</span>
       )
     },
-  },
-  {
-    accessorKey: 'confidence',
-    header: () => (
-      <span className="text-muted-foreground text-right block">Conf.</span>
-    ),
-    cell: ({ row }) => (
-      <div className="text-right">
-        <ConfidenceBadge confidence={row.original.confidence} />
-      </div>
-    ),
-    size: 60,
   },
 ]
