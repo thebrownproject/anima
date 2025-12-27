@@ -4995,3 +4995,53 @@ These three requirements conflict - if table fills 100%, resizing one column mus
 2. Remove text, add aria-label and tooltip
 3. Phase 4: Update loading skeletons
 4. Manual testing checklist
+
+---
+
+## Session 59 - 2025-12-27 - Layout Alignment Complete ✅
+
+**Feature**: layout-alignment (`docs/plans/complete/layout-alignment/`)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 12: Icon-only preview toggle**:
+  - Updated `preview-toggle.tsx` to use `Button` with `size="icon"` like `SidebarTrigger`
+  - `PanelRight` icon only, `size-7` (28px square)
+  - Added `mr-2.5` to align with left sidebar toggle
+  - `aria-label` ("Show preview" / "Hide preview") based on state
+  - `aria-pressed` for toggle accessibility
+  - `sr-only` span for screen readers
+
+- [x] **Task 13: Update loading skeletons**:
+  - `@header/documents/[id]/loading.tsx` - Breadcrumb with icons + icon-only toggle
+  - `@header/documents/loading.tsx` (new) - Single breadcrumb + icon-only toggle
+  - `documents/loading.tsx` - SubBar + table with proper columns
+  - `documents/[id]/loading.tsx` - SubBar + 60/40 panel split + AI chat bar
+
+- [x] **Feature complete - moved to `docs/plans/complete/`**
+
+- [x] **Updated ROADMAP.md**:
+  - Layout Alignment System moved to Completed
+  - Added Unified Preview State to In Progress
+  - Added Frontend Cleanup to In Progress
+
+### Files Modified
+
+- `frontend/components/documents/preview-toggle.tsx` - Icon-only with proper alignment
+- `frontend/app/(app)/@header/documents/[id]/loading.tsx` - Updated header skeleton
+- `frontend/app/(app)/@header/documents/loading.tsx` - New header skeleton for list
+- `frontend/app/(app)/documents/loading.tsx` - Updated list page skeleton
+- `frontend/app/(app)/documents/[id]/loading.tsx` - Updated detail page skeleton
+- `docs/ROADMAP.md` - Updated feature status
+- `docs/plans/complete/layout-alignment/` - Moved from in-progress
+
+### Next Session
+
+**Task**: Unified Preview State implementation
+
+**Process**:
+1. Run `/superpowers:execute-plan` on `docs/plans/in-progress/unified-preview-state/`
+2. Extend PreviewPanelProvider with width and tab
+3. Create SelectedDocumentProvider
+4. Update loading skeletons to use context

@@ -1,18 +1,12 @@
 # StackDocs Roadmap
 
-**Last Updated:** 2025-12-26
+**Last Updated:** 2025-12-27
 
 ---
 
 ## Current Focus
 
 ### In Progress
-
-**Layout Alignment System** (`plans/in-progress/layout-alignment/`)
-- Design: Complete (Linear-inspired 3-column grid system)
-- Plan: Complete (14 tasks across 4 phases, code reviewed, sharded)
-- Implementation: Not started
-- Enables: Consistent alignment across pages, column resizing, floating chat bar, preview panel on list page
 
 **Upload Dialog** (`plans/in-progress/upload-dialog/`)
 - Design: Complete (multi-step wizard with extraction config)
@@ -25,6 +19,18 @@
 - Plan: Complete (17 tasks across 5 phases, code reviewed)
 - Implementation: Complete (Phase 1-4, pending alignment fix)
 - Enables: Consistent toolbar pattern, row selection with bulk actions, expandable search
+
+**Unified Preview State** (`plans/in-progress/unified-preview-state/`)
+- Design: Complete (shared context for panel width, tab, selection)
+- Plan: Complete (tasks for context, providers, skeleton integration)
+- Implementation: Not started
+- Enables: Seamless preview panel across navigation, no layout shift on load
+
+**Frontend Cleanup** (`plans/in-progress/frontend-cleanup/`)
+- Design: Complete (component organization, icon migration, tooltips)
+- Plan: Complete (6 phases: icon barrel, shadcn migration, app migration, organization, tooltips, verification)
+- Implementation: Not started
+- Enables: Single icon library (Tabler), organized component folders, consistent tooltips
 
 ### Todo
 
@@ -40,6 +46,7 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Layout Alignment System | Dec 2025 | Linear-inspired grid, icon-only toggles, floating chat bar, loading skeletons |
 | Vercel Deployment | Dec 2025 | Frontend deployed to Vercel, Clerk webhook configured |
 | Linear-style Preview Sidebar | Dec 2025 | Document preview panel with Linear-inspired design |
 | Extraction Agent | Dec 2025 | Claude Agent SDK with SSE streaming, session resume, AI chat bar |
