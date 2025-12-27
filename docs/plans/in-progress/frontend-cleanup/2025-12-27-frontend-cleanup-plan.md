@@ -17,11 +17,18 @@
 | Phase 1: Create Icon Barrel | ✅ DONE | Task 1 complete |
 | Phase 2: Migrate shadcn UI | ✅ DONE | Tasks 2-9 complete |
 | Phase 3: Migrate App Components | ✅ DONE | Tasks 10-13 complete; Task 14 skipped (keep lucide-react) |
-| Phase 4: Component Organization | ⏳ TODO | Tasks 15-18.5 |
-| Phase 5: Add Tooltips | ⏳ TODO | Tasks 19-22 |
+| Phase 4: Component Organization | ✅ DONE | Tasks 15-18.5 complete + extra layout moves |
+| Phase 5: Add Tooltips | ⏳ PARTIAL | Task 19 complete; Tasks 20-22 remaining |
 | Phase 6: Documentation | ⏳ TODO | Tasks 23-24 |
 
-**Resume from:** Task 15 (Create folder structure)
+**Resume from:** Task 20 (Add tooltips to table column sort buttons)
+
+**Session 63 additions (not in original plan):**
+- Moved ai-chat-bar, ai-activity-panel → layout/
+- Moved upload-dialog/ → layout/upload-dialog/
+- Moved sub-bar, filter-button, selection-actions → layout/
+- Moved global-search-dialog → layout/ (instead of search/)
+- Removed upload-dialog barrel file (direct imports)
 
 ---
 

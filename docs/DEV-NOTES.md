@@ -5167,3 +5167,80 @@ These three requirements conflict - if table fills 100%, resizing one column mus
 1. Run `/continue` to load context
 2. Resume with Task 15 (folder structure) or skip to Phase 5 (tooltips)
 3. Execute remaining tasks
+
+---
+
+## Session 63 - 2025-12-28 - Frontend Cleanup: Component Organization
+
+**Feature**: Frontend Cleanup
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 15-18.5: Component organization**:
+  - Created folder structure: `layout/sidebar/`, `search/`, `shared/`, `providers/`
+  - Moved sidebar components (app-sidebar, nav-main, nav-projects, sidebar-header-menu) → `layout/sidebar/`
+  - Moved pdf-viewer, visual-preview → `documents/`
+  - Moved file-type-icon, stack-badges → `shared/`
+  - Moved theme-provider → `providers/`
+  - Fixed missing Dialog wrapper for upload in sidebar header
+
+- [x] **Task 19: Add tooltips to sidebar header buttons**:
+  - Added "Search (⌘K)" tooltip to search button
+  - Added "Upload document" tooltip to upload button
+
+- [x] **Additional layout reorganization (user-requested)**:
+  - Moved ai-chat-bar, ai-activity-panel → `layout/`
+  - Moved upload-dialog/ folder → `layout/upload-dialog/`
+  - Moved sub-bar, filter-button, selection-actions → `layout/`
+  - Moved global-search-dialog → `layout/` (instead of separate search/ folder)
+  - Removed upload-dialog barrel file in favor of direct imports
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| global-search-dialog location | `layout/` not `search/` | One file doesn't need its own folder |
+| upload-dialog barrel file | Removed | Only one consumer, direct imports cleaner |
+| AI chat bar location | `layout/` not `documents/` | App-level UI, not document-specific |
+
+### Current Component Structure
+
+```
+components/
+├── documents/          # Document-specific only (tables, columns, preview, detail)
+├── icons/              # Centralized icon barrel
+├── layout/
+│   ├── sidebar/        # Sidebar components
+│   ├── upload-dialog/  # Upload wizard
+│   ├── ai-chat-bar.tsx
+│   ├── ai-activity-panel.tsx
+│   ├── sub-bar.tsx
+│   ├── filter-button.tsx
+│   ├── selection-actions.tsx
+│   ├── expandable-search.tsx
+│   ├── global-search-dialog.tsx
+│   ├── action-button.tsx
+│   └── page-header.tsx
+├── providers/          # Theme provider
+├── shared/             # file-type-icon, stack-badges
+└── ui/                 # shadcn primitives
+```
+
+### Tasks Remaining
+
+- [ ] Task 20: Add tooltips to table column sort buttons
+- [ ] Task 21: Add tooltip to PDF viewer navigation
+- [ ] Task 22: Add tooltip to sidebar trigger
+- [ ] Task 23: Update frontend CLAUDE.md
+- [ ] Task 24: Full build and verification
+
+### Next Session
+
+**Task**: Complete remaining tooltips (Tasks 20-22) and documentation (Task 23-24)
+
+**Process**:
+1. Run `/continue` to load context
+2. Execute Tasks 20-22 (tooltips for table, PDF viewer, sidebar trigger)
+3. Update frontend CLAUDE.md with new structure
+4. Run final verification build
