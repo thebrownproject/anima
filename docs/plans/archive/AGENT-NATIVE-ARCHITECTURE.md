@@ -1,18 +1,18 @@
-# Agent-Native StackDocs Architecture: Strategic Synthesis
+# Agent-Native Stackdocs Architecture: Strategic Synthesis
 
 **Date Compiled**: 2025-12-16
 **Source**: Synthesized from Second Brain notes (Nov-Dec 2025)
-**Purpose**: Re-planning StackDocs with agent-native core architecture
+**Purpose**: Re-planning Stackdocs with agent-native core architecture
 
 ---
 
 ## Executive Summary
 
-StackDocs has evolved from a simple PDF→CSV tool to an **agent-native platform** leveraging the Claude Agent SDK paradigm. This document synthesizes strategic insights and establishes the architectural foundation for StackDocs v2+ development.
+Stackdocs has evolved from a simple PDF→CSV tool to an **agent-native platform** leveraging the Claude Agent SDK paradigm. This document synthesizes strategic insights and establishes the architectural foundation for Stackdocs v2+ development.
 
 **Core Pivot**: From traditional SaaS to **Claude Agent SDK platform** with hybrid architecture: Next.js + Supabase (realtime frontend) ↔ FastAPI + Agent SDK (intelligent processing) ↔ Supabase PostgreSQL (data storage).
 
-**Strategic Context**: Agent-native architecture positions StackDocs as infrastructure that turns Dark Data (80% of enterprise information in PDFs) into structured database rows using intelligent agents and reusable skills.
+**Strategic Context**: Agent-native architecture positions Stackdocs as infrastructure that turns Dark Data (80% of enterprise information in PDFs) into structured database rows using intelligent agents and reusable skills.
 
 ---
 
@@ -38,7 +38,7 @@ StackDocs has evolved from a simple PDF→CSV tool to an **agent-native platform
 - **Oracle** (Larry Ellison): Structured business transactions
 - **Google** (Larry Page): Structured the web
 - **Salesforce** (Marc Benioff): Structured customer interactions
-- **StackDocs** (2026): Structure Dark Data (80% of enterprise information locked in PDFs)
+- **Stackdocs** (2026): Structure Dark Data (80% of enterprise information locked in PDFs)
 
 **Value Proposition Reframe**:
 - **NOT**: "Chat with PDFs" (RAG - low value, nice to have)
@@ -226,7 +226,7 @@ using (user_id = current_setting('request.jwt.claims', true)::json->>'sub');
 
 **Q1 (Jan-Mar 2026)**:
 - AWS Solutions Architect certification
-- StackDocs v1 with agent-native core
+- Stackdocs v1 with agent-native core
 - Clerk+RLS security implementation
 - 3-5 foundational skills (construction, legal, engineering)
 
@@ -237,7 +237,7 @@ using (user_id = current_setting('request.jwt.claims', true)::json->>'sub');
 
 ### Interview Narrative (Q2 2026)
 
-> "I built StackDocs - infrastructure for converting Dark Data into structured database rows. 80% of enterprise data is locked in PDFs. I built a flexible schema engine that lets businesses define their own extraction templates using dynamic Pydantic models generated from user input.
+> "I built Stackdocs - infrastructure for converting Dark Data into structured database rows. 80% of enterprise data is locked in PDFs. I built a flexible schema engine that lets businesses define their own extraction templates using dynamic Pydantic models generated from user input.
 >
 > I pivoted to agent-native architecture using the Claude Agent SDK - think of it as an operating system where skills are applications. Each skill encodes domain expertise: construction drawings, legal contracts, engineering specs. My background in architecture means I understand why this data matters and where the transaction bottlenecks are.
 >
@@ -343,13 +343,13 @@ skills/
 ### vs. Traditional OCR Tools (Adobe, ABBYY)
 
 **They Give**: Text (you still need to structure it)
-**StackDocs Gives**: Structured data directly
+**Stackdocs Gives**: Structured data directly
 **Advantage**: No human post-processing required
 
 ### vs. Invoice-Specific Tools (Dext, Receipt Bank)
 
 **They're Rigid**: Invoices only, predefined fields
-**StackDocs Is Flexible**: Any document type, user-defined schema
+**Stackdocs Is Flexible**: Any document type, user-defined schema
 **Advantage**: Long tail use cases Big Tech ignores
 
 ### vs. RAG Chatbots
@@ -361,7 +361,7 @@ skills/
 ### vs. Airtable + Manual Entry
 
 **Airtable Requires**: Typing data row by row
-**StackDocs Auto-populates**: From documents
+**Stackdocs Auto-populates**: From documents
 **Advantage**: 10x faster data entry
 
 ### Unique Positioning
@@ -379,7 +379,7 @@ skills/
 ### Dark Data Market Opportunity
 
 **The Problem**: 80% of enterprise data is unstructured (PDFs, images, emails) - "Dark Data"
-**The Solution**: StackDocs as "Digital Oil Refinery" - turns crude unstructured data into structured database rows
+**The Solution**: Stackdocs as "Digital Oil Refinery" - turns crude unstructured data into structured database rows
 **The Value**: Businesses pay to unblock transactions, not for convenience
 
 ### Long Tail Strategy
@@ -388,7 +388,7 @@ skills/
 - Standard invoices (Xero)
 - Generic receipts (Google)
 
-**What Big Tech Will Ignore** (StackDocs territory):
+**What Big Tech Will Ignore** (Stackdocs territory):
 - Construction dockets, medical referrals, legal discovery
 - **Win by being flexible, not accurate**
 
@@ -414,7 +414,7 @@ skills/
 - Bills of lading, customs declarations
 - **Pain Point**: Container can't leave port until manifest is entered
 
-**Why StackDocs Wins**: Flexible schema engine lets users define their own extraction templates for any document type. Big Tech can't handle the long tail because too specific.
+**Why Stackdocs Wins**: Flexible schema engine lets users define their own extraction templates for any document type. Big Tech can't handle the long tail because too specific.
 
 ### Market Sizing
 
@@ -429,7 +429,7 @@ skills/
 
 ### 1. Infrastructure vs Application Layer
 
-**Infrastructure** (StackDocs position):
+**Infrastructure** (Stackdocs position):
 - Harder to disrupt (high switching costs)
 - Commands B2B pricing (not consumer SaaS margins)
 - Gets B2B pricing and enterprise investment priority
@@ -438,15 +438,15 @@ skills/
 ### 2. Dark Data = Digital Oil
 
 **Economic Parallel**:
-- Crude oil (unstructured data) → Refinery (StackDocs) → Petrol (structured data)
+- Crude oil (unstructured data) → Refinery (Stackdocs) → Petrol (structured data)
 - Value created in refinement, not extraction
-- StackDocs is the refinery, not the oil well
+- Stackdocs is the refinery, not the oil well
 
 ### 3. Transaction Bottleneck Economics
 
 **B2B Reality**:
 - Data entry = payment delay = cash flow problem
-- StackDocs solves cash flow, not convenience
+- Stackdocs solves cash flow, not convenience
 - **This is why businesses pay premium**
 
 ### 4. Long Tail Strategy
@@ -455,7 +455,7 @@ skills/
 - Standard invoices (Xero)
 - Generic receipts (Google)
 
-**Big Tech Will Ignore** (StackDocs territory):
+**Big Tech Will Ignore** (Stackdocs territory):
 - Construction dockets, medical referrals, legal discovery
 - **Win by being flexible, not accurate**
 
@@ -512,7 +512,7 @@ skills/
 
 ### 3. Solo Founder Burnout
 
-**Risk**: StackDocs complex (document + AI + compliance). Building solo while studying + working.
+**Risk**: Stackdocs complex (document + AI + compliance). Building solo while studying + working.
 **Mitigation**: Q2 decision point (reassess Apr-Jun). Job hunt backup prepared. "If not fun by Q2, get job + build on side."
 
 ### 4. Scope Creep
@@ -527,7 +527,7 @@ skills/
 ### This Week (Dec 16-20, 2025)
 
 1. **Read through all source notes** in Second Brain (notes/)
-2. **Review existing StackDocs codebase** (backend/, frontend/, planning/)
+2. **Review existing Stackdocs codebase** (backend/, frontend/, planning/)
 3. **Identify gaps** between current state and agent-native architecture
 4. **Prioritize migration tasks** (auth → Clerk, LLM → Claude SDK, etc.)
 
@@ -557,7 +557,7 @@ skills/
 
 > "In B2B services, Data Entry IS the transaction bottleneck. By solving the extraction, you unblock the money/service."
 
-> "StackDocs wins because you offer a Flexible Schema. You let the user define the mess, and you let the AI clean it up."
+> "Stackdocs wins because you offer a Flexible Schema. You let the user define the mess, and you let the AI clean it up."
 
 > "I will build the interface that allows companies to treat their Dark Data (PDFs) exactly like their Structured Data (Database)."
 
@@ -565,9 +565,9 @@ skills/
 
 > "Skills are competitive moats. Each skill built becomes harder to replicate."
 
-> "80% of enterprise data is Dark Data - StackDocs is the Digital Oil Refinery that turns it into structured fuel."
+> "80% of enterprise data is Dark Data - Stackdocs is the Digital Oil Refinery that turns it into structured fuel."
 
-> "StackDocs is infrastructure, not a feature - we refine crude oil (PDFs) into petrol (database rows)."
+> "Stackdocs is infrastructure, not a feature - we refine crude oil (PDFs) into petrol (database rows)."
 
 ---
 
@@ -580,7 +580,7 @@ skills/
 4. `2025-12-03_learning_national-ai-plan-leverage-strategy-stackdocs-govai.md` - Government alignment
 5. `2025-12-14_reflection_agent-native-stackdocs-architecture-pivot.md` - Agent-native architecture
 
-### StackDocs Codebase
+### Stackdocs Codebase
 - `/Users/fraserbrown/stackdocs/README.md` - Current project status
 - `/Users/fraserbrown/stackdocs/CLAUDE.md` - Implementation guidance
 - `/Users/fraserbrown/stackdocs/planning/ARCHITECTURE.md` - Technical architecture

@@ -7,7 +7,7 @@
 
 ## Hybrid Architecture
 
-StackDocs uses a hybrid architecture where the frontend connects directly to Supabase for data operations, while FastAPI handles AI agent operations via streaming.
+Stackdocs uses a hybrid architecture where the frontend connects directly to Supabase for data operations, while FastAPI handles AI agent operations via streaming.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

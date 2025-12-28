@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-**StackDocs** is a document data extraction SaaS that uses AI to extract structured data from documents (invoices, receipts, contracts).
+**Stackdocs** is a document data extraction SaaS that uses AI to extract structured data from documents (invoices, receipts, contracts).
 
 **Core Value:** Upload document → AI extracts structured data → Download CSV/JSON
 

@@ -1,4 +1,4 @@
-# StackDocs MVP - Product Requirements Document
+# Stackdocs MVP - Product Requirements Document
 
 ## Project Goal
 
@@ -19,7 +19,7 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 - Processing 50-200 documents/month across various document types
 
 **Success Criteria:**
-- **Time savings:** Manual entry takes 5 min/document → StackDocs reduces to 30 seconds
+- **Time savings:** Manual entry takes 5 min/document → Stackdocs reduces to 30 seconds
 - **Accuracy:** >95% extraction accuracy with minimal manual corrections needed
 - **Ease of use:** Non-technical users can extract data without training
 

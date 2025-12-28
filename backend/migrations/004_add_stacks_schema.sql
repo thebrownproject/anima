@@ -1,4 +1,4 @@
--- StackDocs - Stacks Schema + Agent SDK Sessions
+-- Stackdocs - Stacks Schema + Agent SDK Sessions
 -- Migration: 004
 -- Created: 2024-12-18
 -- Description: Add stacks feature with many-to-many document relationships,

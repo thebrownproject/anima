@@ -497,7 +497,7 @@ def get_settings() -> Settings:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="StackDocs MVP", version="0.1.0")
+app = FastAPI(title="Stackdocs MVP", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS.split(","),
@@ -508,7 +508,7 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "app_name": "StackDocs MVP"}
+    return {"status": "ok", "app_name": "Stackdocs MVP"}
 ```
 
 **Testing Results:**
@@ -1146,7 +1146,7 @@ All file upload functionality working:
    - DRY (Don't Repeat Yourself) - Extract reusable patterns
    - KISS (Keep It Simple, Stupid) - Use built-in solutions
    - YAGNI (You Aren't Gonna Need It) - Only build what's needed now
-   - Adapted for Python/TypeScript with StackDocs-specific examples
+   - Adapted for Python/TypeScript with Stackdocs-specific examples
 
 ### Issues Encountered
 
@@ -2423,7 +2423,7 @@ See handover prompt in session notes for detailed guidance.
   - Created `proxy.ts` with Clerk middleware (Next.js 16+)
   - Updated root layout with ClerkProvider
   - Created Supabase client (`lib/supabase.ts`)
-  - Customized sidebar with StackDocs navigation and Tabler icons
+  - Customized sidebar with Stackdocs navigation and Tabler icons
   - Created `(app)` route group with auth-protected layout
   - Created placeholder pages: documents, extractions, stacks
   - Updated home page with Clerk auth buttons (SignedIn/SignedOut)
@@ -2461,7 +2461,7 @@ See handover prompt in session notes for detailed guidance.
 **Modified:**
 - `frontend/app/layout.tsx` - Added ClerkProvider
 - `frontend/app/page.tsx` - Added Clerk auth buttons
-- `frontend/components/app-sidebar.tsx` - StackDocs navigation, Tabler icons
+- `frontend/components/app-sidebar.tsx` - Stackdocs navigation, Tabler icons
 - `frontend/components/nav-main.tsx` - Tabler icons
 - `frontend/components/nav-projects.tsx` - Tabler icons
 - `frontend/components/nav-secondary.tsx` - Tabler icons
@@ -2473,7 +2473,7 @@ e807365 feat(frontend): add environment variables template
 02805a2 feat(frontend): add Clerk proxy for Next.js 16
 65675b5 feat(frontend): wrap app with ClerkProvider
 fa8eae6 feat(frontend): add Supabase client configuration
-84c43aa feat(frontend): customize sidebar with StackDocs navigation and Tabler icons
+84c43aa feat(frontend): customize sidebar with Stackdocs navigation and Tabler icons
 17d2483 feat(frontend): add app layout with sidebar and auth protection
 da087e2 feat(frontend): add app placeholder pages (documents, extractions, stacks)
 28ea5a1 feat(frontend): update home page with Clerk auth buttons
@@ -4487,7 +4487,7 @@ Root cause: The shadcn SidebarProvider/SidebarInset layout doesn't properly prop
   - #14: Support JPG/PNG image uploads
   - #15: Production RLS fixed (added prod Clerk domain)
   - #16: Document status stuck at ocr_complete
-  - #17: Branding consistency (Stackdocs vs StackDocs)
+  - #17: Branding consistency (Stackdocs vs Stackdocs)
 
 ### Key Decisions
 

@@ -7,7 +7,7 @@
 
 ## Overview
 
-Set up Next.js frontend foundation with shadcn/ui Nova style for StackDocs MVP. This creates the technical foundation (project structure, dependencies, authentication, basic navigation) before building UI components.
+Set up Next.js frontend foundation with shadcn/ui Nova style for Stackdocs MVP. This creates the technical foundation (project structure, dependencies, authentication, basic navigation) before building UI components.
 
 ---
 

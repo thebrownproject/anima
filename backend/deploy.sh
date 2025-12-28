@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# StackDocs Local Deployment Script
+# Stackdocs Local Deployment Script
 # This script mimics what GitHub Actions will do on the server
 
 set -e  # Exit on any error
 
-echo "🚀 StackDocs API - Local Deployment Script"
+echo "🚀 Stackdocs API - Local Deployment Script"
 echo "============================================"
 
 # Check if .env.production exists
@@ -30,7 +30,7 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 CLAUDE_MODEL=claude-sonnet-4-20250514
 
 # Application
-APP_NAME=StackDocs
+APP_NAME=Stackdocs
 APP_VERSION=1.0.0
 ALLOWED_ORIGINS=https://www.stackdocs.io
 EOF

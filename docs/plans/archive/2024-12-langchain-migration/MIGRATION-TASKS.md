@@ -3,7 +3,7 @@
 **Date**: 2025-12-16
 **Status**: ✅ Complete
 **Related**: `MIGRATION-PLAN.md`, `ARCHITECTURE-UPDATE.md`
-**Purpose**: Step-by-step tasks to migrate StackDocs to hybrid architecture
+**Purpose**: Step-by-step tasks to migrate Stackdocs to hybrid architecture
 
 ---
 
@@ -121,7 +121,7 @@ class Settings(BaseSettings):
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
 
     # App
-    APP_NAME: str = "StackDocs MVP"
+    APP_NAME: str = "Stackdocs MVP"
     APP_VERSION: str = "0.2.0"  # Bump version for migration
     ENVIRONMENT: str = "development"
     ALLOWED_ORIGINS: str = "http://localhost:3000"

@@ -1,4 +1,4 @@
-# StackDocs Planning
+# Stackdocs Planning
 
 ## Superpowers Workflow
 

@@ -8,11 +8,11 @@
 
 ## Overview
 
-StackDocs allows users to:
+Stackdocs allows users to:
 1. Upload individual documents → extract structured data (current MVP)
 2. Create **Stacks** → group documents → extract tabular data across multiple docs (this feature)
 
-The name "StackDocs" comes from this core feature: stacking multiple documents together to create unified data tables.
+The name "Stackdocs" comes from this core feature: stacking multiple documents together to create unified data tables.
 
 ---
 

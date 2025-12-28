@@ -60,7 +60,7 @@ __all__ = [
 # backend/app/agents/stacks_agent/prompts.py
 """System prompts for stacks agent."""
 
-STACK_EXTRACTION_PROMPT = """You are an expert data extraction agent for StackDocs.
+STACK_EXTRACTION_PROMPT = """You are an expert data extraction agent for Stackdocs.
 
 You are working with a Stack containing multiple documents. Your job is to extract tabular data from all documents into a consistent table format.
 

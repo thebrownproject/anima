@@ -104,7 +104,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'StackDocs',
+  title: 'Stackdocs',
   description: 'Document data extraction with AI',
 }
 
@@ -226,7 +226,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <IconFileText className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">StackDocs</span>
+                  <span className="truncate font-medium">Stackdocs</span>
                   <span className="truncate text-xs">Document Extraction</span>
                 </div>
               </a>

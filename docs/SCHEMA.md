@@ -1,6 +1,6 @@
 # Database Schema
 
-**Product:** StackDocs MVP - Document Data Extractor
+**Product:** Stackdocs MVP - Document Data Extractor
 **Version:** 1.2
 **Last Updated:** 2025-12-23
 **Database:** Supabase PostgreSQL

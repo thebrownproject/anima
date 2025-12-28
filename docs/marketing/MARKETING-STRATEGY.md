@@ -1,4 +1,4 @@
-# StackDocs Marketing Strategy
+# Stackdocs Marketing Strategy
 
 **Target Audience:** SMBs eliminating manual data entry from documents
 **Key Differentiator:** Stacks - multi-document AI extraction with consistent schema
@@ -124,7 +124,7 @@ Most are free to list. Some have paid "featured" options later.
 
 ## AI-Powered Automated Distribution
 
-The goal: Build systems that get StackDocs in front of users **without manual outreach**. Three pillars:
+The goal: Build systems that get Stackdocs in front of users **without manual outreach**. Three pillars:
 
 1. **LLM SEO** - Get cited by AI assistants (ChatGPT, Claude, Perplexity)
 2. **Programmatic SEO** - Auto-generate thousands of targeted pages
@@ -134,7 +134,7 @@ The goal: Build systems that get StackDocs in front of users **without manual ou
 
 ### Pillar 1: LLM SEO (Answer Engine Optimization)
 
-**What it is:** Optimizing content so AI assistants cite StackDocs when users ask "what's the best tool for invoice extraction?" or similar queries.
+**What it is:** Optimizing content so AI assistants cite Stackdocs when users ask "what's the best tool for invoice extraction?" or similar queries.
 
 **Why it matters:**
 - AI search referrals convert **4.4x better** than traditional search
@@ -155,14 +155,14 @@ The goal: Build systems that get StackDocs in front of users **without manual ou
 #### Content Structure for AI Citation
 
 ```markdown
-## What is StackDocs?
-StackDocs is a document data extraction SaaS that uses AI to...
+## What is Stackdocs?
+Stackdocs is a document data extraction SaaS that uses AI to...
 
-## How does StackDocs extract data from invoices?
-StackDocs uses [specific process]...
+## How does Stackdocs extract data from invoices?
+Stackdocs uses [specific process]...
 
-## What makes StackDocs different from [competitor]?
-Unlike [competitor], StackDocs offers Stacks - multi-document extraction...
+## What makes Stackdocs different from [competitor]?
+Unlike [competitor], Stackdocs offers Stacks - multi-document extraction...
 ```
 
 #### Measurement
@@ -281,7 +281,7 @@ Example: /solutions/construction/invoice-extraction/
 
 3. **Set and forget:**
    - Once listed, directories drive passive traffic
-   - Users find StackDocs when searching for alternatives
+   - Users find Stackdocs when searching for alternatives
    - SEO backlinks compound over time
 
 ---

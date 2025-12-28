@@ -1,6 +1,6 @@
-# StackDocs Deployment Guide
+# Stackdocs Deployment Guide
 
-This guide explains how to deploy the StackDocs FastAPI backend to your DigitalOcean VPS using the GitHub Actions CI/CD pipeline.
+This guide explains how to deploy the Stackdocs FastAPI backend to your DigitalOcean VPS using the GitHub Actions CI/CD pipeline.
 
 ## 📋 Overview
 
@@ -14,7 +14,7 @@ This guide explains how to deploy the StackDocs FastAPI backend to your DigitalO
 
 ### 1. GitHub Repository Secrets
 
-Add these secrets to your StackDocs GitHub repository:
+Add these secrets to your Stackdocs GitHub repository:
 
 ```bash
 DROPLET_IP=your_droplet_ip_address
@@ -28,7 +28,7 @@ CLAUDE_MODEL=claude-sonnet-4-20250514
 ```
 
 **How to add secrets:**
-1. Go to your StackDocs repository on GitHub
+1. Go to your Stackdocs repository on GitHub
 2. Settings → Secrets and variables → Actions
 3. Click "New repository secret"
 4. Add each secret individually

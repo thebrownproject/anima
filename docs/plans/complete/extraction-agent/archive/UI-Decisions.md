@@ -1,6 +1,6 @@
-# StackDocs UI/UX Decisions
+# Stackdocs UI/UX Decisions
 
-This document outlines the UI component library choices and UX patterns for the StackDocs frontend.
+This document outlines the UI component library choices and UX patterns for the Stackdocs frontend.
 
 ---
 
@@ -151,7 +151,7 @@ See wrong data → Type "Fix vendor to 'Acme Corporation'" → AI re-extracts �
 
 ### The Vision
 
-Users see Claude's thinking process in real-time as it analyzes their document. This builds trust, provides transparency, and differentiates StackDocs from "black box" extraction tools.
+Users see Claude's thinking process in real-time as it analyzes their document. This builds trust, provides transparency, and differentiates Stackdocs from "black box" extraction tools.
 
 **Key Feature: Session Persistence** - User corrections resume the same session. Claude remembers the document and previous extraction, enabling natural corrections like "Change the vendor to Acme Corp" without re-explaining context.
 

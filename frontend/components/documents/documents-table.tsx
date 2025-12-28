@@ -55,6 +55,9 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   const { selectedDocId, setSelectedDocId, signedUrl, setSignedUrl } = useSelectedDocument()
   const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
 
+  // Local state for OCR text (fetched on selection)
+  const [ocrText, setOcrText] = React.useState<string | null>(null)
+
   // Panel width from context (percentage for preview panel)
   const mainPanelSize = 100 - panelWidth
 
@@ -64,39 +67,43 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     return documents.find((d) => d.id === selectedDocId) ?? null
   }, [selectedDocId, documents])
 
-  // Fetch signed URL when selected document changes
+  // Fetch signed URL and OCR text when selected document changes
   React.useEffect(() => {
-    const filePath = selectedDoc?.file_path
-    if (!filePath) {
+    if (!selectedDocId) {
       setSignedUrl(null)
+      setOcrText(null)
       return
     }
 
-    // Track if this effect has been superseded by a newer one
     let isCancelled = false
 
-    const fetchSignedUrl = async () => {
+    const fetchPreviewData = async () => {
       try {
         const supabase = createClerkSupabaseClient(getToken)
-        const { data } = await supabase.storage
-          .from('documents')
-          .createSignedUrl(filePath, 3600) // 1 hour expiry
 
-        // Only update state if this request is still current
+        // Fetch both in parallel
+        const [urlResult, ocrResult] = await Promise.all([
+          selectedDoc?.file_path
+            ? supabase.storage.from('documents').createSignedUrl(selectedDoc.file_path, 3600)
+            : Promise.resolve({ data: null }),
+          supabase.from('ocr_results').select('raw_text').eq('document_id', selectedDocId).maybeSingle(),
+        ])
+
         if (!isCancelled) {
-          setSignedUrl(data?.signedUrl ?? null)
+          setSignedUrl(urlResult.data?.signedUrl ?? null)
+          setOcrText(ocrResult.data?.raw_text ?? null)
         }
       } catch (error) {
-        console.error('Failed to fetch signed URL:', error)
+        console.error('Failed to fetch preview data:', error)
         if (!isCancelled) {
           setSignedUrl(null)
+          setOcrText(null)
         }
       }
     }
 
-    fetchSignedUrl()
+    fetchPreviewData()
 
-    // Cleanup: mark this effect as cancelled when a new one starts
     return () => {
       isCancelled = true
     }
@@ -270,7 +277,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
           <div className="h-full">
             <PreviewPanel
               pdfUrl={signedUrl}
-              ocrText={null}
+              ocrText={ocrText}
               mimeType={selectedDoc?.mime_type ?? ''}
             />
           </div>

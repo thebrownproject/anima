@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines the user stories and functional requirements for migrating StackDocs from the Anthropic SDK to the Claude Agent SDK, enabling session-based extraction with memory and streaming feedback.
+This document defines the user stories and functional requirements for migrating Stackdocs from the Anthropic SDK to the Claude Agent SDK, enabling session-based extraction with memory and streaming feedback.
 
 ---
 

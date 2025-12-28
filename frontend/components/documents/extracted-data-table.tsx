@@ -84,7 +84,7 @@ export function ExtractedDataTable({
 
   return (
     <div className="h-full overflow-auto">
-      <Table>
+      <Table className="table-fixed">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30 group/header">
@@ -93,7 +93,8 @@ export function ExtractedDataTable({
                   key={header.id}
                   className={cn(
                     "h-9 text-sm font-normal text-muted-foreground",
-                    header.column.id === 'select' && "w-4"
+                    header.column.id === 'select' && "w-10",
+                    header.column.id === 'field' && "w-[40%]"
                   )}
                 >
                   {header.isPlaceholder
@@ -134,7 +135,8 @@ export function ExtractedDataTable({
                       key={cell.id}
                       className={cn(
                         "py-3 whitespace-normal",
-                        cell.column.id === 'select' && "w-4"
+                        cell.column.id === 'select' && "w-10",
+                        cell.column.id === 'field' && "w-[40%]"
                       )}
                     >
                       {flexRender(

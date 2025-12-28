@@ -1,12 +1,12 @@
 ---
-description: Resume StackDocs development from where you left off
+description: Resume Stackdocs development from where you left off
 arguments:
   - name: handover
     description: Optional handover prompt from previous session (paste the full handover text)
     required: false
 ---
 
-You are resuming the **StackDocs** project. Get oriented and wait for direction.
+You are resuming the **Stackdocs** project. Get oriented and wait for direction.
 
 **FIRST**: Activate the using-superpowers skill to ensure proper workflow:
 ```
@@ -74,7 +74,7 @@ ls docs/plans/in-progress/
 ## Step 4: Present Summary
 
 ```
-📍 StackDocs Status
+📍 Stackdocs Status
 
 **Branch:** [name]
 **Current Feature:** [feature name from ROADMAP In Progress]

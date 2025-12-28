@@ -1,6 +1,6 @@
-# StackDocs Backend
+# Stackdocs Backend
 
-FastAPI backend for StackDocs MVP - document data extraction service.
+FastAPI backend for Stackdocs MVP - document data extraction service.
 
 ## Tech Stack
 

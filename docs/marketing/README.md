@@ -1,6 +1,6 @@
 # Marketing Docs
 
-Assets and planning for StackDocs marketing and landing page.
+Assets and planning for Stackdocs marketing and landing page.
 
 ## Contents
 

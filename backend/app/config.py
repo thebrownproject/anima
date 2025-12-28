@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     CLERK_AUTHORIZED_PARTIES: str = "https://www.stackdocs.io"  # Comma-separated
 
     # Application Configuration
-    APP_NAME: str = "StackDocs MVP"
+    APP_NAME: str = "Stackdocs MVP"
     APP_VERSION: str = "0.2.0"  # Bumped for hybrid architecture migration
     ENVIRONMENT: str = "development"
     DEBUG: bool = False

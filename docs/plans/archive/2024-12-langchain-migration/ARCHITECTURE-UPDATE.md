@@ -1,4 +1,4 @@
-# StackDocs Architecture Update: Hybrid Approach with Claude Agent SDK
+# Stackdocs Architecture Update: Hybrid Approach with Claude Agent SDK
 
 **Date:** 2025-01-13
 **Status:** Planning Phase
@@ -771,7 +771,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 app = FastAPI(
-    title="StackDocs API",
+    title="Stackdocs API",
     description="Document extraction API with Claude Agent SDK and Structured Outputs",
     docs_url="/docs",
     redoc_url="/redoc"

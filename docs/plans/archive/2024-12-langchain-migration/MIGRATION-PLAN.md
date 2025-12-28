@@ -2,7 +2,7 @@
 
 **Date**: 2025-12-16
 **Status**: Planning Complete - Ready for Implementation
-**Purpose**: Migrate StackDocs to hybrid architecture with Claude SDK and direct Supabase frontend
+**Purpose**: Migrate Stackdocs to hybrid architecture with Claude SDK and direct Supabase frontend
 
 ---
 

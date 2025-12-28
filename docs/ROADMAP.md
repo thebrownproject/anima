@@ -1,4 +1,4 @@
-# StackDocs Roadmap
+# Stackdocs Roadmap
 
 **Last Updated:** 2025-12-28
 

@@ -33,11 +33,19 @@ Lightweight tracking for items that don't need immediate action.
 - [ ] #16 `bug` Document status stuck at `ocr_complete` - extraction agent saves data but doesn't call `complete` tool, so document/extraction status never updates to `completed` (2025-12-24)
   - Files: `backend/app/agents/extraction_agent/agent.py`, `backend/app/agents/extraction_agent/tools/complete.py`
   - Agent needs to reliably call `complete` tool after saving extraction
-- [ ] #17 `tech-debt` Branding consistency - use "Stackdocs" not "StackDocs" across codebase and marketing (2025-12-24)
+- [x] #17 `tech-debt` Branding consistency - use "Stackdocs" not "StackDocs" across codebase and marketing (2025-12-24)
+  - Fix: Replaced 100+ occurrences across frontend, backend, docs, plans, migrations, CI/CD
 - [ ] #18 `feature` Undo/Redo navigation in sidebar header - Linear-style back/forward/history buttons above search, requires navigation history system (2025-12-25)
-- [ ] #19 `bug` Checkbox selection on document details not activating actions and selection count in sub nav bar (2025-12-28)
+- [x] #19 `bug` Checkbox selection on document details not activating actions and selection count in sub nav bar (2025-12-28)
+  - Fix: Wired up onSelectionChange callback and added SelectionActions to sub-bar
 - [ ] #20 `feature` Sub-bar button functionality - Filter dropdown options, Edit inline editing, Export format options need implementation (2025-12-28)
 - [ ] #21 `feature` Upload dialog UI/UX polish - redesign wizard flow, integrate with AI chat bar for seamless upload-to-extraction experience (2025-12-28)
-- [ ] #22 `bug` Visual preview empty on documents list - DocumentsTable passes `ocrText={null}` to PreviewPanel, need to fetch OCR text for selected document (2025-12-28)
-  - Files: `frontend/components/documents/documents-table.tsx:660`
-  - Fix: Fetch `ocr_raw_text` when document selected, or include in documents query
+- [x] #22 `bug` Visual preview empty on documents list - DocumentsTable passes `ocrText={null}` to PreviewPanel, need to fetch OCR text for selected document (2025-12-28)
+  - Files: `frontend/components/documents/documents-table.tsx`
+  - Fix: Combined useEffect fetches signed URL and OCR text in parallel when document selected
+- [x] #23 `bug` Chevron expansion resizes Field/Value columns - expanding nested fields in ExtractedDataTable causes column widths to shift (2025-12-28)
+  - Files: `frontend/components/documents/extracted-data-table.tsx`
+  - Fix: Added `table-fixed` class and explicit column widths (select: w-10, field: w-[40%])
+- [ ] #24 `bug` Layout breaks at narrow viewports when sidebar + preview open - content goes off-screen, works fine if sidebar collapsed OR preview closed (2025-12-28)
+  - Files: `frontend/components/documents/document-detail-client.tsx`, ResizablePanelGroup
+  - Likely min-width conflict between sidebar and resizable panels
