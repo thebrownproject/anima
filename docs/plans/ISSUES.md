@@ -38,3 +38,6 @@ Lightweight tracking for items that don't need immediate action.
 - [ ] #19 `bug` Checkbox selection on document details not activating actions and selection count in sub nav bar (2025-12-28)
 - [ ] #20 `feature` Sub-bar button functionality - Filter dropdown options, Edit inline editing, Export format options need implementation (2025-12-28)
 - [ ] #21 `feature` Upload dialog UI/UX polish - redesign wizard flow, integrate with AI chat bar for seamless upload-to-extraction experience (2025-12-28)
+- [ ] #22 `bug` Visual preview empty on documents list - DocumentsTable passes `ocrText={null}` to PreviewPanel, need to fetch OCR text for selected document (2025-12-28)
+  - Files: `frontend/components/documents/documents-table.tsx:660`
+  - Fix: Fetch `ocr_raw_text` when document selected, or include in documents query
