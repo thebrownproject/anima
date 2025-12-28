@@ -5336,3 +5336,44 @@ components/
 ### Feature Complete
 
 Frontend Cleanup finished - moved to `docs/plans/complete/`
+
+---
+
+## Session 66 - 2025-12-28 - Issues Reorganization & UI Polish
+
+**Feature**: Housekeeping / Bug Fixes
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Issues tracking reorganization**:
+  - Created `docs/plans/issues/` folder structure
+  - Split ISSUES.md into ACTIVE.md (15 open) and COMPLETED.md (9 resolved)
+  - Table format for completed issues with resolution notes
+  - Updated CLAUDE.md references in both root and docs/
+
+- [x] **Extracted data table alignment fix**:
+  - Fixed checkbox column width (w-10 → w-4) to match documents table
+  - Restored left alignment consistency between tables
+
+- [x] **Expand/collapse chevron tooltips**:
+  - Added "Expand"/"Collapse" tooltips to chevrons in extracted-columns.tsx
+  - Tooltips appear on right side
+
+- [x] **New bug logged**:
+  - #25: Realtime subscription breaks on document detail pages
+  - Likely Clerk JWT expiry not refreshing Supabase connection
+
+### Next Session
+
+**Focus**: Stacks Feature - the core value proposition
+
+**Context**:
+- Plans ready at `docs/plans/todo/stacks/`
+- Database migrations already applied (004 & 005)
+- Tables: `stacks`, `stack_documents`, `stack_tables`, `stack_table_rows`
+
+**Process**:
+1. Run `/superpowers:brainstorm` to design Stacks UX
+2. Key decisions: Stack creation flow, document assignment, table schema definition
+3. Then `/superpowers:write-plan` for implementation tasks
