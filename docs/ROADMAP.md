@@ -8,11 +8,7 @@
 
 ### In Progress
 
-**Upload Dialog** (`plans/in-progress/upload-dialog/`)
-- Design: Complete (multi-step wizard with extraction config)
-- Plan: Complete (17 tasks across 3 phases, reviewed and sharded)
-- Implementation: Complete (16/17 tasks, pending manual testing)
-- Enables: Upload documents with extraction options (auto/custom fields)
+*No features currently in progress*
 
 ### Todo
 
@@ -28,6 +24,7 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Upload Dialog | Dec 2025 | Multi-step wizard with extraction config, file upload, field customization |
 | Sub-bar Toolbar | Dec 2025 | Linear-style sub-bar with filter, search, row selection, bulk actions |
 | Frontend Cleanup | Dec 2025 | Tabler icon barrel, component reorganization, tooltips throughout UI |
 | Unified Preview State | Dec 2025 | Shared preview panel state, localStorage persistence, context-aware loading skeletons |

@@ -37,3 +37,4 @@ Lightweight tracking for items that don't need immediate action.
 - [ ] #18 `feature` Undo/Redo navigation in sidebar header - Linear-style back/forward/history buttons above search, requires navigation history system (2025-12-25)
 - [ ] #19 `bug` Checkbox selection on document details not activating actions and selection count in sub nav bar (2025-12-28)
 - [ ] #20 `feature` Sub-bar button functionality - Filter dropdown options, Edit inline editing, Export format options need implementation (2025-12-28)
+- [ ] #21 `feature` Upload dialog UI/UX polish - redesign wizard flow, integrate with AI chat bar for seamless upload-to-extraction experience (2025-12-28)
