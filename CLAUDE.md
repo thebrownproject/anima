@@ -56,7 +56,7 @@ This project uses the **superpowers workflow** for planning and implementing fea
 | `docs/ROADMAP.md`      | Feature priorities                         |
 | `docs/DEV-NOTES.md`    | Session history & decisions (NEVER read full - grep for context) |
 | `docs/CLAUDE.md`       | Planning index, workflow details           |
-| `docs/plans/ISSUES.md` | Lightweight issue/idea tracking            |
+| `docs/plans/issues/`   | Issue tracking (ACTIVE.md + COMPLETED.md) |
 
 ---
 

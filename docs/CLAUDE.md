@@ -49,7 +49,9 @@ docs/
 ├── SCHEMA.md              # Database schema
 ├── marketing/             # Marketing assets
 └── plans/
-    ├── ISSUES.md          # Lightweight issue/idea tracking
+    ├── issues/            # Issue tracking
+    │   ├── ACTIVE.md      # Open issues and ideas
+    │   └── COMPLETED.md   # Resolved issues archive
     ├── todo/              # Features designed, ready to implement
     ├── in-progress/       # Currently being worked on
     ├── complete/          # Done

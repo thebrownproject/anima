@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import * as React from 'react'
+import * as React from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -9,7 +9,7 @@ import {
   useReactTable,
   ExpandedState,
   RowSelectionState,
-} from '@tanstack/react-table'
+} from "@tanstack/react-table";
 import {
   Table,
   TableBody,
@@ -17,33 +17,33 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { cn } from '@/lib/utils'
-import { extractedColumns } from './extracted-columns'
-import { transformExtractedFields } from '@/lib/transform-extracted-fields'
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { extractedColumns } from "./extracted-columns";
+import { transformExtractedFields } from "@/lib/transform-extracted-fields";
 
 interface ExtractedDataTableProps {
-  fields: Record<string, unknown> | null
-  confidenceScores: Record<string, number> | null
-  changedFields?: Set<string>
-  searchFilter?: string
-  onSelectionChange?: (count: number) => void
+  fields: Record<string, unknown> | null;
+  confidenceScores: Record<string, number> | null;
+  changedFields?: Set<string>;
+  searchFilter?: string;
+  onSelectionChange?: (count: number) => void;
 }
 
 export function ExtractedDataTable({
   fields,
   confidenceScores,
   changedFields = new Set(),
-  searchFilter = '',
+  searchFilter = "",
   onSelectionChange,
 }: ExtractedDataTableProps) {
-  const [expanded, setExpanded] = React.useState<ExpandedState>({})
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+  const [expanded, setExpanded] = React.useState<ExpandedState>({});
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
   const data = React.useMemo(
     () => transformExtractedFields(fields, confidenceScores),
     [fields, confidenceScores]
-  )
+  );
 
   const table = useReactTable({
     data,
@@ -61,25 +61,27 @@ export function ExtractedDataTable({
     getExpandedRowModel: getExpandedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn: (row, _columnId, filterValue) => {
-      const fieldName = row.original.field?.toLowerCase() ?? ''
-      return fieldName.includes(filterValue.toLowerCase())
+      const fieldName = row.original.field?.toLowerCase() ?? "";
+      return fieldName.includes(filterValue.toLowerCase());
     },
-  })
+  });
 
   // Notify parent of selection changes
   // Note: Use rowSelection state directly since getFilteredSelectedRowModel()
   // may not work correctly with nested/expandable rows
   React.useEffect(() => {
-    const selectedCount = Object.keys(rowSelection).filter(key => rowSelection[key]).length
-    onSelectionChange?.(selectedCount)
-  }, [rowSelection, onSelectionChange])
+    const selectedCount = Object.keys(rowSelection).filter(
+      (key) => rowSelection[key]
+    ).length;
+    onSelectionChange?.(selectedCount);
+  }, [rowSelection, onSelectionChange]);
 
   if (!fields || Object.keys(fields).length === 0) {
     return (
       <div className="flex h-full items-center justify-center py-12">
         <p className="text-sm text-muted-foreground">No data extracted</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -87,14 +89,17 @@ export function ExtractedDataTable({
       <Table className="table-fixed">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30 group/header">
+            <TableRow
+              key={headerGroup.id}
+              className="bg-muted/30 hover:bg-muted/30 group/header"
+            >
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
                   className={cn(
                     "h-9 text-sm font-normal text-muted-foreground",
-                    header.column.id === 'select' && "w-10",
-                    header.column.id === 'field' && "w-[40%]"
+                    header.column.id === "select" && "w-6",
+                    header.column.id === "field" && "w-[40%]"
                   )}
                 >
                   {header.isPlaceholder
@@ -112,21 +117,21 @@ export function ExtractedDataTable({
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               // Check if this row or its parent is in changedFields
-              const rootId = row.original.id.split('-')[0]
-              const isChanged = changedFields.has(rootId)
+              const rootId = row.original.id.split("-")[0];
+              const isChanged = changedFields.has(rootId);
 
               return (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className={cn(
-                    'h-12 hover:bg-muted/30 transition-colors group/row',
-                    row.getCanExpand() && 'cursor-pointer',
-                    isChanged && 'animate-highlight-fade'
+                    "h-12 hover:bg-muted/30 transition-colors group/row",
+                    row.getCanExpand() && "cursor-pointer",
+                    isChanged && "animate-highlight-fade"
                   )}
                   onClick={() => {
                     if (row.getCanExpand()) {
-                      row.toggleExpanded()
+                      row.toggleExpanded();
                     }
                   }}
                 >
@@ -135,8 +140,8 @@ export function ExtractedDataTable({
                       key={cell.id}
                       className={cn(
                         "py-3 whitespace-normal",
-                        cell.column.id === 'select' && "w-10",
-                        cell.column.id === 'field' && "w-[40%]"
+                        cell.column.id === "select" && "w-4",
+                        cell.column.id === "field" && "w-[40%]"
                       )}
                     >
                       {flexRender(
@@ -146,17 +151,22 @@ export function ExtractedDataTable({
                     </TableCell>
                   ))}
                 </TableRow>
-              )
+              );
             })
           ) : (
             <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={extractedColumns.length} className="h-24 text-center">
-                <p className="text-sm text-muted-foreground">No data extracted</p>
+              <TableCell
+                colSpan={extractedColumns.length}
+                className="h-24 text-center"
+              >
+                <p className="text-sm text-muted-foreground">
+                  No data extracted
+                </p>
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }

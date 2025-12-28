@@ -99,21 +99,28 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
         <div className="flex items-center gap-2">
           {/* Indicator: chevron for expandable, confidence dot for leaf */}
           {canExpand ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                row.toggleExpanded();
-              }}
-              className="py-0.5 pl-0.5 -ml-1 -mr-0 hover:bg-muted rounded shrink-0"
-              aria-label={isExpanded ? "Collapse" : "Expand"}
-            >
-              {isExpanded ? (
-                <Icons.ChevronDown className="size-3.5 text-muted-foreground" />
-              ) : (
-                <Icons.ChevronRight className="size-3.5 text-muted-foreground" />
-              )}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    row.toggleExpanded();
+                  }}
+                  className="py-0.5 pl-0.5 -ml-1 -mr-0 hover:bg-muted rounded shrink-0"
+                  aria-label={isExpanded ? "Collapse" : "Expand"}
+                >
+                  {isExpanded ? (
+                    <Icons.ChevronDown className="size-3.5 text-muted-foreground" />
+                  ) : (
+                    <Icons.ChevronRight className="size-3.5 text-muted-foreground" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {isExpanded ? "Collapse" : "Expand"}
+              </TooltipContent>
+            </Tooltip>
           ) : (
             <ConfidenceDot confidence={confidence} />
           )}
