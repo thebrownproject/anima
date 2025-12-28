@@ -34,7 +34,7 @@ export function SidebarHeaderMenu() {
     <>
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <UploadDialogContent />
+        <UploadDialogContent onClose={() => setUploadOpen(false)} />
       </Dialog>
       <SidebarHeader className="h-[47px] flex flex-row items-center justify-between gap-2 px-2 py-0">
         {/* Logo + Name + Dropdown */}
