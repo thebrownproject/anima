@@ -74,7 +74,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       elements: {
                         rootBox: "w-full",
                         userButtonTrigger:
-                          "w-full h-8 justify-start px-2 rounded-md hover:bg-sidebar-accent transition-colors",
+                          "w-full h-8 justify-start px-2 rounded-md hover:bg-sidebar-accent transition-colors cursor-default",
                         userButtonBox: "flex-row-reverse gap-0",
                         avatarBox: "size-6 rounded-full",
                         userButtonOuterIdentifier: "text-sm",
