@@ -99,7 +99,7 @@ export function ExtractedDataTable({
                   className={cn(
                     "h-9 text-sm font-normal text-muted-foreground",
                     header.column.id === "select" && "w-6",
-                    header.column.id === "field" && "w-[40%]"
+                    header.column.id === "field" && "w-[33%]"
                   )}
                 >
                   {header.isPlaceholder
@@ -141,7 +141,7 @@ export function ExtractedDataTable({
                       className={cn(
                         "py-3 whitespace-normal",
                         cell.column.id === "select" && "w-4",
-                        cell.column.id === "field" && "w-[40%]"
+                        cell.column.id === "field" && "w-[33%]"
                       )}
                     >
                       {flexRender(
