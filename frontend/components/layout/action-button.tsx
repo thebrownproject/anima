@@ -2,21 +2,28 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface ActionButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: React.ReactNode;
   children: React.ReactNode;
+  tooltip?: string;
 }
 
 export function ActionButton({
   icon,
   children,
   className,
+  tooltip,
   ...props
 }: ActionButtonProps) {
-  return (
+  const button = (
     <Button
       variant="ghost"
       size="sm"
@@ -30,5 +37,16 @@ export function ActionButton({
       )}
       {children}
     </Button>
+  );
+
+  if (!tooltip) {
+    return button;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent side="bottom" collisionPadding={16}>{tooltip}</TooltipContent>
+    </Tooltip>
   );
 }

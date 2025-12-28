@@ -40,7 +40,7 @@ export function ExpandableSearch({
 
   if (!isExpanded && !value) {
     return (
-      <ActionButton icon={<Icons.Search />} onClick={handleExpand}>
+      <ActionButton icon={<Icons.Search />} onClick={handleExpand} tooltip="Find documents by name">
         Search
       </ActionButton>
     )

@@ -8,6 +8,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface SelectionActionsProps {
   selectedCount: number
@@ -28,12 +33,17 @@ export function SelectionActions({
         {selectedCount} selected
       </span>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <ActionButton icon={<Icons.ChevronDown />}>
-            Actions
-          </ActionButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <ActionButton icon={<Icons.ChevronDown />}>
+                Actions
+              </ActionButton>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Bulk operations</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
           <DropdownMenuItem onClick={onAddToStack} disabled>
             <Icons.FolderPlus className="mr-2 size-4" />
             Add to Stack

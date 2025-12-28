@@ -12,10 +12,10 @@ export function DocumentDetailActions({ assignedStacks }: DocumentDetailActionsP
   return (
     <>
       <StacksDropdown assignedStacks={assignedStacks} />
-      <ActionButton icon={<Icons.Edit />}>
+      <ActionButton icon={<Icons.Edit />} tooltip="Edit document and extractions">
         Edit
       </ActionButton>
-      <ActionButton icon={<Icons.Download />}>
+      <ActionButton icon={<Icons.Download />} tooltip="Download extraction data">
         Export
       </ActionButton>
     </>

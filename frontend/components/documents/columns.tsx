@@ -42,51 +42,77 @@ function SortIcon({ isSorted }: { isSorted: false | "asc" | "desc" }) {
 export const columns: ColumnDef<Document>[] = [
   {
     id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected()
-            ? true
-            : table.getIsSomePageRowsSelected()
-            ? "indeterminate"
-            : false
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="opacity-0 group-hover/header:opacity-100 data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100 transition-opacity"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        disabled={!row.getCanSelect()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        onClick={(e) => e.stopPropagation()}
-        className="opacity-0 group-hover/row:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
-      />
-    ),
+    header: ({ table }) => {
+      const isAllSelected = table.getIsAllPageRowsSelected();
+      const isSomeSelected = table.getIsSomePageRowsSelected();
+      const tooltipText = isAllSelected ? "Deselect all" : "Select all";
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex h-full items-center">
+              <Checkbox
+                checked={isAllSelected ? true : isSomeSelected ? "indeterminate" : false}
+                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                aria-label="Select all"
+                className="opacity-0 group-hover/header:opacity-100 data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100 transition-opacity"
+              />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="right">{tooltipText}</TooltipContent>
+        </Tooltip>
+      );
+    },
+    cell: ({ row }) => {
+      const isSelected = row.getIsSelected();
+      const tooltipText = isSelected ? "Deselect row" : "Select row";
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex h-full items-center">
+              <Checkbox
+                checked={isSelected}
+                disabled={!row.getCanSelect()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="Select row"
+                onClick={(e) => e.stopPropagation()}
+                className="opacity-0 group-hover/row:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+              />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="right">{tooltipText}</TooltipContent>
+        </Tooltip>
+      );
+    },
     enableSorting: false,
     enableHiding: false,
   },
   {
     accessorKey: "filename",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 group font-normal h-auto py-0"
-      >
-        Name
-        <SortIcon isSorted={column.getIsSorted()} />
-      </Button>
-    ),
+    header: ({ column }) => {
+      const isSorted = column.getIsSorted();
+      const tooltipText = isSorted === "asc" ? "Order Z-A" : "Order A-Z";
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              onClick={() => column.toggleSorting(isSorted === "asc")}
+              className="-ml-3 group font-normal h-auto py-0"
+            >
+              Name
+              <SortIcon isSorted={isSorted} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{tooltipText}</TooltipContent>
+        </Tooltip>
+      );
+    },
     cell: ({ row }) => {
       const doc = row.original;
       return (
         <div className="flex items-center gap-2 max-w-full -ml-px">
           <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
-          <Tooltip delayDuration={500}>
+          <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 href={`/documents/${doc.id}`}
@@ -112,16 +138,25 @@ export const columns: ColumnDef<Document>[] = [
   },
   {
     accessorKey: "uploaded_at",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="group font-normal h-auto py-0"
-      >
-        <SortIcon isSorted={column.getIsSorted()} />
-        Date
-      </Button>
-    ),
+    header: ({ column }) => {
+      const isSorted = column.getIsSorted();
+      const tooltipText = isSorted === "asc" ? "Order newest first" : "Order oldest first";
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              onClick={() => column.toggleSorting(isSorted === "asc")}
+              className="group font-normal h-auto py-0"
+            >
+              <SortIcon isSorted={isSorted} />
+              Date
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">{tooltipText}</TooltipContent>
+        </Tooltip>
+      );
+    },
     cell: ({ row }) => (
       <div className="text-right text-muted-foreground pr-6">
         {formatRelativeDate(row.original.uploaded_at)}

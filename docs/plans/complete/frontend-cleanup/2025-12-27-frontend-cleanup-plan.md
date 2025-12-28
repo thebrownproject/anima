@@ -18,10 +18,10 @@
 | Phase 2: Migrate shadcn UI | ✅ DONE | Tasks 2-9 complete |
 | Phase 3: Migrate App Components | ✅ DONE | Tasks 10-13 complete; Task 14 skipped (keep lucide-react) |
 | Phase 4: Component Organization | ✅ DONE | Tasks 15-18.5 complete + extra layout moves |
-| Phase 5: Add Tooltips | ⏳ PARTIAL | Task 19, 22 complete + extra tooltips; Tasks 20-21 remaining |
-| Phase 6: Documentation | ⏳ TODO | Tasks 23-24 |
+| Phase 5: Add Tooltips | ✅ DONE | All tooltips complete |
+| Phase 6: Documentation | ✅ DONE | Tasks 23-24 complete |
 
-**Resume from:** Sub-bar tooltips brainstorm, then Tasks 20-21
+**STATUS: COMPLETE** - All phases finished, ready to move to `plans/complete/`
 
 **Session 63 additions (not in original plan):**
 - Moved ai-chat-bar, ai-activity-panel → layout/
@@ -37,6 +37,12 @@
 - Added tooltip to Clerk UserButton ("Account settings")
 - Added tooltips to breadcrumb links ("Go to X")
 - Added tooltip to PreviewToggle (dynamic "Show/Hide preview")
+
+**Session 65 additions:**
+- Completed Tasks 20-21 (table column sort tooltips, PDF nav tooltips)
+- Added sub-bar tooltips (Filter, Search, Edit, Export, Selection actions)
+- Updated frontend CLAUDE.md with Icons and Tooltips documentation
+- Full build verification passed
 
 ---
 

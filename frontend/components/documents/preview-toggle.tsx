@@ -28,7 +28,7 @@ export function PreviewToggle() {
           <span className="sr-only">Toggle Preview</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="left">
+      <TooltipContent side="bottom" collisionPadding={16}>
         {isCollapsed ? 'Show preview' : 'Hide preview'}
       </TooltipContent>
     </Tooltip>

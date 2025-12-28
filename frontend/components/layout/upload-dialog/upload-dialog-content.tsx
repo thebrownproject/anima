@@ -254,7 +254,7 @@ export function UploadDialogContent({ onClose }: UploadDialogContentProps) {
   }
 
   return (
-    <DialogContent className="sm:max-w-md">
+    <DialogContent className="sm:max-w-md" onCloseAutoFocus={(e) => e.preventDefault()}>
       <DialogHeader>
         <div className="flex items-center gap-2">
           {canGoBack && (

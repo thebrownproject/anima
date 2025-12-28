@@ -5302,3 +5302,37 @@ components/
 3. Complete Tasks 20-21 (table columns, PDF viewer)
 4. Update frontend CLAUDE.md
 5. Run final verification build
+
+---
+
+## Session 65 - 2025-12-28 - Frontend Cleanup Complete ✅
+
+**Feature**: Frontend Cleanup
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Tasks 20-21: Table and PDF tooltips** (completed in Session 64, not documented):
+  - Added dynamic tooltips to Name/Date sort columns
+  - Added tooltips to PDF viewer prev/next navigation
+  - Added tooltips to select checkboxes
+
+- [x] **Sub-bar tooltips** (completed in Session 64, not documented):
+  - ActionButton tooltips for Filter, Search, Edit, Export, Delete
+  - ExpandableSearch clear button tooltip
+  - SelectionActions tooltips
+
+- [x] **Task 23: Update frontend CLAUDE.md**:
+  - Updated directory structure for new component organization
+  - Added Icons section (barrel export pattern)
+  - Added Tooltips section (concise)
+
+- [x] **Task 24: Full build verification**:
+  - TypeScript check passed
+  - Production build successful
+
+- [x] **Minor fix**: Date sort tooltip side changed to left
+
+### Feature Complete
+
+Frontend Cleanup finished - moved to `docs/plans/complete/`

@@ -14,18 +14,6 @@
 - Implementation: Complete (16/17 tasks, pending manual testing)
 - Enables: Upload documents with extraction options (auto/custom fields)
 
-**Sub-bar Toolbar** (`plans/in-progress/sub-bar-toolbar/`)
-- Design: Complete (Linear-style sub-bar with filter, search, actions)
-- Plan: Complete (17 tasks across 5 phases, code reviewed)
-- Implementation: Complete (Phase 1-4, pending alignment fix)
-- Enables: Consistent toolbar pattern, row selection with bulk actions, expandable search
-
-**Frontend Cleanup** (`plans/in-progress/frontend-cleanup/`)
-- Design: Complete (component organization, icon migration, tooltips)
-- Plan: Complete (6 phases: icon barrel, shadcn migration, app migration, organization, tooltips, verification)
-- Implementation: Not started
-- Enables: Single icon library (Tabler), organized component folders, consistent tooltips
-
 ### Todo
 
 **Stacks Feature** (`plans/todo/stacks/`)
@@ -40,6 +28,8 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Sub-bar Toolbar | Dec 2025 | Linear-style sub-bar with filter, search, row selection, bulk actions |
+| Frontend Cleanup | Dec 2025 | Tabler icon barrel, component reorganization, tooltips throughout UI |
 | Unified Preview State | Dec 2025 | Shared preview panel state, localStorage persistence, context-aware loading skeletons |
 | Layout Alignment System | Dec 2025 | Linear-inspired grid, icon-only toggles, floating chat bar, loading skeletons |
 | Vercel Deployment | Dec 2025 | Frontend deployed to Vercel, Clerk webhook configured |
