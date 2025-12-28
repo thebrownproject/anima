@@ -17,16 +17,21 @@ frontend/
 ├── app/
 │   ├── (app)/                    # Protected routes (requires auth)
 │   │   ├── @header/              # Parallel route for page headers
-│   │   │   ├── documents/        # Documents list header (Upload button)
-│   │   │   └── documents/[id]/   # Document detail header (title + actions)
+│   │   │   ├── documents/        # Documents list header
+│   │   │   └── documents/[id]/   # Document detail header
 │   │   ├── documents/            # Documents list and detail pages
 │   │   ├── stacks/               # Stacks feature (placeholder)
 │   │   └── extractions/          # Extractions feature (placeholder)
 │   └── api/webhooks/clerk/       # Clerk webhook for user sync
 ├── components/
-│   ├── documents/                # Document-specific components
-│   ├── layout/                   # PageHeader, sidebar components
-│   └── ui/                       # shadcn/ui primitives (Button, Card, etc.)
+│   ├── documents/                # Document tables, columns, preview, detail views
+│   ├── icons/                    # Centralized Tabler icon barrel export
+│   ├── layout/                   # App-level layout components
+│   │   ├── sidebar/              # Sidebar and navigation components
+│   │   └── upload-dialog/        # Multi-step upload wizard
+│   ├── providers/                # Context providers (theme)
+│   ├── shared/                   # Reusable components (file-type-icon, stack-badges)
+│   └── ui/                       # shadcn/ui primitives
 ├── lib/
 │   ├── queries/                  # Data fetching with React cache()
 │   └── supabase/                 # Supabase client setup
@@ -76,3 +81,23 @@ Page-specific headers live in `app/(app)/@header/` as a parallel route slot. The
 - **Always use shadcn/ui** for primitives (Button, Input, Card, Dialog, etc.)
 - Don't use raw HTML elements (`<button>`, `<input>`) - use shadcn equivalents
 - Component location: feature-specific in `components/<feature>/`, shared UI in `components/ui/`
+
+### Icons
+
+All icons use Tabler Icons via a centralized barrel export:
+
+```typescript
+import * as Icons from "@/components/icons"
+
+<Icons.Check className="size-4" />
+<Icons.Search className="size-4" />
+```
+
+- **Never import directly** from `@tabler/icons-react` - always use the barrel
+- **Naming**: `Icon` prefix stripped (e.g., `IconCheck` → `Check`)
+- **Type imports**: `import type { Icon } from "@/components/icons"`
+- **Adding icons**: Add new exports to `components/icons/index.ts`
+
+### Tooltips
+
+Wrap icon-only buttons with shadcn `<Tooltip>` components. Default delay is 700ms. No root provider needed - each tooltip auto-wraps its own. Use `side` prop for placement (`top`, `bottom`, `left`, `right`).
