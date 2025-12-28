@@ -131,14 +131,14 @@ export function DocumentDetailClient({
       {/* Main content - resizable layout */}
       <ResizablePanelGroup
         direction="horizontal"
-        className="flex-1 min-h-0"
+        className="flex-1 min-h-0 overflow-hidden"
         onLayout={handleLayoutChange}
       >
         {/* Left: Extracted Data - main content, expands */}
         <ResizablePanel
           defaultSize={mainPanelSize}
           minSize={30}
-          className="overflow-auto"
+          className="overflow-auto min-w-0"
         >
           <div className="h-full">
             <ExtractedDataTable
@@ -163,7 +163,7 @@ export function DocumentDetailClient({
           collapsedSize={0}
           onCollapse={() => setIsCollapsed(true)}
           onExpand={() => setIsCollapsed(false)}
-          className="overflow-auto"
+          className="overflow-auto min-w-0"
         >
           <div className="h-full">
             <PreviewPanel

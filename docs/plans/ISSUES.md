@@ -46,6 +46,6 @@ Lightweight tracking for items that don't need immediate action.
 - [x] #23 `bug` Chevron expansion resizes Field/Value columns - expanding nested fields in ExtractedDataTable causes column widths to shift (2025-12-28)
   - Files: `frontend/components/documents/extracted-data-table.tsx`
   - Fix: Added `table-fixed` class and explicit column widths (select: w-10, field: w-[40%])
-- [ ] #24 `bug` Layout breaks at narrow viewports when sidebar + preview open - content goes off-screen, works fine if sidebar collapsed OR preview closed (2025-12-28)
-  - Files: `frontend/components/documents/document-detail-client.tsx`, ResizablePanelGroup
-  - Likely min-width conflict between sidebar and resizable panels
+- [x] #24 `bug` Layout breaks at narrow viewports when sidebar + preview open - content goes off-screen, works fine if sidebar collapsed OR preview closed (2025-12-28)
+  - Files: `frontend/components/documents/document-detail-client.tsx`
+  - Fix: Added `overflow-hidden` to ResizablePanelGroup + `min-w-0` to both panels (flexbox min-width constraint)
