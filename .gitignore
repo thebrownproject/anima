@@ -74,6 +74,9 @@ temp/
 .claude/settings.local.json
 .kilocode/
 
+# Git worktrees
+.worktrees/
+
 # Document uploads (will be in Supabase Storage, not local)
 /uploads/
 /documents/
