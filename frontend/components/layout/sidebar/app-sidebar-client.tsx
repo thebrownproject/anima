@@ -34,9 +34,9 @@ const data = {
           icon: Icons.Files,
         },
         {
-          title: 'Extractions',
-          url: '/extractions',
-          icon: Icons.LayersLinked,
+          title: 'Stacks',
+          url: '/stacks',
+          icon: Icons.Stack3,
         },
       ],
     },
