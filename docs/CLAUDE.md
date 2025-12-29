@@ -37,6 +37,20 @@ grep "^## Session.*OCR\|^## Session.*Migration" docs/DEV-NOTES.md
 
 ---
 
+## When to Read What
+
+| I need to know...              | Read this                 |
+|--------------------------------|---------------------------|
+| What feature to build next     | ROADMAP.md                |
+| Why we're building it          | PRD.md                    |
+| How the system fits together   | ARCHITECTURE.md           |
+| What tables/columns exist      | SCHEMA.md                 |
+| What happened last session     | DEV-NOTES.md (grep only)  |
+| Current issues/ideas           | plans/issues/ACTIVE.md    |
+| Active feature plans           | plans/in-progress/        |
+
+---
+
 ## Folder Structure
 
 ```

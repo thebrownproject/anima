@@ -5377,3 +5377,64 @@ Frontend Cleanup finished - moved to `docs/plans/complete/`
 1. Run `/superpowers:brainstorm` to design Stacks UX
 2. Key decisions: Stack creation flow, document assignment, table schema definition
 3. Then `/superpowers:write-plan` for implementation tasks
+
+---
+
+## Session 67 - 2025-12-29 - Stacks Feature Design & Planning
+
+**Feature**: Stacks
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Stacks feature brainstorm**:
+  - Comprehensive UX design session with wireframe review
+  - AI-first interaction model: dynamic chat bar as primary interface
+  - "PA working for you" mental model (not chatbot)
+  - Decisions documented in design v2
+
+- [x] **Key design decisions**:
+  | Decision | Choice |
+  |----------|--------|
+  | Entry point | Stack-first (sidebar `+` on hover) |
+  | Document assignment | Bidirectional (stack → doc OR doc → stack) |
+  | Table schema | AI-guided conversation at stack level |
+  | Column edits | Smart merge (preserve unchanged data) |
+  | New doc indicator | Inline "not extracted" in table row |
+  | Chat bar | Dynamic Island style (status in bar, details in popup) |
+  | Stack header | Removed - use breadcrumb only |
+  | Sub-bar | Contextual tabs left, actions right |
+  | Tab overflow | Dropdown for 4+ tables |
+
+- [x] **Design document v2**:
+  - Created `docs/plans/in-progress/stacks/2025-12-29-stacks-design-v2.md`
+  - Replaced Dec 20 design with updated AI-first approach
+  - Moved from `todo/` to `in-progress/`
+
+- [x] **6-part implementation plan**:
+  - `01-foundation.md` - Types, queries, sidebar (~300 lines)
+  - `02-stack-pages.md` - List page, detail with tabs (~500 lines)
+  - `03-stack-tables.md` - Dynamic columns, CSV export (~300 lines)
+  - `04-backend-routes.md` - CRUD, SSE extraction (~300 lines)
+  - `05-agent-tools.md` - Read/write tools, prompts (~550 lines)
+  - `06-chat-bar-integration.md` - Dynamic UI, dialogs (~500 lines)
+  - Total: ~2,450 lines of detailed implementation tasks
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| AI-first UI | Chat bar + popup as primary | Differentiator - "PA working for you" not app with AI bolted on |
+| Dynamic chat bar | iPhone Dynamic Island style | Status visible at glance, details expandable |
+| Stack-level AI session | One conversation per stack | Context spans all tables, smarter corrections |
+| Smart merge on re-extract | Keep unchanged columns | Don't lose user corrections when schema changes |
+
+### Next Session
+
+**Task**: Begin Stacks implementation - Phase 1 Foundation
+
+**Process**:
+1. Run `/superpowers:execute-plan` with `01-foundation.md`
+2. Create types, queries, update sidebar
+3. Verify sidebar shows stacks dynamically
+4. Then proceed to Phase 2 (pages)

@@ -1,6 +1,6 @@
 # Stackdocs Roadmap
 
-**Last Updated:** 2025-12-28
+**Last Updated:** 2025-12-29
 
 ---
 
@@ -8,15 +8,18 @@
 
 ### In Progress
 
-*No features currently in progress*
+**Stacks Feature** (`plans/in-progress/stacks/`)
+- Design: Complete (v2 with AI-first UX)
+- Implementation Plan: Complete (6 phases, ~2,450 lines)
+- Database: Ready (migrations 004 & 005 applied)
+- Backend: Not started
+- Frontend: Not started
+- Enables: Group documents into stacks, extract tabular data with consistent schema
+- Key differentiator: AI-first dynamic chat bar as primary interface
 
 ### Todo
 
-**Stacks Feature** (`plans/todo/stacks/`)
-- Database: Ready (migrations 004 & 005 applied)
-- Backend: Not started (depends on extraction agent patterns)
-- Frontend: Not started (depends on documents page)
-- Enables: Group documents into stacks, extract tabular data with consistent schema
+*No features queued*
 
 ---
 

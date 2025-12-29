@@ -97,7 +97,3 @@ import * as Icons from "@/components/icons"
 - **Naming**: `Icon` prefix stripped (e.g., `IconCheck` → `Check`)
 - **Type imports**: `import type { Icon } from "@/components/icons"`
 - **Adding icons**: Add new exports to `components/icons/index.ts`
-
-### Tooltips
-
-Wrap icon-only buttons with shadcn `<Tooltip>` components. Default delay is 700ms. No root provider needed - each tooltip auto-wraps its own. Use `side` prop for placement (`top`, `bottom`, `left`, `right`).
