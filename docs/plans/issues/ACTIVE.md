@@ -39,3 +39,8 @@ Lightweight tracking for items that don't need immediate action.
   - Current: `columns.tsx` separate, `documents-table.tsx` imports it (static columns, 170 lines)
   - Stack tables: Dynamic `createStackTableColumns(schema)` function - tightly coupled anyway
   - Question: Does separation still provide value for dynamic column generation?
+- [ ] #27 `feature` TanStack Query for instant navigation - Add client-side caching to eliminate loading screens on repeat visits (2025-12-29)
+  - Problem: Server Components refetch on every navigation, causing skeleton flashes
+  - Solution: TanStack Query with staleTime for documents list, detail pages
+  - Goal: File browser feel - cached data shown instantly, background sync
+  - Scope: Start with documents list, expand to stacks if successful

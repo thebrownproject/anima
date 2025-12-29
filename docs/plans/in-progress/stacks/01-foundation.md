@@ -150,8 +150,8 @@ export async function getStacksWithCounts(): Promise<StackWithCounts[]> {
     status: stack.status,
     created_at: stack.created_at,
     updated_at: stack.updated_at,
-    document_count: (stack.stack_documents as { count: number })?.count ?? 0,
-    table_count: (stack.stack_tables as { count: number })?.count ?? 0,
+    document_count: (stack.stack_documents as { count: number }[])?.[0]?.count ?? 0,
+    table_count: (stack.stack_tables as { count: number }[])?.[0]?.count ?? 0,
   }))
 }
 
@@ -382,9 +382,99 @@ export async function AppSidebar(props: React.ComponentProps<typeof AppSidebarCl
 }
 ```
 
-**Step 3: Update app-sidebar.tsx to pass stacks**
+**Step 3: Create app-sidebar-client.tsx**
 
-Rename to `app-sidebar-client.tsx` and add stacks prop, then re-export from `app-sidebar.tsx`.
+Rename `app-sidebar.tsx` to `app-sidebar-client.tsx` and update to accept stacks prop:
+
+```typescript
+// frontend/components/layout/sidebar/app-sidebar-client.tsx
+'use client'
+
+import * as React from 'react'
+import * as Icons from '@/components/icons'
+import { UserButton } from '@clerk/nextjs'
+import { NavMain } from '@/components/layout/sidebar/nav-main'
+import { NavProjects } from '@/components/layout/sidebar/nav-projects'
+import { SidebarHeaderMenu } from '@/components/layout/sidebar/sidebar-header-menu'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+
+const data = {
+  navMain: [
+    {
+      title: 'Workspace',
+      url: '#',
+      icon: Icons.Stack,
+      isActive: true,
+      items: [
+        {
+          title: 'Documents',
+          url: '/documents',
+          icon: Icons.Files,
+        },
+        {
+          title: 'Extractions',
+          url: '/extractions',
+          icon: Icons.LayersLinked,
+        },
+      ],
+    },
+  ],
+}
+
+interface AppSidebarClientProps extends React.ComponentProps<typeof Sidebar> {
+  stacks: { id: string; name: string }[]
+}
+
+export function AppSidebarClient({ stacks, ...props }: AppSidebarClientProps) {
+  return (
+    <Sidebar variant="inset" {...props}>
+      <SidebarHeaderMenu />
+      <SidebarContent className="gap-0">
+        <NavMain items={data.navMain} />
+        <NavProjects stacks={stacks} />
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <UserButton
+                    showName
+                    afterSignOutUrl="/"
+                    appearance={{
+                      elements: {
+                        rootBox: 'w-full',
+                        userButtonTrigger:
+                          'w-full h-8 justify-start px-2 rounded-md hover:bg-sidebar-accent transition-colors cursor-default',
+                        userButtonBox: 'flex-row-reverse gap-0',
+                        avatarBox: 'size-6 rounded-full',
+                        userButtonOuterIdentifier: 'text-sm',
+                      },
+                    }}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">Account settings</TooltipContent>
+            </Tooltip>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
+```
 
 **Step 4: Update layout.tsx import**
 
@@ -410,17 +500,19 @@ git commit -m "feat(stacks): dynamic sidebar with stacks from database"
 **Files:**
 - Modify: `frontend/components/icons/index.ts`
 
-**Step 1: Add Plus icon (Stack already exists as IconStack2)**
+**Step 1: Add icons (Stack already exists as IconStack2)**
 
 ```typescript
 export { IconPlus as Plus } from '@tabler/icons-react'
+export { IconTable2 as Table } from '@tabler/icons-react'
+export { IconClock as Clock } from '@tabler/icons-react'
 ```
 
 **Step 2: Commit**
 
 ```bash
 git add frontend/components/icons/index.ts
-git commit -m "feat(icons): add Plus icon export"
+git commit -m "feat(icons): add Plus, Table, Clock icon exports"
 ```
 
 ---
@@ -443,4 +535,55 @@ export * from './upload'
 ```bash
 git add frontend/types/index.ts
 git commit -m "feat(types): add stacks to barrel export"
+```
+
+---
+
+## Task 6: Extract Shared Format Utility
+
+**Files:**
+- Create: `frontend/lib/format.ts`
+- Modify: `frontend/components/documents/columns.tsx`
+
+**Step 1: Create shared format utility**
+
+```typescript
+// frontend/lib/format.ts
+
+/**
+ * Format a date string as a relative date (Today, Yesterday, X days ago, or date).
+ */
+export function formatRelativeDate(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+
+  return date.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  })
+}
+```
+
+**Step 2: Update documents columns to use shared utility**
+
+```typescript
+// frontend/components/documents/columns.tsx
+// Replace the local formatRelativeDate function with:
+import { formatRelativeDate } from '@/lib/format'
+
+// Delete the local function definition (lines 17-24)
+```
+
+**Step 3: Commit**
+
+```bash
+git add frontend/lib/format.ts frontend/components/documents/columns.tsx
+git commit -m "refactor: extract formatRelativeDate to shared utility"
 ```

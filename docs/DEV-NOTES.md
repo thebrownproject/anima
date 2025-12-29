@@ -5504,3 +5504,60 @@ docs/plans/
 3. Create queries in `frontend/lib/queries/stacks.ts`
 4. Update sidebar to show stacks dynamically
 5. Then proceed to Phase 2 (pages)
+
+---
+
+## Session 70 - 2025-12-29 - Stacks Foundation Implementation ✅
+
+**Feature**: Stacks
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 1 Foundation (01-foundation.md)** - All 6 tasks:
+  - Task 1: Stack type definitions (`frontend/types/stacks.ts`)
+  - Task 2: Supabase query functions (`frontend/lib/queries/stacks.ts`)
+  - Task 3: Dynamic sidebar with server/client split (`app-sidebar-server.tsx`, `app-sidebar-client.tsx`, `nav-projects.tsx`)
+  - Task 4: Icon exports (Plus, Table, Clock)
+  - Task 5: Types barrel export (`frontend/types/index.ts`)
+  - Task 6: Shared format utility (`frontend/lib/format.ts`)
+
+- [x] **Build error fixes** (post-implementation):
+  - Fixed `app-sidebar-server.tsx` props type with `Omit<..., 'stacks'>`
+  - Resolved duplicate Stack export conflict (documents.ts now imports from stacks.ts)
+  - Updated all components to use `Pick<Stack, 'id' | 'name'>` consistently
+  - Added sr-only accessibility label to create stack button
+
+- [x] **Code review improvements**:
+  - Added `StackSummary` type alias to reduce `Pick<Stack, 'id' | 'name'>` repetition
+  - Replaced 8 occurrences across codebase with cleaner `StackSummary` type
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Server/client sidebar split | `app-sidebar-server.tsx` + `app-sidebar-client.tsx` | Server fetches stacks, client handles interactivity |
+| Type for minimal stacks | `StackSummary = Pick<Stack, 'id' \| 'name'>` | DRY - used in 8 places, cleaner than inline Pick |
+| Omit pattern for server props | `Omit<React.ComponentProps<typeof Client>, 'stacks'>` | Server fetches stacks internally, callers shouldn't pass it |
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| 83754ef | feat(stacks): add type definitions |
+| 88dfe2d | feat(stacks): add Supabase query functions |
+| 86c20e7 | feat(stacks): dynamic sidebar with stacks from database |
+| a8134f5 | feat(icons): add Plus, Table, Clock icon exports |
+| e0c4565 | feat(types): add barrel export for all types |
+| afa5228 | refactor: extract formatRelativeDate to shared utility |
+| 2635b92 | fix: resolve type conflicts and build errors |
+| 7b728d3 | refactor: add StackSummary type alias |
+
+### Next Session
+
+**Task**: Brainstorm sidebar layout redesign, then continue Stacks UI implementation
+
+**Process**:
+1. Run `/superpowers:brainstorm` for sidebar layout (remove Extractions, restructure Workspace/Stacks sections)
+2. Implement sidebar changes
+3. Continue with `02-stack-pages.md` (stack list and detail pages)

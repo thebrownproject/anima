@@ -4,6 +4,8 @@ description: Request code review on recent changes
 
 Use the `requesting-code-review` skill to review recent changes.
 
+**IMPORTANT:** Always dispatch the `superpowers:code-reviewer` subagent for code reviews. Do not review inline.
+
 ## Subagent Instructions
 
 When dispatching the code-reviewer subagent, include these MCP verification instructions:

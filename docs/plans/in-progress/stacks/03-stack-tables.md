@@ -385,23 +385,40 @@ git commit -m "feat(stacks): create table view with dynamic columns"
 
 **Files:**
 - Modify: `frontend/components/stacks/stack-table-view.tsx`
+- Modify: `frontend/components/stacks/stack-detail-client.tsx`
 
-**Step 1: Update to show pending extraction status**
+**Step 1: Update stack-table-view.tsx with pending indicator**
 
-The component should track which documents in the stack don't have rows in this table yet. This requires passing additional data from the page.
-
-Update the page to pass `pendingDocuments`:
-
-```typescript
-// In stack detail page, calculate pending docs
-const documentsInTable = new Set(tableRows?.map(r => r.document_id) || [])
-const pendingDocuments = stack.documents.filter(d => !documentsInTable.has(d.document_id))
-```
-
-Then add a "pending" section to the table view:
+Replace the entire file with (adds `Button`, `StackDocument` imports and pending row):
 
 ```typescript
-// Add to StackTableView props
+// frontend/components/stacks/stack-table-view.tsx
+'use client'
+
+import * as React from 'react'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  SortingState,
+  RowSelectionState,
+} from '@tanstack/react-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import * as Icons from '@/components/icons'
+import { cn } from '@/lib/utils'
+import { createStackTableColumns } from './stack-table-columns'
+import type { StackTable, StackTableRow, StackDocument } from '@/types/stacks'
+
 interface StackTableViewProps {
   table: StackTable
   rows: StackTableRow[]
@@ -410,30 +427,153 @@ interface StackTableViewProps {
   onExtractPending?: () => void
 }
 
-// Add pending indicator row at bottom of table (inside TableBody, after the data rows)
-{pendingDocuments && pendingDocuments.length > 0 && (
-  <TableRow className="bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10">
-    <TableCell colSpan={columns.length} className="py-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-yellow-600">
-          <Icons.Clock className="size-4" />
-          <span className="text-sm">
-            {pendingDocuments.length} document{pendingDocuments.length !== 1 ? 's' : ''} pending extraction
-          </span>
+export function StackTableView({
+  table: tableSchema,
+  rows,
+  pendingDocuments,
+  searchFilter,
+  onExtractPending,
+}: StackTableViewProps) {
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+
+  const columns = React.useMemo(
+    () => createStackTableColumns(tableSchema.columns),
+    [tableSchema.columns]
+  )
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
+    globalFilterFn: (row, _, filterValue) => {
+      const filename = row.original.document.filename.toLowerCase()
+      const rowData = JSON.stringify(row.original.row_data).toLowerCase()
+      return filename.includes(filterValue.toLowerCase()) || rowData.includes(filterValue.toLowerCase())
+    },
+    state: {
+      sorting,
+      rowSelection,
+      globalFilter: searchFilter,
+    },
+  })
+
+  const hasPending = pendingDocuments && pendingDocuments.length > 0
+
+  if (rows.length === 0 && !hasPending) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center py-12">
+        <div className="rounded-full bg-muted/50 p-4 mb-4">
+          <Icons.Table className="size-8 text-muted-foreground/60" />
         </div>
-        <Button size="sm" variant="outline" onClick={onExtractPending}>
-          Extract Now
-        </Button>
+        <p className="text-sm font-medium">No data extracted yet</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Add documents and extract data to populate this table
+        </p>
       </div>
-    </TableCell>
-  </TableRow>
+    )
+  }
+
+  return (
+    <div className="h-full overflow-auto">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30 group/header">
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  className={cn(
+                    "h-9 text-sm font-normal text-muted-foreground",
+                    header.column.id === "select" && "w-4"
+                  )}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody className="[&_tr:last-child]:border-b">
+          {table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() && "selected"}
+              className="h-12 hover:bg-muted/30 transition-colors group/row"
+            >
+              {row.getVisibleCells().map((cell) => (
+                <TableCell
+                  key={cell.id}
+                  className={cn(
+                    "py-3",
+                    cell.column.id === "select" && "w-4"
+                  )}
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+          {hasPending && (
+            <TableRow className="bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10">
+              <TableCell colSpan={columns.length} className="py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-600">
+                    <Icons.Clock className="size-4" />
+                    <span className="text-sm">
+                      {pendingDocuments.length} document{pendingDocuments.length !== 1 ? 's' : ''} pending extraction
+                    </span>
+                  </div>
+                  {onExtractPending && (
+                    <Button size="sm" variant="outline" onClick={onExtractPending}>
+                      Extract Now
+                    </Button>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+```
+
+**Step 2: Update stack-detail-client.tsx to pass pendingDocuments**
+
+In `stack-detail-client.tsx`, add the pending documents calculation and pass to StackTableView:
+
+```typescript
+// Add inside StackDetailClient component, after activeTable/tableRows declarations:
+const pendingDocuments = React.useMemo(() => {
+  if (!activeTable || !tableRows) return []
+  const documentsInTable = new Set(tableRows.map(r => r.document_id))
+  return stack.documents.filter(d => !documentsInTable.has(d.document_id))
+}, [activeTable, tableRows, stack.documents])
+
+// Update the StackTableView call to include pendingDocuments:
+{isTableActive && tableRows && (
+  <StackTableView
+    table={activeTable}
+    rows={tableRows}
+    pendingDocuments={pendingDocuments}
+    searchFilter={searchFilter}
+  />
 )}
 ```
 
-**Step 2: Commit**
+**Step 3: Commit**
 
 ```bash
-git add frontend/components/stacks/stack-table-view.tsx
+git add frontend/components/stacks/stack-table-view.tsx frontend/components/stacks/stack-detail-client.tsx
 git commit -m "feat(stacks): add pending extraction indicator"
 ```
 
@@ -467,6 +607,7 @@ export function exportTableToCsv(
       ...columns.map(col => {
         const value = row.row_data?.[col.name] ?? null
         if (value === null || value === undefined) return ''
+        if (typeof value === 'object') return JSON.stringify(value)
         return String(value)
       })
     ]
