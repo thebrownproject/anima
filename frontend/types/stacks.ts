@@ -12,6 +12,9 @@ export interface Stack {
   updated_at: string
 }
 
+/** Minimal stack info for lists and badges (id + name only) */
+export type StackSummary = Pick<Stack, 'id' | 'name'>
+
 export interface StackWithCounts extends Stack {
   document_count: number
   table_count: number

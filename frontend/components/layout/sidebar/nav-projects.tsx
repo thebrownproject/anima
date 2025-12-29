@@ -23,13 +23,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import type { StackSummary } from "@/types/stacks"
 
-interface StackItem {
-  id: string
-  name: string
-}
-
-export function NavProjects({ stacks }: { stacks: StackItem[] }) {
+export function NavProjects({ stacks }: { stacks: StackSummary[] }) {
   const pathname = usePathname()
 
   return (

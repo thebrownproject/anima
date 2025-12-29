@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import type {
-  Stack,
+  StackSummary,
   StackWithCounts,
   StackWithDetails,
   StackTableRow,
@@ -119,7 +119,7 @@ export const getStackTableRows = cache(async function(
 /**
  * Get stacks for sidebar (minimal data).
  */
-export async function getStacksForSidebar(): Promise<Pick<Stack, 'id' | 'name'>[]> {
+export async function getStacksForSidebar(): Promise<StackSummary[]> {
   const supabase = await createServerSupabaseClient()
 
   const { data, error } = await supabase

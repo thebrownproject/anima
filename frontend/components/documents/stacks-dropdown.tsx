@@ -9,12 +9,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import type { Stack } from '@/types/stacks'
+import type { StackSummary } from '@/types/stacks'
 import * as Icons from '@/components/icons'
 
 interface StacksDropdownProps {
-  assignedStacks: Pick<Stack, 'id' | 'name'>[]
-  allStacks?: Pick<Stack, 'id' | 'name'>[]
+  assignedStacks: StackSummary[]
+  allStacks?: StackSummary[]
   onToggleStack?: (stackId: string, assigned: boolean) => void
 }
 

@@ -1,17 +1,17 @@
 import { cache } from 'react'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import type { Document, DocumentWithExtraction, DocumentStatus } from '@/types/documents'
-import type { Stack } from '@/types/stacks'
+import type { StackSummary } from '@/types/stacks'
 
 // Helper to extract stacks from Supabase nested join response
 function extractStacks(
   stackDocuments: Array<{ stacks: unknown }> | null
-): Pick<Stack, 'id' | 'name'>[] {
+): StackSummary[] {
   if (!stackDocuments) return []
 
   return stackDocuments
-    .map((sd) => sd.stacks as Pick<Stack, 'id' | 'name'> | null)
-    .filter((s): s is Pick<Stack, 'id' | 'name'> => s !== null)
+    .map((sd) => sd.stacks as StackSummary | null)
+    .filter((s): s is StackSummary => s !== null)
 }
 
 export async function getDocumentsWithStacks(): Promise<Document[]> {
