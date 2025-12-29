@@ -65,6 +65,13 @@ export {
 
   // Loading
   IconLoader2 as Loader2,
+
+  // Actions
+  IconPlus as Plus,
+
+  // Data
+  IconTable as Table,
+  IconClock as Clock,
 } from "@tabler/icons-react"
 
 // Re-export the Icon type for component props
