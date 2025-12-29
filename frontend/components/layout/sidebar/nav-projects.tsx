@@ -48,6 +48,7 @@ export function NavProjects({ stacks }: { stacks: StackItem[] }) {
                   className="opacity-0 group-hover/collapsible:opacity-100 p-1 hover:bg-sidebar-accent rounded-md transition-all"
                 >
                   <Icons.Plus className="size-4 text-muted-foreground hover:text-foreground" />
+                  <span className="sr-only">Create stack</span>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right">Create stack</TooltipContent>

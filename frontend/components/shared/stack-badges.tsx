@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge'
-import type { Stack } from '@/types/documents'
+import type { Stack } from '@/types/stacks'
 
 interface StackBadgesProps {
-  stacks: Stack[]
+  stacks: Pick<Stack, 'id' | 'name'>[]
   maxVisible?: number
 }
 
