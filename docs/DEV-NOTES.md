@@ -5438,3 +5438,69 @@ Frontend Cleanup finished - moved to `docs/plans/complete/`
 2. Create types, queries, update sidebar
 3. Verify sidebar shows stacks dynamically
 4. Then proceed to Phase 2 (pages)
+
+---
+
+## Session 68 - 2025-12-29 - Stacks Plan Review & Reorganization ✅
+
+**Feature**: Stacks
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Plan reviews with code-reviewer agent** (01-03):
+  - `01-foundation.md`: Fixed Supabase count parsing, added Plus icon, layout.tsx step, prerequisite notes
+  - `02-stack-pages.md`: Rewrote headers to use existing PageHeader, added Table icon note, search filter reset
+  - `03-stack-tables.md`: Split into columns file (matching documents pattern), added selection column, SortIcon, ConfidenceDot
+
+- [x] **Architecture alignment for 04-backend-routes.md**:
+  - Identified CRUD endpoints were wrong (should be Supabase direct, not FastAPI)
+  - Rewrote to keep only SSE agent routes (extract, correct)
+  - Moved to `todo/stack-agent/` since agent work is separate phase
+
+- [x] **Plan reorganization**:
+  - Stacks MVP reduced to 01-03 (UI only, Supabase direct)
+  - `04-backend-routes.md`, `05-agent-tools.md` → `todo/stack-agent/`
+  - `06-chat-bar-integration.md`, `agent-ui-refactor.md` → `todo/agent-ui-refactor/`
+  - Old stacks folder → `archive/stacks/`
+  - Header filters → `complete/` (already implemented via SubBar)
+  - Backend hardening → `todo/backend-hardening/`
+
+- [x] **Updated ROADMAP.md**:
+  - Stacks In Progress now shows 3 phases (UI only)
+  - Todo section lists stack-agent, agent-ui-refactor, backend-hardening
+  - Header Filters added to Completed
+
+- [x] **Added issue #26**: Evaluate column separation pattern for dynamic tables
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Stacks scope | UI only (01-03) | Build pages first, agent integration separate |
+| Implementation order | Stacks UI → Agent UI → Stack Agent | Solid base before AI features |
+| Backend routes | Move to todo | No FastAPI CRUD - Supabase direct per architecture |
+| Column separation | Keep for consistency | Tracked as tech-debt issue for later review |
+
+### Plan Structure After Reorganization
+
+```
+docs/plans/
+├── in-progress/stacks/     # 01-03 only (UI)
+├── todo/
+│   ├── stack-agent/        # 04-05 (backend + tools)
+│   ├── agent-ui-refactor/  # 06 + agent popup system
+│   └── backend-hardening/  # Security, rate limiting
+└── complete/header-filters/
+```
+
+### Next Session
+
+**Task**: Begin Stacks UI implementation - Phase 1 Foundation
+
+**Process**:
+1. Run `/superpowers:execute-plan` with `01-foundation.md`
+2. Create types in `frontend/types/stacks.ts`
+3. Create queries in `frontend/lib/queries/stacks.ts`
+4. Update sidebar to show stacks dynamically
+5. Then proceed to Phase 2 (pages)

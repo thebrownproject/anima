@@ -8,18 +8,21 @@
 
 ### In Progress
 
-**Stacks Feature** (`plans/in-progress/stacks/`)
-- Design: Complete (v2 with AI-first UX)
-- Implementation Plan: Complete (6 phases, ~2,450 lines)
+**Stacks UI** (`plans/in-progress/stacks/`)
+- Design: Complete (v2)
+- Implementation Plan: 3 phases (foundation, pages, tables)
 - Database: Ready (migrations 004 & 005 applied)
-- Backend: Not started
 - Frontend: Not started
-- Enables: Group documents into stacks, extract tabular data with consistent schema
-- Key differentiator: AI-first dynamic chat bar as primary interface
+- Scope: UI only - pages mirror Documents, Supabase direct queries
+- Agent integration planned separately
 
 ### Todo
 
-*No features queued*
+| Feature | Location | Description |
+|---------|----------|-------------|
+| Stack Agent | `plans/todo/stack-agent/` | Extraction agent, SSE routes, tools |
+| Agent UI Refactor | `plans/todo/agent-ui-refactor/` | Chat bar redesign, agent popup system |
+| Backend Hardening | `plans/todo/backend-hardening/` | Security headers, rate limiting, logging |
 
 ---
 
@@ -27,6 +30,7 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Header Filters | Dec 2025 | Filter controls in sub-bar (ExpandableSearch, FilterButton) |
 | Upload Dialog | Dec 2025 | Multi-step wizard with extraction config, file upload, field customization |
 | Sub-bar Toolbar | Dec 2025 | Linear-style sub-bar with filter, search, row selection, bulk actions |
 | Frontend Cleanup | Dec 2025 | Tabler icon barrel, component reorganization, tooltips throughout UI |

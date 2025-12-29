@@ -2,6 +2,10 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+> **Prerequisite**: Complete `01-foundation.md` first. This plan depends on the types and queries defined there.
+
+> **Note**: Ensure `01-foundation.md` Task 4 includes the `Table` icon export: `export { IconTable2 as Table } from '@tabler/icons-react'`
+
 **Goal:** Create stacks list page and stack detail page with Documents/Tables tabs.
 
 **Architecture:** Server components for data fetching, client components for interactivity. Uses parallel routes for headers like documents pages.
@@ -113,22 +117,16 @@ git commit -m "feat(stacks): implement stacks list page"
 - Create: `frontend/app/(app)/@header/stacks/[id]/page.tsx`
 - Create: `frontend/app/(app)/@header/stacks/[id]/default.tsx`
 
+> **Note**: Uses existing `PageHeader` component which auto-generates breadcrumbs from pathname. This matches the pattern in `@header/documents/`.
+
 **Step 1: Create stacks list header**
 
 ```typescript
 // frontend/app/(app)/@header/stacks/page.tsx
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '@/components/ui/breadcrumb'
+import { PageHeader } from '@/components/layout/page-header'
 
 export default function StacksHeader() {
-  return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbPage>Stacks</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  )
+  return <PageHeader />
 }
 ```
 
@@ -136,20 +134,21 @@ export default function StacksHeader() {
 
 ```typescript
 // frontend/app/(app)/@header/stacks/default.tsx
-export { default } from './page'
+import { PageHeader } from '@/components/layout/page-header'
+
+export default function StacksHeaderDefault() {
+  return <PageHeader />
+}
 ```
 
 **Step 3: Create stack detail header**
 
 ```typescript
 // frontend/app/(app)/@header/stacks/[id]/page.tsx
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { PageHeader } from '@/components/layout/page-header'
+import * as Icons from '@/components/icons'
 import { getStackWithDetails } from '@/lib/queries/stacks'
-import {
-  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList,
-  BreadcrumbPage, BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -158,24 +157,9 @@ interface PageProps {
 export default async function StackDetailHeader({ params }: PageProps) {
   const { id } = await params
   const stack = await getStackWithDetails(id)
-
   if (!stack) notFound()
 
-  return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link href="/stacks">Stacks</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>{stack.name}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  )
+  return <PageHeader title={stack.name} icon={<Icons.Stack className="size-4" />} />
 }
 ```
 
@@ -252,6 +236,8 @@ git commit -m "feat(stacks): create stack detail page"
 **Files:**
 - Create: `frontend/components/stacks/stack-detail-client.tsx`
 
+> **Note**: This component imports `StackTableView` which is defined in `03-stack-tables.md`. Until that plan is executed, the table view will not render.
+
 **Step 1: Implement client component with tabs**
 
 ```typescript
@@ -268,7 +254,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExpandableSearch } from '@/components/layout/expandable-search'
 import { StackDocumentsTab } from './stack-documents-tab'
-import { StackTableView } from './stack-table-view'
+import { StackTableView } from './stack-table-view' // Defined in 03-stack-tables.md
 import * as Icons from '@/components/icons'
 import type { StackWithDetails, StackTable, StackTableRow } from '@/types/stacks'
 
@@ -293,6 +279,7 @@ export function StackDetailClient({
   }, [stack.id, activeTab])
 
   const handleTabChange = (tab: string, tableId?: string) => {
+    setSearchFilter('') // Reset search when changing tabs
     const params = new URLSearchParams(searchParams.toString())
     params.set('tab', tab)
     if (tableId) params.set('table', tableId)
@@ -442,7 +429,7 @@ import type { StackDocument } from '@/types/stacks'
 
 interface StackDocumentsTabProps {
   documents: StackDocument[]
-  stackId: string
+  stackId: string // Reserved for future "Add Document" action
   searchFilter: string
 }
 

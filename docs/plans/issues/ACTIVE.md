@@ -35,3 +35,7 @@ Lightweight tracking for items that don't need immediate action.
   - Error: `[Realtime Debug] Channel failed: CLOSED undefined` in `useExtractionRealtime.useEffect`
   - Files: `frontend/hooks/useExtractionRealtime.ts`
   - Investigate: JWT token refresh, Supabase realtime auth, channel reconnection logic
+- [ ] #26 `tech-debt` Evaluate column separation pattern for dynamic tables - Stack tables use separated columns file (`stack-table-columns.tsx`) following documents pattern, but columns are dynamically generated from schema. Consider if inline definition would be simpler for this use case (2025-12-29)
+  - Current: `columns.tsx` separate, `documents-table.tsx` imports it (static columns, 170 lines)
+  - Stack tables: Dynamic `createStackTableColumns(schema)` function - tightly coupled anyway
+  - Question: Does separation still provide value for dynamic column generation?

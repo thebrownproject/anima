@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+> **Prerequisite**: Complete `2025-12-29-agent-ui-refactor.md` first. Both plans modify `app/(app)/layout.tsx`.
+
 **Goal:** Establish type definitions, database queries, and sidebar integration for the Stacks feature.
 
 **Architecture:** Types in `frontend/types/`, queries in `frontend/lib/queries/`, sidebar fetches stacks dynamically from Supabase.
@@ -148,8 +150,8 @@ export async function getStacksWithCounts(): Promise<StackWithCounts[]> {
     status: stack.status,
     created_at: stack.created_at,
     updated_at: stack.updated_at,
-    document_count: (stack.stack_documents as { count: number }[])?.[0]?.count ?? 0,
-    table_count: (stack.stack_tables as { count: number }[])?.[0]?.count ?? 0,
+    document_count: (stack.stack_documents as { count: number })?.count ?? 0,
+    table_count: (stack.stack_tables as { count: number })?.count ?? 0,
   }))
 }
 
@@ -384,7 +386,17 @@ export async function AppSidebar(props: React.ComponentProps<typeof AppSidebarCl
 
 Rename to `app-sidebar-client.tsx` and add stacks prop, then re-export from `app-sidebar.tsx`.
 
-**Step 4: Commit**
+**Step 4: Update layout.tsx import**
+
+```typescript
+// frontend/app/(app)/layout.tsx
+// Change:
+import { AppSidebar } from "@/components/layout/sidebar/app-sidebar"
+// To:
+import { AppSidebar } from "@/components/layout/sidebar/app-sidebar-server"
+```
+
+**Step 5: Commit**
 
 ```bash
 git add frontend/components/layout/sidebar/
@@ -393,32 +405,32 @@ git commit -m "feat(stacks): dynamic sidebar with stacks from database"
 
 ---
 
-## Task 4: Add Stack Icon to Icons Barrel
+## Task 4: Add Plus Icon to Icons Barrel
 
 **Files:**
 - Modify: `frontend/components/icons/index.ts`
 
-**Step 1: Add Stack icon if missing**
+**Step 1: Add Plus icon (Stack already exists as IconStack2)**
 
 ```typescript
-export { IconStack as Stack } from '@tabler/icons-react'
+export { IconPlus as Plus } from '@tabler/icons-react'
 ```
 
 **Step 2: Commit**
 
 ```bash
 git add frontend/components/icons/index.ts
-git commit -m "feat(icons): add Stack icon export"
+git commit -m "feat(icons): add Plus icon export"
 ```
 
 ---
 
-## Task 5: Export Types from Index
+## Task 5: Create Types Barrel Export
 
 **Files:**
-- Modify: `frontend/types/index.ts`
+- Create: `frontend/types/index.ts`
 
-**Step 1: Add stacks export**
+**Step 1: Create barrel export file**
 
 ```typescript
 export * from './documents'

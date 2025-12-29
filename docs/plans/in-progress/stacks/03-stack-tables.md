@@ -2,88 +2,215 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+> **Prerequisite**: Complete `01-foundation.md` first. This plan depends on the types defined there.
+
 **Goal:** Create the table view component with dynamic columns, "not extracted" indicator, and CSV export.
 
-**Architecture:** TanStack Table with columns generated from `stack_tables.columns` schema. Rows show extraction status per document.
+**Architecture:** TanStack Table with columns generated from `stack_tables.columns` schema. Rows show extraction status per document. Column definitions are separated into their own file following the existing `documents/columns.tsx` pattern.
 
-**Tech Stack:** TanStack Table v8, shadcn/ui, papaparse for CSV export
+**Tech Stack:** TanStack Table v8, shadcn/ui
 
 ---
 
-## Task 1: Create Stack Table View Component
+## Task 1: Create Stack Table Column Definitions
 
 **Files:**
-- Create: `frontend/components/stacks/stack-table-view.tsx`
+- Create: `frontend/components/stacks/stack-table-columns.tsx`
 
-**Step 1: Implement table view with dynamic columns**
+**Step 1: Create column definitions file with SortIcon helper and ConfidenceDot**
+
+> **Pattern note**: This follows the column definition pattern from `frontend/components/documents/columns.tsx` and reuses the `ConfidenceDot` pattern from `frontend/components/documents/extracted-columns.tsx`.
 
 ```typescript
-// frontend/components/stacks/stack-table-view.tsx
-'use client'
+// frontend/components/stacks/stack-table-columns.tsx
+"use client"
 
-import * as React from 'react'
-import Link from 'next/link'
+import Link from "next/link"
+import { ColumnDef } from "@tanstack/react-table"
+import * as Icons from "@/components/icons"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
-  ColumnDef, flexRender, getCoreRowModel, getFilteredRowModel,
-  getSortedRowModel, useReactTable, SortingState,
-} from '@tanstack/react-table'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import * as Icons from '@/components/icons'
-import { cn } from '@/lib/utils'
-import type { StackTable, StackTableRow, StackTableColumn } from '@/types/stacks'
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
+import type { StackTableRow, StackTableColumn } from "@/types/stacks"
 
-interface StackTableViewProps {
-  table: StackTable
-  rows: StackTableRow[]
-  searchFilter: string
+/**
+ * SortIcon helper - matches pattern from documents/columns.tsx
+ */
+function SortIcon({ isSorted }: { isSorted: false | "asc" | "desc" }) {
+  if (isSorted === "asc") return <Icons.ArrowUp className="ml-2 size-3" />
+  if (isSorted === "desc") return <Icons.ArrowDown className="ml-2 size-3" />
+  return (
+    <Icons.ChevronsUpDown className="ml-2 size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+  )
 }
 
-function generateColumns(tableSchema: StackTableColumn[] | null): ColumnDef<StackTableRow>[] {
-  const baseColumns: ColumnDef<StackTableRow>[] = [
-    {
-      id: 'document',
-      accessorKey: 'document.filename',
-      header: 'Document',
-      cell: ({ row }) => (
+/**
+ * ConfidenceDot - color-coded confidence indicator
+ * Matches pattern from documents/extracted-columns.tsx
+ */
+function ConfidenceDot({ confidence }: { confidence?: number }) {
+  // No confidence data - show neutral gray dot (no tooltip)
+  if (confidence === undefined) {
+    return (
+      <div className="size-2.5 rounded-full shrink-0 mr-0.5 bg-muted-foreground/30" />
+    )
+  }
+
+  const percentage = Math.round(confidence * 100)
+  const colorClass =
+    percentage >= 90
+      ? "bg-emerald-500"
+      : percentage >= 70
+      ? "bg-amber-500"
+      : "bg-red-500"
+
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        <div className={cn("size-2.5 rounded-full shrink-0 mr-0.5", colorClass)} />
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p>{percentage}% confidence</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/**
+ * Select column - matches pattern from documents/columns.tsx
+ */
+const selectColumn: ColumnDef<StackTableRow> = {
+  id: "select",
+  header: ({ table }) => {
+    const isAllSelected = table.getIsAllPageRowsSelected()
+    const isSomeSelected = table.getIsSomePageRowsSelected()
+    const tooltipText = isAllSelected ? "Deselect all" : "Select all"
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex h-full items-center">
+            <Checkbox
+              checked={isAllSelected ? true : isSomeSelected ? "indeterminate" : false}
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              aria-label="Select all"
+              className="opacity-0 group-hover/header:opacity-100 data-[state=checked]:opacity-100 data-[state=indeterminate]:opacity-100 transition-opacity"
+            />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right">{tooltipText}</TooltipContent>
+      </Tooltip>
+    )
+  },
+  cell: ({ row }) => {
+    const isSelected = row.getIsSelected()
+    const tooltipText = isSelected ? "Deselect row" : "Select row"
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex h-full items-center">
+            <Checkbox
+              checked={isSelected}
+              disabled={!row.getCanSelect()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+              onClick={(e) => e.stopPropagation()}
+              className="opacity-0 group-hover/row:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+            />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right">{tooltipText}</TooltipContent>
+      </Tooltip>
+    )
+  },
+  enableSorting: false,
+  enableHiding: false,
+}
+
+/**
+ * Document column - links to document detail page
+ */
+const documentColumn: ColumnDef<StackTableRow> = {
+  id: "document",
+  accessorKey: "document.filename",
+  header: ({ column }) => {
+    const isSorted = column.getIsSorted()
+    const tooltipText = isSorted === "asc" ? "Order Z-A" : "Order A-Z"
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(isSorted === "asc")}
+            className="-ml-3 group font-normal h-auto py-0"
+          >
+            Document
+            <SortIcon isSorted={isSorted} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{tooltipText}</TooltipContent>
+      </Tooltip>
+    )
+  },
+  cell: ({ row }) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
         <Link
           href={`/documents/${row.original.document_id}`}
+          onClick={(e) => e.stopPropagation()}
           className="font-medium hover:underline truncate max-w-[200px] block"
         >
           {row.original.document.filename}
         </Link>
-      ),
-    },
-  ]
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p>Open {row.original.document.filename}</p>
+      </TooltipContent>
+    </Tooltip>
+  ),
+}
 
-  if (!tableSchema || tableSchema.length === 0) {
+/**
+ * Creates dynamic columns from the stack table schema.
+ * Returns column definitions including select, document, and data columns.
+ */
+export function createStackTableColumns(
+  schema: StackTableColumn[] | null
+): ColumnDef<StackTableRow>[] {
+  const baseColumns: ColumnDef<StackTableRow>[] = [selectColumn, documentColumn]
+
+  if (!schema || schema.length === 0) {
     return baseColumns
   }
 
-  const dataColumns: ColumnDef<StackTableRow>[] = tableSchema.map((col) => ({
+  const dataColumns: ColumnDef<StackTableRow>[] = schema.map((col) => ({
     id: col.name,
     accessorFn: (row) => row.row_data?.[col.name] ?? null,
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-3 h-8"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        {col.name}
-        {column.getIsSorted() === 'asc' ? (
-          <Icons.ChevronUp className="ml-1 size-4" />
-        ) : column.getIsSorted() === 'desc' ? (
-          <Icons.ChevronDown className="ml-1 size-4" />
-        ) : (
-          <Icons.ChevronsUpDown className="ml-1 size-4 opacity-50" />
-        )}
-      </Button>
-    ),
+    header: ({ column }) => {
+      const isSorted = column.getIsSorted()
+      const tooltipText = isSorted === "asc" ? "Order Z-A" : "Order A-Z"
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              onClick={() => column.toggleSorting(isSorted === "asc")}
+              className="-ml-3 group font-normal h-auto py-0"
+            >
+              {col.name}
+              <SortIcon isSorted={isSorted} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{tooltipText}</TooltipContent>
+        </Tooltip>
+      )
+    },
     cell: ({ row }) => {
-      const value = row.original.row_data?.[col.name]
+      const value = row.original.row_data?.[col.name] ?? null
       const confidence = row.original.confidence_scores?.[col.name]
 
       if (value === null || value === undefined) {
@@ -91,16 +218,9 @@ function generateColumns(tableSchema: StackTableColumn[] | null): ColumnDef<Stac
       }
 
       return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <ConfidenceDot confidence={confidence} />
           <span className="truncate max-w-[200px]">{String(value)}</span>
-          {confidence !== undefined && confidence < 0.8 && (
-            <Tooltip>
-              <TooltipTrigger>
-                <Icons.AlertCircle className="size-3 text-yellow-500" />
-              </TooltipTrigger>
-              <TooltipContent>Low confidence: {Math.round(confidence * 100)}%</TooltipContent>
-            </Tooltip>
-          )}
         </div>
       )
     },
@@ -108,12 +228,63 @@ function generateColumns(tableSchema: StackTableColumn[] | null): ColumnDef<Stac
 
   return [...baseColumns, ...dataColumns]
 }
+```
+
+**Step 2: Commit**
+
+```bash
+git add frontend/components/stacks/stack-table-columns.tsx
+git commit -m "feat(stacks): create stack table column definitions"
+```
+
+---
+
+## Task 2: Create Stack Table View Component
+
+**Files:**
+- Create: `frontend/components/stacks/stack-table-view.tsx`
+
+**Step 1: Implement table view using imported columns**
+
+```typescript
+// frontend/components/stacks/stack-table-view.tsx
+'use client'
+
+import * as React from 'react'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  SortingState,
+  RowSelectionState,
+} from '@tanstack/react-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import * as Icons from '@/components/icons'
+import { cn } from '@/lib/utils'
+import { createStackTableColumns } from './stack-table-columns'
+import type { StackTable, StackTableRow } from '@/types/stacks'
+
+interface StackTableViewProps {
+  table: StackTable
+  rows: StackTableRow[]
+  searchFilter: string
+}
 
 export function StackTableView({ table: tableSchema, rows, searchFilter }: StackTableViewProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
   const columns = React.useMemo(
-    () => generateColumns(tableSchema.columns),
+    () => createStackTableColumns(tableSchema.columns),
     [tableSchema.columns]
   )
 
@@ -124,12 +295,18 @@ export function StackTableView({ table: tableSchema, rows, searchFilter }: Stack
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
     globalFilterFn: (row, _, filterValue) => {
       const filename = row.original.document.filename.toLowerCase()
       const rowData = JSON.stringify(row.original.row_data).toLowerCase()
       return filename.includes(filterValue.toLowerCase()) || rowData.includes(filterValue.toLowerCase())
     },
-    state: { sorting, globalFilter: searchFilter },
+    state: {
+      sorting,
+      rowSelection,
+      globalFilter: searchFilter,
+    },
   })
 
   if (rows.length === 0) {
@@ -151,20 +328,38 @@ export function StackTableView({ table: tableSchema, rows, searchFilter }: Stack
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30">
+            <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30 group/header">
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className="h-9 text-sm font-normal text-muted-foreground">
-                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                <TableHead
+                  key={header.id}
+                  className={cn(
+                    "h-9 text-sm font-normal text-muted-foreground",
+                    header.column.id === "select" && "w-4"
+                  )}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
                 </TableHead>
               ))}
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody>
+        <TableBody className="[&_tr:last-child]:border-b">
           {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} className="h-12 hover:bg-muted/30">
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() && "selected"}
+              className="h-12 hover:bg-muted/30 transition-colors group/row"
+            >
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="py-3">
+                <TableCell
+                  key={cell.id}
+                  className={cn(
+                    "py-3",
+                    cell.column.id === "select" && "w-4"
+                  )}
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}
@@ -186,7 +381,7 @@ git commit -m "feat(stacks): create table view with dynamic columns"
 
 ---
 
-## Task 2: Add "Not Extracted" Indicator
+## Task 3: Add "Not Extracted" Indicator
 
 **Files:**
 - Modify: `frontend/components/stacks/stack-table-view.tsx`
@@ -215,9 +410,9 @@ interface StackTableViewProps {
   onExtractPending?: () => void
 }
 
-// Add pending indicator row at bottom of table
+// Add pending indicator row at bottom of table (inside TableBody, after the data rows)
 {pendingDocuments && pendingDocuments.length > 0 && (
-  <TableRow className="bg-yellow-500/5 border-yellow-500/20">
+  <TableRow className="bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10">
     <TableCell colSpan={columns.length} className="py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-yellow-600">
@@ -244,7 +439,7 @@ git commit -m "feat(stacks): add pending extraction indicator"
 
 ---
 
-## Task 3: Add CSV Export Functionality
+## Task 4: Add CSV Export Functionality
 
 **Files:**
 - Create: `frontend/lib/export-csv.ts`
@@ -270,7 +465,7 @@ export function exportTableToCsv(
     const values = [
       row.document.filename,
       ...columns.map(col => {
-        const value = row.row_data?.[col.name]
+        const value = row.row_data?.[col.name] ?? null
         if (value === null || value === undefined) return ''
         return String(value)
       })
@@ -333,7 +528,7 @@ git commit -m "feat(stacks): add CSV export functionality"
 
 ---
 
-## Task 4: Create Stacks Component Index
+## Task 5: Create Stacks Component Index
 
 **Files:**
 - Create: `frontend/components/stacks/index.ts`
@@ -345,6 +540,7 @@ git commit -m "feat(stacks): add CSV export functionality"
 export { StackDetailClient } from './stack-detail-client'
 export { StackDocumentsTab } from './stack-documents-tab'
 export { StackTableView } from './stack-table-view'
+export { createStackTableColumns } from './stack-table-columns'
 ```
 
 **Step 2: Commit**
