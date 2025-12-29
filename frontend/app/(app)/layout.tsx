@@ -4,7 +4,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/layout/sidebar/app-sidebar";
+import { AppSidebar } from "@/components/layout/sidebar/app-sidebar-server";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
