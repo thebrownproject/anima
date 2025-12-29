@@ -6,7 +6,6 @@ import type {
   Stack,
   StackWithCounts,
   StackWithDetails,
-  StackTable,
   StackTableRow,
   StackDocument,
 } from '@/types/stacks'
@@ -83,7 +82,7 @@ export const getStackWithDetails = cache(async function(
     stack_id: sd.stack_id,
     document_id: sd.document_id,
     added_at: sd.added_at,
-    document: sd.documents as StackDocument['document'],
+    document: sd.documents as unknown as StackDocument['document'],
   }))
 
   return { ...stack, documents, tables: tables || [] }
@@ -113,7 +112,7 @@ export const getStackTableRows = cache(async function(
 
   return (data || []).map((row) => ({
     ...row,
-    document: row.documents as StackTableRow['document'],
+    document: row.documents as unknown as StackTableRow['document'],
   }))
 })
 

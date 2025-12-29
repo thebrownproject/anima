@@ -12,24 +12,8 @@ import {
 } from "@/components/ui/tooltip";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
 import { StackBadges } from "@/components/shared/stack-badges";
+import { formatRelativeDate } from "@/lib/format";
 import type { Document } from "@/types/documents";
-
-function formatRelativeDate(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-
-  return date.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-  });
-}
 
 function SortIcon({ isSorted }: { isSorted: false | "asc" | "desc" }) {
   if (isSorted === "asc") return <Icons.ArrowUp className="ml-2 size-3" />;
