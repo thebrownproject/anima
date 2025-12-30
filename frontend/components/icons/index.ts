@@ -50,6 +50,7 @@ export {
   // App-specific
   IconStack2 as Stack,
   IconStack3 as Stack3,
+  IconFileStack as FileStack,
   IconLayersIntersect as Layers,
   IconLayersLinked as LayersLinked,
   IconSettings as Settings,

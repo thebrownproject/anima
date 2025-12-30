@@ -33,7 +33,7 @@ export function StacksList({ stacks }: StacksListProps) {
         {stacks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="rounded-full bg-muted/50 p-4 mb-4">
-              <Icons.Stack className="size-8 text-muted-foreground/60" />
+              <Icons.FileStack className="size-8 text-muted-foreground/60" />
             </div>
             <p className="text-sm font-medium">No stacks yet</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
@@ -47,7 +47,7 @@ export function StacksList({ stacks }: StacksListProps) {
                 <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
-                      <Icons.Stack className="size-5 text-muted-foreground" />
+                      <Icons.FileStack className="size-5 text-muted-foreground" />
                       <CardTitle className="text-base">{stack.name}</CardTitle>
                     </div>
                     {stack.description && (

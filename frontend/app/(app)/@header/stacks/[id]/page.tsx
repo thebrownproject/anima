@@ -12,5 +12,5 @@ export default async function StackDetailHeader({ params }: PageProps) {
   const stack = await getStackWithDetails(id)
   if (!stack) notFound()
 
-  return <PageHeader title={stack.name} icon={<Icons.Stack className="size-4" />} />
+  return <PageHeader title={stack.name} icon={<Icons.FileStack className="size-4" />} />
 }

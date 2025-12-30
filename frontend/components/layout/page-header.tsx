@@ -29,7 +29,7 @@ const segmentLabels: Record<string, string> = {
 // Map route segments to icons
 const segmentIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   documents: Icons.Files,
-  stacks: Icons.Layers,
+  stacks: Icons.Stack3,
   settings: Icons.Settings,
   upload: Icons.Upload,
 }

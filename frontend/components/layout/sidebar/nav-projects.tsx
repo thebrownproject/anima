@@ -44,7 +44,7 @@ export function NavProjects({ stacks }: { stacks: StackSummary[] }) {
               className={cn("gap-1.5", pathname === `/stacks/${stack.id}` && "bg-sidebar-accent")}
             >
               <Link href={`/stacks/${stack.id}`}>
-                <Icons.Stack className="size-4" />
+                <Icons.FileStack className="size-4" />
                 <span className="truncate">{stack.name}</span>
               </Link>
             </SidebarMenuButton>

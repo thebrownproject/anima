@@ -11,8 +11,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExpandableSearch } from '@/components/layout/expandable-search'
+import { Separator } from '@/components/ui/separator'
 import { SelectionActions } from '@/components/layout/selection-actions'
 import { StackDocumentsTab } from './stack-documents-tab'
 import { StackTableView } from './stack-table-view'
@@ -62,27 +62,28 @@ export function StackDetailClient({
       <SubBar
         left={
           <div className="flex items-center gap-1">
-            <Button
-              variant={isDocumentsActive ? 'secondary' : 'ghost'}
-              size="sm"
+            <ActionButton
+              icon={<Icons.Files />}
               onClick={() => handleTabChange('documents')}
-              className="gap-1.5"
+              className={isDocumentsActive ? 'text-foreground' : 'text-muted-foreground'}
             >
-              <Icons.Files className="size-4" />
               Docs
-            </Button>
+            </ActionButton>
+
+            <Separator
+              orientation="vertical"
+              className="mx-1 data-[orientation=vertical]:h-4"
+            />
 
             {visibleTables.map((table) => (
-              <Button
+              <ActionButton
                 key={table.id}
-                variant={activeTable?.id === table.id ? 'secondary' : 'ghost'}
-                size="sm"
+                icon={<Icons.Table />}
                 onClick={() => handleTabChange('table', table.id)}
-                className="gap-1.5 max-w-[120px]"
+                className={activeTable?.id === table.id ? 'text-foreground max-w-[120px]' : 'text-muted-foreground max-w-[120px]'}
               >
-                <Icons.Table className="size-4" />
                 <span className="truncate">{table.name}</span>
-              </Button>
+              </ActionButton>
             ))}
 
             {overflowTables.length > 0 && (
@@ -107,14 +108,12 @@ export function StackDetailClient({
               </DropdownMenu>
             )}
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-8">
-                  <Icons.Plus className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Create table</TooltipContent>
-            </Tooltip>
+            <ActionButton
+              icon={<Icons.Plus />}
+              tooltip="Create table"
+            >
+              <span className="sr-only">Create table</span>
+            </ActionButton>
           </div>
         }
         right={
@@ -128,12 +127,12 @@ export function StackDetailClient({
               placeholder={isDocumentsActive ? 'Search documents...' : 'Search table...'}
             />
             {isDocumentsActive && (
-              <ActionButton icon={<Icons.Plus />}>
+              <ActionButton icon={<Icons.Plus />} tooltip="Add documents" className="mr-2">
                 Add
               </ActionButton>
             )}
             {isTableActive && (
-              <ActionButton icon={<Icons.Download />}>
+              <ActionButton icon={<Icons.Download />} tooltip="Export as CSV" className="mr-2">
                 Export CSV
               </ActionButton>
             )}
