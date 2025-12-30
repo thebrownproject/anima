@@ -5817,3 +5817,91 @@ app/(app)/layout.tsx
 1. Run `/continue`
 2. Use `/superpowers:write-plan` for agent-ui-refactor
 3. Begin Foundation phase implementation
+
+---
+
+## Session 75 - 2025-12-30 - @subbar Architecture for Stacks + Documents Refactor ✅
+
+**Feature**: Stacks UI / Architecture Consistency
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Design: @subbar Architecture**:
+  - Brainstormed and documented architecture for consistent @subbar pattern
+  - Principle: "SubBars fetch their own server data. Context holds only client state."
+  - Created design doc: `docs/plans/in-progress/stacks/2025-12-30-subbar-architecture-design.md`
+
+- [x] **Stacks Filter Contexts**:
+  - Created `stacks-filter-context.tsx` (filterValue for list page)
+  - Created `stack-detail-filter-context.tsx` (searchFilter, selectedDocCount for detail page)
+  - Added providers to `app/(app)/layout.tsx` (app-level, same as Documents)
+
+- [x] **Stacks @subbar Parallel Routes**:
+  - Created `@subbar/stacks/page.tsx` - List SubBar (search + New Stack)
+  - Created `@subbar/stacks/[id]/page.tsx` - Async server, fetches tables
+  - Created `stack-detail-sub-bar.tsx` - Client component with tabs, search, actions
+  - Created default.tsx fallbacks for both routes
+
+- [x] **Stacks Component Refactor**:
+  - Refactored `StacksList` - removed SubBar, uses filter context for client-side filtering
+  - Refactored `StackDetailClient` - removed SubBar, uses context, kept localStorage persistence
+  - Components reduced from 163 to 59 lines (StackDetailClient)
+
+- [x] **Documents Refactor** (cleaner pattern):
+  - Removed `assignedStacks` from `DocumentDetailFilterContext` (was mixing server/client data)
+  - Converted `@subbar/documents/[id]/page.tsx` to async server component
+  - Created `document-detail-sub-bar.tsx` client component receiving stacks as prop
+  - Created `getDocumentStacks()` query with React cache()
+  - Removed `setAssignedStacks` calls from `document-detail-client.tsx`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Provider placement | App-level layout | Parallel routes render at app level, need context access |
+| SubBar data fetching | Async server component | Cleaner than context for server data |
+| Context content | Client state only | No mixing server data with client state |
+| Tab navigation | URL params | Already URL-driven, no change needed |
+
+### Architecture Principle
+
+```
+@subbar/[route]/page.tsx (async server component)
+├── Fetches server data it needs (tables, stacks)
+└── Renders client SubBar component with data as props
+
+Context (client state only)
+├── filterValue, searchFilter
+└── selectedCount
+
+URL params (navigation state)
+└── ?tab=...&table=...
+```
+
+### Files Created (10)
+
+- `@subbar/stacks/page.tsx`, `default.tsx`
+- `@subbar/stacks/[id]/page.tsx`, `default.tsx`
+- `components/stacks/stacks-filter-context.tsx`
+- `components/stacks/stack-detail-filter-context.tsx`
+- `components/stacks/stack-detail-sub-bar.tsx`
+- `components/documents/document-detail-sub-bar.tsx`
+- `lib/queries/documents.ts` (added `getDocumentStacks`)
+
+### Files Modified (5)
+
+- `app/(app)/layout.tsx` - Added Stacks providers
+- `components/stacks/stacks-list.tsx` - Removed SubBar, added filtering
+- `components/stacks/stack-detail-client.tsx` - Removed SubBar, uses context
+- `components/documents/document-detail-filter-context.tsx` - Removed assignedStacks
+- `@subbar/documents/[id]/page.tsx` - Async server, fetches stacks
+
+### Next Session
+
+**Task**: Continue with Agent UI Refactor implementation plan
+
+**Process**:
+1. Run `/continue`
+2. Use `/superpowers:write-plan` for agent-ui-refactor
+3. Begin Foundation phase implementation

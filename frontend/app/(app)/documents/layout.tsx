@@ -55,7 +55,7 @@ export default function DocumentsLayout({
           collapsedSize={0}
           onCollapse={() => setIsCollapsed(true)}
           onExpand={() => setIsCollapsed(false)}
-          className="overflow-hidden"
+          className="overflow-hidden min-w-0"
         >
           <div className="h-full">
             <PreviewPanel
