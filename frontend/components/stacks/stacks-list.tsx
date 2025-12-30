@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { SubBar } from '@/components/layout/sub-bar'
-import { Button } from '@/components/ui/button'
+import { ActionButton } from '@/components/layout/action-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import * as Icons from '@/components/icons'
 import type { StackWithCounts } from '@/types/stacks'
@@ -21,12 +21,11 @@ export function StacksList({ stacks }: StacksListProps) {
           </span>
         }
         right={
-          <Button asChild>
-            <Link href="/stacks/new">
-              <Icons.Plus className="size-4" />
+          <Link href="/stacks/new">
+            <ActionButton icon={<Icons.Plus />}>
               New Stack
-            </Link>
-          </Button>
+            </ActionButton>
+          </Link>
         }
       />
 

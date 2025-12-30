@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { SubBar } from '@/components/layout/sub-bar'
+import { ActionButton } from '@/components/layout/action-button'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -122,16 +123,14 @@ export function StackDetailClient({
               placeholder={isDocumentsActive ? 'Search documents...' : 'Search table...'}
             />
             {isDocumentsActive && (
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Icons.Plus className="size-4" />
+              <ActionButton icon={<Icons.Plus />}>
                 Add Document
-              </Button>
+              </ActionButton>
             )}
             {isTableActive && (
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Icons.Download className="size-4" />
+              <ActionButton icon={<Icons.Download />}>
                 Export CSV
-              </Button>
+              </ActionButton>
             )}
           </div>
         }
