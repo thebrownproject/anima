@@ -31,11 +31,11 @@ interface StackDocumentsTabProps {
 const columns: ColumnDef<StackDocument>[] = [
   {
     accessorKey: 'document.filename',
-    header: 'Name',
+    header: () => <span className="pl-4">Name</span>,
     cell: ({ row }) => {
       const doc = row.original.document
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pl-4">
           <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
           <Link
             href={`/documents/${doc.id}`}
@@ -62,9 +62,9 @@ const columns: ColumnDef<StackDocument>[] = [
   },
   {
     accessorKey: 'added_at',
-    header: 'Added',
+    header: () => <span className="pr-4">Added</span>,
     cell: ({ row }) => (
-      <span className="text-muted-foreground">
+      <span className="text-muted-foreground pr-4">
         {formatRelativeDate(row.original.added_at)}
       </span>
     ),
