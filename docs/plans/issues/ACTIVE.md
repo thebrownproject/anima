@@ -44,3 +44,11 @@ Lightweight tracking for items that don't need immediate action.
   - Solution: TanStack Query with staleTime for documents list, detail pages
   - Goal: File browser feel - cached data shown instantly, background sync
   - Scope: Start with documents list, expand to stacks if successful
+- [ ] #28 `feature` Sidebar collapsible section state persistence - Remember open/closed state across page refreshes (2025-12-29)
+  - Challenge: SSR hydration mismatch when reading localStorage on client
+  - Options: Cookies (server-readable), localStorage with hydration workaround, or accept flash
+  - Files: `frontend/components/layout/sidebar/collapsible-section.tsx`
+- [ ] #29 `tech-debt` Create useLocalStorage hook - Reusable hook for localStorage state with SSR handling (2025-12-29)
+  - Currently: Inline localStorage usage in `preview-panel-context.tsx`
+  - Goal: DRY pattern for persisting UI state (sidebar, panels, preferences)
+  - Consider: useSyncExternalStore for proper SSR support

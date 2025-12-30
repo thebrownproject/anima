@@ -1,79 +1,40 @@
 "use client"
 
-import * as Icons from "@/components/icons"
 import type { Icon } from "@/components/icons"
 import Link from "next/link"
+import { CollapsibleSection } from "./collapsible-section"
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import {
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarGroupContent,
-} from "@/components/ui/sidebar"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-
-export function NavMain({
-  items,
-}: {
-  items: {
+type NavItem = {
+  title: string
+  url: string
+  icon: Icon
+  isActive?: boolean
+  items?: {
     title: string
     url: string
-    icon: Icon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-      icon?: Icon
-    }[]
+    icon?: Icon
   }[]
-}) {
+}
+
+export function NavMain({ items }: { items: NavItem[] }) {
   return (
     <>
       {items.map((item) => (
-        <Collapsible key={item.title} defaultOpen={item.isActive} className="group/collapsible">
-          <SidebarGroup className="pt-0">
-            <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors cursor-pointer">
-                {item.title}
-                <Icons.ChevronRight className="ml-1 size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {item.items?.map((subItem) => (
-                    <SidebarMenuItem key={subItem.title}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <SidebarMenuButton asChild className="gap-1.5">
-                            <Link href={subItem.url}>
-                              {subItem.icon && <subItem.icon className="size-4" />}
-                              <span>{subItem.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          Go to {subItem.title}
-                        </TooltipContent>
-                      </Tooltip>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        <CollapsibleSection key={item.title} title={item.title} defaultOpen={item.isActive}>
+          <SidebarMenu>
+            {item.items?.map((subItem) => (
+              <SidebarMenuItem key={subItem.title}>
+                <SidebarMenuButton asChild className="gap-1.5">
+                  <Link href={subItem.url}>
+                    {subItem.icon && <subItem.icon className="size-4" />}
+                    <span>{subItem.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </CollapsibleSection>
       ))}
     </>
   )
