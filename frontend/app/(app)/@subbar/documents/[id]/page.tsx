@@ -1,38 +1,17 @@
-'use client'
+import { getDocumentStacks } from '@/lib/queries/documents'
+import { DocumentDetailSubBar } from '@/components/documents/document-detail-sub-bar'
 
-import { SubBar } from '@/components/layout/sub-bar'
-import { FilterButton } from '@/components/layout/filter-button'
-import { ExpandableSearch } from '@/components/layout/expandable-search'
-import { SelectionActions } from '@/components/layout/selection-actions'
-import { DocumentDetailActions } from '@/components/documents/document-detail-actions'
-import { useDocumentDetailFilter } from '@/components/documents/document-detail-filter-context'
+interface DocumentDetailSubBarPageProps {
+  params: Promise<{ id: string }>
+}
 
 /**
- * SubBar for document detail page.
- * Renders field search, filter, selection actions, and document actions.
- * Consumes filter state from DocumentDetailFilterContext (shared with ExtractedDataTable).
+ * Server component for document detail SubBar.
+ * Fetches stacks data (cached) and renders the client SubBar component.
  */
-export default function DocumentDetailSubBar() {
-  const { fieldSearch, setFieldSearch, selectedFieldCount, assignedStacks } = useDocumentDetailFilter()
+export default async function DocumentDetailSubBarPage({ params }: DocumentDetailSubBarPageProps) {
+  const { id } = await params
+  const assignedStacks = await getDocumentStacks(id)
 
-  return (
-    <SubBar
-      left={
-        <>
-          <FilterButton />
-          <ExpandableSearch
-            value={fieldSearch}
-            onChange={setFieldSearch}
-            placeholder="Search fields..."
-          />
-        </>
-      }
-      right={
-        <>
-          <SelectionActions selectedCount={selectedFieldCount} />
-          <DocumentDetailActions assignedStacks={assignedStacks} />
-        </>
-      }
-    />
-  )
+  return <DocumentDetailSubBar assignedStacks={assignedStacks} />
 }

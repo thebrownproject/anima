@@ -27,12 +27,7 @@ export function DocumentDetailClient({
 
   // Shared state from contexts
   const { setSelectedDocId, setSignedUrl, setSignedUrlDocId, signedUrlDocId, setMimeType, setOcrText, setAiChatBarContent } = useSelectedDocument()
-  const { fieldSearch, setSelectedFieldCount, setAssignedStacks } = useDocumentDetailFilter()
-
-  // Sync assigned stacks to context for SubBar
-  useEffect(() => {
-    setAssignedStacks(document.stacks ?? [])
-  }, [document.stacks, setAssignedStacks])
+  const { fieldSearch, setSelectedFieldCount } = useDocumentDetailFilter()
 
   // Set AI Chat Bar content via context (documents layout renders it below panels at full width)
   // Note: This uses the context slot pattern because AiChatBar must render in the documents

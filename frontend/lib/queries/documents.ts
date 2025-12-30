@@ -54,6 +54,33 @@ export async function getDocumentsWithStacks(): Promise<Document[]> {
 }
 
 /**
+ * Fetch stacks assigned to a document.
+ * Wrapped with React cache() to deduplicate requests across parallel routes.
+ */
+export const getDocumentStacks = cache(async function getDocumentStacks(
+  documentId: string
+): Promise<StackSummary[]> {
+  const supabase = await createServerSupabaseClient()
+
+  const { data, error } = await supabase
+    .from('stack_documents')
+    .select(`
+      stacks (
+        id,
+        name
+      )
+    `)
+    .eq('document_id', documentId)
+
+  if (error) {
+    console.error('Error fetching document stacks:', error)
+    return []
+  }
+
+  return extractStacks(data)
+})
+
+/**
  * Fetch document with extraction data, OCR text, and assigned stacks.
  * Wrapped with React cache() to deduplicate requests across parallel routes
  * (e.g., page + header slot both fetching the same document).
