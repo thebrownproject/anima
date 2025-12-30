@@ -5561,3 +5561,56 @@ docs/plans/
 1. Run `/superpowers:brainstorm` for sidebar layout (remove Extractions, restructure Workspace/Stacks sections)
 2. Implement sidebar changes
 3. Continue with `02-stack-pages.md` (stack list and detail pages)
+
+---
+
+## Session 71 - 2025-12-30 - Stacks Phase 2 Enhancement ✅
+
+**Feature**: Stacks
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 2 enhancements** (from handover):
+  - Enhanced `stack-documents-tab.tsx` to match Documents table:
+    - Added checkbox column with selection (select all, row selection)
+    - Added sortable Name column with `-ml-3` button pattern
+    - Added sortable Added column with sort icons
+    - Added `group/header` and `group/row` classes for hover effects
+    - Added `onSelectionChange` callback for state lifting
+  - Updated `stack-detail-client.tsx`:
+    - Added `SelectionActions` integration in SubBar
+    - Reordered SubBar: `[SelectionActions] [Search] [Add]`
+    - Shortened "Add Document" to "Add"
+
+- [x] **Code review** (via superpowers:code-reviewer):
+  - Fixed unused `stackId` parameter → `_stackId`
+  - Deferred suggestions: extract columns to separate file, extract shared SortIcon
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Table feature parity | Match Documents table exactly | Checkboxes, sorting, SelectionActions |
+| Selection state lifting | `onSelectionChange` callback | Parent needs count for SelectionActions |
+| Defer table abstraction | Keep tables separate for now | Will investigate shared component later |
+| SubBar order | `[SelectionActions] [Search] [Add]` | User preference |
+
+### Known Issue
+
+- **Tooltip randomly appearing** on row checkboxes - same code as Documents table but behaves differently. Needs investigation next session.
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| (uncommitted) | feat(stacks): add selection, sorting, SelectionActions to documents tab |
+
+### Next Session
+
+**Task**: Phase 3 - Stack Tables implementation (`03-stack-tables.md`)
+
+**Process**:
+1. Investigate tooltip issue on checkboxes (compare with Documents table behavior)
+2. Commit current changes
+3. Start `03-stack-tables.md` implementation

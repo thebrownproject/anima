@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExpandableSearch } from '@/components/layout/expandable-search'
+import { SelectionActions } from '@/components/layout/selection-actions'
 import { StackDocumentsTab } from './stack-documents-tab'
 import { StackTableView } from './stack-table-view'
 import * as Icons from '@/components/icons'
@@ -36,6 +37,7 @@ export function StackDetailClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchFilter, setSearchFilter] = React.useState('')
+  const [selectedDocCount, setSelectedDocCount] = React.useState(0)
 
   React.useEffect(() => {
     localStorage.setItem(`stack-${stack.id}-view`, activeTab)
@@ -117,6 +119,9 @@ export function StackDetailClient({
         }
         right={
           <div className="flex items-center gap-2">
+            {isDocumentsActive && (
+              <SelectionActions selectedCount={selectedDocCount} />
+            )}
             <ExpandableSearch
               value={searchFilter}
               onChange={setSearchFilter}
@@ -124,7 +129,7 @@ export function StackDetailClient({
             />
             {isDocumentsActive && (
               <ActionButton icon={<Icons.Plus />}>
-                Add Document
+                Add
               </ActionButton>
             )}
             {isTableActive && (
@@ -142,6 +147,7 @@ export function StackDetailClient({
             documents={stack.documents}
             stackId={stack.id}
             searchFilter={searchFilter}
+            onSelectionChange={setSelectedDocCount}
           />
         )}
         {isTableActive && tableRows && (
