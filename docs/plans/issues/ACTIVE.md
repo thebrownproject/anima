@@ -53,3 +53,13 @@ Lightweight tracking for items that don't need immediate action.
   - Goal: DRY pattern for persisting UI state (sidebar, panels, preferences)
   - Consider: useSyncExternalStore for proper SSR support
 - [ ] #30 `feature` Assign document to stacks from document detail page - dropdown in sub-bar to add/remove document from stacks, needs to handle re-extraction when stack membership changes (2025-12-30)
+- [ ] #31 `feature` OS-aware keyboard shortcut display - create `useModifierKey()` hook to show ⌘ on Mac, Ctrl on Windows/Linux in tooltips (2025-12-31)
+  - Currently: Tooltips hardcode ⌘ symbol (e.g., "Toggle sidebar (⌘B)", "Search (⌘K)")
+  - Goal: Detect OS and show appropriate modifier key
+  - Files: `frontend/app/(app)/layout.tsx:53`, `frontend/components/layout/sidebar/sidebar-header-menu.tsx:116`
+- [ ] #32 `feature` Sidebar gradual collapse - icon-only mode at tablet breakpoint (768-1024px) instead of hard switch to mobile sheet (2025-12-31)
+  - Currently: Single breakpoint at 1024px switches directly to mobile sheet overlay
+  - Goal: Desktop (≥1024px) full sidebar, Tablet (768-1024px) icon-only locked, Mobile (<768px) sheet
+  - Behavior: Icon-only mode locked (no expand), desktop state remembered when resizing back
+  - Changes: Update `use-mobile.ts` to three-state, modify `SidebarProvider` and `Sidebar` component
+  - Reference: Linear collapses sidebar at ~1024px with similar pattern

@@ -4,6 +4,7 @@ import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 function TooltipProvider({
   delayDuration = 700,
@@ -40,6 +41,13 @@ function TooltipContent({
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  const isMobile = useIsMobile()
+
+  // Don't render tooltips on mobile - they require hover which doesn't exist on touch
+  if (isMobile) {
+    return null
+  }
+
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content

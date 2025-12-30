@@ -50,7 +50,7 @@ export default async function AppLayout({
                           <SidebarTrigger className="ml-2.5" />
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                          Toggle sidebar
+                          Toggle sidebar (⌘B)
                         </TooltipContent>
                       </Tooltip>
                       <Separator
