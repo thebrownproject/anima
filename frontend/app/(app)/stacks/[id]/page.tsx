@@ -15,7 +15,7 @@ export default async function StackDetailPage({ params, searchParams }: PageProp
   if (!stack) notFound()
 
   let tableRows = null
-  const activeTable = tableId ? stack.tables.find(t => t.id === tableId) : null
+  const activeTable = tableId ? stack.tables.find(t => t.id === tableId) ?? null : null
 
   if (activeTable) {
     tableRows = await getStackTableRows(activeTable.id)
