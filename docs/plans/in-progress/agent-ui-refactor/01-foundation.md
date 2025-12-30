@@ -10,6 +10,37 @@
 
 ---
 
+## Task 0: Add Missing Icon Exports
+
+**Files:**
+- Edit: `frontend/components/icons/index.ts`
+
+**Step 1: Add ChevronUp and QuestionMark icons**
+
+Add these exports to the icons barrel file:
+
+```typescript
+// Add to Navigation & chevrons section
+IconChevronUp as ChevronUp,
+
+// Add new section or to Close & actions
+IconQuestionMark as QuestionMark,
+```
+
+**Step 2: Verify icons are available**
+
+Run: `grep -E "ChevronUp|QuestionMark" frontend/components/icons/index.ts`
+Expected: Both icons should be listed
+
+**Step 3: Commit**
+
+```bash
+git add frontend/components/icons/index.ts
+git commit -m "feat(icons): add ChevronUp and QuestionMark icons"
+```
+
+---
+
 ## Task 1: Create Agent Store
 
 **Files:**
@@ -21,13 +52,17 @@
 // frontend/components/agent/stores/agent-store.ts
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import { useShallow } from 'zustand/react/shallow'
 import type { AgentEvent } from '@/lib/agent-api'
 import type { CustomField, ExtractionMethod } from '@/types/upload'
+
+// Upload step type (extends existing UploadStep with extraction states)
+export type UploadFlowStep = 'dropzone' | 'configure' | 'fields' | 'extracting' | 'complete'
 
 // Discriminated union for type-safe flow routing
 export type AgentFlow =
   // Document flows
-  | { type: 'upload'; step: 'dropzone' | 'configure' | 'fields' | 'extracting' | 'complete'; data: UploadFlowData }
+  | { type: 'upload'; step: UploadFlowStep; data: UploadFlowData }
   | { type: 'extract-document'; documentId: string }
   // Stack flows (post-MVP)
   | { type: 'create-stack' }
@@ -67,7 +102,7 @@ interface AgentStore {
 
   // Actions
   openFlow: (flow: NonNullable<AgentFlow>) => void
-  setStep: <T extends AgentFlow>(step: T extends { step: string } ? T['step'] : never) => void
+  setStep: (step: UploadFlowStep) => void
   updateFlowData: (data: Partial<UploadFlowData>) => void
   setStatus: (status: AgentStatus, text: string) => void
   addEvent: (event: AgentEvent) => void
@@ -78,7 +113,7 @@ interface AgentStore {
   reset: () => void
 }
 
-const initialUploadData: UploadFlowData = {
+export const initialUploadData: UploadFlowData = {
   file: null,
   documentId: null,
   documentName: '',
@@ -108,10 +143,10 @@ export const useAgentStore = create<AgentStore>()(
       }, undefined, 'agent/openFlow'),
 
       setStep: (step) => set((state) => {
-        if (!state.flow || !('step' in state.flow)) return state
+        if (!state.flow || state.flow.type !== 'upload') return state
         return {
-          flow: { ...state.flow, step } as AgentFlow,
-          statusText: getStepStatusText(state.flow.type, step),
+          flow: { ...state.flow, step },
+          statusText: getStepStatusText(step),
         }
       }, undefined, 'agent/setStep'),
 
@@ -167,24 +202,24 @@ function getFlowStatusText(flow: NonNullable<AgentFlow>): string {
   }
 }
 
-function getStepStatusText(flowType: string, step: string): string {
-  if (flowType === 'upload') {
-    switch (step) {
-      case 'dropzone': return 'Drop a file to get started'
-      case 'configure': return 'Configure extraction settings'
-      case 'fields': return 'Specify fields to extract'
-      case 'extracting': return 'Extracting...'
-      case 'complete': return 'Extraction complete'
-      default: return 'How can I help you today?'
-    }
+function getStepStatusText(step: UploadFlowStep): string {
+  switch (step) {
+    case 'dropzone': return 'Drop a file to get started'
+    case 'configure': return 'Configure extraction settings'
+    case 'fields': return 'Specify fields to extract'
+    case 'extracting': return 'Extracting...'
+    case 'complete': return 'Extraction complete'
   }
-  return 'How can I help you today?'
 }
 
-// Selector helpers (prevent unnecessary re-renders)
+// Selector helpers (useShallow for object selectors to prevent unnecessary re-renders)
 export const useAgentFlow = () => useAgentStore((s) => s.flow)
-export const useAgentStatus = () => useAgentStore((s) => ({ status: s.status, statusText: s.statusText }))
-export const useAgentPopup = () => useAgentStore((s) => ({ isPopupOpen: s.isPopupOpen, isExpanded: s.isExpanded }))
+export const useAgentStatus = () => useAgentStore(
+  useShallow((s) => ({ status: s.status, statusText: s.statusText }))
+)
+export const useAgentPopup = () => useAgentStore(
+  useShallow((s) => ({ isPopupOpen: s.isPopupOpen, isExpanded: s.isExpanded }))
+)
 export const useAgentEvents = () => useAgentStore((s) => s.events)
 ```
 
@@ -223,7 +258,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { useAgentStore, useAgentStatus, useAgentPopup } from './stores/agent-store'
+import { useAgentStore, useAgentStatus, useAgentPopup, type AgentStatus } from './stores/agent-store'
 import { AgentActions } from './agent-actions'
 
 interface AgentBarProps {
@@ -360,22 +395,23 @@ export function AgentBar({ className }: AgentBarProps) {
   )
 }
 
-function getStatusIcon(status: string) {
+function getStatusIcon(status: AgentStatus) {
   switch (status) {
     case 'processing': return Icons.Loader2
     case 'waiting': return Icons.QuestionMark
     case 'complete': return Icons.Check
     case 'error': return Icons.X
-    default: return Icons.Stack
+    case 'idle': return Icons.Stack
   }
 }
 
-function getStatusIconClass(status: string) {
+function getStatusIconClass(status: AgentStatus) {
   switch (status) {
     case 'processing': return 'text-muted-foreground'
     case 'complete': return 'text-green-500'
     case 'error': return 'text-destructive'
-    default: return 'text-muted-foreground group-hover:text-foreground group-focus-within:text-foreground'
+    case 'idle':
+    case 'waiting': return 'text-muted-foreground group-hover:text-foreground group-focus-within:text-foreground'
   }
 }
 ```
@@ -403,7 +439,7 @@ Expected: May fail due to missing AgentActions (created next)
 import { usePathname } from 'next/navigation'
 import * as Icons from '@/components/icons'
 import { ActionButton } from '@/components/layout/action-button'
-import { useAgentStore, type AgentFlow, type UploadFlowData } from './stores/agent-store'
+import { useAgentStore, initialUploadData, type AgentFlow } from './stores/agent-store'
 
 interface ActionDef {
   id: string
@@ -411,17 +447,6 @@ interface ActionDef {
   icon: React.ComponentType<{ className?: string }>
   flow: NonNullable<AgentFlow>
   tooltip?: string
-}
-
-const initialUploadData: UploadFlowData = {
-  file: null,
-  documentId: null,
-  documentName: '',
-  extractionMethod: 'auto',
-  customFields: [],
-  uploadStatus: 'idle',
-  uploadError: null,
-  extractionError: null,
 }
 
 // Actions by route pattern
@@ -727,12 +752,18 @@ function getUploadTitle(step: string): string {
 
 ```typescript
 // frontend/components/agent/index.ts
+
+// Components
 export { AgentContainer } from './agent-container'
 export { AgentBar } from './agent-bar'
 export { AgentPopup } from './agent-popup'
 export { AgentActions } from './agent-actions'
-export { useAgentStore, useAgentFlow, useAgentStatus, useAgentPopup, useAgentEvents } from './stores/agent-store'
-export type { AgentFlow, UploadFlowData, AgentStatus } from './stores/agent-store'
+
+// Hooks & constants
+export { useAgentStore, useAgentFlow, useAgentStatus, useAgentPopup, useAgentEvents, initialUploadData } from './stores/agent-store'
+
+// Types
+export type { AgentFlow, UploadFlowData, UploadFlowStep, AgentStatus } from './stores/agent-store'
 ```
 
 **Step 4: Verify all components compile**

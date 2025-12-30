@@ -21,10 +21,11 @@
 // frontend/components/agent/flows/documents/upload-flow.tsx
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
-import { useAgentStore, useAgentFlow } from '../../stores/agent-store'
+import { useShallow } from 'zustand/react/shallow'
+import { useAgentStore, useAgentFlow, getUploadTitle, type UploadFlowStep } from '../../stores/agent-store'
 import { AgentPopup } from '../../agent-popup'
 import { UploadDropzone } from './upload-dropzone'
 import { UploadConfigure } from './upload-configure'
@@ -38,17 +39,29 @@ export function UploadFlow() {
   const { getToken } = useAuth()
   const router = useRouter()
   const flow = useAgentFlow()
-  const setStep = useAgentStore((s) => s.setStep)
-  const updateFlowData = useAgentStore((s) => s.updateFlowData)
-  const setStatus = useAgentStore((s) => s.setStatus)
-  const addEvent = useAgentStore((s) => s.addEvent)
-  const collapsePopup = useAgentStore((s) => s.collapsePopup)
-  const close = useAgentStore((s) => s.close)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  const actions = useAgentStore(
+    useShallow((s) => ({
+      setStep: s.setStep,
+      updateFlowData: s.updateFlowData,
+      setStatus: s.setStatus,
+      addEvent: s.addEvent,
+      collapsePopup: s.collapsePopup,
+      close: s.close,
+    }))
+  )
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => abortControllerRef.current?.abort()
+  }, [])
 
   // Only render for upload flow
   if (!flow || flow.type !== 'upload') return null
 
   const { step, data } = flow
+  const { setStep, updateFlowData, setStatus, addEvent, collapsePopup, close } = actions
 
   // Handle file selection from dropzone
   const handleFileSelect = useCallback(async (file: File) => {
@@ -118,12 +131,17 @@ export function UploadFlow() {
       const token = await getToken()
       if (!token) throw new Error('Authentication required')
 
+      // Cancel any in-flight extraction and create new controller
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = new AbortController()
+
       await streamAgentExtraction(
         data.documentId,
         data.extractionMethod,
         data.extractionMethod === 'custom' ? data.customFields : null,
         handleEvent,
-        token
+        token,
+        abortControllerRef.current.signal
       )
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return
@@ -133,10 +151,14 @@ export function UploadFlow() {
     }
   }, [data, getToken, setStep, collapsePopup, setStatus, addEvent, updateFlowData])
 
-  // Navigation handlers
+  // Navigation handlers - type-safe step transitions
   const handleBack = useCallback(() => {
-    if (step === 'configure') setStep('dropzone')
-    else if (step === 'fields') setStep('configure')
+    const prevStep: Partial<Record<UploadFlowStep, UploadFlowStep>> = {
+      configure: 'dropzone',
+      fields: 'configure',
+    }
+    const prev = prevStep[step]
+    if (prev) setStep(prev)
   }, [step, setStep])
 
   const handleNext = useCallback(() => {
@@ -149,9 +171,8 @@ export function UploadFlow() {
 
   const handleViewDocument = useCallback(() => {
     if (data.documentId) {
-      router.push(`/documents/${data.documentId}`)
-      router.refresh()
       close()
+      router.push(`/documents/${data.documentId}`)
     }
   }, [data.documentId, router, close])
 
@@ -170,21 +191,10 @@ export function UploadFlow() {
     setStatus('idle', 'Drop a file to get started')
   }, [updateFlowData, setStep, setStatus])
 
-  const getTitle = () => {
-    switch (step) {
-      case 'dropzone': return 'Upload Document'
-      case 'configure': return 'Configure Extraction'
-      case 'fields': return 'Specify Fields'
-      case 'extracting': return 'Extracting...'
-      case 'complete': return 'Complete'
-      default: return 'Upload Document'
-    }
-  }
-
   const showBack = step === 'configure' || step === 'fields'
 
   return (
-    <AgentPopup title={getTitle()} showBack={showBack} onBack={handleBack}>
+    <AgentPopup title={getUploadTitle(step)} showBack={showBack} onBack={handleBack}>
       {step === 'dropzone' && (
         <UploadDropzone onFileSelect={handleFileSelect} />
       )}
@@ -316,6 +326,7 @@ export function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        aria-describedby={error ? 'dropzone-error' : undefined}
         className={cn(
           'flex w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors',
           isDragging
@@ -337,7 +348,9 @@ export function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
       </button>
 
       {error && (
-        <p className="text-sm text-destructive text-center">{error}</p>
+        <p id="dropzone-error" role="alert" className="text-sm text-destructive text-center">
+          {error}
+        </p>
       )}
     </div>
   )
@@ -488,12 +501,16 @@ export function UploadFields({ data, onUpdate, onExtract }: UploadFieldsProps) {
 // frontend/components/agent/flows/documents/upload-extracting.tsx
 'use client'
 
+import { useMemo } from 'react'
 import * as Icons from '@/components/icons'
 import { useAgentEvents } from '../../stores/agent-store'
 
 export function UploadExtracting() {
   const events = useAgentEvents()
-  const toolEvents = events.filter((e) => e.type === 'tool')
+  const toolEvents = useMemo(
+    () => events.filter((e) => e.type === 'tool'),
+    [events]
+  )
 
   return (
     <div className="space-y-3">
@@ -667,8 +684,13 @@ export function ConfirmClose({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Continue</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Cancel Upload</AlertDialogAction>
+          <AlertDialogCancel>Keep Working</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Discard & Close
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -709,17 +731,10 @@ export function AgentPopup({ children, title, showBack, onBack }: AgentPopupProp
 
   // Determine if we need confirmation before closing
   const needsConfirmation = useCallback(() => {
-    if (!flow) return false
-    if (flow.type === 'upload') {
-      const { step, data } = flow
-      // Need confirmation if:
-      // - File selected (configure/fields step)
-      // - Currently extracting
-      if (step === 'configure' || step === 'fields') return true
-      if (step === 'extracting') return true
-      if (data.file) return true
-    }
-    return false
+    if (!flow || flow.type !== 'upload') return false
+    const { step } = flow
+    // Confirm if mid-flow (file selected or extracting)
+    return step === 'configure' || step === 'fields' || step === 'extracting'
   }, [flow])
 
   const handleClose = useCallback(() => {

@@ -27,23 +27,23 @@ The AgentContainer checks the current route and only renders on supported pages:
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { AgentBar } from './agent-bar'
-import { AgentPopup } from './agent-popup'
 import { cn } from '@/lib/utils'
+import { AgentBar } from './agent-bar'
+import { AgentPopupContent } from './agent-popup-content'
 
 const AGENT_ROUTES = ['/documents', '/stacks']
 
 export function AgentContainer({ className }: { className?: string }) {
   const pathname = usePathname()
 
-  // Only show on supported routes
   const shouldShow = AGENT_ROUTES.some(route => pathname.startsWith(route))
-
   if (!shouldShow) return null
 
   return (
     <div className={cn('relative w-full max-w-[640px] mx-auto', className)}>
-      <AgentPopup />
+      <div className="absolute bottom-full left-0 right-0">
+        <AgentPopupContent />
+      </div>
       <AgentBar />
     </div>
   )
@@ -120,7 +120,6 @@ export default async function AppLayout({
                     {subbar}
                     <div className="flex flex-1 flex-col min-h-0">{children}</div>
 
-                    {/* Agent Container - app-wide, self-manages visibility */}
                     <AgentContainer className="p-4" />
                   </StackDetailFilterProvider>
                 </StacksFilterProvider>
@@ -214,10 +213,80 @@ export default function DocumentsLayout({
 Remove `aiChatBarContent` and `setAiChatBarContent` from the context - they're no longer needed.
 
 ```typescript
-// In frontend/components/documents/selected-document-context.tsx
-// Remove these from the interface and implementation:
-// - aiChatBarContent: ReactNode
-// - setAiChatBarContent: (content: ReactNode) => void
+// frontend/components/documents/selected-document-context.tsx
+'use client'
+
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
+
+interface SelectedDocumentContextValue {
+  selectedDocId: string | null
+  setSelectedDocId: (id: string | null) => void
+  signedUrl: string | null
+  setSignedUrl: (url: string | null) => void
+  signedUrlDocId: string | null
+  setSignedUrlDocId: (id: string | null) => void
+  mimeType: string
+  setMimeType: (type: string) => void
+  ocrText: string | null
+  setOcrText: (text: string | null) => void
+}
+
+const SelectedDocumentContext = createContext<SelectedDocumentContextValue | null>(null)
+
+export function SelectedDocumentProvider({ children }: { children: ReactNode }) {
+  const [selectedDocId, setSelectedDocIdState] = useState<string | null>(null)
+  const [signedUrl, setSignedUrlState] = useState<string | null>(null)
+  const [signedUrlDocId, setSignedUrlDocIdState] = useState<string | null>(null)
+  const [mimeType, setMimeTypeState] = useState<string>('')
+  const [ocrText, setOcrTextState] = useState<string | null>(null)
+
+  const setSelectedDocId = useCallback((id: string | null) => {
+    setSelectedDocIdState(id)
+  }, [])
+
+  const setSignedUrl = useCallback((url: string | null) => {
+    setSignedUrlState(url)
+  }, [])
+
+  const setSignedUrlDocId = useCallback((id: string | null) => {
+    setSignedUrlDocIdState(id)
+  }, [])
+
+  const setMimeType = useCallback((type: string) => {
+    setMimeTypeState(type)
+  }, [])
+
+  const setOcrText = useCallback((text: string | null) => {
+    setOcrTextState(text)
+  }, [])
+
+  const contextValue = useMemo(() => ({
+    selectedDocId,
+    setSelectedDocId,
+    signedUrl,
+    setSignedUrl,
+    signedUrlDocId,
+    setSignedUrlDocId,
+    mimeType,
+    setMimeType,
+    ocrText,
+    setOcrText,
+  }), [selectedDocId, setSelectedDocId, signedUrl, setSignedUrl, signedUrlDocId, setSignedUrlDocId, mimeType, setMimeType, ocrText, setOcrText])
+
+  return (
+    <SelectedDocumentContext.Provider value={contextValue}>
+      {children}
+    </SelectedDocumentContext.Provider>
+  )
+}
+
+export function useSelectedDocument() {
+  const context = useContext(SelectedDocumentContext)
+  if (!context) {
+    throw new Error('useSelectedDocument must be used within SelectedDocumentProvider')
+  }
+  return context
+}
 ```
 
 **Step 5: Verify compiles**
@@ -256,18 +325,7 @@ git commit -m "feat(agent): add AgentContainer to root layout with self-managed 
 
 import * as Icons from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { useAgentStore, type UploadFlowData } from './stores/agent-store'
-
-const initialUploadData: UploadFlowData = {
-  file: null,
-  documentId: null,
-  documentName: '',
-  extractionMethod: 'auto',
-  customFields: [],
-  uploadStatus: 'idle',
-  uploadError: null,
-  extractionError: null,
-}
+import { useAgentStore, initialUploadData } from './stores/agent-store'
 
 export function UploadButton() {
   const openFlow = useAgentStore((s) => s.openFlow)
@@ -287,9 +345,17 @@ export function UploadButton() {
 
 **Step 2: Add to barrel export**
 
+Add UploadButton to the existing exports:
+
 ```typescript
 // frontend/components/agent/index.ts
+export { AgentContainer } from './agent-container'
+export { AgentBar } from './agent-bar'
+export { AgentPopup } from './agent-popup'
+export { AgentActions } from './agent-actions'
 export { UploadButton } from './upload-button'
+export { useAgentStore, useAgentFlow, useAgentStatus, useAgentPopup, useAgentEvents, initialUploadData } from './stores/agent-store'
+export type { AgentFlow, UploadFlowData, AgentStatus } from './stores/agent-store'
 ```
 
 **Step 3: Update documents list header**
@@ -316,7 +382,7 @@ export default function DocumentsHeaderSlot() {
 
 **Step 4: Verify compiles**
 
-Run: `npx tsc --noEmit frontend/app/(app)/@header/documents/page.tsx frontend/components/agent/upload-button.tsx`
+Run: `npx tsc --noEmit`
 Expected: No errors
 
 **Step 5: Test locally**
