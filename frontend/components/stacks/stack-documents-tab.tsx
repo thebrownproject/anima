@@ -32,11 +32,11 @@ interface StackDocumentsTabProps {
 const columns: ColumnDef<StackDocument>[] = [
   {
     accessorKey: 'document.filename',
-    header: () => <span className="-ml-3">Name</span>,
+    header: 'Name',
     cell: ({ row }) => {
       const doc = row.original.document
       return (
-        <div className="flex items-center gap-2 max-w-full -ml-px">
+        <div className="flex items-center gap-2">
           <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
           <Link
             href={`/documents/${doc.id}`}
@@ -65,9 +65,9 @@ const columns: ColumnDef<StackDocument>[] = [
     accessorKey: 'added_at',
     header: 'Added',
     cell: ({ row }) => (
-      <div className="text-right text-muted-foreground pr-6">
+      <span className="text-muted-foreground">
         {formatRelativeDate(row.original.added_at)}
-      </div>
+      </span>
     ),
   },
 ]
@@ -115,9 +115,8 @@ export function StackDocumentsTab({ documents, searchFilter }: StackDocumentsTab
                   key={header.id}
                   className={cn(
                     "h-9 text-sm font-normal text-muted-foreground",
-                    header.column.id === 'document.filename' && "max-w-0",
-                    header.column.id === 'document.status' && "max-w-0",
-                    header.column.id === 'added_at' && "w-24 text-right pr-5"
+                    header.column.id === 'document.filename' && "pl-4",
+                    header.column.id === 'added_at' && "w-24 text-right pr-4"
                   )}
                 >
                   {header.isPlaceholder
@@ -140,9 +139,8 @@ export function StackDocumentsTab({ documents, searchFilter }: StackDocumentsTab
                     key={cell.id}
                     className={cn(
                       "py-3",
-                      cell.column.id === 'document.filename' && "max-w-0",
-                      cell.column.id === 'document.status' && "max-w-0",
-                      cell.column.id === 'added_at' && "w-24"
+                      cell.column.id === 'document.filename' && "pl-4",
+                      cell.column.id === 'added_at' && "w-24 text-right pr-4"
                     )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
