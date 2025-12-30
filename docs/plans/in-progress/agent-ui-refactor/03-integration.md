@@ -2,21 +2,141 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Wire the new agent components into the Documents layout and header.
+**Goal:** Wire the new agent components into the app layout (app-wide) and header.
 
-**Architecture:** AgentContainer replaces AiChatBar in documents layout. UploadButton in header triggers agent popup.
+**Architecture:** AgentContainer lives in root layout with self-managed visibility. It shows on `/documents` and `/stacks` routes. UploadButton in header triggers agent popup.
 
 **Tech Stack:** Next.js App Router, Zustand, shadcn/ui
 
 ---
 
-## Task 3.1: Replace AiChatBar in Documents Layout
+## Task 3.1: Add AgentContainer to Root Layout
 
 **Files:**
-- Modify: `frontend/app/(app)/documents/layout.tsx`
-- Modify: `frontend/components/documents/selected-document-context.tsx`
+- Modify: `frontend/app/(app)/layout.tsx`
+- Modify: `frontend/app/(app)/documents/layout.tsx` (remove old aiChatBarContent)
+- Modify: `frontend/components/documents/selected-document-context.tsx` (remove aiChatBarContent)
+- Modify: `frontend/components/agent/agent-container.tsx` (add visibility logic)
 
-**Step 1: Update documents layout to use AgentContainer**
+**Step 1: Update AgentContainer with self-managed visibility**
+
+The AgentContainer checks the current route and only renders on supported pages:
+
+```typescript
+// frontend/components/agent/agent-container.tsx
+'use client'
+
+import { usePathname } from 'next/navigation'
+import { AgentBar } from './agent-bar'
+import { AgentPopup } from './agent-popup'
+import { cn } from '@/lib/utils'
+
+const AGENT_ROUTES = ['/documents', '/stacks']
+
+export function AgentContainer({ className }: { className?: string }) {
+  const pathname = usePathname()
+
+  // Only show on supported routes
+  const shouldShow = AGENT_ROUTES.some(route => pathname.startsWith(route))
+
+  if (!shouldShow) return null
+
+  return (
+    <div className={cn('relative w-full max-w-[640px] mx-auto', className)}>
+      <AgentPopup />
+      <AgentBar />
+    </div>
+  )
+}
+```
+
+**Step 2: Add AgentContainer to root layout**
+
+```typescript
+// frontend/app/(app)/layout.tsx
+import { cookies } from "next/headers";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/layout/sidebar/app-sidebar-server";
+import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { PreviewPanelProvider } from "@/components/documents/preview-panel-context";
+import { SelectedDocumentProvider } from "@/components/documents/selected-document-context";
+import { DocumentsFilterProvider } from "@/components/documents/documents-filter-context";
+import { DocumentDetailFilterProvider } from "@/components/documents/document-detail-filter-context";
+import { StacksFilterProvider } from "@/components/stacks/stacks-filter-context";
+import { StackDetailFilterProvider } from "@/components/stacks/stack-detail-filter-context";
+import { AgentContainer } from "@/components/agent";
+
+export default async function AppLayout({
+  children,
+  header,
+  subbar,
+}: {
+  children: React.ReactNode;
+  header: React.ReactNode;
+  subbar: React.ReactNode;
+}) {
+  // Sidebar state persistence
+  const cookieStore = await cookies();
+  const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+
+  return (
+    <SidebarProvider
+      defaultOpen={defaultOpen}
+      className="h-svh overflow-hidden"
+    >
+      <AppSidebar />
+      <SidebarInset>
+        <PreviewPanelProvider>
+          <SelectedDocumentProvider>
+            <DocumentsFilterProvider>
+              <DocumentDetailFilterProvider>
+                <StacksFilterProvider>
+                  <StackDetailFilterProvider>
+                    <header className="flex h-12 shrink-0 items-center gap-2 px-4 border-b">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <SidebarTrigger className="ml-2.5" />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          Toggle sidebar
+                        </TooltipContent>
+                      </Tooltip>
+                      <Separator
+                        orientation="vertical"
+                        className="mr-2 data-[orientation=vertical]:h-4"
+                      />
+                      {header}
+                    </header>
+                    {/* SubBar slot - rendered between header and content */}
+                    {subbar}
+                    <div className="flex flex-1 flex-col min-h-0">{children}</div>
+
+                    {/* Agent Container - app-wide, self-manages visibility */}
+                    <AgentContainer className="p-4" />
+                  </StackDetailFilterProvider>
+                </StacksFilterProvider>
+              </DocumentDetailFilterProvider>
+            </DocumentsFilterProvider>
+          </SelectedDocumentProvider>
+        </PreviewPanelProvider>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+```
+
+**Step 3: Remove aiChatBarContent from documents layout**
+
+Update documents layout to remove the old chat bar slot:
 
 ```typescript
 // frontend/app/(app)/documents/layout.tsx
@@ -30,7 +150,6 @@ import {
 import { PreviewPanel } from '@/components/documents/preview-panel'
 import { usePreviewPanel } from '@/components/documents/preview-panel-context'
 import { useSelectedDocument } from '@/components/documents/selected-document-context'
-import { AgentContainer } from '@/components/agent'
 
 export default function DocumentsLayout({
   children,
@@ -38,7 +157,7 @@ export default function DocumentsLayout({
   children: React.ReactNode
 }) {
   const { panelRef, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
-  const { signedUrl, ocrText, mimeType, showAgentBar } = useSelectedDocument()
+  const { signedUrl, ocrText, mimeType } = useSelectedDocument()
 
   const mainPanelSize = 100 - panelWidth
 
@@ -49,86 +168,76 @@ export default function DocumentsLayout({
   }
 
   return (
-    <div className="flex flex-1 flex-col min-h-0">
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="flex-1 min-h-0 overflow-hidden"
-        onLayout={handleLayoutChange}
+    <ResizablePanelGroup
+      direction="horizontal"
+      className="flex-1 min-h-0 overflow-hidden"
+      onLayout={handleLayoutChange}
+    >
+      {/* Main content panel - pages render here */}
+      <ResizablePanel
+        defaultSize={mainPanelSize}
+        minSize={40}
+        className="overflow-hidden min-w-0 flex flex-col"
       >
-        {/* Main content panel */}
-        <ResizablePanel
-          defaultSize={mainPanelSize}
-          minSize={40}
-          className="overflow-hidden min-w-0 flex flex-col"
-        >
-          {children}
-        </ResizablePanel>
+        {children}
+      </ResizablePanel>
 
-        <ResizableHandle />
+      <ResizableHandle />
 
-        {/* Preview panel */}
-        <ResizablePanel
-          ref={panelRef}
-          defaultSize={panelWidth}
-          minSize={30}
-          maxSize={50}
-          collapsible
-          collapsedSize={0}
-          onCollapse={() => setIsCollapsed(true)}
-          onExpand={() => setIsCollapsed(false)}
-          className="overflow-hidden"
-        >
-          <div className="h-full">
-            <PreviewPanel
-              pdfUrl={signedUrl}
-              ocrText={ocrText}
-              mimeType={mimeType}
-            />
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-
-      {/* Agent Container - full width below panels */}
-      {showAgentBar && (
-        <div className="p-4">
-          <AgentContainer />
+      {/* Preview panel - persists across navigation */}
+      <ResizablePanel
+        ref={panelRef}
+        defaultSize={panelWidth}
+        minSize={30}
+        maxSize={50}
+        collapsible
+        collapsedSize={0}
+        onCollapse={() => setIsCollapsed(true)}
+        onExpand={() => setIsCollapsed(false)}
+        className="overflow-hidden"
+      >
+        <div className="h-full">
+          <PreviewPanel
+            pdfUrl={signedUrl}
+            ocrText={ocrText}
+            mimeType={mimeType}
+          />
         </div>
-      )}
-    </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   )
 }
 ```
 
-**Step 2: Update selected-document-context to expose showAgentBar flag**
+**Step 4: Clean up SelectedDocumentContext**
 
-Read the current context file and add a `showAgentBar` boolean instead of `aiChatBarContent` ReactNode:
+Remove `aiChatBarContent` and `setAiChatBarContent` from the context - they're no longer needed.
 
 ```typescript
-// Add to SelectedDocumentContext interface:
-showAgentBar: boolean
-
-// Replace aiChatBarContent with:
-showAgentBar: !!documentId  // Show on detail pages
+// In frontend/components/documents/selected-document-context.tsx
+// Remove these from the interface and implementation:
+// - aiChatBarContent: ReactNode
+// - setAiChatBarContent: (content: ReactNode) => void
 ```
 
-**Step 3: Verify compiles**
+**Step 5: Verify compiles**
 
-Run: `npx tsc --noEmit frontend/app/(app)/documents/layout.tsx`
+Run: `npx tsc --noEmit`
 Expected: No errors
 
-**Step 4: Test locally**
+**Step 6: Test locally**
 
 Run: `npm run dev`
-Navigate to `/documents` and verify:
-- AgentBar appears at bottom
-- Focus reveals action buttons
-- Clicking Upload opens popup with dropzone
+- Navigate to `/documents` - AgentBar should appear at bottom
+- Navigate to `/stacks` - AgentBar should appear at bottom
+- Navigate to `/settings` or other pages - AgentBar should NOT appear
+- Focus on bar reveals action buttons
 
-**Step 5: Commit**
+**Step 7: Commit**
 
 ```bash
-git add frontend/app/(app)/documents/layout.tsx frontend/components/documents/selected-document-context.tsx
-git commit -m "feat(agent): integrate AgentContainer into documents layout"
+git add frontend/app/(app)/layout.tsx frontend/app/(app)/documents/layout.tsx frontend/components/documents/selected-document-context.tsx frontend/components/agent/agent-container.tsx
+git commit -m "feat(agent): add AgentContainer to root layout with self-managed visibility"
 ```
 
 ---
@@ -248,7 +357,8 @@ Test cases:
 11. Upload Another resets flow
 12. Close mid-flow shows confirmation
 13. Focus on bar reveals action buttons
-14. Actions change based on route
+14. **AgentBar only visible on /documents and /stacks routes**
+15. **AgentBar hidden on other routes (settings, etc.)**
 
 **Step 2: Fix any issues found**
 

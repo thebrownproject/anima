@@ -8,9 +8,12 @@
 
 **Architecture:**
 - Zustand store with discriminated unions for type-safe flow routing
+- AgentContainer lives in root layout (`app/(app)/layout.tsx`) - app-wide availability
+- AgentContainer self-manages visibility via `usePathname()` (shows on `/documents`, `/stacks`)
 - AgentBar renders status dynamically based on state
 - AgentPopup appears above bar when flow is active
-- Upload dialog logic migrates into UploadFlow component
+- Context awareness via route + existing contexts (no unified context store)
+- Session persistence handled by backend (Claude SDK + database `session_id`)
 
 **Tech Stack:** Zustand, shadcn/ui, Tabler Icons, existing agent-api.ts (SSE streaming)
 
@@ -28,7 +31,7 @@ Ready to begin implementation.
 |------|-------------|--------|
 | [01-foundation.md](./01-foundation.md) | Zustand store, AgentBar, AgentActions, AgentPopup, barrel exports | Pending |
 | [02-upload-flow.md](./02-upload-flow.md) | UploadFlow component, step components, popup wiring | Pending |
-| [03-integration.md](./03-integration.md) | Wire into Documents layout, header upload button, E2E testing | Pending |
+| [03-integration.md](./03-integration.md) | Wire into root layout (app-wide), header upload button, E2E testing | Pending |
 | [04-cleanup.md](./04-cleanup.md) | Delete old components, update exports, final verification | Pending |
 
 ---
@@ -49,9 +52,10 @@ Ready to begin implementation.
 4. Add close confirmation dialog
 
 ### Phase 3: Integration (03-integration.md)
-1. Replace AiChatBar in Documents layout
-2. Add Upload button to header actions
-3. End-to-end flow testing
+1. Add AgentContainer to root layout (app-wide, self-managed visibility)
+2. Remove old aiChatBarContent from documents layout and context
+3. Add Upload button to header actions
+4. End-to-end flow testing
 
 ### Phase 4: Cleanup (04-cleanup.md)
 1. Remove old upload dialog components
