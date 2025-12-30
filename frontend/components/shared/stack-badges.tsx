@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { Badge } from '@/components/ui/badge'
 import type { StackSummary } from '@/types/stacks'
 
@@ -17,8 +19,10 @@ export function StackBadges({ stacks, maxVisible = 2 }: StackBadgesProps) {
   return (
     <div className="flex flex-wrap gap-1">
       {visible.map((stack) => (
-        <Badge key={stack.id} variant="secondary" className="text-xs">
-          {stack.name}
+        <Badge key={stack.id} asChild variant="secondary" className="text-xs">
+          <Link href={`/stacks/${stack.id}`} onClick={(e) => e.stopPropagation()}>
+            {stack.name}
+          </Link>
         </Badge>
       ))}
       {overflow > 0 && (

@@ -5614,3 +5614,58 @@ docs/plans/
 1. Investigate tooltip issue on checkboxes (compare with Documents table behavior)
 2. Commit current changes
 3. Start `03-stack-tables.md` implementation
+
+---
+
+## Session 72 - 2025-12-30 - Stacks Phase 3 Partial + Agent UI Refactor Setup ✅
+
+**Feature**: Stacks → Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 3 Tasks 1-2** (stack-table-columns, stack-table-view):
+  - Created `stack-table-columns.tsx` with SortIcon, ConfidenceDot, select/document columns
+  - Created `stack-table-view.tsx` with TanStack Table, sorting, row selection, global filter
+  - Verified patterns against TanStack Table and shadcn MCP docs
+  - Passed spec compliance and code quality reviews
+
+- [x] **Phase 3 Tasks 3-5 deferred**:
+  - "Not extracted" indicator, CSV export, barrel export
+  - Blocked until Stack Agent populates `stack_table_rows`
+  - Updated plan to reflect deferred status
+
+- [x] **Test data created**:
+  - Added "Invoice Data" table to Invoice Processing stack via Supabase MCP
+  - Dummy row with confidence scores to test table view rendering
+
+- [x] **Planning updates**:
+  - Updated `2025-12-29-stacks-implementation-plan.md` with completion status
+  - Updated `ROADMAP.md` to show Stacks UI mostly complete
+  - Moved `agent-ui-refactor/` from `plans/todo/` to `plans/in-progress/`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Defer remaining Phase 3 tasks | Skip until Stack Agent | No data to export, indicator not useful without agent |
+| Next priority | Agent UI Refactor | More impactful than finishing minor stacks polish |
+| Test data approach | Supabase MCP direct insert | Validates table view without needing agent |
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| 0f89344 | feat(stacks): create stack table column definitions |
+| ddfaef3 | feat(stacks): create table view with dynamic columns |
+| 804e8fd | docs: update stacks progress, mark agent-ui-refactor as next priority |
+| e1bd9a4 | docs: move agent-ui-refactor to in-progress |
+
+### Next Session
+
+**Task**: Agent UI Refactor - Chat bar redesign
+
+**Process**:
+1. Run `/continue` with this session context
+2. Read `docs/plans/in-progress/agent-ui-refactor/2025-12-29-agent-ui-refactor.md`
+3. Use `/superpowers:execute-plan` or `/superpowers:brainstorm` as needed

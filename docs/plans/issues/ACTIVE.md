@@ -52,3 +52,4 @@ Lightweight tracking for items that don't need immediate action.
   - Currently: Inline localStorage usage in `preview-panel-context.tsx`
   - Goal: DRY pattern for persisting UI state (sidebar, panels, preferences)
   - Consider: useSyncExternalStore for proper SSR support
+- [ ] #30 `feature` Assign document to stacks from document detail page - dropdown in sub-bar to add/remove document from stacks, needs to handle re-extraction when stack membership changes (2025-12-30)
