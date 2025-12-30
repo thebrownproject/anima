@@ -20,6 +20,7 @@ import { FileTypeIcon } from '@/components/shared/file-type-icon'
 import { Badge } from '@/components/ui/badge'
 import * as Icons from '@/components/icons'
 import { formatRelativeDate } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { StackDocument } from '@/types/stacks'
 
 interface StackDocumentsTabProps {
@@ -31,11 +32,11 @@ interface StackDocumentsTabProps {
 const columns: ColumnDef<StackDocument>[] = [
   {
     accessorKey: 'document.filename',
-    header: () => <span className="pl-4">Name</span>,
+    header: () => <span className="-ml-3">Name</span>,
     cell: ({ row }) => {
       const doc = row.original.document
       return (
-        <div className="flex items-center gap-2 pl-4">
+        <div className="flex items-center gap-2 max-w-full -ml-px">
           <FileTypeIcon mimeType={doc.mime_type} className="shrink-0" />
           <Link
             href={`/documents/${doc.id}`}
@@ -62,11 +63,11 @@ const columns: ColumnDef<StackDocument>[] = [
   },
   {
     accessorKey: 'added_at',
-    header: () => <span className="pr-4">Added</span>,
+    header: 'Added',
     cell: ({ row }) => (
-      <span className="text-muted-foreground pr-4">
+      <div className="text-right text-muted-foreground pr-6">
         {formatRelativeDate(row.original.added_at)}
-      </span>
+      </div>
     ),
   },
 ]
@@ -112,7 +113,12 @@ export function StackDocumentsTab({ documents, searchFilter }: StackDocumentsTab
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className="h-9 text-sm font-normal text-muted-foreground"
+                  className={cn(
+                    "h-9 text-sm font-normal text-muted-foreground",
+                    header.column.id === 'document.filename' && "max-w-0",
+                    header.column.id === 'document.status' && "max-w-0",
+                    header.column.id === 'added_at' && "w-24 text-right pr-5"
+                  )}
                 >
                   {header.isPlaceholder
                     ? null
@@ -130,7 +136,15 @@ export function StackDocumentsTab({ documents, searchFilter }: StackDocumentsTab
             table.getRowModel().rows.map((row) => (
               <TableRow key={row.id} className="h-12 hover:bg-muted/30">
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-3">
+                  <TableCell
+                    key={cell.id}
+                    className={cn(
+                      "py-3",
+                      cell.column.id === 'document.filename' && "max-w-0",
+                      cell.column.id === 'document.status' && "max-w-0",
+                      cell.column.id === 'added_at' && "w-24"
+                    )}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
