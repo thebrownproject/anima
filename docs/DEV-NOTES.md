@@ -5905,3 +5905,68 @@ URL params (navigation state)
 1. Run `/continue`
 2. Use `/superpowers:write-plan` for agent-ui-refactor
 3. Begin Foundation phase implementation
+
+---
+
+## Session 76 - 2025-12-30 - Agent UI Refactor Plan Sharding & Code Review ✅
+
+**Feature**: Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Plan Sharding**:
+  - Completed sharding of monolithic plan into 4 phase files
+  - `01-foundation.md` - Zustand store, AgentBar, AgentActions, AgentPopup
+  - `02-upload-flow.md` - UploadFlow component, step components
+  - `03-integration.md` - Root layout integration, header upload button
+  - `04-cleanup.md` - Delete old components, update imports, verify
+
+- [x] **Architecture Brainstorming**:
+  - Decided: AgentContainer in root layout (app-wide, not documents-only)
+  - Decided: Self-managed visibility via `usePathname()` for `/documents`, `/stacks`
+  - Decided: Context awareness via route + existing contexts (no unified store)
+  - Confirmed: Session persistence already handled by backend (Claude SDK + database)
+
+- [x] **Code Review & Fixes** (all 4 plan files):
+  - **01-foundation.md**: Added `useShallow` for selectors, exported `initialUploadData`, `UploadFlowStep`, fixed type narrowing, added Task 0 for missing icons
+  - **02-upload-flow.md**: Added AbortController for cancellation, `useShallow` for selectors, accessibility improvements, fixed button labels
+  - **03-integration.md**: Fixed AgentContainer to use `AgentPopupContent`, complete SelectedDocumentContext cleanup code
+  - **04-cleanup.md**: Added complete code for 3 files importing old components, documentation update task
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| AgentContainer placement | Root layout | App-wide availability, simpler than duplicating in section layouts |
+| Visibility management | Self-managed via usePathname | No coupling to document-specific context |
+| Context awareness | Route + existing contexts | No duplication, existing patterns work |
+| Session persistence | Backend (already built) | Claude SDK handles conversation history |
+| Zustand selectors | useShallow for objects | Prevents unnecessary re-renders |
+
+### Architecture Summary
+
+```
+app/(app)/layout.tsx (server)
+└── AgentContainer (client, self-manages visibility)
+    ├── Shows on: /documents/*, /stacks/*
+    ├── Hidden on: other routes
+    └── Context via: usePathname() + useParams() + SelectedDocumentContext
+```
+
+### Files Modified
+
+- `docs/plans/in-progress/agent-ui-refactor/2025-12-30-agent-ui-refactor-plan.md`
+- `docs/plans/in-progress/agent-ui-refactor/01-foundation.md`
+- `docs/plans/in-progress/agent-ui-refactor/02-upload-flow.md`
+- `docs/plans/in-progress/agent-ui-refactor/03-integration.md`
+- `docs/plans/in-progress/agent-ui-refactor/04-cleanup.md`
+
+### Next Session
+
+**Task**: Execute Agent UI Refactor implementation plan
+
+**Process**:
+1. Run `/continue`
+2. Run `/superpowers:execute-plan` on `docs/plans/in-progress/agent-ui-refactor/`
+3. Start with Phase 1 (01-foundation.md) - Task 0 (icons), then Task 1 (store)
