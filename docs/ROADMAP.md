@@ -16,7 +16,7 @@
 - Remaining: "Not extracted" indicator, CSV export (deferred until Stack Agent built)
 - Scope: UI only - pages mirror Documents, Supabase direct queries
 
-**Agent UI Refactor** (`plans/todo/agent-ui-refactor/`) - ⏳ Next Priority
+**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - ⏳ Next Priority
 - Chat bar redesign, agent popup system
 - Starting after Stacks UI pause
 
