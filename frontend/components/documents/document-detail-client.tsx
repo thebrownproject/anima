@@ -1,23 +1,13 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '@/components/ui/resizable'
+import { useAuth } from '@clerk/nextjs'
 import { useExtractionRealtime, ExtractionUpdate } from '@/hooks/use-extraction-realtime'
 import { ExtractedDataTable } from './extracted-data-table'
-import { PreviewPanel } from './preview-panel'
 import { AiChatBar } from '@/components/layout/ai-chat-bar'
-import { usePreviewPanel } from './preview-panel-context'
 import { useSelectedDocument } from './selected-document-context'
-import { SubBar } from '@/components/layout/sub-bar'
-import { FilterButton } from '@/components/layout/filter-button'
-import { SelectionActions } from '@/components/layout/selection-actions'
-import { DocumentDetailActions } from './document-detail-actions'
-import { ExpandableSearch } from '@/components/layout/expandable-search'
-import { cn } from '@/lib/utils'
+import { useDocumentDetailFilter } from './document-detail-filter-context'
+import { createClerkSupabaseClient } from '@/lib/supabase'
 import type { DocumentWithExtraction } from '@/types/documents'
 
 interface DocumentDetailClientProps {
@@ -31,30 +21,72 @@ export function DocumentDetailClient({
 }: DocumentDetailClientProps) {
   const [document, setDocument] = useState(initialDocument)
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
-  const [fieldSearch, setFieldSearch] = useState('')
-  const [selectedFieldCount, setSelectedFieldCount] = useState(0)
+
+  // Auth for Supabase client
+  const { getToken } = useAuth()
 
   // Shared state from contexts
-  const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
-  const { setSelectedDocId, setSignedUrl, signedUrl } = useSelectedDocument()
+  const { setSelectedDocId, setSignedUrl, setSignedUrlDocId, signedUrlDocId, setMimeType, setOcrText, setAiChatBarContent } = useSelectedDocument()
+  const { fieldSearch, setSelectedFieldCount, setAssignedStacks } = useDocumentDetailFilter()
 
-  // Panel width from context
-  const mainPanelSize = 100 - panelWidth
-
-  // Sync selected document to context on mount
+  // Sync assigned stacks to context for SubBar
   useEffect(() => {
+    setAssignedStacks(document.stacks ?? [])
+  }, [document.stacks, setAssignedStacks])
+
+  // Set AI Chat Bar content via context (documents layout renders it below panels at full width)
+  // Note: This uses the context slot pattern because AiChatBar must render in the documents
+  // layout (after ResizablePanelGroup), not in this page component (inside the left panel).
+  useEffect(() => {
+    setAiChatBarContent(
+      <div className="shrink-0 px-4 py-4 border-t">
+        <div className="mx-auto max-w-3xl">
+          <AiChatBar documentId={initialDocument.id} />
+        </div>
+      </div>
+    )
+
+    return () => {
+      setAiChatBarContent(null)
+    }
+  }, [initialDocument.id, setAiChatBarContent])
+
+  // Sync selected document to context and fetch signed URL client-side
+  // Uses signedUrlDocId to avoid re-fetching for the same document
+  useEffect(() => {
+    let cancelled = false
     setSelectedDocId(initialDocument.id)
+    setMimeType(initialDocument.mime_type)
+    setOcrText(initialDocument.ocr_raw_text ?? null)
+
+    // Skip fetch if we already have a signed URL for this document
+    if (signedUrlDocId === initialDocument.id) {
+      return
+    }
+
+    // If signed URL provided from server, use it; otherwise fetch client-side
     if (initialSignedUrl) {
       setSignedUrl(initialSignedUrl)
+      setSignedUrlDocId(initialDocument.id)
+    } else if (initialDocument.file_path) {
+      const supabase = createClerkSupabaseClient(getToken)
+      supabase.storage
+        .from('documents')
+        .createSignedUrl(initialDocument.file_path, 3600)
+        .then(({ data, error }) => {
+          if (cancelled) return
+          if (error) {
+            console.error('Failed to get signed URL:', error)
+          }
+          setSignedUrl(data?.signedUrl ?? null)
+          setSignedUrlDocId(initialDocument.id)
+        })
     }
-  }, [initialDocument.id, initialSignedUrl, setSelectedDocId, setSignedUrl])
 
-  // Update panel width in context when resized
-  const handleLayoutChange = useCallback((sizes: number[]) => {
-    if (sizes[1] !== undefined) {
-      setPanelWidth(sizes[1])
+    return () => {
+      cancelled = true
     }
-  }, [setPanelWidth])
+  }, [initialDocument.id, initialDocument.file_path, initialDocument.mime_type, initialDocument.ocr_raw_text, initialSignedUrl, signedUrlDocId, getToken, setSelectedDocId, setSignedUrl, setSignedUrlDocId, setMimeType, setOcrText])
 
   // Fix #3: Use ref to access current document state without recreating callback
   const documentRef = useRef(document)
@@ -103,84 +135,19 @@ export function DocumentDetailClient({
     onUpdate: handleExtractionUpdate,
   })
 
-  // Use context signedUrl (which was set from initialSignedUrl on mount)
-  const previewUrl = signedUrl ?? initialSignedUrl
-
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      {/* Sub-bar */}
-      <SubBar
-        left={
-          <>
-            <FilterButton />
-            <ExpandableSearch
-              value={fieldSearch}
-              onChange={setFieldSearch}
-              placeholder="Search fields..."
-            />
-          </>
-        }
-        right={
-          <>
-            <SelectionActions selectedCount={selectedFieldCount} />
-            <DocumentDetailActions assignedStacks={document.stacks ?? []} />
-          </>
-        }
-      />
-
-      {/* Main content - resizable layout */}
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="flex-1 min-h-0 overflow-hidden"
-        onLayout={handleLayoutChange}
-      >
-        {/* Left: Extracted Data - main content, expands */}
-        <ResizablePanel
-          defaultSize={mainPanelSize}
-          minSize={30}
-          className="overflow-auto min-w-0"
-        >
-          <div className="h-full">
-            <ExtractedDataTable
-              fields={document.extracted_fields}
-              confidenceScores={document.confidence_scores}
-              changedFields={changedFields}
-              searchFilter={fieldSearch}
-              onSelectionChange={setSelectedFieldCount}
-            />
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle />
-
-        {/* Right: Preview - collapsible sidebar */}
-        <ResizablePanel
-          ref={panelRef}
-          defaultSize={panelWidth}
-          minSize={30}
-          maxSize={50}
-          collapsible
-          collapsedSize={0}
-          onCollapse={() => setIsCollapsed(true)}
-          onExpand={() => setIsCollapsed(false)}
-          className="overflow-auto min-w-0"
-        >
-          <div className="h-full">
-            <PreviewPanel
-              pdfUrl={previewUrl}
-              ocrText={document.ocr_raw_text}
-              mimeType={document.mime_type}
-            />
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-
-      {/* AI Chat Bar - floating at bottom, outside panels */}
-      <div className={cn("shrink-0 px-4 py-4", !isCollapsed && "border-t")}>
-        <div className="mx-auto max-w-3xl">
-          <AiChatBar documentId={document.id} />
-        </div>
+      {/* Extracted data table - SubBar rendered by @subbar parallel route */}
+      <div className="flex-1 overflow-auto">
+        <ExtractedDataTable
+          fields={document.extracted_fields}
+          confidenceScores={document.confidence_scores}
+          changedFields={changedFields}
+          searchFilter={fieldSearch}
+          onSelectionChange={setSelectedFieldCount}
+        />
       </div>
+      {/* AI Chat Bar rendered by documents layout via context (aiChatBarContent) */}
     </div>
   )
 }

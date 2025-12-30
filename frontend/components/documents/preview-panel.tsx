@@ -57,6 +57,11 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
       <TabsContent value="pdf" className="flex-1 mt-0 overflow-hidden">
         {isPdf && pdfUrl ? (
           <PdfViewer key={pdfUrl} url={pdfUrl} />
+        ) : isPdf && !pdfUrl ? (
+          // PDF loading - signed URL being fetched client-side
+          <div className="flex h-[600px] items-center justify-center">
+            <Icons.Loader2 className="size-6 animate-spin text-muted-foreground/50" />
+          </div>
         ) : (
           <div className="flex h-[600px] items-center justify-center">
             <p className="text-sm text-muted-foreground">PDF preview not available</p>

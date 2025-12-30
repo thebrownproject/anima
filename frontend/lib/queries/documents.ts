@@ -92,21 +92,26 @@ export const getDocumentWithExtraction = cache(async function getDocumentWithExt
     return null
   }
 
-  // Get latest extraction (maybeSingle - document may not have extraction yet)
-  const { data: extraction } = await supabase
-    .from('extractions')
-    .select('id, extracted_fields, confidence_scores, session_id')
-    .eq('document_id', documentId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // Fetch extraction and OCR in parallel for faster loading
+  const [extractionResult, ocrResult] = await Promise.all([
+    // Get latest extraction (maybeSingle - document may not have extraction yet)
+    supabase
+      .from('extractions')
+      .select('id, extracted_fields, confidence_scores, session_id')
+      .eq('document_id', documentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // Get OCR text (maybeSingle - OCR may still be processing)
+    supabase
+      .from('ocr_results')
+      .select('raw_text')
+      .eq('document_id', documentId)
+      .maybeSingle(),
+  ])
 
-  // Get OCR text (maybeSingle - OCR may still be processing)
-  const { data: ocr } = await supabase
-    .from('ocr_results')
-    .select('raw_text')
-    .eq('document_id', documentId)
-    .maybeSingle()
+  const extraction = extractionResult.data
+  const ocr = ocrResult.data
 
   return {
     id: doc.id,

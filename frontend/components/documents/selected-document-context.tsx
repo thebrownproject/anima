@@ -3,11 +3,22 @@
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
 
 interface SelectedDocumentContextValue {
+  // Document selection state
   selectedDocId: string | null
   setSelectedDocId: (id: string | null) => void
+  // Preview data (signed URL, MIME type, OCR text)
   signedUrl: string | null
   setSignedUrl: (url: string | null) => void
-  clearSelection: () => void
+  signedUrlDocId: string | null
+  setSignedUrlDocId: (id: string | null) => void
+  mimeType: string
+  setMimeType: (type: string) => void
+  ocrText: string | null
+  setOcrText: (text: string | null) => void
+  // AI Chat Bar slot (rendered by documents layout after ResizablePanelGroup)
+  // Note: SubBar is now handled via @subbar parallel route, not context
+  aiChatBarContent: ReactNode
+  setAiChatBarContent: (content: ReactNode) => void
 }
 
 const SelectedDocumentContext = createContext<SelectedDocumentContextValue | null>(null)
@@ -15,6 +26,10 @@ const SelectedDocumentContext = createContext<SelectedDocumentContextValue | nul
 export function SelectedDocumentProvider({ children }: { children: ReactNode }) {
   const [selectedDocId, setSelectedDocIdState] = useState<string | null>(null)
   const [signedUrl, setSignedUrlState] = useState<string | null>(null)
+  const [signedUrlDocId, setSignedUrlDocIdState] = useState<string | null>(null)
+  const [mimeType, setMimeTypeState] = useState<string>('')
+  const [ocrText, setOcrTextState] = useState<string | null>(null)
+  const [aiChatBarContent, setAiChatBarContentState] = useState<ReactNode>(null)
 
   const setSelectedDocId = useCallback((id: string | null) => {
     setSelectedDocIdState(id)
@@ -26,9 +41,20 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setSignedUrlState(url)
   }, [])
 
-  const clearSelection = useCallback(() => {
-    setSelectedDocIdState(null)
-    setSignedUrlState(null)
+  const setSignedUrlDocId = useCallback((id: string | null) => {
+    setSignedUrlDocIdState(id)
+  }, [])
+
+  const setMimeType = useCallback((type: string) => {
+    setMimeTypeState(type)
+  }, [])
+
+  const setOcrText = useCallback((text: string | null) => {
+    setOcrTextState(text)
+  }, [])
+
+  const setAiChatBarContent = useCallback((content: ReactNode) => {
+    setAiChatBarContentState(content)
   }, [])
 
   const contextValue = useMemo(() => ({
@@ -36,8 +62,15 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setSelectedDocId,
     signedUrl,
     setSignedUrl,
-    clearSelection,
-  }), [selectedDocId, setSelectedDocId, signedUrl, setSignedUrl, clearSelection])
+    signedUrlDocId,
+    setSignedUrlDocId,
+    mimeType,
+    setMimeType,
+    ocrText,
+    setOcrText,
+    aiChatBarContent,
+    setAiChatBarContent,
+  }), [selectedDocId, setSelectedDocId, signedUrl, setSignedUrl, signedUrlDocId, setSignedUrlDocId, mimeType, setMimeType, ocrText, setOcrText, aiChatBarContent, setAiChatBarContent])
 
   return (
     <SelectedDocumentContext.Provider value={contextValue}>

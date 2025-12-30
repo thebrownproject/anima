@@ -51,10 +51,6 @@ export function PreviewPanelProvider({ children }: { children: ReactNode }) {
         // Invalid JSON, use defaults
       }
     }
-    // Clean up old localStorage keys
-    localStorage.removeItem('stackdocs-preview-collapsed')
-    localStorage.removeItem('stackdocs-document-layout')
-    localStorage.removeItem('stackdocs-doc-list-layout')
   }, [])
 
   const persistState = useCallback((updates: Partial<PreviewPanelState>) => {

@@ -1,8 +1,8 @@
 import { getDocumentsWithStacks } from '@/lib/queries/documents'
-import { DocumentsList } from '@/components/documents/documents-list'
+import { DocumentsTable } from '@/components/documents/documents-table'
 
 export default async function DocumentsPage() {
   const documents = await getDocumentsWithStacks()
 
-  return <DocumentsList documents={documents} />
+  return <DocumentsTable documents={documents} />
 }

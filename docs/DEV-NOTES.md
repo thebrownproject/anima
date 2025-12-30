@@ -5669,3 +5669,151 @@ docs/plans/
 1. Run `/continue` with this session context
 2. Read `docs/plans/in-progress/agent-ui-refactor/2025-12-29-agent-ui-refactor.md`
 3. Use `/superpowers:execute-plan` or `/superpowers:brainstorm` as needed
+
+---
+
+## Session 73 - 2025-12-30 - Agent UI Refactor Design (Dynamic Island) ✅
+
+**Feature**: Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Design brainstorming session**:
+  - Explored "Dynamic Island" concept for agent UI
+  - Chat bar morphs based on state (idle, processing, complete, error)
+  - Popup appears above bar for flows (upload, create stack, etc.)
+  - Actions are context-aware based on current route
+
+- [x] **Architecture validation**:
+  - Dispatched code-reviewer subagent for second opinion
+  - Validated Zustand + discriminated unions approach
+  - Confirmed selector optimization pattern for re-render prevention
+  - Event capping (100 max) for memory safety
+
+- [x] **Design doc v2 created**:
+  - `docs/plans/in-progress/agent-ui-refactor/2025-12-30-agent-ui-refactor-v2.md`
+  - Comprehensive design with component architecture
+  - Zustand store with type-safe flow routing
+  - Upload flow walkthrough (dropzone → configure → auto-collapse → complete)
+  - MVP scope and migration plan
+
+- [x] **Archived old plans**:
+  - Moved old design and implementation plan to `archive/` subfolder
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| State management | Zustand (not Context) | Better for frequent SSE updates, selector optimization |
+| Flow routing | Discriminated unions | Type-safe, each flow carries required context |
+| Popup width | Match chat bar (max 640px) | Visual unity, Dynamic Island metaphor |
+| Processing UI | Auto-collapse popup | Bar shows status, cleaner UX |
+| Actions visibility | Show on focus only | Cleaner default state |
+| Document rename | Include in MVP | Users need to rename "scan_001.pdf" |
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| 0855e32 | docs: agent ui refactor design v2 - dynamic island concept |
+| ac30a21 | docs: archive old agent ui refactor plans |
+
+### Next Session
+
+**Task**: Agent UI Refactor - Write implementation plan
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Use `/superpowers:write-plan` to create detailed implementation tasks
+3. Break down into phases: Foundation → Upload Flow → Integration → Cleanup
+
+---
+
+## Session 74 - 2025-12-30 - Documents Navigation Performance & Architecture Cleanup ✅
+
+**Feature**: Documents section performance optimization
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Navigation Performance Optimization**:
+  - Removed 4 `loading.tsx` files that caused skeleton flashes on navigation
+  - Parallelized extraction + OCR queries in `getDocumentWithExtraction`
+  - Created lean `getDocumentBasic` query for header (reduced 3 queries to 1)
+  - Moved signed URL fetch from server to client-side (non-blocking)
+  - Result: Documents navigation now feels instant like Stacks
+
+- [x] **Persistent Preview Panel**:
+  - Created `frontend/app/(app)/documents/layout.tsx` with ResizablePanelGroup
+  - Preview panel stays mounted across list↔detail navigation
+  - PDF doesn't reload when viewing same document
+  - Added `signedUrlDocId` tracking to prevent duplicate URL fetches
+
+- [x] **SubBar Architecture Refactor** (Context → Parallel Routes):
+  - Created `@subbar/` parallel route structure (same pattern as `@header`)
+  - Created `documents-filter-context.tsx` for list page filter state
+  - Created `document-detail-filter-context.tsx` for detail page filter state
+  - Removed `subBarContent` from SelectedDocumentContext
+  - SubBar now flows down from parallel route, not injected upward via context
+
+- [x] **AiChatBar Full Width**:
+  - Moved AiChatBar to render below ResizablePanelGroup
+  - Now spans full page width, centered
+  - Uses context slot pattern (pragmatic exception - needs to render in nested layout)
+
+- [x] **Dead Code Cleanup**:
+  - Deleted `documents-list.tsx` (unnecessary wrapper)
+  - Deleted `document-header-actions.tsx` (unnecessary wrapper)
+  - Removed `clearSelection()` from context (never called)
+  - Removed old localStorage migration code from preview-panel-context
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Loading skeletons | Remove them | Stacks has none; previous page stays visible until new one ready |
+| Preview panel | Persistent in layout | PDF stays mounted, no reload on same document |
+| SubBar pattern | @subbar parallel route | Same pattern as @header; data flows down, not injected up |
+| AiChatBar | Context slot pattern | Needs to render in nested layout below panels |
+| Filter state | Dedicated contexts | SubBar and Table share state cleanly |
+
+### Files Created
+
+- `frontend/app/(app)/documents/layout.tsx` - Documents-specific layout with persistent preview
+- `frontend/app/(app)/@subbar/default.tsx` + documents routes - Parallel route for SubBars
+- `frontend/components/documents/documents-filter-context.tsx` - List filter state
+- `frontend/components/documents/document-detail-filter-context.tsx` - Detail filter state
+
+### Files Deleted
+
+- `frontend/app/(app)/documents/loading.tsx`
+- `frontend/app/(app)/documents/[id]/loading.tsx`
+- `frontend/app/(app)/@header/documents/loading.tsx`
+- `frontend/app/(app)/@header/documents/[id]/loading.tsx`
+- `frontend/components/documents/documents-list.tsx`
+- `frontend/components/documents/document-header-actions.tsx`
+
+### Architecture After
+
+```
+app/(app)/layout.tsx
+├── @header/ (parallel route)
+├── @subbar/ (parallel route) ← NEW
+└── documents/
+    └── layout.tsx ← NEW (persistent preview panel)
+        ├── SubBar (from @subbar)
+        ├── ResizablePanelGroup
+        │   ├── {children} (page content)
+        │   └── PreviewPanel (persistent)
+        └── AiChatBar (full width, detail only)
+```
+
+### Next Session
+
+**Task**: Continue with Agent UI Refactor implementation plan
+
+**Process**:
+1. Run `/continue`
+2. Use `/superpowers:write-plan` for agent-ui-refactor
+3. Begin Foundation phase implementation

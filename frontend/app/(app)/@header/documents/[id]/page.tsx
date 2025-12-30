@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getDocumentWithExtraction } from '@/lib/queries/documents'
 import { PageHeader } from '@/components/layout/page-header'
-import { DocumentHeaderActions } from '@/components/documents/document-header-actions'
+import { PreviewToggle } from '@/components/documents/preview-toggle'
 import { FileTypeIcon } from '@/components/shared/file-type-icon'
 
 interface PageProps {
@@ -10,8 +10,7 @@ interface PageProps {
 
 /**
  * Header slot for document detail page.
- * Renders PageHeader with document title and preview toggle.
- * Stacks/Edit/Export moved to sub-bar in page content.
+ * Uses same cached query as page for deduplication.
  */
 export default async function DocumentHeaderSlot({ params }: PageProps) {
   const { id } = await params
@@ -25,7 +24,7 @@ export default async function DocumentHeaderSlot({ params }: PageProps) {
     <PageHeader
       title={document.filename}
       icon={<FileTypeIcon mimeType={document.mime_type} />}
-      actions={<DocumentHeaderActions />}
+      actions={<PreviewToggle />}
     />
   )
 }
