@@ -17,6 +17,7 @@ export {
   IconChevronRight as ChevronRight,
   IconChevronDown as ChevronDown,
   IconChevronLeft as ChevronLeft,
+  IconChevronUp as ChevronUp,
   IconArrowUp as ArrowUp,
   IconArrowDown as ArrowDown,
   IconSelector as ChevronsUpDown,
@@ -26,6 +27,7 @@ export {
   IconDots as DotsHorizontal,
   IconDotsVertical as DotsVertical,
   IconGripVertical as GripVertical,
+  IconQuestionMark as QuestionMark,
 
   // Layout & panels
   IconLayoutSidebar as PanelLeft,
