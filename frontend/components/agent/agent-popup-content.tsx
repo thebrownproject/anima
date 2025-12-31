@@ -1,8 +1,8 @@
 // frontend/components/agent/agent-popup-content.tsx
 'use client'
 
-import { useAgentFlow, type UploadFlowStep } from './stores/agent-store'
-import { AgentPopup } from './agent-popup'
+import { useAgentFlow } from './stores/agent-store'
+import { UploadFlow } from './flows/documents/upload-flow'
 
 export function AgentPopupContent() {
   const flow = useAgentFlow()
@@ -11,34 +11,11 @@ export function AgentPopupContent() {
 
   switch (flow.type) {
     case 'upload':
-      // TODO: Import and render UploadFlow (Phase 2)
-      return (
-        <AgentPopup title={getUploadTitle(flow.step)}>
-          <div className="text-sm text-muted-foreground">
-            Upload flow coming in Phase 2...
-          </div>
-        </AgentPopup>
-      )
+      return <UploadFlow />
     case 'create-stack':
-      return (
-        <AgentPopup title="Create Stack">
-          <div className="text-sm text-muted-foreground">
-            Create stack flow coming post-MVP...
-          </div>
-        </AgentPopup>
-      )
+      // Post-MVP
+      return null
     default:
       return null
-  }
-}
-
-function getUploadTitle(step: UploadFlowStep): string {
-  switch (step) {
-    case 'dropzone': return 'Upload Document'
-    case 'configure': return 'Configure Extraction'
-    case 'fields': return 'Specify Fields'
-    case 'extracting': return 'Extracting...'
-    case 'complete': return 'Complete'
-    default: return 'Upload Document'
   }
 }
