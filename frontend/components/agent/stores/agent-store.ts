@@ -183,6 +183,17 @@ function getStepStatusText(step: UploadFlowStep): string {
   }
 }
 
+// Title helpers for flow steps
+export function getUploadTitle(step: UploadFlowStep): string {
+  switch (step) {
+    case 'dropzone': return 'Upload Document'
+    case 'configure': return 'Configure Extraction'
+    case 'fields': return 'Specify Fields'
+    case 'extracting': return 'Extracting...'
+    case 'complete': return 'Complete'
+  }
+}
+
 // Selector helpers (useShallow for object selectors to prevent unnecessary re-renders)
 export const useAgentFlow = () => useAgentStore((s) => s.flow)
 export const useAgentStatus = () => useAgentStore(
