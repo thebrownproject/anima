@@ -19,9 +19,9 @@
 
 ---
 
-## Status: Phase 1 Complete
+## Status: Phase 2 Complete
 
-Phase 1 (Foundation) implemented. Ready for Phase 2 (Upload Flow).
+Phase 1 (Foundation) and Phase 2 (Upload Flow) implemented. Ready for Phase 3 (Integration).
 
 ---
 
@@ -30,7 +30,7 @@ Phase 1 (Foundation) implemented. Ready for Phase 2 (Upload Flow).
 | File | Description | Status |
 |------|-------------|--------|
 | [01-foundation.md](./01-foundation.md) | Zustand store, AgentBar, AgentActions, AgentPopup, barrel exports | ✅ Complete |
-| [02-upload-flow.md](./02-upload-flow.md) | UploadFlow component, step components, popup wiring | Pending |
+| [02-upload-flow.md](./02-upload-flow.md) | UploadFlow component, step components, popup wiring | ✅ Complete |
 | [03-integration.md](./03-integration.md) | Wire into root layout (app-wide), header upload button, E2E testing | Pending |
 | [04-cleanup.md](./04-cleanup.md) | Delete old components, update exports, final verification | Pending |
 

@@ -6106,3 +6106,83 @@ frontend/components/agent/
 2. Run `/superpowers:execute-plan`
 3. Implement Phase 2: UploadFlow, step components, popup wiring, confirm dialog
 4. See `docs/plans/in-progress/agent-ui-refactor/02-upload-flow.md`
+
+---
+
+## Session 79 - 2025-12-31 - Agent UI Refactor Phase 2 Implementation ✅
+
+**Feature**: Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 1: Create Upload Flow Component**:
+  - UploadFlow step router with SSE extraction support
+  - AbortController for cleanup on unmount
+  - `getUploadTitle` helper added to agent-store
+  - Commit: `27212a0 feat(agent): add upload flow with step components`
+
+- [x] **Task 2: Create Upload Step Components** (5 components):
+  - `upload-dropzone.tsx` - File drag-and-drop with validation parity
+  - `upload-configure.tsx` - Document name, extraction method selection
+  - `upload-fields.tsx` - Custom field input using FieldTagInput
+  - `upload-extracting.tsx` - Real-time tool event display
+  - `upload-complete.tsx` - Success actions (view/upload another)
+  - Commit: `27212a0 feat(agent): add upload flow with step components`
+
+- [x] **Task 3: Wire Upload Flow into Popup Content**:
+  - Updated `agent-popup-content.tsx` to route to UploadFlow
+  - Commit: `278f2d9 feat(agent): wire UploadFlow into popup content router`
+
+- [x] **Task 4: Add Close Confirmation Dialog**:
+  - Created `panels/confirm-close.tsx` using shadcn AlertDialog
+  - Updated `agent-popup.tsx` with confirmation logic for mid-flow close
+  - Commit: `cc7fc20 feat(agent): add close confirmation for mid-flow cancellation`
+
+### Execution Process
+
+Used **Subagent-Driven Development** skill:
+1. Dispatched implementer subagent for each task
+2. Spec compliance review after implementation
+3. Code quality review with fixes as needed
+4. Marked complete and moved to next task
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Native `<label>` vs Label component | Native `<label>` | shadcn Label not installed in project |
+| FieldTagInput props | `onAdd`/`onRemove` | Matched actual component API (spec had wrong names) |
+| Accessibility enhancements | Added aria attributes | Improvement over spec for dropzone |
+
+### Files Created
+
+```
+frontend/components/agent/
+├── flows/documents/
+│   ├── upload-flow.tsx          # Step router with SSE extraction
+│   ├── upload-dropzone.tsx      # File drag-and-drop (validation parity)
+│   ├── upload-configure.tsx     # Document name + extraction method
+│   ├── upload-fields.tsx        # Custom field input
+│   ├── upload-extracting.tsx    # Real-time tool events
+│   └── upload-complete.tsx      # Success actions
+├── panels/
+│   └── confirm-close.tsx        # Close confirmation dialog
+└── (agent-popup-content.tsx modified)
+    (agent-popup.tsx modified)
+    (stores/agent-store.ts modified)
+
+frontend/components/ui/
+└── alert-dialog.tsx             # shadcn component (added via CLI)
+```
+
+### Next Session
+
+**Task**: Agent UI Refactor Phase 3 (Integration)
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Read the plan: `docs/plans/in-progress/agent-ui-refactor/2025-12-30-agent-ui-refactor-plan.md`
+3. Run `/superpowers:execute-plan`
+4. Implement Phase 3: Wire into root layout, header upload button, E2E testing
+5. See `docs/plans/in-progress/agent-ui-refactor/03-integration.md`

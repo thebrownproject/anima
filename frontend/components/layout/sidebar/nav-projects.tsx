@@ -13,20 +13,18 @@ export function NavProjects({ stacks }: { stacks: StackSummary[] }) {
   const pathname = usePathname()
 
   const createAction = (
-    <div className="bg-sidebar group-hover/collapsible:bg-sidebar-accent rounded -mr-1 transition-colors">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
-            href="/stacks/new"
-            className="opacity-0 group-hover/collapsible:opacity-100 block p-1 hover:bg-sidebar-accent rounded transition-opacity"
-          >
-            <Icons.Plus className="size-4 text-muted-foreground hover:text-foreground" />
-            <span className="sr-only">Create stack</span>
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">Create stack</TooltipContent>
-      </Tooltip>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          href="/stacks/new"
+          className="opacity-0 group-hover/collapsible:opacity-100 block p-1 hover:bg-sidebar-accent rounded transition-opacity"
+        >
+          <Icons.Plus className="size-4 text-muted-foreground hover:text-foreground" />
+          <span className="sr-only">Create stack</span>
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent side="right">Create stack</TooltipContent>
+    </Tooltip>
   )
 
   return (

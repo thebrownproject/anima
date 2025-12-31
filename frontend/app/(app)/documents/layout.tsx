@@ -14,7 +14,7 @@ export default function DocumentsLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { panelRef, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
+  const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
   const { signedUrl, ocrText, mimeType, aiChatBarContent, selectedDocId, signedUrlDocId } = useSelectedDocument()
 
   // Show loading when URL is stale (document changed but URL not yet fetched)
@@ -48,14 +48,17 @@ export default function DocumentsLayout({
           {children}
         </ResizablePanel>
 
-        <ResizableHandle />
+        <ResizableHandle
+          className={isCollapsed ? "bg-transparent" : ""}
+          disabled={isCollapsed}
+        />
 
         {/* Preview panel - persists across navigation */}
         <ResizablePanel
           ref={panelRef}
           defaultSize={panelWidth}
           minSize={30}
-          maxSize={50}
+          maxSize={60}
           collapsible
           collapsedSize={0}
           onCollapse={() => setIsCollapsed(true)}
