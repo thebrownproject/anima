@@ -39,8 +39,15 @@ export function AgentContainer({ className }: { className?: string }) {
   const shouldShow = AGENT_ROUTES.some(route => pathname.startsWith(route))
   if (!shouldShow) return null
 
+  // Mobile responsive: full width on mobile (<640px), max-width on sm+
+  // Safe area padding at bottom avoids overlap with iOS home indicator/browser controls
+  // Per Gemini code review recommendation for mobile UX
   return (
-    <div className={cn('relative w-full max-w-[640px] mx-auto', className)}>
+    <div className={cn(
+      'relative w-full sm:max-w-xl mx-auto',  // 576px - consistent with codebase patterns
+      'pb-[env(safe-area-inset-bottom)]',
+      className
+    )}>
       <div className="absolute bottom-full left-0 right-0">
         <AgentPopupContent />
       </div>
@@ -311,6 +318,44 @@ git commit -m "feat(agent): add AgentContainer to root layout with self-managed 
 
 ---
 
+## Task 3.1.5: Add viewport-fit=cover for iOS Safe Areas
+
+> **Note (Gemini Code Review):** The `pb-[env(safe-area-inset-bottom)]` in AgentContainer requires
+> `viewport-fit=cover` in the viewport meta tag to work on iOS devices.
+
+**Files:**
+- Modify: `frontend/app/layout.tsx`
+
+**Step 1: Add viewport export with viewport-fit=cover**
+
+Next.js 14+ uses the `viewport` export for viewport meta configuration:
+
+```typescript
+// frontend/app/layout.tsx
+import type { Metadata, Viewport } from 'next'
+
+// Add this export after the metadata export
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+```
+
+**Step 2: Verify the meta tag is rendered**
+
+Run dev server and inspect the `<head>`:
+- Expected: `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`
+
+**Step 3: Commit**
+
+```bash
+git add frontend/app/layout.tsx
+git commit -m "feat(viewport): add viewport-fit=cover for iOS safe area support"
+```
+
+---
+
 ## Task 3.2: Add Upload Button to Header Actions
 
 **Files:**
@@ -426,9 +471,21 @@ Test cases:
 14. **AgentBar only visible on /documents and /stacks routes**
 15. **AgentBar hidden on other routes (settings, etc.)**
 
-**Step 2: Fix any issues found**
+**Step 2: Test mobile responsive layout**
 
-**Step 3: Commit fixes**
+Use browser DevTools to test at mobile viewport sizes:
+
+1. Open DevTools → Toggle device toolbar (Cmd+Shift+M / Ctrl+Shift+M)
+2. Select iPhone 14 Pro or similar device preset
+3. Verify AgentContainer takes full width on mobile (<640px)
+4. Switch to tablet/desktop view (>640px) and verify max-width constraint applies
+5. Test on iOS Safari (real device or simulator) to verify safe area padding:
+   - AgentBar should not overlap with iOS home indicator
+   - Bottom padding should adjust dynamically on devices with notches/home bars
+
+**Step 3: Fix any issues found**
+
+**Step 4: Commit fixes**
 
 ```bash
 git add -A

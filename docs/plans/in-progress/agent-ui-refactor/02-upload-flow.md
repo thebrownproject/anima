@@ -242,11 +242,37 @@ export function UploadFlow() {
 - Create: `frontend/components/agent/flows/documents/upload-extracting.tsx`
 - Create: `frontend/components/agent/flows/documents/upload-complete.tsx`
 
-**Step 1: Create dropzone step (adapt from existing)**
+> **Note (Gemini Code Review):** This component must maintain EXACT validation parity with the existing
+> UploadDialog (`frontend/components/documents/upload-dialog/steps/dropzone-step.tsx`).
+> All validation logic uses the shared `UPLOAD_CONSTRAINTS` from `frontend/lib/upload-config.ts`
+> to ensure a single source of truth. No validation rules should be added or removed.
+
+**Validation Parity Checklist:**
+
+| Rule | Source | Implementation |
+|------|--------|----------------|
+| File type validation | `UPLOAD_CONSTRAINTS.ACCEPTED_TYPES` | `['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']` |
+| File size validation | `UPLOAD_CONSTRAINTS.MAX_SIZE_BYTES` | 10 * 1024 * 1024 (10MB) |
+| Input accept attribute | `UPLOAD_CONSTRAINTS.ACCEPTED_EXTENSIONS` | `.pdf,.jpg,.jpeg,.png` |
+| Error message (type) | Copied from dropzone-step.tsx | "File must be PDF, JPG, or PNG" |
+| Error message (size) | Copied from dropzone-step.tsx | "File must be under {MAX_SIZE_MB}MB" |
+
+**Step 1: Create dropzone step (adapted from existing upload dialog)**
 
 ```typescript
 // frontend/components/agent/flows/documents/upload-dropzone.tsx
 'use client'
+
+/**
+ * Upload dropzone for agent popup.
+ *
+ * VALIDATION PARITY: This component mirrors the validation logic from the existing
+ * UploadDialog at `frontend/components/documents/upload-dialog/steps/dropzone-step.tsx`.
+ * All validation uses the shared `UPLOAD_CONSTRAINTS` from `frontend/lib/upload-config.ts`
+ * to ensure consistent behavior between both upload interfaces.
+ *
+ * DO NOT modify validation rules here without also updating the original dropzone-step.tsx.
+ */
 
 import { useCallback, useRef, useState } from 'react'
 import * as Icons from '@/components/icons'
@@ -262,15 +288,22 @@ export function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /**
+   * Validate file before selection.
+   * Validation logic copied from: frontend/components/documents/upload-dialog/steps/dropzone-step.tsx
+   * Uses shared UPLOAD_CONSTRAINTS to ensure parity with existing upload dialog.
+   */
   const validateAndSelect = useCallback(
     (file: File) => {
       setError(null)
 
+      // Type validation - matches dropzone-step.tsx exactly
       if (!UPLOAD_CONSTRAINTS.ACCEPTED_TYPES.includes(file.type as typeof UPLOAD_CONSTRAINTS.ACCEPTED_TYPES[number])) {
         setError('File must be PDF, JPG, or PNG')
         return
       }
 
+      // Size validation - matches dropzone-step.tsx exactly
       if (file.size > UPLOAD_CONSTRAINTS.MAX_SIZE_BYTES) {
         setError(`File must be under ${UPLOAD_CONSTRAINTS.MAX_SIZE_MB}MB`)
         return
@@ -286,6 +319,7 @@ export function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) validateAndSelect(file)
+    // Reset input for re-selection of same file (matches dropzone-step.tsx)
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -311,6 +345,7 @@ export function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
 
   return (
     <div className="space-y-4">
+      {/* Accept attribute uses shared config for browser-level filtering */}
       <input
         ref={inputRef}
         type="file"
@@ -356,6 +391,18 @@ export function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
   )
 }
 ```
+
+**Step 1.5: Verification - Cross-check validation rules**
+
+After creating `upload-dropzone.tsx`, verify validation parity with:
+
+```bash
+# Compare validation logic between old and new dropzone components
+diff <(grep -A20 "validateAndSelect" frontend/components/documents/upload-dialog/steps/dropzone-step.tsx) \
+     <(grep -A20 "validateAndSelect" frontend/components/agent/flows/documents/upload-dropzone.tsx)
+```
+
+Expected: Only difference should be the comment about validation source. Core logic must match.
 
 **Step 2: Create configure step with document rename**
 

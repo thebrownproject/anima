@@ -48,11 +48,16 @@ git commit -m "feat(icons): add ChevronUp and QuestionMark icons"
 
 **Step 1: Create store file with Zustand**
 
+> **Note (Gemini recommendation):** We use `persist` middleware to save flow state to localStorage.
+> This prevents users from losing their upload progress on accidental page refresh - especially
+> important during the multi-step upload flow where they've already configured extraction settings.
+
 ```typescript
 // frontend/components/agent/stores/agent-store.ts
 import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
+import { devtools, persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
+import type {} from '@redux-devtools/extension' // required for devtools typing
 import type { AgentEvent } from '@/lib/agent-api'
 import type { CustomField, ExtractionMethod } from '@/types/upload'
 
@@ -126,69 +131,90 @@ export const initialUploadData: UploadFlowData = {
 
 export const useAgentStore = create<AgentStore>()(
   devtools(
-    (set, get) => ({
-      flow: null,
-      isExpanded: false,
-      isPopupOpen: false,
-      status: 'idle',
-      statusText: 'How can I help you today?',
-      events: [],
-
-      openFlow: (flow) => set({
-        flow,
-        isPopupOpen: true,
-        status: 'idle',
-        statusText: getFlowStatusText(flow),
-        events: [],
-      }, undefined, 'agent/openFlow'),
-
-      setStep: (step) => set((state) => {
-        if (!state.flow || state.flow.type !== 'upload') return state
-        return {
-          flow: { ...state.flow, step },
-          statusText: getStepStatusText(step),
-        }
-      }, undefined, 'agent/setStep'),
-
-      updateFlowData: (data) => set((state) => {
-        if (!state.flow || state.flow.type !== 'upload') return state
-        return {
-          flow: {
-            ...state.flow,
-            data: { ...state.flow.data, ...data },
-          },
-        }
-      }, undefined, 'agent/updateFlowData'),
-
-      setStatus: (status, statusText) => set({ status, statusText }, undefined, 'agent/setStatus'),
-
-      addEvent: (event) => set((state) => ({
-        events: [...state.events, event].slice(-100), // Cap at 100
-      }), undefined, 'agent/addEvent'),
-
-      setExpanded: (isExpanded) => set({ isExpanded }, undefined, 'agent/setExpanded'),
-
-      collapsePopup: () => set({ isPopupOpen: false }, undefined, 'agent/collapsePopup'),
-
-      expandPopup: () => set({ isPopupOpen: true }, undefined, 'agent/expandPopup'),
-
-      close: () => set({
+    persist(
+      (set, get) => ({
         flow: null,
-        isPopupOpen: false,
-        status: 'idle',
-        statusText: 'How can I help you today?',
-        events: [],
-      }, undefined, 'agent/close'),
-
-      reset: () => set({
-        flow: null,
-        isPopupOpen: false,
         isExpanded: false,
+        isPopupOpen: false,
         status: 'idle',
         statusText: 'How can I help you today?',
         events: [],
-      }, undefined, 'agent/reset'),
-    }),
+
+        openFlow: (flow) => set({
+          flow,
+          isPopupOpen: true,
+          status: 'idle',
+          statusText: getFlowStatusText(flow),
+          events: [],
+        }, undefined, 'agent/openFlow'),
+
+        setStep: (step) => set((state) => {
+          if (!state.flow || state.flow.type !== 'upload') return state
+          return {
+            flow: { ...state.flow, step },
+            statusText: getStepStatusText(step),
+          }
+        }, undefined, 'agent/setStep'),
+
+        updateFlowData: (data) => set((state) => {
+          if (!state.flow || state.flow.type !== 'upload') return state
+          return {
+            flow: {
+              ...state.flow,
+              data: { ...state.flow.data, ...data },
+            },
+          }
+        }, undefined, 'agent/updateFlowData'),
+
+        setStatus: (status, statusText) => set({ status, statusText }, undefined, 'agent/setStatus'),
+
+        addEvent: (event) => set((state) => ({
+          events: [...state.events, event].slice(-100), // Cap at 100
+        }), undefined, 'agent/addEvent'),
+
+        setExpanded: (isExpanded) => set({ isExpanded }, undefined, 'agent/setExpanded'),
+
+        collapsePopup: () => set({ isPopupOpen: false }, undefined, 'agent/collapsePopup'),
+
+        expandPopup: () => set({ isPopupOpen: true }, undefined, 'agent/expandPopup'),
+
+        close: () => set({
+          flow: null,
+          isPopupOpen: false,
+          status: 'idle',
+          statusText: 'How can I help you today?',
+          events: [],
+        }, undefined, 'agent/close'),
+
+        reset: () => set({
+          flow: null,
+          isPopupOpen: false,
+          isExpanded: false,
+          status: 'idle',
+          statusText: 'How can I help you today?',
+          events: [],
+        }, undefined, 'agent/reset'),
+      }),
+      {
+        name: 'agent-store', // localStorage key
+        // Only persist flow state - exclude non-serializable data and transient UI state
+        partialize: (state) => ({
+          flow: state.flow
+            ? {
+                ...state.flow,
+                // For upload flows, exclude File objects (not serializable)
+                ...(state.flow.type === 'upload' && {
+                  data: {
+                    ...state.flow.data,
+                    file: null, // File objects can't be serialized to localStorage
+                  },
+                }),
+              }
+            : null,
+          isPopupOpen: state.isPopupOpen,
+        }),
+      }
+    ),
     { name: 'AgentStore', enabled: process.env.NODE_ENV !== 'production' }
   )
 )

@@ -5970,3 +5970,63 @@ app/(app)/layout.tsx (server)
 1. Run `/continue`
 2. Run `/superpowers:execute-plan` on `docs/plans/in-progress/agent-ui-refactor/`
 3. Start with Phase 1 (01-foundation.md) - Task 0 (icons), then Task 1 (store)
+
+---
+
+## Session 77 - 2025-12-31 - Gemini Code Review & Plan Finalization ✅
+
+**Feature**: Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Crafted Gemini CLI Review Prompt**:
+  - Used `/prompt-craft` skill to create structured review prompt
+  - Instructed Gemini to read CLAUDE.md files, review frontend codebase, analyze implementation plan
+  - Output: Markdown review files in plan folder
+
+- [x] **Gemini External Reviews**:
+  - `CODEBASE_REVIEW.md` - Frontend audit (Verdict: Excellent/Production-Ready)
+  - `GEMINI-REVIEW.md` - Plan review (Verdict: Approved, 95% confidence)
+  - Identified 3 recommendations for plan improvements
+
+- [x] **Incorporated Gemini Recommendations** (via subagents):
+  - Phase 1: Added Zustand `persist` middleware for page reload recovery
+  - Phase 2: Added validation parity checklist + fixed file path references
+  - Phase 3: Changed `sm:max-w-[640px]` → `sm:max-w-xl`, added Task 3.1.5 for viewport-fit
+
+- [x] **Code Reviews on Plan Updates**:
+  - Phase 1 persist: ✅ Approved (middleware ordering correct)
+  - Phase 2 validation: ✅ Approved (parity confirmed, path fix needed)
+  - Phase 3 mobile: ✅ Approved with suggestions (viewport-fit task added)
+
+- [x] **Plan Organization**:
+  - Moved `frontend/CODEBASE_REVIEW.md` → `docs/plans/in-progress/agent-ui-refactor/`
+  - Updated `docs/ROADMAP.md` with current status
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Zustand persist scope | Persist `flow` + `isPopupOpen`, exclude `File` objects | Files not serializable, transient state shouldn't persist |
+| Mobile max-width | `sm:max-w-xl` (576px) | Consistent with existing codebase patterns (dialog, sheet) |
+| iOS safe area | `pb-[env(safe-area-inset-bottom)]` + viewport-fit | Prevents overlap with home indicator/browser controls |
+
+### Files Modified
+
+- `docs/plans/in-progress/agent-ui-refactor/01-foundation.md` (+persist middleware)
+- `docs/plans/in-progress/agent-ui-refactor/02-upload-flow.md` (+validation parity, path fixes)
+- `docs/plans/in-progress/agent-ui-refactor/03-integration.md` (+mobile styles, viewport task)
+- `docs/plans/in-progress/agent-ui-refactor/CODEBASE_REVIEW.md` (new - Gemini)
+- `docs/plans/in-progress/agent-ui-refactor/GEMINI-REVIEW.md` (new - Gemini)
+- `docs/ROADMAP.md` (updated status)
+
+### Next Session
+
+**Task**: Execute Agent UI Refactor implementation plan
+
+**Process**:
+1. Run `/continue`
+2. Run `/superpowers:execute-plan` on `docs/plans/in-progress/agent-ui-refactor/`
+3. Start with Phase 1 (01-foundation.md) - Task 0 (icons), then Task 1 (store)
+4. Plan is Gemini-reviewed and ready to implement

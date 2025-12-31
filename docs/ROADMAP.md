@@ -1,6 +1,6 @@
 # Stackdocs Roadmap
 
-**Last Updated:** 2025-12-30
+**Last Updated:** 2025-12-31
 
 ---
 
@@ -8,17 +8,20 @@
 
 ### In Progress
 
-**Stacks UI** (`plans/in-progress/stacks/`) - 🟡 Mostly Complete
+**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - 🟢 Ready to Implement
+- Design: Complete (Dynamic Island-style agent bar + popup)
+- Implementation Plan: 4 phases (foundation, upload-flow, integration, cleanup)
+- External Review: Gemini code review approved (95% confidence)
+- Recommendations incorporated: Zustand persist, validation parity, mobile styles
+- Next: Execute plan with `/superpowers:execute-plan`
+
+**Stacks UI** (`plans/in-progress/stacks/`) - ⏸️ Paused
 - Design: Complete (v2)
 - Implementation Plan: 3 phases (foundation, pages, tables)
 - Database: Ready (migrations 004 & 005 applied)
 - Frontend: Phases 1-2 complete, Phase 3 partial
 - Remaining: "Not extracted" indicator, CSV export (deferred until Stack Agent built)
-- Scope: UI only - pages mirror Documents, Supabase direct queries
-
-**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - ⏳ Next Priority
-- Chat bar redesign, agent popup system
-- Starting after Stacks UI pause
+- Status: Paused while Agent UI Refactor is prioritized
 
 ### Todo
 
