@@ -5,6 +5,7 @@ export { AgentContainer } from './agent-container'
 export { AgentBar } from './agent-bar'
 export { AgentPopup } from './agent-popup'
 export { AgentActions } from './agent-actions'
+export { UploadButton } from './upload-button'
 
 // Hooks & constants
 export {
