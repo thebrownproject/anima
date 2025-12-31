@@ -52,12 +52,12 @@ export function AgentBar({ className }: AgentBarProps) {
     setMessage('')
   }, [message, isDisabled])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isDisabled) {
       e.preventDefault()
       handleSubmit()
     }
-  }
+  }, [isDisabled, handleSubmit])
 
   // Status icon based on current state
   const StatusIcon = getStatusIcon(status)
