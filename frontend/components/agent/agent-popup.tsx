@@ -1,6 +1,7 @@
 // frontend/components/agent/agent-popup.tsx
 'use client'
 
+import { useState, useCallback } from 'react'
 import * as Icons from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,6 +10,7 @@ import {
 } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import { useAgentStore, useAgentFlow, useAgentPopup } from './stores/agent-store'
+import { ConfirmClose } from './panels/confirm-close'
 
 interface AgentPopupProps {
   children: React.ReactNode
@@ -22,66 +24,91 @@ export function AgentPopup({ children, title, showBack, onBack }: AgentPopupProp
   const flow = useAgentFlow()
   const collapsePopup = useAgentStore((s) => s.collapsePopup)
   const close = useAgentStore((s) => s.close)
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  // Determine if we need confirmation before closing
+  const needsConfirmation = useCallback(() => {
+    if (!flow || flow.type !== 'upload') return false
+    const { step } = flow
+    // Confirm if mid-flow (file selected or extracting)
+    return step === 'configure' || step === 'fields' || step === 'extracting'
+  }, [flow])
+
+  const handleClose = useCallback(() => {
+    if (needsConfirmation()) {
+      setShowConfirm(true)
+    } else {
+      close()
+    }
+  }, [needsConfirmation, close])
+
+  const handleConfirmClose = useCallback(() => {
+    setShowConfirm(false)
+    close()
+  }, [close])
 
   // Don't render if no flow active
   if (!flow) return null
 
-  const handleClose = () => {
-    // TODO: Add confirmation if mid-flow (Phase 2, Task 4)
-    close()
-  }
-
   return (
-    <Collapsible open={isPopupOpen} onOpenChange={(open) => !open && collapsePopup()}>
-      <CollapsibleContent forceMount className={cn(!isPopupOpen && 'hidden')}>
-        <div className="rounded-xl border border-border bg-background shadow-lg mb-3">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <div className="flex items-center gap-2">
-              {showBack && onBack && (
+    <>
+      <Collapsible open={isPopupOpen} onOpenChange={(open) => !open && collapsePopup()}>
+        <CollapsibleContent forceMount className={cn(!isPopupOpen && 'hidden')}>
+          <div className="rounded-xl border border-border bg-background shadow-lg mb-3">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div className="flex items-center gap-2">
+                {showBack && onBack && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    onClick={onBack}
+                  >
+                    <Icons.ChevronLeft className="size-4" />
+                    <span className="sr-only">Go back</span>
+                  </Button>
+                )}
+                {title && (
+                  <h3 className="text-sm font-medium">{title}</h3>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
                   className="size-7"
-                  onClick={onBack}
+                  onClick={collapsePopup}
+                  aria-label="Collapse popup"
                 >
-                  <Icons.ChevronLeft className="size-4" />
-                  <span className="sr-only">Go back</span>
+                  <Icons.ChevronDown className="size-4" />
                 </Button>
-              )}
-              {title && (
-                <h3 className="text-sm font-medium">{title}</h3>
-              )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={handleClose}
+                  aria-label="Close"
+                >
+                  <Icons.X className="size-4" />
+                </Button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                onClick={collapsePopup}
-                aria-label="Collapse popup"
-              >
-                <Icons.ChevronDown className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                onClick={handleClose}
-                aria-label="Close"
-              >
-                <Icons.X className="size-4" />
-              </Button>
+            {/* Content */}
+            <div className="p-4">
+              {children}
             </div>
           </div>
+        </CollapsibleContent>
+      </Collapsible>
 
-          {/* Content */}
-          <div className="p-4">
-            {children}
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+      <ConfirmClose
+        open={showConfirm}
+        onOpenChange={setShowConfirm}
+        onConfirm={handleConfirmClose}
+      />
+    </>
   )
 }
