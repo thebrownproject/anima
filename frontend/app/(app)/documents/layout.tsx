@@ -15,7 +15,12 @@ export default function DocumentsLayout({
   children: React.ReactNode
 }) {
   const { panelRef, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
-  const { signedUrl, ocrText, mimeType, aiChatBarContent } = useSelectedDocument()
+  const { signedUrl, ocrText, mimeType, aiChatBarContent, selectedDocId, signedUrlDocId } = useSelectedDocument()
+
+  // Show loading when URL is stale (document changed but URL not yet fetched)
+  const isUrlStale = selectedDocId !== null && selectedDocId !== signedUrlDocId
+  const effectivePdfUrl = isUrlStale ? null : signedUrl
+  const effectiveOcrText = isUrlStale ? null : ocrText
 
   const mainPanelSize = 100 - panelWidth
 
@@ -59,8 +64,8 @@ export default function DocumentsLayout({
         >
           <div className="h-full">
             <PreviewPanel
-              pdfUrl={signedUrl}
-              ocrText={ocrText}
+              pdfUrl={effectivePdfUrl}
+              ocrText={effectiveOcrText}
               mimeType={mimeType}
             />
           </div>

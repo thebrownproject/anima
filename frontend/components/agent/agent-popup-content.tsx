@@ -1,7 +1,7 @@
 // frontend/components/agent/agent-popup-content.tsx
 'use client'
 
-import { useAgentFlow } from './stores/agent-store'
+import { useAgentFlow, type UploadFlowStep } from './stores/agent-store'
 import { AgentPopup } from './agent-popup'
 
 export function AgentPopupContent() {
@@ -32,7 +32,7 @@ export function AgentPopupContent() {
   }
 }
 
-function getUploadTitle(step: string): string {
+function getUploadTitle(step: UploadFlowStep): string {
   switch (step) {
     case 'dropzone': return 'Upload Document'
     case 'configure': return 'Configure Extraction'
