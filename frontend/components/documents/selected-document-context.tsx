@@ -15,10 +15,6 @@ interface SelectedDocumentContextValue {
   setMimeType: (type: string) => void
   ocrText: string | null
   setOcrText: (text: string | null) => void
-  // AI Chat Bar slot (rendered by documents layout after ResizablePanelGroup)
-  // Note: SubBar is now handled via @subbar parallel route, not context
-  aiChatBarContent: ReactNode
-  setAiChatBarContent: (content: ReactNode) => void
 }
 
 const SelectedDocumentContext = createContext<SelectedDocumentContextValue | null>(null)
@@ -29,7 +25,6 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
   const [signedUrlDocId, setSignedUrlDocIdState] = useState<string | null>(null)
   const [mimeType, setMimeTypeState] = useState<string>('')
   const [ocrText, setOcrTextState] = useState<string | null>(null)
-  const [aiChatBarContent, setAiChatBarContentState] = useState<ReactNode>(null)
 
   const setSelectedDocId = useCallback((id: string | null) => {
     setSelectedDocIdState(id)
@@ -53,10 +48,6 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setOcrTextState(text)
   }, [])
 
-  const setAiChatBarContent = useCallback((content: ReactNode) => {
-    setAiChatBarContentState(content)
-  }, [])
-
   const contextValue = useMemo(() => ({
     selectedDocId,
     setSelectedDocId,
@@ -68,9 +59,7 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setMimeType,
     ocrText,
     setOcrText,
-    aiChatBarContent,
-    setAiChatBarContent,
-  }), [selectedDocId, setSelectedDocId, signedUrl, setSignedUrl, signedUrlDocId, setSignedUrlDocId, mimeType, setMimeType, ocrText, setOcrText, aiChatBarContent, setAiChatBarContent])
+  }), [selectedDocId, setSelectedDocId, signedUrl, setSignedUrl, signedUrlDocId, setSignedUrlDocId, mimeType, setMimeType, ocrText, setOcrText])
 
   return (
     <SelectedDocumentContext.Provider value={contextValue}>

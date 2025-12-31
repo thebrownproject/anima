@@ -17,6 +17,7 @@ import { DocumentsFilterProvider } from "@/components/documents/documents-filter
 import { DocumentDetailFilterProvider } from "@/components/documents/document-detail-filter-context";
 import { StacksFilterProvider } from "@/components/stacks/stacks-filter-context";
 import { StackDetailFilterProvider } from "@/components/stacks/stack-detail-filter-context";
+import { AgentContainer } from "@/components/agent";
 
 export default async function AppLayout({
   children,
@@ -62,6 +63,7 @@ export default async function AppLayout({
                     {/* SubBar slot - rendered between header and content */}
                     {subbar}
                     <div className="flex flex-1 flex-col min-h-0">{children}</div>
+                    <AgentContainer className="p-4" />
                   </StackDetailFilterProvider>
                 </StacksFilterProvider>
               </DocumentDetailFilterProvider>

@@ -15,7 +15,7 @@ export default function DocumentsLayout({
   children: React.ReactNode
 }) {
   const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
-  const { signedUrl, ocrText, mimeType, aiChatBarContent, selectedDocId, signedUrlDocId } = useSelectedDocument()
+  const { signedUrl, ocrText, mimeType, selectedDocId, signedUrlDocId } = useSelectedDocument()
 
   // Show loading when URL is stale (document changed but URL not yet fetched)
   const isUrlStale = selectedDocId !== null && selectedDocId !== signedUrlDocId
@@ -74,9 +74,6 @@ export default function DocumentsLayout({
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
-
-      {/* AI Chat Bar - rendered from context, full width below panels */}
-      {aiChatBarContent}
     </div>
   )
 }

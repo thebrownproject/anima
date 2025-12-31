@@ -20,14 +20,17 @@ export function AgentContainer({ className }: AgentContainerProps) {
   const shouldShow = AGENT_ROUTES.some(route => pathname.startsWith(route))
   if (!shouldShow) return null
 
+  // Mobile responsive: full width on mobile (<640px), max-width on sm+
+  // Safe area padding at bottom avoids overlap with iOS home indicator/browser controls
   return (
-    <div className={cn('relative w-full max-w-[640px] mx-auto', className)}>
-      {/* Popup floats above bar */}
+    <div className={cn(
+      'relative w-full sm:max-w-xl mx-auto',
+      'pb-[env(safe-area-inset-bottom)]',
+      className
+    )}>
       <div className="absolute bottom-full left-0 right-0">
         <AgentPopupContent />
       </div>
-
-      {/* Dynamic chat bar */}
       <AgentBar />
     </div>
   )

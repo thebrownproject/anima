@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useExtractionRealtime, ExtractionUpdate } from '@/hooks/use-extraction-realtime'
 import { ExtractedDataTable } from './extracted-data-table'
-import { AiChatBar } from '@/components/layout/ai-chat-bar'
 import { useSelectedDocument } from './selected-document-context'
 import { useDocumentDetailFilter } from './document-detail-filter-context'
 import { createClerkSupabaseClient } from '@/lib/supabase'
@@ -26,25 +25,8 @@ export function DocumentDetailClient({
   const { getToken } = useAuth()
 
   // Shared state from contexts
-  const { setSelectedDocId, setSignedUrl, setSignedUrlDocId, signedUrlDocId, setMimeType, setOcrText, setAiChatBarContent } = useSelectedDocument()
+  const { setSelectedDocId, setSignedUrl, setSignedUrlDocId, signedUrlDocId, setMimeType, setOcrText } = useSelectedDocument()
   const { fieldSearch, setSelectedFieldCount } = useDocumentDetailFilter()
-
-  // Set AI Chat Bar content via context (documents layout renders it below panels at full width)
-  // Note: This uses the context slot pattern because AiChatBar must render in the documents
-  // layout (after ResizablePanelGroup), not in this page component (inside the left panel).
-  useEffect(() => {
-    setAiChatBarContent(
-      <div className="shrink-0 px-4 py-4 border-t">
-        <div className="mx-auto max-w-3xl">
-          <AiChatBar documentId={initialDocument.id} />
-        </div>
-      </div>
-    )
-
-    return () => {
-      setAiChatBarContent(null)
-    }
-  }, [initialDocument.id, setAiChatBarContent])
 
   // Sync selected document to context and fetch signed URL client-side
   // Uses signedUrlDocId to avoid re-fetching for the same document
@@ -142,7 +124,7 @@ export function DocumentDetailClient({
           onSelectionChange={setSelectedFieldCount}
         />
       </div>
-      {/* AI Chat Bar rendered by documents layout via context (aiChatBarContent) */}
+      {/* Agent bar rendered by AgentContainer in root layout */}
     </div>
   )
 }
