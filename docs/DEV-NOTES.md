@@ -6030,3 +6030,79 @@ app/(app)/layout.tsx (server)
 2. Run `/superpowers:execute-plan` on `docs/plans/in-progress/agent-ui-refactor/`
 3. Start with Phase 1 (01-foundation.md) - Task 0 (icons), then Task 1 (store)
 4. Plan is Gemini-reviewed and ready to implement
+
+---
+
+## Session 78 - 2025-12-31 - Agent UI Refactor Phase 1 Implementation ✅
+
+**Feature**: Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 0: Add Missing Icons**:
+  - Added `ChevronUp` and `QuestionMark` to icons barrel export
+  - Commit: `59be86d feat(icons): add ChevronUp and QuestionMark icons`
+
+- [x] **Task 1: Create Agent Store**:
+  - Zustand store with discriminated union `AgentFlow` type
+  - `persist` middleware with `partialize` to exclude File objects
+  - Selector helpers: `useAgentFlow`, `useAgentStatus`, `useAgentPopup`, `useAgentEvents`
+  - Commit: `e649c80 feat(agent): add Zustand store with discriminated union flows`
+
+- [x] **Task 2 & 3: AgentBar + AgentActions**:
+  - Dynamic Island-style chat bar with status icons (Stack, Loader2, QuestionMark, Check, X)
+  - Route-aware action buttons (Upload, Create Stack) via `ACTION_CONFIG`
+  - Commit: `9957a96 feat(agent): add AgentBar and AgentActions components`
+  - Fix: `3d9929a fix(agent): wrap handleKeyDown with useCallback`
+
+- [x] **Task 4: AgentPopup Container**:
+  - Collapsible popup with header chrome (back, title, collapse, close)
+  - Uses `forceMount` + hidden class for smooth animations
+  - Commit: `28f62eb feat(agent): add AgentPopup container component`
+
+- [x] **Task 5: AgentContainer + Barrel Export**:
+  - Orchestrates bar + popup with self-managed route visibility
+  - `AgentPopupContent` routes flows (placeholder for Phase 2)
+  - Clean barrel export API
+  - Commit: `75901de feat(agent): add AgentContainer and barrel exports`
+
+### Execution Process
+
+Used **Subagent-Driven Development** skill:
+1. Dispatched implementer subagent for each task
+2. Spec compliance review after implementation
+3. Code quality review with fixes as needed
+4. Marked complete and moved to next task
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| SSE cleanup location | Component level (UploadFlow) | Store is state-only, component owns connections |
+| AgentPopupContent export | Internal (not in barrel) | Implementation detail, not public API |
+| getUploadTitle type | `UploadFlowStep` not `string` | Type safety for step values |
+
+### Files Created
+
+```
+frontend/components/agent/
+├── stores/
+│   └── agent-store.ts        # Zustand store
+├── agent-bar.tsx             # Dynamic status bar
+├── agent-actions.tsx         # Route-aware actions
+├── agent-popup.tsx           # Collapsible container
+├── agent-container.tsx       # Orchestrator
+├── agent-popup-content.tsx   # Flow router (placeholder)
+└── index.ts                  # Barrel export
+```
+
+### Next Session
+
+**Task**: Agent UI Refactor Phase 2 (Upload Flow)
+
+**Process**:
+1. Run `/continue`
+2. Run `/superpowers:execute-plan`
+3. Implement Phase 2: UploadFlow, step components, popup wiring, confirm dialog
+4. See `docs/plans/in-progress/agent-ui-refactor/02-upload-flow.md`

@@ -8,12 +8,11 @@
 
 ### In Progress
 
-**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - 🟢 Ready to Implement
+**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - 🔄 Phase 1 Complete
 - Design: Complete (Dynamic Island-style agent bar + popup)
 - Implementation Plan: 4 phases (foundation, upload-flow, integration, cleanup)
-- External Review: Gemini code review approved (95% confidence)
-- Recommendations incorporated: Zustand persist, validation parity, mobile styles
-- Next: Execute plan with `/superpowers:execute-plan`
+- **Phase 1 Complete**: Zustand store, AgentBar, AgentActions, AgentPopup, AgentContainer
+- Next: Phase 2 (Upload Flow) - UploadFlow component, step components, popup wiring
 
 **Stacks UI** (`plans/in-progress/stacks/`) - ⏸️ Paused
 - Design: Complete (v2)
