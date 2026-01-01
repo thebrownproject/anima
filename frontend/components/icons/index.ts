@@ -72,6 +72,7 @@ export {
 
   // Actions
   IconPlus as Plus,
+  IconRefresh as Refresh,
 
   // Data
   IconTable as Table,
