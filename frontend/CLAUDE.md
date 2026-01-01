@@ -17,15 +17,18 @@ frontend/
 ├── app/
 │   ├── (app)/                    # Protected routes (requires auth)
 │   │   ├── @header/              # Parallel route for page headers
-│   │   │   ├── documents/        # Documents list header
-│   │   │   └── documents/[id]/   # Document detail header
+│   │   │   ├── documents/        # Documents list/detail headers
+│   │   │   └── stacks/           # Stacks list/detail headers
+│   │   ├── @subbar/              # Parallel route for page toolbars
+│   │   │   ├── documents/        # Documents list/detail subbars
+│   │   │   └── stacks/           # Stacks list/detail subbars
 │   │   ├── documents/            # Documents list and detail pages
-│   │   ├── stacks/               # Stacks feature (placeholder)
-│   │   └── extractions/          # Extractions feature (placeholder)
+│   │   └── stacks/               # Stacks list and detail pages
 │   └── api/webhooks/clerk/       # Clerk webhook for user sync
 ├── components/
 │   ├── agent/                    # Agent system (card, flows, registry)
 │   ├── documents/                # Document tables, columns, preview, detail views
+│   ├── stacks/                   # Stack tables, detail views, table extraction
 │   ├── icons/                    # Centralized Tabler icon barrel export
 │   ├── layout/                   # App-level layout components
 │   │   └── sidebar/              # Sidebar and navigation components
