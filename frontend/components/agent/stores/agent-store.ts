@@ -13,15 +13,15 @@ export type UploadFlowStep = 'dropzone' | 'configure' | 'fields' | 'extracting' 
 export type AgentFlow =
   // Document flows
   | { type: 'upload'; step: UploadFlowStep; data: UploadFlowData }
-  | { type: 'extract-document'; documentId: string }
+  | { type: 'extract-document'; documentId: string; step: string }
   // Stack flows (post-MVP)
-  | { type: 'create-stack' }
-  | { type: 'edit-stack'; stackId: string }
-  | { type: 'add-documents'; stackId: string }
+  | { type: 'create-stack'; step: string }
+  | { type: 'edit-stack'; stackId: string; step: string }
+  | { type: 'add-documents'; stackId: string; step: string }
   // Table flows (post-MVP)
-  | { type: 'create-table'; stackId: string }
-  | { type: 'manage-columns'; stackId: string; tableId: string }
-  | { type: 'extract-table'; stackId: string; tableId: string }
+  | { type: 'create-table'; stackId: string; step: string }
+  | { type: 'manage-columns'; stackId: string; tableId: string; step: string }
+  | { type: 'extract-table'; stackId: string; tableId: string; step: string }
   | null
 
 export interface UploadFlowData {
@@ -38,10 +38,9 @@ export interface UploadFlowData {
 export type AgentStatus = 'idle' | 'processing' | 'waiting' | 'complete' | 'error'
 
 interface AgentStore {
-  // Popup state
+  // Card state (unified - no separate popup)
   flow: AgentFlow
-  isExpanded: boolean  // Actions visible in bar
-  isPopupOpen: boolean // Popup visible
+  isExpanded: boolean  // Card content visible (actions or flow content)
 
   // Dynamic bar state
   status: AgentStatus
@@ -52,15 +51,24 @@ interface AgentStore {
 
   // Actions
   openFlow: (flow: NonNullable<AgentFlow>) => void
-  setStep: (step: UploadFlowStep) => void
+  setStep: (step: string) => void
   updateFlowData: (data: Partial<UploadFlowData>) => void
   setStatus: (status: AgentStatus, text: string) => void
   addEvent: (event: AgentEvent) => void
-  setExpanded: (expanded: boolean) => void
-  collapsePopup: () => void
-  expandPopup: () => void
+  expand: () => void
+  collapse: () => void
+  toggle: () => void
   close: () => void
   reset: () => void
+
+  // FIX #6: Backwards-compatible action aliases (deprecated)
+  // These will be removed after Phase 4 cleanup
+  /** @deprecated Use expand() instead */
+  expandPopup: () => void
+  /** @deprecated Use collapse() instead */
+  collapsePopup: () => void
+  /** @deprecated Use expand/collapse() instead */
+  setExpanded: (expanded: boolean) => void
 }
 
 export const initialUploadData: UploadFlowData = {
@@ -77,27 +85,26 @@ export const initialUploadData: UploadFlowData = {
 export const useAgentStore = create<AgentStore>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
         flow: null,
         isExpanded: false,
-        isPopupOpen: false,
         status: 'idle',
         statusText: 'How can I help you today?',
         events: [],
 
         openFlow: (flow) => set({
           flow,
-          isPopupOpen: true,
+          isExpanded: true,
           status: 'idle',
           statusText: getFlowStatusText(flow),
           events: [],
         }, undefined, 'agent/openFlow'),
 
         setStep: (step) => set((state) => {
-          if (!state.flow || state.flow.type !== 'upload') return state
+          if (!state.flow) return state
           return {
-            flow: { ...state.flow, step },
-            statusText: getStepStatusText(step),
+            flow: { ...state.flow, step } as AgentFlow,
+            statusText: getStepStatusText(state.flow.type, step),
           }
         }, undefined, 'agent/setStep'),
 
@@ -117,15 +124,15 @@ export const useAgentStore = create<AgentStore>()(
           events: [...state.events, event].slice(-100), // Cap at 100
         }), undefined, 'agent/addEvent'),
 
-        setExpanded: (isExpanded) => set({ isExpanded }, undefined, 'agent/setExpanded'),
+        expand: () => set({ isExpanded: true }, undefined, 'agent/expand'),
 
-        collapsePopup: () => set({ isPopupOpen: false }, undefined, 'agent/collapsePopup'),
+        collapse: () => set({ isExpanded: false }, undefined, 'agent/collapse'),
 
-        expandPopup: () => set({ isPopupOpen: true }, undefined, 'agent/expandPopup'),
+        toggle: () => set((state) => ({ isExpanded: !state.isExpanded }), undefined, 'agent/toggle'),
 
         close: () => set({
           flow: null,
-          isPopupOpen: false,
+          isExpanded: false,
           status: 'idle',
           statusText: 'How can I help you today?',
           events: [],
@@ -133,30 +140,33 @@ export const useAgentStore = create<AgentStore>()(
 
         reset: () => set({
           flow: null,
-          isPopupOpen: false,
           isExpanded: false,
           status: 'idle',
           statusText: 'How can I help you today?',
           events: [],
         }, undefined, 'agent/reset'),
+
+        // FIX #6: Backwards-compatible action aliases
+        // These delegate to the new actions and will be removed after migration
+        expandPopup: () => set({ isExpanded: true }, undefined, 'agent/expandPopup'),
+        collapsePopup: () => set({ isExpanded: false }, undefined, 'agent/collapsePopup'),
+        setExpanded: (isExpanded) => set({ isExpanded }, undefined, 'agent/setExpanded'),
       }),
       {
-        name: 'agent-store', // localStorage key
-        // Only persist flow state - exclude non-serializable data and transient UI state
+        name: 'agent-store',
         partialize: (state) => ({
           flow: state.flow
             ? {
                 ...state.flow,
-                // For upload flows, exclude File objects (not serializable)
                 ...(state.flow.type === 'upload' && {
                   data: {
                     ...state.flow.data,
-                    file: null, // File objects can't be serialized to localStorage
+                    file: null, // File objects can't be serialized
                   },
                 }),
               }
             : null,
-          isPopupOpen: state.isPopupOpen,
+          isExpanded: state.isExpanded,
         }),
       }
     ),
@@ -169,21 +179,32 @@ function getFlowStatusText(flow: NonNullable<AgentFlow>): string {
   switch (flow.type) {
     case 'upload': return 'Drop a file to get started'
     case 'create-stack': return 'Create a new stack'
+    case 'extract-document': return 'Re-extract document'
+    case 'edit-stack': return 'Edit stack'
+    case 'add-documents': return 'Add documents to stack'
+    case 'create-table': return 'Define extraction columns'
+    case 'manage-columns': return 'Manage table columns'
+    case 'extract-table': return 'Extract data from documents'
     default: return 'How can I help you today?'
   }
 }
 
-function getStepStatusText(step: UploadFlowStep): string {
-  switch (step) {
-    case 'dropzone': return 'Drop a file to get started'
-    case 'configure': return 'Configure extraction settings'
-    case 'fields': return 'Specify fields to extract'
-    case 'extracting': return 'Extracting...'
-    case 'complete': return 'Extraction complete'
+function getStepStatusText(flowType: string, step: string): string {
+  // Upload flow steps
+  if (flowType === 'upload') {
+    switch (step) {
+      case 'dropzone': return 'Drop a file to get started'
+      case 'configure': return 'Configure extraction settings'
+      case 'fields': return 'Specify fields to extract'
+      case 'extracting': return 'Extracting...'
+      case 'complete': return 'Extraction complete'
+    }
   }
+  // Default for other flows
+  return 'Working...'
 }
 
-// Title helpers for flow steps
+// Title helpers for flow steps (kept for backwards compatibility)
 export function getUploadTitle(step: UploadFlowStep): string {
   switch (step) {
     case 'dropzone': return 'Upload Document'
@@ -194,12 +215,15 @@ export function getUploadTitle(step: UploadFlowStep): string {
   }
 }
 
-// Selector helpers (useShallow for object selectors to prevent unnecessary re-renders)
+// Selector helpers
 export const useAgentFlow = () => useAgentStore((s) => s.flow)
 export const useAgentStatus = () => useAgentStore(
   useShallow((s) => ({ status: s.status, statusText: s.statusText }))
 )
-export const useAgentPopup = () => useAgentStore(
-  useShallow((s) => ({ isPopupOpen: s.isPopupOpen, isExpanded: s.isExpanded }))
-)
+export const useAgentExpanded = () => useAgentStore((s) => s.isExpanded)
 export const useAgentEvents = () => useAgentStore((s) => s.events)
+
+// Backwards compatibility - deprecated, use useAgentExpanded
+export const useAgentPopup = () => useAgentStore(
+  useShallow((s) => ({ isPopupOpen: s.isExpanded, isExpanded: s.isExpanded }))
+)
