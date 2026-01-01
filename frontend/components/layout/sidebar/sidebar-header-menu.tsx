@@ -5,7 +5,6 @@ import { useTheme } from "next-themes"
 import * as Icons from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
-import { Dialog } from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,19 +22,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { GlobalSearchDialog } from "@/components/layout/global-search-dialog"
-import { UploadDialogContent } from "@/components/layout/upload-dialog/upload-dialog-content"
+import { useAgentStore, initialUploadData } from "@/components/agent"
 
 export function SidebarHeaderMenu() {
   const { theme, setTheme } = useTheme()
   const [searchOpen, setSearchOpen] = React.useState(false)
-  const [uploadOpen, setUploadOpen] = React.useState(false)
+  const openFlow = useAgentStore((state) => state.openFlow)
 
   return (
     <>
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <UploadDialogContent onClose={() => setUploadOpen(false)} />
-      </Dialog>
       <SidebarHeader className="h-[47px] flex flex-row items-center justify-between gap-2 px-2 py-0">
         {/* Logo + Name + Dropdown */}
         <DropdownMenu>
@@ -122,7 +118,7 @@ export function SidebarHeaderMenu() {
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                onClick={() => setUploadOpen(true)}
+                onClick={() => openFlow({ type: 'upload', step: 'dropzone', data: initialUploadData })}
               >
                 <Icons.Upload className="size-4" />
                 <span className="sr-only">Upload</span>
