@@ -6689,3 +6689,72 @@ a738e94 feat(agent): add AgentStatusBar with spring animations
 3. Read `phase-3-upload-migration.md` for tasks
 4. Use opus model for ALL subagents
 5. ALWAYS dispatch subagents - never implement directly
+
+---
+
+## Session 87 - 2026-01-01 - Agent Bar Redesign Phase 3 Implementation ✅
+
+**Feature**: Agent Bar Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 3: Upload Migration (7 tasks)**:
+  - Task 1: Created `metadata.ts` with flow config (icons, statusText, components)
+  - Task 2: Created `use-upload-flow.ts` hook extracting logic from old component
+  - Task 3: Moved 7 step components to `upload/steps/` directory (git mv for history)
+  - Task 4: Created barrel exports for upload flow
+  - Task 5: Registered upload flow in central registry
+  - Task 6: Removed old `upload-flow.tsx` and `agent-popup-content.tsx`
+  - Task 7: End-to-end testing passed (user verified)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Subagent workflow | Implementer → Spec Review → Code Quality Review | Full review cycle per task |
+| context7 verification | Used for TypeScript patterns | Verified as const, Zustand, React hooks best practices |
+| Old popup content | Deleted with upload-flow.tsx | Only consumed old UploadFlow, no longer needed |
+
+### Files Created/Modified
+
+```
+frontend/components/agent/flows/documents/upload/
+├── index.ts              # NEW - barrel export
+├── metadata.ts           # NEW - flow config
+├── use-upload-flow.ts    # NEW - flow logic hook
+└── steps/
+    ├── index.ts          # NEW - steps barrel
+    ├── upload-dropzone.tsx     # MOVED
+    ├── upload-configure.tsx    # MOVED
+    ├── upload-fields.tsx       # MOVED
+    ├── upload-extracting.tsx   # MOVED
+    ├── upload-complete.tsx     # MOVED
+    ├── extraction-method-card.tsx  # MOVED
+    └── field-tag-input.tsx     # MOVED
+
+frontend/components/agent/flows/registry.ts  # UPDATED - registered upload flow
+
+DELETED:
+- frontend/components/agent/flows/documents/upload-flow.tsx
+- frontend/components/agent/agent-popup-content.tsx
+```
+
+### Commits (4)
+
+```
+7291363 refactor(agent): remove old upload-flow.tsx, complete migration
+2bfc2f8 feat(agent): register upload flow in registry
+cbca2e6 feat(agent): add upload flow metadata, hook, and barrel export
+5be6e19 refactor(agent): move upload step components to new structure
+```
+
+### Next Session
+
+**Task**: Execute Phase 4 - Remaining Flows (stub out 7 flow types)
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Use `/superpowers:subagent-driven-development` workflow
+3. Read `phase-4-remaining-flows.md` for tasks
+4. Create metadata stubs for: extract, create-stack, edit-stack, add-documents, create-table, manage-columns, extract-table

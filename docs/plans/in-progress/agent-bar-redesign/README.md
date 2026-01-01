@@ -16,12 +16,12 @@
 
 ## Plan Overview
 
-| Phase | Description | Effort |
-|-------|-------------|--------|
-| [Phase 1](./phase-1-infrastructure.md) | Flow types, registry, base card infrastructure | 1 day |
-| [Phase 2](./phase-2-unified-card.md) | AgentCard, StatusBar, animations, click-outside | 1 day |
-| [Phase 3](./phase-3-upload-migration.md) | Migrate existing upload flow to new pattern | 0.5 day |
-| [Phase 4](./phase-4-remaining-flows.md) | Stub out remaining 7 flow types | 0.5 day |
+| Phase | Description | Effort | Status |
+|-------|-------------|--------|--------|
+| [Phase 1](./phase-1-infrastructure.md) | Flow types, registry, base card infrastructure | 1 day | ✅ Complete |
+| [Phase 2](./phase-2-unified-card.md) | AgentCard, StatusBar, animations, click-outside | 1 day | ✅ Complete |
+| [Phase 3](./phase-3-upload-migration.md) | Migrate existing upload flow to new pattern | 0.5 day | ✅ Complete |
+| [Phase 4](./phase-4-remaining-flows.md) | Stub out remaining 7 flow types | 0.5 day | Pending |
 
 **Total Effort:** ~3 days
 
@@ -138,7 +138,7 @@ From design doc + architecture decision:
 - [ ] Minimized state shows "Continue [flow]..." with controls
 - [x] Config + Hook Hybrid pattern implemented
 - [x] Flow registry enables easy addition of new flows
-- [ ] Upload flow fully migrated and functional
+- [x] Upload flow fully migrated and functional
 - [ ] 7 remaining flow types stubbed with metadata
 
 ---
