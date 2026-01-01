@@ -6186,3 +6186,72 @@ frontend/components/ui/
 3. Run `/superpowers:execute-plan`
 4. Implement Phase 3: Wire into root layout, header upload button, E2E testing
 5. See `docs/plans/in-progress/agent-ui-refactor/03-integration.md`
+
+---
+
+## Session 80 - 2025-01-01 - Agent UI Refactor Phase 3 Integration
+
+**Feature**: Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 3.1: Add AgentContainer to root layout**:
+  - Updated `agent-container.tsx` with self-managed visibility (AGENT_ROUTES check)
+  - Added iOS safe area padding (`pb-[env(safe-area-inset-bottom)]`)
+  - Added AgentContainer to `app/(app)/layout.tsx`
+  - Removed `aiChatBarContent` from documents layout and SelectedDocumentContext
+  - Cleaned up `document-detail-client.tsx` AiChatBar references
+  - Commit: `cbe32c3`
+
+- [x] **Task 3.1.5: Add viewport-fit=cover**:
+  - Added `viewport` export to `app/layout.tsx` for iOS safe areas
+  - Commit: `d97b526`
+
+- [x] **Task 3.2: Add Upload button to header**:
+  - Created `upload-button.tsx` component
+  - Added to barrel exports and documents header
+  - Commit: `761acf0`
+
+- [x] **Bug fix: Create Stack action stuck UI**:
+  - Removed unimplemented `create-stack` action from AgentActions
+  - Commit: `2e2c448`
+
+- [x] **Bug fix: Popup width mismatch**:
+  - Added `w-full` to popup container
+  - Commit: `1801744`
+
+- [x] **Task 3.3: E2E Testing (partial)**:
+  - Tested via Claude in Chrome browser automation
+  - Verified: Upload button opens popup, AgentBar visibility on routes, focus shows actions
+  - Created `testing-checklist.md` for remaining manual tests
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Remove create-stack action | Removed until flow implemented | Clicking caused stuck UI state |
+| Popup width fix | Added `w-full` to container | Align popup with chat bar width |
+
+### Bugs Found & Fixed
+
+| Bug | Fix | Commit |
+|-----|-----|--------|
+| Create Stack stuck UI | Remove action until implemented | `2e2c448` |
+| Popup wider than bar | Add `w-full` constraint | `1801744` |
+
+### Tasks Remaining
+
+- [ ] Task 3.3: Complete E2E testing (use testing-checklist.md)
+- [ ] Task 4.1-4.4: Phase 4 Cleanup
+
+### Next Session
+
+**Task**: Complete E2E testing then Phase 4 Cleanup
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Complete manual testing using `testing-checklist.md`
+3. Fix any UI bugs found
+4. Execute Phase 4 tasks (update imports, delete old components, documentation, verification)
+5. Run `/wrap-up` to finalize feature
