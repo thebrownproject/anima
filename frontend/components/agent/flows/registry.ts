@@ -1,20 +1,17 @@
 // frontend/components/agent/flows/registry.ts
 import type { FlowRegistration } from './types'
-import type { AgentFlow } from '../stores/agent-store'
+import type { AgentFlow, UploadFlowStep } from '../stores/agent-store'
+import { uploadFlowMetadata, useUploadFlow } from './documents/upload'
 
 /**
  * Registry of all flow types.
  * Maps flow type string to its metadata and hook.
- *
- * Add new flows here as they're implemented.
  */
 export const flowRegistry: Partial<Record<NonNullable<AgentFlow>['type'], FlowRegistration>> = {
-  // Flows will be registered here as they're migrated/created
-  // Example:
-  // upload: {
-  //   metadata: uploadFlowMetadata,
-  //   useHook: useUploadFlow,
-  // },
+  upload: {
+    metadata: uploadFlowMetadata,
+    useHook: useUploadFlow,
+  } as FlowRegistration<UploadFlowStep>,
 }
 
 /**
