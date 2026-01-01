@@ -63,3 +63,16 @@ Lightweight tracking for items that don't need immediate action.
   - Behavior: Icon-only mode locked (no expand), desktop state remembered when resizing back
   - Changes: Update `use-mobile.ts` to three-state, modify `SidebarProvider` and `Sidebar` component
   - Reference: Linear collapses sidebar at ~1024px with similar pattern
+- [ ] #33 `feature` AI prompt flow with auto-generated titles - natural language input morphs to brief summary title, agent works on request (2026-01-01)
+  - User types prompt in agent bar → bar morphs to show AI-generated 3-5 word title
+  - Agent streams response in content area below
+  - Same unified card pattern as wizard flows
+  - Related: Agent bar redesign (`docs/plans/in-progress/agent-bar-redesign/`)
+- [ ] #34 `feature` Agent bar visual styling exploration - backdrop blur, enhanced shadows, animation refinements (2026-01-01)
+  - Current: Basic `bg-sidebar` with `shadow-md`
+  - Explore: Backdrop blur effects, depth/layering, dark mode polish
+  - Related: Agent bar redesign
+- [ ] #35 `feature` Agent bar max height and scroll behavior - define expanded height limits and scroll UX (2026-01-01)
+  - Define max expanded height before scrolling
+  - Scroll behavior for long content (steps list, flow content)
+  - Related: Agent bar redesign
