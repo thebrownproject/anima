@@ -1,4 +1,7 @@
 // frontend/components/agent/card/index.ts
-// Barrel export for card components
 export { useClickOutside } from './use-click-outside'
-// AgentCard, AgentStatusBar, etc. will be added in Phase 2
+export { AgentCard } from './agent-card'
+export { AgentStatusBar } from './agent-status-bar'
+export { AgentContent } from './agent-content'
+export { AgentSteps } from './agent-steps'
+export { FlowErrorBoundary } from './flow-error-boundary'
