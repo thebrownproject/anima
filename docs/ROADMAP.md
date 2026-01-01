@@ -8,13 +8,13 @@
 
 ### In Progress
 
-**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - 🔄 Phase 3 Partial
+**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - 🔄 Phase 3 Complete, Phase 4 Next
 - Design: Complete (Dynamic Island-style agent bar + popup)
 - Implementation Plan: 4 phases (foundation, upload-flow, integration, cleanup)
 - **Phase 1 Complete**: Zustand store, AgentBar, AgentActions, AgentPopup, AgentContainer
 - **Phase 2 Complete**: UploadFlow, step components (dropzone, configure, fields, extracting, complete), close confirmation
-- **Phase 3 Partial**: Root layout integration, header upload button - E2E testing in progress
-- Next: Complete E2E testing, then Phase 4 (Cleanup)
+- **Phase 3 Complete**: Root layout integration, upload button routing, E2E testing passed
+- Next: Phase 4 (Cleanup - delete old upload-dialog and ai-chat-bar components)
 
 **Stacks UI** (`plans/in-progress/stacks/`) - ⏸️ Paused
 - Design: Complete (v2)

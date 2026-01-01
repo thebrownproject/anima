@@ -6255,3 +6255,72 @@ frontend/components/ui/
 3. Fix any UI bugs found
 4. Execute Phase 4 tasks (update imports, delete old components, documentation, verification)
 5. Run `/wrap-up` to finalize feature
+
+---
+
+## Session 81 - 2025-01-01 - Agent UI E2E Testing & Bug Fixes
+
+**Feature**: Agent UI Refactor
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Fix upload button routing**:
+  - Removed redundant header UploadButton from `@header/documents/page.tsx`
+  - Wired sub-bar Upload ActionButton to agent `openFlow()` in `@subbar/documents/page.tsx`
+  - Wired sidebar Upload icon to agent `openFlow()` in `sidebar-header-menu.tsx`
+  - Removed old UploadDialogContent from sidebar
+  - Commit: `d7006a1`
+
+- [x] **Fix ActionButton icon size**:
+  - Removed custom `size-3.5` class from AgentActions icons to match sub-bar styling
+  - Commit: `80ce956`
+
+- [x] **E2E Testing (comprehensive)**:
+  - Tested via Claude in Chrome browser automation
+  - AgentBar visibility: all routes verified (documents, stacks, detail pages)
+  - AgentBar interactions: focus/blur shows/hides actions, expand/collapse works
+  - Popup tests: width matches bar, position above bar, collapse/close buttons work
+  - Upload flow: dropzone accepts PDF, configure step works, rename field works
+  - Extraction: SSE streaming, status updates (spinner → checkmark), popup collapses
+  - Complete step: success message, View Document navigates correctly
+  - Integration: no console errors, build passes
+
+- [x] **Created BUGS.md**:
+  - Documented open bug: document rename doesn't persist
+  - Listed all fixed bugs from sessions 80-81
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Remove header Upload button | Deleted entirely | Redundant - sub-bar and sidebar buttons are sufficient |
+| Keep ActionButton styling | Used same component for consistency | Sub-bar and AgentActions now identical |
+
+### Bugs Found
+
+| Bug | Status | Notes |
+|-----|--------|-------|
+| Document rename doesn't persist | Open | Rename shows in success message but document saves with original name |
+| ActionButton icon size mismatch | Fixed | Removed custom size class |
+
+### Tasks Remaining
+
+- [ ] Task 3.3: Remaining E2E tests (JPG/PNG, validation, Custom Fields, Upload Another, close confirmation)
+- [ ] Task 4.1-4.4: Phase 4 Cleanup (delete old upload-dialog, ai-chat-bar components)
+- [ ] Investigate document rename persistence bug
+
+### Next Session
+
+**Task**: Phase 4 Cleanup (delete old components)
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Execute Phase 4 tasks from `04-cleanup.md`:
+   - Update imports across codebase
+   - Delete old upload-dialog components
+   - Delete old ai-chat-bar component
+   - Update documentation
+   - Final verification
+3. Investigate rename bug if time permits
+4. Run `/wrap-up` to finalize feature
