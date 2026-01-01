@@ -1,19 +1,28 @@
 // frontend/components/agent/index.ts
 
-// Components
+// Card components
+export { AgentCard, AgentStatusBar, AgentContent, AgentSteps } from './card'
+
+// Container
 export { AgentContainer } from './agent-container'
-export { AgentBar } from './agent-bar'
-export { AgentPopup } from './agent-popup'
+
+// Actions
 export { AgentActions } from './agent-actions'
 export { UploadButton } from './upload-button'
 
-// Hooks & constants
+// Flows
+export { flowRegistry, getFlowRegistration, isFlowRegistered } from './flows/registry'
+export type { FlowMetadata, FlowHookResult, FlowRegistration } from './flows/types'
+export { springConfig, contentSpringConfig } from './flows/types'
+
+// Store
 export {
   useAgentStore,
   useAgentFlow,
   useAgentStatus,
-  useAgentPopup,
+  useAgentExpanded,
   useAgentEvents,
+  useAgentPopup, // deprecated, use useAgentExpanded
   initialUploadData,
 } from './stores/agent-store'
 
@@ -24,3 +33,7 @@ export type {
   UploadFlowStep,
   AgentStatus,
 } from './stores/agent-store'
+
+// Legacy exports (to be removed after full migration)
+export { AgentBar } from './agent-bar'
+export { AgentPopup } from './agent-popup'
