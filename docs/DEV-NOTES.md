@@ -6324,3 +6324,67 @@ frontend/components/ui/
    - Final verification
 3. Investigate rename bug if time permits
 4. Run `/wrap-up` to finalize feature
+
+---
+
+## Session 82 - 2026-01-01 - Agent UI Refactor Phase 4 Complete ✅
+
+**Feature**: Agent UI Refactor (COMPLETE)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 4.1: Update imports**:
+  - Migrated `ExtractionMethodCard` and `FieldTagInput` to `components/agent/flows/documents/`
+  - Updated imports in `upload-configure.tsx` and `upload-fields.tsx` to use relative paths
+  - Plan didn't anticipate this dependency - handled during execution
+  - Commit: `0d06654`
+
+- [x] **Task 4.2: Delete old components**:
+  - Deleted `frontend/components/layout/upload-dialog/` (9 files)
+  - Deleted `frontend/components/layout/ai-chat-bar.tsx`
+  - Deleted `frontend/components/layout/ai-activity-panel.tsx`
+  - Fixed stale comment in `upload-dropzone.tsx`
+  - Total: 11 files, 1214 lines removed
+  - Commit: `c3ef81b`
+
+- [x] **Task 4.3: Update documentation**:
+  - Updated `frontend/CLAUDE.md` directory structure (removed upload-dialog, added agent/)
+  - Added new "Agent System" section documenting Zustand store, entry points, flows
+  - Commit: `93bc9ab`
+
+- [x] **Task 4.4: Final verification**:
+  - TypeScript: ✅ passes
+  - Build: ✅ passes
+  - Lint: Pre-existing errors only (from Phase 2, not Phase 4)
+
+- [x] **Move plan to complete**:
+  - Moved `docs/plans/in-progress/agent-ui-refactor/` to `docs/plans/complete/`
+  - Updated ROADMAP.md (Agent UI in Completed, Stacks UI now active)
+  - Commit: `3bd7b80`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Migrate shared components | Copy to agent folder | Plan didn't anticipate new agent components importing from old upload-dialog |
+| Add Agent System docs | Added to CLAUDE.md | Important for future devs to understand bar/popup/flow pattern |
+
+### Pre-existing Issues (not from this session)
+
+| Issue | Location | Status |
+|-------|----------|--------|
+| Component created during render | `agent-bar.tsx:63` | Deferred |
+| Conditional hook | `upload-flow.tsx:47` | Deferred |
+| Document rename doesn't persist | Upload flow | Tracked in BUGS.md |
+
+### Next Session
+
+**Task**: Brainstorm Agent UI Design Refinements
+
+**Context**: User mentioned this will be an important session for further agent UI improvements. Use `/superpowers:brainstorm` to design refinements.
+
+**Process**:
+1. Run `/continue` with handover
+2. Use `/superpowers:brainstorm` for Agent UI refinements
+3. Discuss requirements and create design doc
