@@ -63,7 +63,7 @@ export default async function AppLayout({
                     {/* SubBar slot - rendered between header and content */}
                     {subbar}
                     <div className="flex flex-1 flex-col min-h-0">{children}</div>
-                    <AgentContainer className="p-4" />
+                    <AgentContainer />
                   </StackDetailFilterProvider>
                 </StacksFilterProvider>
               </DocumentDetailFilterProvider>
