@@ -6758,3 +6758,81 @@ cbca2e6 feat(agent): add upload flow metadata, hook, and barrel export
 2. Use `/superpowers:subagent-driven-development` workflow
 3. Read `phase-4-remaining-flows.md` for tasks
 4. Create metadata stubs for: extract, create-stack, edit-stack, add-documents, create-table, manage-columns, extract-table
+
+---
+
+## Session 88 - 2026-01-01 - Agent Bar Redesign Phase 4 Complete ✅
+
+**Feature**: Agent Bar Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 4: Remaining Flows (7 tasks)**:
+  - Task 1: Created `extract-document` flow stub (3 files)
+  - Task 2: Created stack flow stubs - `create-stack`, `edit-stack`, `add-documents` (9 files)
+  - Task 3: Created table flow stubs - `create-table`, `manage-columns`, `extract-table` (9 files)
+  - Task 4: Registered all 8 flows in `registry.ts`
+  - Task 5: Updated `agent-actions.tsx` with route-specific actions
+  - Task 6: Cleaned up legacy files (`agent-bar.tsx`, `agent-popup.tsx`)
+  - Task 7: Final verification (TypeScript, lint, all flows registered)
+
+- [x] **Documentation Updates**:
+  - Updated `frontend/CLAUDE.md` Agent System section for Config + Hook Hybrid architecture
+  - Updated directory structure with `@subbar/`, `stacks/`, removed outdated `extractions/`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Review workflow | Implementer → Spec Review → Code Quality Review | Full 3-stage review per task with context7 verification |
+| File extension | `.tsx` for metadata files | Required for JSX (FlowPlaceholder component) |
+| Step extraction | `flow.step` pattern | Matches upload flow, avoids hardcoded values |
+| FIX #9 comment | Added to agent-actions | Documents dynamic route ID injection for future |
+
+### Files Created
+
+```
+frontend/components/agent/flows/
+├── documents/extract/           # NEW - 3 files
+├── stacks/
+│   ├── create/                  # NEW - 3 files
+│   ├── edit/                    # NEW - 3 files
+│   └── add-documents/           # NEW - 3 files
+└── tables/
+    ├── create/                  # NEW - 3 files
+    ├── manage-columns/          # NEW - 3 files
+    └── extract/                 # NEW - 3 files
+
+DELETED:
+- frontend/components/agent/agent-bar.tsx
+- frontend/components/agent/agent-popup.tsx
+```
+
+### Commits (9)
+
+```
+e325045 docs(frontend): update directory structure with @subbar, stacks
+01bc1f0 docs(frontend): update Agent System section for Config + Hook Hybrid
+5bd13df fix(agent): resolve lint errors in agent card components
+a6e8169 chore(agent): remove legacy bar/popup components
+8899f66 feat(agent): update actions for all flow types
+5df1994 feat(agent): register all 8 flow types in registry
+50d4fbf feat(agent): add table flow stubs
+9765e13 feat(agent): add stack flow stubs
+34accab feat(agent): add extract-document flow stub
+```
+
+### Agent Bar Redesign Complete
+
+All 4 phases of the Agent Bar Redesign are now complete:
+- Phase 1: Types, registry, hooks, store updates ✅
+- Phase 2: AgentCard, StatusBar, Content, Steps, Container ✅
+- Phase 3: Upload flow migrated to new pattern ✅
+- Phase 4: 7 remaining flow stubs created ✅
+
+### Next Session
+
+**Feature complete.** Move to next priority:
+- Stack Agent implementation (`plans/todo/stack-agent/`)
+- Or continue with Stacks UI remaining work

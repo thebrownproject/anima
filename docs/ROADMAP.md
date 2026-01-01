@@ -8,15 +8,6 @@
 
 ### In Progress
 
-**Agent Bar Redesign** (`plans/in-progress/agent-bar-redesign/`) - 🔄 Phase 3 Complete
-- Design: Complete - unified card, input morphs to status, spring animations
-- Implementation Plan: Complete (4 phases, ~3 days) - reviewed by 2 agents + Gemini
-- Architecture: Config + Hook Hybrid pattern for 8 flow types
-- Phase 1: ✅ Complete - types, registry, hooks, store updates
-- Phase 2: ✅ Complete - AgentCard, StatusBar, Content, Steps, Container
-- Phase 3: ✅ Complete - Upload flow migrated to new pattern (4 commits)
-- Next: Phase 4 - Stub remaining 7 flow types
-
 **Stacks UI** (`plans/in-progress/stacks/`) - 🔄 Phase 3 Partial
 - Design: Complete (v2)
 - Implementation Plan: 3 phases (foundation, pages, tables)
@@ -37,6 +28,7 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Agent Bar Redesign | Jan 2026 | Config + Hook Hybrid architecture, 8 flow types, unified AgentCard |
 | Agent UI Refactor | Jan 2026 | Dynamic Island-style agent bar + popup, replaces old upload dialog |
 | Header Filters | Dec 2025 | Filter controls in sub-bar (ExpandableSearch, FilterButton) |
 | Upload Dialog | Dec 2025 | Multi-step wizard with extraction config, file upload, field customization |

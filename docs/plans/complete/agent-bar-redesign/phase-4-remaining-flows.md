@@ -1149,31 +1149,31 @@ git add -A && git commit -m "feat(agent): complete Config + Hook Hybrid architec
 ## Phase 4 Checklist
 
 **Flow Stubs:**
-- [ ] Extract-document flow stub created
-- [ ] Create-stack flow stub created
-- [ ] Edit-stack flow stub created
-- [ ] Add-documents flow stub created
-- [ ] Create-table flow stub created
-- [ ] Manage-columns flow stub created
-- [ ] Extract-table flow stub created
-- [ ] All 8 flows registered in registry
-- [ ] Agent actions updated for all routes
+- [x] Extract-document flow stub created
+- [x] Create-stack flow stub created
+- [x] Edit-stack flow stub created
+- [x] Add-documents flow stub created
+- [x] Create-table flow stub created
+- [x] Manage-columns flow stub created
+- [x] Extract-table flow stub created
+- [x] All 8 flows registered in registry
+- [x] Agent actions updated for all routes
 
 **Cleanup (Task 6):**
-- [ ] AgentContainer updated to use AgentCard
-- [ ] Barrel export (index.ts) updated
-- [ ] No remaining imports of legacy components
-- [ ] Legacy files deleted:
-  - [ ] `agent-bar.tsx`
-  - [ ] `agent-popup.tsx`
-  - [ ] `agent-popup-content.tsx`
-  - [ ] `flows/documents/upload-flow.tsx`
-- [ ] `useAgentPopup` removed from store (if unused)
-- [ ] TypeScript compiles without errors
-- [ ] App runs and upload flow works
+- [x] AgentContainer updated to use AgentCard
+- [x] Barrel export (index.ts) updated
+- [x] No remaining imports of legacy components
+- [x] Legacy files deleted:
+  - [x] `agent-bar.tsx`
+  - [x] `agent-popup.tsx`
+  - [x] `agent-popup-content.tsx`
+  - [x] `flows/documents/upload-flow.tsx`
+- [x] `useAgentPopup` removed from store (if unused)
+- [x] TypeScript compiles without errors
+- [x] App runs and upload flow works
 
 **Final:**
-- [ ] Final verification passed
+- [x] Final verification passed
 
 ---
 
