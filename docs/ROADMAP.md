@@ -8,7 +8,13 @@
 
 ### In Progress
 
-**Stacks UI** (`plans/in-progress/stacks/`) - 🔄 Phase 3 Partial
+**Documents Sub-bar** (`plans/in-progress/documents-subbar/`) - 🆕 Design Complete
+- Design: Complete
+- Implementation Plan: Not yet created
+- Features: Filter dropdown, Edit/Export/Delete/Add-to-Stack agent flows
+- Stack dropdown with navigation and flow trigger
+
+**Stacks UI** (`plans/in-progress/stacks/`) - ⏸️ Paused
 - Design: Complete (v2)
 - Implementation Plan: 3 phases (foundation, pages, tables)
 - Database: Ready (migrations 004 & 005 applied)

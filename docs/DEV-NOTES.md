@@ -6836,3 +6836,74 @@ All 4 phases of the Agent Bar Redesign are now complete:
 **Feature complete.** Move to next priority:
 - Stack Agent implementation (`plans/todo/stack-agent/`)
 - Or continue with Stacks UI remaining work
+
+---
+
+## Session 89 - 2026-01-01 - Documents Sub-bar Design ✅
+
+**Feature**: Documents Sub-bar Completion
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Browser exploration of documents UI**:
+  - Used Chrome automation to review current documents list and detail views
+  - Identified non-functional components: Filter, Edit, Export buttons
+  - Confirmed Search is working
+
+- [x] **Brainstorming session for sub-bar completion**:
+  - Defined Filter dropdown: date range, stacks, extraction status
+  - Designed Edit flow: opens agent for field editing + re-extract
+  - Designed Export flow: opens agent (CSV/JSON now, integrations later)
+  - Designed Delete flow: opens agent for confirmation dialog
+  - Designed Add-to-Stack flow: opens agent for stack selection
+  - Designed Stack dropdown: shows assigned stacks + "Add to stack" trigger
+
+- [x] **Design document created**:
+  - Created `docs/plans/in-progress/documents-subbar/2026-01-01-documents-subbar-design.md`
+  - Full architecture, components, data flow, error handling
+  - Implementation order defined
+
+- [x] **Issues captured for deferred items**:
+  - #36: Preview panel redesign
+  - #37: Persist selected document in Zustand
+  - #38: Scroll padding for agent bar (bug)
+  - #39: Tooltip persistence on navigation (bug)
+
+- [x] **ROADMAP updated**:
+  - Added Documents Sub-bar as In Progress
+  - Marked Stacks UI as Paused
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Agent for Delete | Yes | Consistent UX, agent morphs to confirmation dialog |
+| Agent for Export | Yes | Future-proofs for integrations (Xero, QuickBooks) |
+| Filter without agent | Simple dropdown | Quick action, no complex flow needed |
+| Stack dropdown behavior | Click stack → navigate | Intuitive link behavior |
+| Add-to-stack location | documents/ folder | Keeps document-related flows together |
+
+### Files Created
+
+```
+docs/plans/in-progress/documents-subbar/
+└── 2026-01-01-documents-subbar-design.md
+```
+
+### Files Modified
+
+```
+docs/plans/issues/ACTIVE.md      # Added issues #36-39
+docs/ROADMAP.md                  # Updated In Progress section
+```
+
+### Next Session
+
+**Task**: Create implementation plan for Documents Sub-bar
+
+**Process**:
+1. Run `/superpowers:write-plan` to create task-by-task implementation plan
+2. Start with Filter dropdown (self-contained, no agent dependency)
+3. Then Delete flow (simplest agent flow)
+4. Continue through implementation order in design doc
