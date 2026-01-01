@@ -2,7 +2,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { FieldTagInput } from '@/components/layout/upload-dialog/field-tag-input'
+import { FieldTagInput } from './field-tag-input'
 import type { UploadFlowData } from '../../stores/agent-store'
 import type { CustomField } from '@/types/upload'
 
