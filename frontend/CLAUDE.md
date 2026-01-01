@@ -24,7 +24,7 @@ frontend/
 │   │   └── extractions/          # Extractions feature (placeholder)
 │   └── api/webhooks/clerk/       # Clerk webhook for user sync
 ├── components/
-│   ├── agent/                    # Agent system (bar, popup, upload flows)
+│   ├── agent/                    # Agent system (card, flows, registry)
 │   ├── documents/                # Document tables, columns, preview, detail views
 │   ├── icons/                    # Centralized Tabler icon barrel export
 │   ├── layout/                   # App-level layout components
@@ -98,18 +98,54 @@ import * as Icons from "@/components/icons"
 - **Type imports**: `import type { Icon } from "@/components/icons"`
 - **Adding icons**: Add new exports to `components/icons/index.ts`
 
-### Agent System
+### Agent System (Config + Hook Hybrid)
 
-The agent bar (bottom of screen) handles uploads and AI interactions.
+The agent card (bottom of screen) handles document uploads and AI interactions using a registry-based flow system.
 
-- **State**: `useAgentStore` (Zustand) - controls `isOpen`, `isExpanded`, current `flow`, `step`, `data`
-- **Entry points**: Sidebar upload button, sub-bar upload button both call `openFlow()`
-- **Flows**: Located in `components/agent/flows/<feature>/` - each flow has step components
-- **Popup**: Expands from bar, auto-collapses during processing
+**Architecture:**
+- **AgentCard**: Unified component that renders any registered flow
+- **Flow Registry**: Maps flow types to their metadata + hooks
+- **FlowMetadata**: Static config (steps, icons, components)
+- **FlowHook**: Dynamic logic (state, handlers, props)
 
+**Directory Structure:**
+```
+components/agent/
+├── card/                    # AgentCard and subcomponents
+├── flows/                   # Flow implementations
+│   ├── types.tsx            # Core types
+│   ├── registry.ts          # Flow registry
+│   ├── documents/upload/    # Upload flow (complete)
+│   ├── documents/extract/   # Re-extract flow
+│   ├── stacks/              # Stack flows (create, edit, add-documents)
+│   └── tables/              # Table flows (create, manage-columns, extract)
+└── stores/agent-store.ts    # Zustand state
+```
+
+**8 Registered Flow Types:**
+
+| Category | Flows |
+|----------|-------|
+| documents | `upload`, `extract-document` |
+| stacks | `create-stack`, `edit-stack`, `add-documents` |
+| tables | `create-table`, `manage-columns`, `extract-table` |
+
+**Opening a Flow:**
 ```typescript
 import { useAgentStore, initialUploadData } from '@/components/agent'
 
 const openFlow = useAgentStore((s) => s.openFlow)
 openFlow({ type: 'upload', step: 'dropzone', data: initialUploadData })
 ```
+
+**Key Store Actions:**
+- `openFlow(flow)` - Start a flow
+- `setStep(step)` - Navigate steps
+- `setStatus(status, text)` - Update status
+- `close()` - Close flow, reset to idle
+
+**Adding New Flows:** See `flows/documents/upload/` as reference. Each flow needs:
+1. `metadata.ts` - FlowMetadata config
+2. `use-[name]-flow.ts` - Logic hook returning FlowHookResult
+3. `index.ts` - Barrel export
+4. Register in `flows/registry.ts`
