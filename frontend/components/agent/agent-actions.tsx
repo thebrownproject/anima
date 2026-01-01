@@ -15,6 +15,7 @@ interface ActionDef {
 }
 
 // Actions by route pattern
+// Note: 'create-stack' action removed until Stacks flow is implemented
 const ACTION_CONFIG: Record<string, ActionDef[]> = {
   '/documents': [
     {
@@ -24,22 +25,8 @@ const ACTION_CONFIG: Record<string, ActionDef[]> = {
       flow: { type: 'upload', step: 'dropzone', data: initialUploadData },
       tooltip: 'Upload a new document',
     },
-    {
-      id: 'create-stack',
-      label: 'Create Stack',
-      icon: Icons.Stack,
-      flow: { type: 'create-stack' },
-      tooltip: 'Create a new document stack',
-    },
   ],
   '/stacks': [
-    {
-      id: 'create-stack',
-      label: 'Create Stack',
-      icon: Icons.Stack,
-      flow: { type: 'create-stack' },
-      tooltip: 'Create a new document stack',
-    },
     {
       id: 'upload',
       label: 'Upload',
