@@ -24,11 +24,11 @@ frontend/
 │   │   └── extractions/          # Extractions feature (placeholder)
 │   └── api/webhooks/clerk/       # Clerk webhook for user sync
 ├── components/
+│   ├── agent/                    # Agent system (bar, popup, upload flows)
 │   ├── documents/                # Document tables, columns, preview, detail views
 │   ├── icons/                    # Centralized Tabler icon barrel export
 │   ├── layout/                   # App-level layout components
-│   │   ├── sidebar/              # Sidebar and navigation components
-│   │   └── upload-dialog/        # Multi-step upload wizard
+│   │   └── sidebar/              # Sidebar and navigation components
 │   ├── providers/                # Context providers (theme)
 │   ├── shared/                   # Reusable components (file-type-icon, stack-badges)
 │   └── ui/                       # shadcn/ui primitives
@@ -97,3 +97,19 @@ import * as Icons from "@/components/icons"
 - **Naming**: `Icon` prefix stripped (e.g., `IconCheck` → `Check`)
 - **Type imports**: `import type { Icon } from "@/components/icons"`
 - **Adding icons**: Add new exports to `components/icons/index.ts`
+
+### Agent System
+
+The agent bar (bottom of screen) handles uploads and AI interactions.
+
+- **State**: `useAgentStore` (Zustand) - controls `isOpen`, `isExpanded`, current `flow`, `step`, `data`
+- **Entry points**: Sidebar upload button, sub-bar upload button both call `openFlow()`
+- **Flows**: Located in `components/agent/flows/<feature>/` - each flow has step components
+- **Popup**: Expands from bar, auto-collapses during processing
+
+```typescript
+import { useAgentStore, initialUploadData } from '@/components/agent'
+
+const openFlow = useAgentStore((s) => s.openFlow)
+openFlow({ type: 'upload', step: 'dropzone', data: initialUploadData })
+```
