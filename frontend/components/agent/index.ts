@@ -1,9 +1,9 @@
 // frontend/components/agent/index.ts
 
-// Card components
+// Card components (NEW - unified agent card system)
 export { AgentCard, AgentStatusBar, AgentContent, AgentSteps } from './card'
 
-// Container
+// Container (uses AgentCard internally)
 export { AgentContainer } from './agent-container'
 
 // Actions
@@ -22,7 +22,6 @@ export {
   useAgentStatus,
   useAgentExpanded,
   useAgentEvents,
-  useAgentPopup, // deprecated, use useAgentExpanded
   initialUploadData,
 } from './stores/agent-store'
 
@@ -33,7 +32,3 @@ export type {
   UploadFlowStep,
   AgentStatus,
 } from './stores/agent-store'
-
-// Legacy exports (to be removed after full migration)
-export { AgentBar } from './agent-bar'
-export { AgentPopup } from './agent-popup'

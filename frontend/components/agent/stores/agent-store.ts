@@ -61,14 +61,6 @@ interface AgentStore {
   close: () => void
   reset: () => void
 
-  // FIX #6: Backwards-compatible action aliases (deprecated)
-  // These will be removed after Phase 4 cleanup
-  /** @deprecated Use expand() instead */
-  expandPopup: () => void
-  /** @deprecated Use collapse() instead */
-  collapsePopup: () => void
-  /** @deprecated Use expand/collapse() instead */
-  setExpanded: (expanded: boolean) => void
 }
 
 export const initialUploadData: UploadFlowData = {
@@ -145,12 +137,6 @@ export const useAgentStore = create<AgentStore>()(
           statusText: 'How can I help you today?',
           events: [],
         }, undefined, 'agent/reset'),
-
-        // FIX #6: Backwards-compatible action aliases
-        // These delegate to the new actions and will be removed after migration
-        expandPopup: () => set({ isExpanded: true }, undefined, 'agent/expandPopup'),
-        collapsePopup: () => set({ isExpanded: false }, undefined, 'agent/collapsePopup'),
-        setExpanded: (isExpanded) => set({ isExpanded }, undefined, 'agent/setExpanded'),
       }),
       {
         name: 'agent-store',
@@ -222,8 +208,3 @@ export const useAgentStatus = () => useAgentStore(
 )
 export const useAgentExpanded = () => useAgentStore((s) => s.isExpanded)
 export const useAgentEvents = () => useAgentStore((s) => s.events)
-
-// Backwards compatibility - deprecated, use useAgentExpanded
-export const useAgentPopup = () => useAgentStore(
-  useShallow((s) => ({ isPopupOpen: s.isExpanded, isExpanded: s.isExpanded }))
-)
