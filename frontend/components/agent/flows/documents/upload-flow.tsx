@@ -7,11 +7,13 @@ import { useRouter } from 'next/navigation'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgentStore, useAgentFlow, getUploadTitle, type UploadFlowStep } from '../../stores/agent-store'
 import { AgentPopup } from '../../agent-popup'
-import { UploadDropzone } from './upload-dropzone'
-import { UploadConfigure } from './upload-configure'
-import { UploadFields } from './upload-fields'
-import { UploadExtracting } from './upload-extracting'
-import { UploadComplete } from './upload-complete'
+import {
+  UploadDropzone,
+  UploadConfigure,
+  UploadFields,
+  UploadExtracting,
+  UploadComplete,
+} from './upload/steps'
 import { streamAgentExtraction, type AgentEvent } from '@/lib/agent-api'
 import { getUploadErrorMessage } from '@/lib/upload-config'
 

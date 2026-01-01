@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ExtractionMethodCard } from './extraction-method-card'
-import type { UploadFlowData } from '../../stores/agent-store'
+import type { UploadFlowData } from '../../../../stores/agent-store'
 
 interface UploadConfigureProps {
   data: UploadFlowData

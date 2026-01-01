@@ -3,7 +3,7 @@
 
 import { useMemo } from 'react'
 import * as Icons from '@/components/icons'
-import { useAgentEvents } from '../../stores/agent-store'
+import { useAgentEvents } from '../../../../stores/agent-store'
 
 export function UploadExtracting() {
   const events = useAgentEvents()

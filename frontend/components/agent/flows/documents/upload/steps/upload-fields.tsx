@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button'
 import { FieldTagInput } from './field-tag-input'
-import type { UploadFlowData } from '../../stores/agent-store'
+import type { UploadFlowData } from '../../../../stores/agent-store'
 import type { CustomField } from '@/types/upload'
 
 interface UploadFieldsProps {
