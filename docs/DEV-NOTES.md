@@ -6459,3 +6459,79 @@ frontend/components/ui/
 1. Run `/continue`
 2. Use `/superpowers:write-plan` to break design into tasks
 3. Create phased implementation plan in `docs/plans/in-progress/agent-bar-redesign/`
+
+---
+
+## Session 84 - 2026-01-01 - Agent Bar Redesign Implementation Plan ✅
+
+**Feature**: Agent Bar Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Analyzed Andrej Karpathy's YC talk on AI software**:
+  - Discussed partial autonomy apps, autonomy sliders, generation/verification loops
+  - Validated Stackdocs alignment with "Config + Hook Hybrid" pattern
+  - Identified visual source highlighting as post-MVP feature
+
+- [x] **Reviewed current agent system architecture**:
+  - Used code review agent to analyze existing flow patterns
+  - Identified pain points: flow-popup coupling, step transition duplication, separate DOM elements
+
+- [x] **Designed Config + Hook Hybrid architecture**:
+  - FlowMetadata (static): steps, icons, statusText, components
+  - useFlowHook (dynamic): handlers, navigation, async operations
+  - FlowRegistry: maps flow types to metadata + hook
+  - Evaluated vs Smart Config pattern - chose hybrid for flexibility
+
+- [x] **Created comprehensive implementation plan**:
+  - `README.md` - Master overview
+  - `phase-1-infrastructure.md` - Types, registry, hooks, store updates
+  - `phase-2-unified-card.md` - AgentCard, StatusBar, animations
+  - `phase-3-upload-migration.md` - Migrate upload flow to new pattern
+  - `phase-4-remaining-flows.md` - Stub 7 remaining flows + cleanup
+
+- [x] **Conducted deep code review (internal agent)**:
+  - Found 6 critical issues, 4 warnings, 3 suggestions
+  - Fixed conditional hook call (split into ActiveFlowCard pattern)
+  - Fixed type mismatches in FlowMetadata/FlowHookResult
+  - Fixed useClickOutside stale closure with useRef pattern
+  - Added backwards-compatible store aliases
+  - Added Escape key handling, error boundaries, shared FlowPlaceholder
+
+- [x] **External review with Gemini CLI**:
+  - Found additional critical issue: missing `key={flow.type}` on RegisteredFlowContent
+  - Applied fix to force remount when flow type changes
+  - Added error boundary around hook invocation
+  - Final confidence: ~95%
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Architecture pattern | Config + Hook Hybrid | Scales with 8 flows, separates concerns, testable |
+| Smart Config vs Hybrid | Hybrid | Flows vary in complexity, hooks are idiomatic React |
+| Component split | AgentCard → IdleContent + ActiveFlowContent + RegisteredFlowContent | Avoids conditional hook calls (Rules of Hooks) |
+| Click-outside handler | useRef pattern | Prevents stale closures without requiring caller to memoize |
+| Migration strategy | Backwards-compatible aliases | Gradual migration without breaking existing code |
+
+### Files Created
+
+```
+docs/plans/in-progress/agent-bar-redesign/
+├── README.md                    # Master plan overview
+├── phase-1-infrastructure.md    # Types, registry, store (0.5 day)
+├── phase-2-unified-card.md      # Card components, animations (1 day)
+├── phase-3-upload-migration.md  # Migrate upload flow (0.5 day)
+└── phase-4-remaining-flows.md   # 7 flow stubs + cleanup (1 day)
+```
+
+### Next Session
+
+**Task**: Execute implementation plan using subagent-driven development
+
+**Process**:
+1. Run `/continue`
+2. Use `/superpowers:execute-plan` or subagent-driven approach
+3. Start with Phase 1 infrastructure
+4. Review at each phase checkpoint before proceeding

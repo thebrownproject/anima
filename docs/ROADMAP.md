@@ -8,10 +8,12 @@
 
 ### In Progress
 
-**Agent Bar Redesign** (`plans/in-progress/agent-bar-redesign/`) - 📝 Design Complete
+**Agent Bar Redesign** (`plans/in-progress/agent-bar-redesign/`) - 📋 Plan Ready
 - Design: Complete - unified card, input morphs to status, spring animations
-- Implementation Plan: Pending (next session)
+- Implementation Plan: Complete (4 phases, ~3 days) - reviewed by 2 agents + Gemini
+- Architecture: Config + Hook Hybrid pattern for 8 flow types
 - Key changes: Merge bar+popup, bottom-anchored expand-up, click-outside collapse
+- Next: Execute plan with subagent-driven development
 
 **Stacks UI** (`plans/in-progress/stacks/`) - 🔄 Phase 3 Partial
 - Design: Complete (v2)
