@@ -6898,6 +6898,11 @@ docs/plans/issues/ACTIVE.md      # Added issues #36-39
 docs/ROADMAP.md                  # Updated In Progress section
 ```
 
+- [x] **Additional design refinements**:
+  - Added Edit button to list view when document is previewed
+  - Added Delete as secondary action within Edit flow
+  - Created sub-bar state tables showing actions by selection state
+
 ### Next Session
 
 **Task**: Create implementation plan for Documents Sub-bar
