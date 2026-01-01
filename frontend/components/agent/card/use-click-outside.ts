@@ -1,4 +1,6 @@
 // frontend/components/agent/card/use-click-outside.ts
+'use client'
+
 import { useEffect, useRef, type RefObject } from 'react'
 
 /**
