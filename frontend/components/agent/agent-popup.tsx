@@ -54,7 +54,7 @@ export function AgentPopup({ children, title, showBack, onBack }: AgentPopupProp
     <>
       <Collapsible open={isPopupOpen} onOpenChange={(open) => !open && collapsePopup()}>
         <CollapsibleContent forceMount className={cn(!isPopupOpen && 'hidden')}>
-          <div className="rounded-xl border border-border bg-background shadow-lg mb-3">
+          <div className="w-full rounded-xl border border-border bg-background shadow-lg mb-3">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <div className="flex items-center gap-2">
