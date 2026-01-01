@@ -6388,3 +6388,74 @@ frontend/components/ui/
 1. Run `/continue` with handover
 2. Use `/superpowers:brainstorm` for Agent UI refinements
 3. Discuss requirements and create design doc
+
+---
+
+## Session 83 - 2026-01-01 - Agent Bar Redesign Design ✅
+
+**Feature**: Agent Bar Redesign (NEW)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed unified agent bar design**:
+  - Explored current implementation (agent-bar.tsx, agent-popup.tsx, agent-store.ts)
+  - Used browser automation to understand current UX flow
+  - Discussed Perplexity-style step indicators as inspiration
+  - Made key design decisions through iterative Q&A
+
+- [x] **Created design document**:
+  - `docs/plans/in-progress/agent-bar-redesign/2026-01-01-agent-bar-redesign-design.md`
+  - Covers: structure, states, behaviors, animation, component architecture
+
+- [x] **Added post-MVP issues (#33-35)**:
+  - #33: AI prompt flow with auto-generated titles
+  - #34: Visual styling exploration
+  - #35: Max height / scroll behavior
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Bar + popup structure | Single unified card | Cleaner mental model, input morphs to status |
+| Position | Bottom-anchored, expands upward | Consistent with current location, natural expansion |
+| Animation | Spring physics (iOS-inspired) | Premium feel, matches Linear aesthetic |
+| Steps display | Single focus + expandable history | Clean UI, details available on demand |
+| Content behind bar | Yes - floating overlay | Better use of space, iOS sheet pattern |
+| Input during flow | Morphs to status bar | No input needed for wizard flows |
+| Click outside | Collapses card | Standard pattern, currently missing |
+
+### Design Highlights
+
+**Idle state:**
+```
+┌────────────────────────────────────────────────┐
+│  ≋  How can I help you today?              ↓   │
+└────────────────────────────────────────────────┘
+```
+
+**Flow active (expanded):**
+```
+┌────────────────────────────────────────────────┐
+│  ⬆  Uploading document...              ↓   ✕   │
+├────────────────────────────────────────────────┤
+│  ● Current step                            ˅   │
+│    [Flow content below]                        │
+└────────────────────────────────────────────────┘
+```
+
+**Flow active (minimized):**
+```
+┌────────────────────────────────────────────────┐
+│  ⬆  Continue file upload               ↓   ✕   │
+└────────────────────────────────────────────────┘
+```
+
+### Next Session
+
+**Task**: Create implementation plan for Agent Bar Redesign
+
+**Process**:
+1. Run `/continue`
+2. Use `/superpowers:write-plan` to break design into tasks
+3. Create phased implementation plan in `docs/plans/in-progress/agent-bar-redesign/`

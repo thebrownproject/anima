@@ -8,6 +8,11 @@
 
 ### In Progress
 
+**Agent Bar Redesign** (`plans/in-progress/agent-bar-redesign/`) - 📝 Design Complete
+- Design: Complete - unified card, input morphs to status, spring animations
+- Implementation Plan: Pending (next session)
+- Key changes: Merge bar+popup, bottom-anchored expand-up, click-outside collapse
+
 **Stacks UI** (`plans/in-progress/stacks/`) - 🔄 Phase 3 Partial
 - Design: Complete (v2)
 - Implementation Plan: 3 phases (foundation, pages, tables)
