@@ -142,7 +142,7 @@ function ActiveFlowContent({
         />
         <AgentContent isExpanded={isExpanded}>
           <div className="text-sm text-muted-foreground text-center py-4">
-            Flow "{flow.type}" is not yet implemented.
+            Flow &ldquo;{flow.type}&rdquo; is not yet implemented.
           </div>
         </AgentContent>
       </>
@@ -162,7 +162,6 @@ function ActiveFlowContent({
     <FlowErrorBoundary onReset={close}>
       <RegisteredFlowContent
         key={flow.type}
-        flow={flow}
         registration={registration}
         isExpanded={isExpanded}
         onCloseRequest={onCloseRequest}
@@ -176,12 +175,10 @@ function ActiveFlowContent({
  * Separated to ensure the hook is called at the top level of a component.
  */
 function RegisteredFlowContent({
-  flow,
   registration,
   isExpanded,
   onCloseRequest,
 }: {
-  flow: NonNullable<AgentFlow>
   registration: NonNullable<ReturnType<typeof getFlowRegistration>>
   isExpanded: boolean
   onCloseRequest: (needsConfirmation: boolean) => void

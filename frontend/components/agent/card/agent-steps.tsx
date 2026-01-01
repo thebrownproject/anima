@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import * as Icons from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { springConfig } from '../flows/types'
 
 interface Step {
