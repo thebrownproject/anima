@@ -76,6 +76,10 @@ export {
   // Data
   IconTable as Table,
   IconClock as Clock,
+
+  // Lists
+  IconList as List,
+  IconListDetails as ListDetails,
 } from "@tabler/icons-react"
 
 // Re-export the Icon type for component props
