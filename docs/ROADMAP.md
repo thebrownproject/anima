@@ -1,6 +1,6 @@
 # Stackdocs Roadmap
 
-**Last Updated:** 2025-01-01
+**Last Updated:** 2026-01-01
 
 ---
 
@@ -8,21 +8,12 @@
 
 ### In Progress
 
-**Agent UI Refactor** (`plans/in-progress/agent-ui-refactor/`) - 🔄 Phase 3 Complete, Phase 4 Next
-- Design: Complete (Dynamic Island-style agent bar + popup)
-- Implementation Plan: 4 phases (foundation, upload-flow, integration, cleanup)
-- **Phase 1 Complete**: Zustand store, AgentBar, AgentActions, AgentPopup, AgentContainer
-- **Phase 2 Complete**: UploadFlow, step components (dropzone, configure, fields, extracting, complete), close confirmation
-- **Phase 3 Complete**: Root layout integration, upload button routing, E2E testing passed
-- Next: Phase 4 (Cleanup - delete old upload-dialog and ai-chat-bar components)
-
-**Stacks UI** (`plans/in-progress/stacks/`) - ⏸️ Paused
+**Stacks UI** (`plans/in-progress/stacks/`) - 🔄 Phase 3 Partial
 - Design: Complete (v2)
 - Implementation Plan: 3 phases (foundation, pages, tables)
 - Database: Ready (migrations 004 & 005 applied)
 - Frontend: Phases 1-2 complete, Phase 3 partial
 - Remaining: "Not extracted" indicator, CSV export (deferred until Stack Agent built)
-- Status: Paused while Agent UI Refactor is prioritized
 
 ### Todo
 
@@ -37,6 +28,7 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Agent UI Refactor | Jan 2026 | Dynamic Island-style agent bar + popup, replaces old upload dialog |
 | Header Filters | Dec 2025 | Filter controls in sub-bar (ExpandableSearch, FilterButton) |
 | Upload Dialog | Dec 2025 | Multi-step wizard with extraction config, file upload, field customization |
 | Sub-bar Toolbar | Dec 2025 | Linear-style sub-bar with filter, search, row selection, bulk actions |
