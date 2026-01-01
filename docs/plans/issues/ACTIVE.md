@@ -76,3 +76,20 @@ Lightweight tracking for items that don't need immediate action.
   - Define max expanded height before scrolling
   - Scroll behavior for long content (steps list, flow content)
   - Related: Agent bar redesign
+- [ ] #36 `feature` Preview panel redesign - UI tweaks to right-side document preview (2026-01-01)
+  - PDF/Visual tab styling improvements
+  - Document metadata section (filename, date, size, status)
+  - Visual (OCR) view markdown rendering polish
+  - Loading states when switching documents
+- [ ] #37 `feature` Persist selected document in Zustand - remember last selected doc on page reload (2026-01-01)
+  - Add localStorage persistence to selected document state
+  - Use Zustand persist middleware
+  - Restore selection when navigating back to documents page
+- [ ] #38 `bug` Scroll padding for agent bar - content cannot scroll past agent bar at bottom (2026-01-01)
+  - Documents table and extracted data table cut off behind agent bar
+  - Need scroll padding/margin so users can scroll content past the floating bar
+  - Affects both documents list and document detail views
+- [ ] #39 `bug` Tooltip persistence on page navigation - random tooltips appear when returning to page (2026-01-01)
+  - Tooltips from previous interactions remain visible after navigating away and back
+  - Likely state not clearing on unmount or navigation event issue
+  - Investigate Radix UI tooltip behavior with Next.js navigation
