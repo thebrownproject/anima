@@ -136,8 +136,8 @@ From design doc + architecture decision:
 - [ ] App content renders behind bar
 - [ ] Steps display with expandable history
 - [ ] Minimized state shows "Continue [flow]..." with controls
-- [ ] Config + Hook Hybrid pattern implemented
-- [ ] Flow registry enables easy addition of new flows
+- [x] Config + Hook Hybrid pattern implemented
+- [x] Flow registry enables easy addition of new flows
 - [ ] Upload flow fully migrated and functional
 - [ ] 7 remaining flow types stubbed with metadata
 

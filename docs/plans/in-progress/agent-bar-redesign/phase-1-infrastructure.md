@@ -657,12 +657,15 @@ git add frontend/components/agent/flows frontend/components/agent/card && git co
 
 ## Phase 1 Checklist
 
-- [ ] Motion library installed
-- [ ] FlowMetadata and FlowHookResult types defined
-- [ ] Flow registry created (empty, ready for flows)
-- [ ] useClickOutside hook implemented
-- [ ] Agent store updated for unified card
-- [ ] Directory structure created for all 8 flows
+- [x] Motion library installed
+- [x] FlowMetadata and FlowHookResult types defined
+- [x] Flow registry created (empty, ready for flows)
+- [x] useClickOutside hook implemented
+- [x] Agent store updated for unified card
+- [x] Directory structure created for all 8 flows
+
+**Completed:** 2026-01-01 (Session 85)
+**Commit:** 4980a6c
 
 ---
 

@@ -6535,3 +6535,75 @@ docs/plans/in-progress/agent-bar-redesign/
 2. Use `/superpowers:execute-plan` or subagent-driven approach
 3. Start with Phase 1 infrastructure
 4. Review at each phase checkpoint before proceeding
+
+---
+
+## Session 85 - 2026-01-01 - Agent Bar Redesign Phase 1 Implementation ✅
+
+**Feature**: Agent Bar Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 1 Infrastructure (6 tasks)**:
+  - Created `flows/types.tsx` - FlowMetadata, FlowHookResult, FlowRegistration interfaces + spring configs
+  - Created `flows/registry.ts` - Flow registry with getFlowRegistration/isFlowRegistered helpers
+  - Created `card/use-click-outside.ts` - Click-outside + Escape key hook with useRef pattern
+  - Updated `stores/agent-store.ts` - isExpanded replaces isPopupOpen, backwards-compat aliases
+  - Created directory structure for 8 flow types under flows/
+  - Created barrel exports for card/ and upload/
+
+- [x] **Subagent-Driven Development Process**:
+  - Used parallel subagents for independent tasks (2, 4, 6)
+  - Ran 5 spec compliance reviews (all passed)
+  - Ran 5 code quality reviews (all approved)
+  - Fixed 2 issues from code review: React import, Escape key propagation
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| types.tsx vs types.ts | .tsx extension | File contains JSX (FlowPlaceholder component) |
+| Unused `get` param | Removed from store | Cleaner code, never used in implementation |
+| Escape propagation | Added stopPropagation | Prevents Escape from bubbling to parent modals |
+
+### Process Notes (For Next Session)
+
+**Issues encountered this session:**
+1. Initially skipped the full subagent-driven-development workflow (spec + code quality reviews) - had to be corrected
+2. Subagents should read plan files themselves, not receive code in prompts
+3. Code quality reviewers used context7 MCP to verify React/Zustand patterns
+
+**Improvements for next session:**
+- Always invoke `superpowers:subagent-driven-development` skill before executing
+- Follow the full review cycle: implement → spec review → code quality review
+- Use context7 MCP proactively to verify library patterns
+
+### Files Created
+
+```
+frontend/components/agent/
+├── card/
+│   ├── index.ts              # Barrel export
+│   └── use-click-outside.ts  # Click-outside hook
+├── flows/
+│   ├── types.tsx             # Types + spring configs
+│   ├── registry.ts           # Flow registry
+│   ├── documents/upload/
+│   │   └── index.ts          # Barrel (empty)
+│   ├── stacks/               # 3 empty dirs
+│   └── tables/               # 3 empty dirs
+└── stores/
+    └── agent-store.ts        # Updated
+```
+
+### Next Session
+
+**Task**: Execute Phase 2 - Unified Card (AgentCard, StatusBar, animations)
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Use `/superpowers:subagent-driven-development` (follow full workflow)
+3. Read `phase-2-unified-card.md` for tasks
+4. Dispatch subagents to read plan tasks themselves
+5. Run spec + code quality reviews for each task
