@@ -51,7 +51,7 @@ export function AgentActions() {
       {actions.map((action) => (
         <ActionButton
           key={action.id}
-          icon={<action.icon className="size-3.5" />}
+          icon={<action.icon />}
           tooltip={action.tooltip}
           onClick={() => openFlow(action.flow)}
         >
