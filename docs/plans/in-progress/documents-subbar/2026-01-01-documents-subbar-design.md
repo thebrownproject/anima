@@ -230,6 +230,26 @@ Each flow has:
 | Export | Yes | Opens agent, exports document data |
 | Stack dropdown | Yes | Shows assigned stacks, add to stack trigger |
 
+### Sub-bar State by Selection
+
+**Documents List:**
+| State | Sub-bar Right Side |
+|-------|-------------------|
+| No selection | `[Upload]` |
+| Document previewed | `[Edit] [Upload]` |
+| Checkbox selection | `[X selected] [Actions ▾] [Upload]` |
+
+**Document Detail:**
+| State | Sub-bar Right Side |
+|-------|-------------------|
+| No field selection | `[Stack ▾] [Edit] [Export]` |
+| Field checkbox selection | `[X selected] [Actions ▾] [Stack ▾] [Edit] [Export]` |
+
+### Additional Behaviors
+
+- **Edit in list view:** When a document is selected and preview is open, Edit button appears for quick access to edit that document
+- **Delete in Edit flow:** Edit flow includes a secondary "Delete" action at the bottom, allowing users to delete without closing and reopening a different flow
+
 ---
 
 ## API Endpoints
