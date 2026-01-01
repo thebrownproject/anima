@@ -4,12 +4,7 @@
 /**
  * Upload dropzone for agent popup.
  *
- * VALIDATION PARITY: This component mirrors the validation logic from the existing
- * UploadDialog at `frontend/components/layout/upload-dialog/steps/dropzone-step.tsx`.
- * All validation uses the shared `UPLOAD_CONSTRAINTS` from `frontend/lib/upload-config.ts`
- * to ensure consistent behavior between both upload interfaces.
- *
- * DO NOT modify validation rules here without also updating the original dropzone-step.tsx.
+ * All validation uses the shared `UPLOAD_CONSTRAINTS` from `frontend/lib/upload-config.ts`.
  */
 
 import { useCallback, useRef, useState } from 'react'
