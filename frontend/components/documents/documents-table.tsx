@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { createClerkSupabaseClient } from '@/lib/supabase'
+import { getDateRangeBounds, isDateInRange } from '@/lib/date'
 import { columns } from './columns'
 import { usePreviewPanel } from './preview-panel-context'
 import { useSelectedDocument } from './selected-document-context'
@@ -44,11 +45,29 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   // Shared state from contexts
   const { selectedDocId, setSelectedDocId, setSignedUrl, setSignedUrlDocId, setMimeType, setOcrText, signedUrlDocId } = useSelectedDocument()
   const { panelRef, isCollapsed } = usePreviewPanel()
-  const { filterValue, setSelectedCount } = useDocumentsFilter()
+  const { filterValue, setSelectedCount, dateRange, statusFilter } = useDocumentsFilter()
+
+  // Apply date and status filters to documents
+  const filteredDocuments = React.useMemo(() => {
+    let result = documents
+
+    // Apply date filter
+    if (dateRange !== 'all') {
+      const [start, end] = getDateRangeBounds(dateRange)
+      result = result.filter((doc) => isDateInRange(new Date(doc.uploaded_at), start, end))
+    }
+
+    // Apply status filter (if any selected)
+    if (statusFilter.size > 0) {
+      result = result.filter((doc) => statusFilter.has(doc.status))
+    }
+
+    return result
+  }, [documents, dateRange, statusFilter])
 
   // Create table first so we can use it in effects
   const table = useReactTable({
-    data: documents,
+    data: filteredDocuments,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
