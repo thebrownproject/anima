@@ -2,6 +2,18 @@
 description: Execute plan with subagents and review checkpoints
 ---
 
+## FIRST: Invoke the Skill
+
+**IMPORTANT**: Before doing anything else, invoke the subagent-driven-development skill:
+
+```
+Skill("superpowers:subagent-driven-development")
+```
+
+This skill contains the full workflow for executing plans with subagents. Read it and follow it exactly.
+
+---
+
 Execute the current plan using the `subagent-driven-development` skill.
 
 ## Orchestrator Role
