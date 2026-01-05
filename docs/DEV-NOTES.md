@@ -6912,3 +6912,68 @@ docs/ROADMAP.md                  # Updated In Progress section
 2. Start with Filter dropdown (self-contained, no agent dependency)
 3. Then Delete flow (simplest agent flow)
 4. Continue through implementation order in design doc
+
+---
+
+## Session 90 - 2026-01-05 - Documents Sub-bar Design Refinement ✅
+
+**Feature**: Documents Sub-bar Completion
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Continued brainstorming session for sub-bar UX**:
+  - Reviewed current UI in Chrome browser
+  - Questioned original design decisions
+  - Simplified from 4 agent flows to 1 (Edit only)
+
+- [x] **Key UX simplifications**:
+  - Export: Simple dropdown (CSV/JSON) instead of agent flow
+  - Delete: Simple confirmation dialog instead of agent flow
+  - Stack dropdown: Checkbox toggle instead of navigation + agent flow
+  - Preview: Does not change sub-bar (cleaner separation)
+
+- [x] **Delete implementation design**:
+  - Decided on Supabase direct from frontend (FastAPI = agents only)
+  - 3-step process: fetch paths → delete DB → delete storage
+  - Storage cleanup is best-effort (log failures, don't block)
+  - Verified RLS policies and cascade behavior
+
+- [x] **Code review (2 passes)**:
+  - v2.1: Flow naming, missing files, filter contexts, allStacks fetch
+  - v2.2: Delete implementation, toast notifications, export format
+
+- [x] **Design document updated to v2.2**:
+  - Full delete implementation with code example
+  - Toast notifications section (Sonner)
+  - Export filename format
+  - Prerequisites (Sonner installation)
+  - Code review findings documented
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Agent flows | 1 only (Edit) | Simple UI for simple actions |
+| Delete location | Supabase direct | FastAPI is for agent operations only |
+| Storage cleanup | Best-effort | Log failures, don't block user |
+| Stack dropdown | Checkboxes | Direct toggle is faster than navigation |
+| Preview sub-bar | No changes | Cleaner separation: list = browse, detail = act |
+| Toast library | Sonner | shadcn's recommended toast component |
+
+### Files Modified
+
+```
+docs/plans/in-progress/documents-subbar/2026-01-01-documents-subbar-design.md  # v2.2
+docs/plans/issues/ACTIVE.md  # Added #40 (Preview panel Open button)
+```
+
+### Next Session
+
+**Task**: Create implementation plan for Documents Sub-bar
+
+**Process**:
+1. Run `/superpowers:write-plan` to create task-by-task implementation plan
+2. Install Sonner: `npx shadcn@latest add sonner`
+3. Start with Filter dropdown (self-contained)
+4. Continue through implementation order in design doc

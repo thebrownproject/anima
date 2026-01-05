@@ -93,3 +93,8 @@ Lightweight tracking for items that don't need immediate action.
   - Tooltips from previous interactions remain visible after navigating away and back
   - Likely state not clearing on unmount or navigation event issue
   - Investigate Radix UI tooltip behavior with Next.js navigation
+- [ ] #40 `feature` Preview panel "Open" button - add button in preview panel header to navigate to document detail (2026-01-04)
+  - When document is previewed in sidebar, show "Open" or expand icon in preview panel header
+  - Clicking navigates to `/documents/[id]` detail page
+  - Pattern similar to Linear/Notion preview panels
+  - Related: Preview panel redesign (#36)

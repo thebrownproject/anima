@@ -161,6 +161,8 @@ See `backend/CLAUDE.md` for deployment details and commands.
 
 **DRY:** Reuse OCR caching logic, shared error handling, common patterns.
 
+**Understand before solving:** Always examine the existing structure before proposing workarounds. Check where components are rendered, what CSS/props already exist, and what the parent hierarchy provides. The simplest fix is often already enabled by the existing architecture.
+
 ---
 
 ## Key Reminders

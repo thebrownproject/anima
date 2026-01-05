@@ -1,8 +1,9 @@
 # Documents Sub-bar Completion
 
 **Date:** 2026-01-01
-**Status:** Design Complete
-**Feature:** Complete the documents sub-bar with functional Filter, Edit, Export, and selection actions
+**Updated:** 2026-01-05
+**Status:** Design Complete (v2.2 - delete implementation + toast notifications)
+**Feature:** Complete the documents sub-bar with functional Filter, Edit, Export, Delete, and Stack actions
 
 ---
 
@@ -13,26 +14,28 @@ The documents sub-bar has placeholder components that need implementation. This 
 ### Scope
 
 **In scope:**
-- Filter dropdown (date range, stacks, extraction status)
-- Edit button → opens agent flow
-- Export button → opens agent flow (CSV/JSON)
-- SelectionActions: Delete → agent confirmation, Add to Stack → agent flow
-- Stack dropdown: display assigned stacks + "Add to stack" trigger
-- 4 new agent flows: `edit`, `export`, `delete`, `add-to-stack`
+- Filter dropdown (documents list: date/stack/status; document detail: show/hide fields)
+- Edit button → opens agent flow (field editing + re-extract)
+- Export button → simple dropdown (CSV/JSON download)
+- Delete button → simple confirmation dialog
+- Stack dropdown → checkbox toggle for stack membership
+- SelectionActions for bulk operations
 
 **Out of scope (tracked in issues):**
 - Preview panel redesign (#36)
 - Persist selected document (#37)
 - Scroll padding bug (#38)
 - Tooltip bug (#39)
+- Preview panel "Open" button (#40)
 
 ### Success Criteria
 
 - Filter dropdown filters documents by date/stack/status
-- Edit opens agent with field editing + re-extract capability
-- Export opens agent with CSV/JSON download
+- Edit opens agent flow with field editing + re-extract capability
+- Export downloads CSV or JSON via simple dropdown
+- Delete shows confirmation dialog and removes document
+- Stack dropdown allows toggling stack membership via checkboxes
 - Bulk selection actions work for both documents and fields
-- Stack dropdown shows assigned stacks and triggers add-to-stack flow
 
 ---
 
@@ -49,24 +52,30 @@ The sub-bar uses Next.js parallel routes (`@subbar/`) with context-aware renderi
 └── default.tsx           # Fallback for route transitions
 ```
 
-### Agent Flow Integration
+### Simplified Action Approach
 
-New flows follow the existing Config + Hook Hybrid pattern in `components/agent/flows/`:
+**Agent flow (complex action):**
+- Edit — multi-step field editing with re-extract capability
 
-```
-flows/documents/
-├── upload/               # Exists - file upload wizard
-├── extract/              # Exists (stub) - re-extraction
-├── edit/                 # NEW - edit fields + re-extract
-├── export/               # NEW - CSV/JSON download
-├── delete/               # NEW - confirmation dialog
-└── add-to-stack/         # NEW - assign document to stacks
-```
+**Simple UI (direct actions):**
+- Export — dropdown menu with CSV/JSON options, triggers download
+- Delete — confirmation dialog, then API call
+- Stack toggle — checkbox in dropdown, immediate DB update
 
-Each flow has:
-- `metadata.tsx` - Static config (steps, icons, title)
-- `use-[name]-flow.ts` - Dynamic logic hook
-- `index.ts` - Barrel export
+### Prerequisites (Already Implemented)
+
+The following components already exist and just need wiring/updates:
+- **Stack dropdown checkbox UI** — `stacks-dropdown.tsx` already uses `DropdownMenuCheckboxItem`, just needs DB operations
+- **SelectionActions structure** — Has `onDelete` and `onAddToStack` props, just disabled
+- **Sub-bar parallel routes** — `@subbar/documents/` structure exists
+
+### Prerequisites (Need Installation)
+
+- **Sonner toast component** — Required for success/error notifications
+  ```bash
+  npx shadcn@latest add sonner
+  ```
+  Then add `<Toaster />` to root layout.
 
 ### State Management
 
@@ -74,15 +83,31 @@ Each flow has:
 |-------|----------|---------|
 | Selection (docs) | `DocumentsFilterContext` | Track selected document IDs |
 | Selection (fields) | `DocumentDetailFilterContext` | Track selected field IDs |
-| Filter values | `DocumentsFilterContext` extension | Date/stack/status filters |
+| List filters | `DocumentsFilterContext` | Date range, stacks, extraction status |
+| Detail filters | `DocumentDetailFilterContext` | Show/hide field types |
 | Agent flow | `agent-store.ts` (Zustand) | Current flow type/step/data |
 
-### Data Flow
+**Note:** Documents list and document detail use **separate** filter contexts. Each context manages its own filter state.
 
-1. User clicks action → `openFlow()` called with flow type + initial data
-2. Agent card renders flow via registry lookup
-3. Flow hook manages state, calls APIs
-4. On completion, flow calls `close()` and triggers data refresh
+---
+
+## Sub-bar Layout
+
+### Documents List
+
+| State | Left | Right |
+|-------|------|-------|
+| Default | `[Filter] [Search]` | `[Upload]` |
+| Checkbox selection | `[Filter] [Search]` | `[X selected] [Actions ▾] [Upload]` |
+
+**Note:** Preview (clicking a row) does not change the sub-bar. Actions are available on the detail page.
+
+### Document Detail
+
+| State | Left | Right |
+|-------|------|-------|
+| Default | `[Filter] [Search]` | `[Stack ▾] [Edit] [Export] [Delete]` |
+| Field checkbox selection | `[Filter] [Search]` | `[X selected] [Actions ▾] [Stack ▾] [Edit] [Export] [Delete]` |
 
 ---
 
@@ -92,12 +117,15 @@ Each flow has:
 
 **Location:** `components/layout/filter-button.tsx` (update existing stub)
 
-**Filters:**
+**Documents List Filters:**
 | Filter | Type | Options |
 |--------|------|---------|
 | Date range | Select | Today, Yesterday, Last 7 days, Last 30 days, All time |
 | Stacks | Multi-select | List of user's stacks + "No stack" option |
 | Extraction status | Multi-select | Extracted, Not extracted, Processing, Failed |
+
+**Document Detail Filter:**
+- Show/hide field types or categories
 
 **Behavior:**
 - Dropdown with sections for each filter type
@@ -107,9 +135,11 @@ Each flow has:
 
 **State:** Extends `DocumentsFilterContext` with filter values
 
-### 2. Edit Flow
+### 2. Edit Flow (Agent)
 
 **Location:** `components/agent/flows/documents/edit/`
+
+**Flow type:** `edit-document` (consistent with `extract-document` naming)
 
 **Trigger:** Edit button in document detail sub-bar
 
@@ -120,164 +150,211 @@ Each flow has:
 **Capabilities:**
 - Edit field values (text input for each field)
 - Delete selected fields
-- Trigger re-extraction (calls existing extraction agent)
+- Trigger re-extraction (button within flow, calls extraction agent)
 
 **Data required:** Document ID, current extraction data, selected field IDs (if any)
 
-### 3. Export Flow
+**Type definition** (add to `agent-store.ts`):
+```typescript
+export type EditDocumentFlowStep = 'fields' | 'confirm'
 
-**Location:** `components/agent/flows/documents/export/`
+// Add to AgentFlow union:
+| { type: 'edit-document'; step: EditDocumentFlowStep; data: EditDocumentData }
+```
+
+### 3. Export Dropdown (Simple UI)
+
+**Location:** `components/documents/export-dropdown.tsx` (new component)
 
 **Trigger:** Export button in document detail sub-bar
 
-**Steps:**
-1. `format` - Choose export format (CSV, JSON)
-2. `download` - Generate and download file
+**Behavior:**
+```
+[Export ▾]
+  ├─ Download as CSV
+  └─ Download as JSON
+```
 
-**MVP scope:** CSV and JSON formats only. Future: integrations (Xero, QuickBooks).
+- Click option → generates file → browser download
+- No agent flow, no confirmation needed
+- Uses current document's extraction data
+- Show success toast on download
+
+**Filename format:**
+- CSV: `{filename}_extraction_{YYYY-MM-DD}.csv`
+- JSON: `{filename}_extraction_{YYYY-MM-DD}.json`
 
 **Data required:** Document ID, extraction data
 
-### 4. Delete Flow
+### 4. Delete Dialog (Simple UI)
 
-**Location:** `components/agent/flows/documents/delete/`
-
-**Trigger:** Delete action in SelectionActions dropdown
-
-**Steps:**
-1. `confirm` - Confirmation dialog with item count
-
-**Behavior:**
-- Shows count of items to delete
-- "Delete X documents" or "Delete X fields" based on context
-- Destructive action styling (red button)
-- On confirm: calls delete API, closes flow, refreshes data
-
-**Data required:** Selected document IDs or field IDs, context (list vs detail)
-
-### 5. Add to Stack Flow
-
-**Location:** `components/agent/flows/documents/add-to-stack/`
+**Location:** `components/documents/delete-dialog.tsx` (new component)
 
 **Triggers:**
-- "Add to Stack" in SelectionActions dropdown (bulk)
-- "+ Add to stack" in Stack dropdown (single document)
-
-**Steps:**
-1. `select` - Show stack list with checkboxes, search/filter
-2. `confirm` - Summary of assignment
+- Delete button in document detail sub-bar (single document)
+- Delete in Actions dropdown (bulk documents or fields)
 
 **Behavior:**
-- Multi-select stacks
-- Shows which stacks document is already in (pre-checked, toggleable)
-- Option to create new stack (future, not MVP)
+- Opens confirmation dialog (use shadcn `AlertDialog` for destructive actions)
+- Shows what will be deleted: "Delete invoice.pdf?" or "Delete 3 documents?"
+- Destructive action styling (red confirm button)
+- On confirm: executes delete, closes dialog, shows success toast, navigates back (if detail) or refreshes list
 
-**Data required:** Document ID(s), user's stacks list, current assignments
+**Data required:** Document ID(s) or field IDs, context (single vs bulk)
 
-### 6. Stack Dropdown
+**Delete Implementation (Supabase Direct):**
+
+Delete uses Supabase direct from frontend (not FastAPI — that's for agent operations only). This follows the project architecture where reads/writes go through Supabase directly.
+
+```typescript
+async function deleteDocuments(documentIds: string[]) {
+  const supabase = createClerkSupabaseClient(getToken)
+
+  // Step 1: Get file paths before deletion
+  const { data: docs, error: fetchError } = await supabase
+    .from('documents')
+    .select('id, file_path')
+    .in('id', documentIds)
+
+  if (fetchError || !docs) {
+    throw new Error('Failed to fetch documents for deletion')
+  }
+
+  // Step 2: Delete from database (cascades automatically)
+  const { error: deleteError } = await supabase
+    .from('documents')
+    .delete()
+    .in('id', documentIds)
+
+  if (deleteError) {
+    throw new Error('Failed to delete documents')
+  }
+
+  // Step 3: Delete from storage (best effort - log failures)
+  const filePaths = docs.map(d => d.file_path)
+  const { error: storageError } = await supabase
+    .storage
+    .from('documents')
+    .remove(filePaths)
+
+  if (storageError) {
+    // Log but don't fail - DB deletion succeeded
+    console.error('Storage cleanup failed, files may be orphaned:', filePaths, storageError)
+  }
+
+  return { deleted: documentIds.length }
+}
+```
+
+**Why this approach works:**
+- RLS policy `documents_clerk_isolation` ensures users can only delete their own documents
+- `ON DELETE CASCADE` on foreign keys automatically cleans up: `ocr_results`, `extractions`, `stack_documents`, `stack_table_rows`
+- Storage deletion is best-effort — if it fails, files are orphaned but no data integrity issue
+- Bulk delete uses `.in()` filter for efficient single round-trip
+
+### 5. Stack Dropdown (Checkbox Toggle)
 
 **Location:** `components/documents/stacks-dropdown.tsx` (update existing)
 
+**Prerequisites:** Checkbox UI already exists via `DropdownMenuCheckboxItem`. Needs:
+- DB operations wired up
+- `allStacks` fetched and passed (currently only `assignedStacks` is fetched)
+
 **Structure:**
 ```
-[Button: "2 Stacks" or "No stacks"]
-  └─ Receipts Q4           → click navigates to /stacks/[id]
-  └─ Invoice Processing    → click navigates to /stacks/[id]
-  └─ ────────────────────  (divider)
-  └─ + Add to stack        → opens add-to-stack agent flow
+[2 Stacks ▾]
+  ☑ Receipts Q4
+  ☐ Tax Documents
+  ☑ Invoice Processing
+  ☐ Client Invoices
 ```
 
 **Behavior:**
-- Button label shows count or "No stacks"
-- Clicking stack name navigates to stack page
-- "Add to stack" triggers agent flow
+- Button label shows count: "2 Stacks" or "No stacks"
+- Dropdown shows **all** user's stacks with checkboxes
+- Checked = document belongs to that stack
+- Toggle updates database immediately:
+  - Check → `INSERT INTO stack_documents`
+  - Uncheck → `DELETE FROM stack_documents`
+- No "Create new stack" option (out of scope for MVP)
 
-### 7. SelectionActions Updates
+**Data fetch update:** `@subbar/documents/[id]/page.tsx` must fetch both:
+- `assignedStacks` — stacks this document belongs to
+- `allStacks` — all user's stacks (for the full checkbox list)
+
+### 6. SelectionActions (Bulk Operations)
 
 **Location:** `components/layout/selection-actions.tsx` (update existing)
 
-**Current state:** Disabled placeholders for "Add to Stack" and "Delete"
+**Documents List Actions:**
+```
+[Actions ▾]
+  ├─ Add to Stack
+  └─ Delete
+```
 
-**Updates needed:**
-- Enable "Add to Stack" → calls `openFlow({ type: 'add-to-stack', ... })`
-- Enable "Delete" → calls `openFlow({ type: 'delete', ... })`
-- Pass selected IDs and context to flows
+**Document Detail Actions (fields):**
+```
+[Actions ▾]
+  └─ Delete
+```
 
----
-
-## Context-Specific Behavior
-
-### Documents List View (multi-document selection)
-
-| Action | Available | Behavior |
-|--------|-----------|----------|
-| Filter | Yes | Filters document list |
-| Search | Yes | Searches by filename |
-| Add to Stack | Yes | Opens agent, assigns selected docs to stacks |
-| Delete | Yes | Opens agent, confirms deletion of selected docs |
-| Edit | No | Disabled (can't bulk edit) |
-| Export | No | Disabled (can't bulk export) |
-
-### Document Detail View (multi-field selection)
-
-| Action | Available | Behavior |
-|--------|-----------|----------|
-| Filter | Yes | Filters extracted fields |
-| Search | Yes | Searches field names |
-| Add to Stack | Yes | For whole document (not field-specific) |
-| Delete | Yes | Opens agent, confirms deletion of selected fields |
-| Edit | Yes | Opens agent with selected fields for editing |
-| Export | Yes | Opens agent, exports document data |
-| Stack dropdown | Yes | Shows assigned stacks, add to stack trigger |
-
-### Sub-bar State by Selection
-
-**Documents List:**
-| State | Sub-bar Right Side |
-|-------|-------------------|
-| No selection | `[Upload]` |
-| Document previewed | `[Edit] [Upload]` |
-| Checkbox selection | `[X selected] [Actions ▾] [Upload]` |
-
-**Document Detail:**
-| State | Sub-bar Right Side |
-|-------|-------------------|
-| No field selection | `[Stack ▾] [Edit] [Export]` |
-| Field checkbox selection | `[X selected] [Actions ▾] [Stack ▾] [Edit] [Export]` |
-
-### Additional Behaviors
-
-- **Edit in list view:** When a document is selected and preview is open, Edit button appears for quick access to edit that document
-- **Delete in Edit flow:** Edit flow includes a secondary "Delete" action at the bottom, allowing users to delete without closing and reopening a different flow
+**Behavior:**
+- "Add to Stack" opens a modal/popover with stack checkboxes (same as Stack dropdown)
+- "Delete" opens confirmation dialog
 
 ---
 
-## API Endpoints
+## Click Behavior (Already Implemented)
 
-### Existing (no changes needed)
-- `GET /documents` - List documents (supports filtering)
-- `GET /documents/:id` - Get document with extraction
-- `DELETE /documents/:id` - Delete document
-- `POST /agent/extract` - Trigger extraction
+| Action | Result |
+|--------|--------|
+| Click row (not on name) | Preview in sidebar, stay on list |
+| Click document name | Navigate to `/documents/[id]` |
+| Click checkbox | Toggle selection for bulk actions |
 
-### New/Updated Supabase Operations
+**Conflict resolution:** Checkbox selection takes priority over preview state.
+
+---
+
+## API & Database Operations
+
+### FastAPI Endpoints (Agent Operations Only)
+- `POST /api/document/upload` - Upload document and run OCR
+- `POST /api/agent/extract` - Trigger AI extraction
+
+### Supabase Direct Operations (Frontend)
 
 | Operation | Method | Description |
 |-----------|--------|-------------|
+| Delete documents | Supabase direct | `DELETE FROM documents WHERE id IN (...)` — cascades to related tables |
+| Delete storage files | Supabase Storage | `supabase.storage.from('documents').remove(filePaths)` |
 | Update extraction | Supabase direct | Update field values in `extractions` table |
 | Delete fields | Supabase direct | Remove fields from extraction JSONB |
-| Assign to stack | Supabase direct | Insert into `stack_documents` junction table |
-| Remove from stack | Supabase direct | Delete from `stack_documents` |
+| Add to stack | Supabase direct | `INSERT INTO stack_documents (document_id, stack_id)` |
+| Remove from stack | Supabase direct | `DELETE FROM stack_documents WHERE document_id = ? AND stack_id = ?` |
+
+**Note:** All Supabase operations are protected by RLS policies. Users can only access their own data.
 
 ---
 
-## Error Handling
+## Toast Notifications
 
+Uses Sonner (shadcn's toast component) for all user feedback.
+
+### Success Toasts
+| Action | Message |
+|--------|---------|
+| Document deleted | "Document deleted" or "3 documents deleted" |
+| Export complete | "Exported to CSV" or "Exported to JSON" |
+| Stack toggle | "Added to {stack}" or "Removed from {stack}" |
+
+### Error Handling
 | Scenario | Handling |
 |----------|----------|
-| Delete fails | Show error toast, keep flow open for retry |
-| Export fails | Show error in agent, allow retry |
-| Stack assignment fails | Show error toast, don't close flow |
+| Delete fails | Show error toast, keep dialog open for retry |
+| Export fails | Show error toast, allow retry |
+| Stack toggle fails | Show error toast, revert checkbox state |
 | Filter returns empty | Show "No documents match filters" empty state |
 | Network error | Generic error toast with retry option |
 
@@ -287,51 +364,81 @@ Each flow has:
 
 ### New Files
 ```
+components/documents/
+├── export-dropdown.tsx       # CSV/JSON export dropdown
+└── delete-dialog.tsx         # Confirmation dialog for delete
+
 components/agent/flows/documents/
-├── edit/
-│   ├── metadata.tsx
-│   ├── use-edit-flow.ts
-│   └── index.ts
-├── export/
-│   ├── metadata.tsx
-│   ├── use-export-flow.ts
-│   └── index.ts
-├── delete/
-│   ├── metadata.tsx
-│   ├── use-delete-flow.ts
-│   └── index.ts
-└── add-to-stack/
-    ├── metadata.tsx
-    ├── use-add-to-stack-flow.ts
+└── edit/                     # Edit agent flow (only agent flow needed)
+    ├── metadata.tsx          # Use .tsx if importing step components
+    ├── use-edit-flow.ts
+    ├── steps/                # Step components (fields, confirm)
     └── index.ts
 ```
 
 ### Modified Files
 ```
-components/layout/filter-button.tsx      # Implement filter dropdown
-components/layout/selection-actions.tsx  # Enable and wire up actions
-components/documents/stacks-dropdown.tsx # Add navigation + flow trigger
-components/agent/flows/registry.ts       # Register new flows
-components/documents/documents-filter-context.tsx  # Add filter state
+components/layout/filter-button.tsx               # Implement filter dropdown
+components/layout/selection-actions.tsx           # Enable and wire up actions
+components/documents/stacks-dropdown.tsx          # Wire up DB operations (UI exists)
+components/documents/document-detail-actions.tsx  # Add Delete button, wire up Edit/Export
+components/agent/flows/registry.ts                # Register edit-document flow
+components/agent/stores/agent-store.ts            # Add EditDocumentFlowStep type
+components/documents/documents-filter-context.tsx # Add filter state
+app/(app)/@subbar/documents/[id]/page.tsx         # Fetch allStacks for dropdown
 ```
 
 ---
 
 ## Implementation Order
 
-1. **Filter dropdown** - Self-contained, no agent dependency
-2. **Delete flow** - Simplest agent flow (single step confirmation)
-3. **Add to Stack flow** - Reused by SelectionActions and Stack dropdown
-4. **Export flow** - Two steps, file generation logic
-5. **Edit flow** - Most complex, field editing + re-extract
-6. **Wire up SelectionActions** - Connect to delete and add-to-stack flows
-7. **Update Stack dropdown** - Navigation + flow trigger
+1. **Filter dropdown** - Self-contained, no dependencies
+2. **Stack dropdown** - Update to checkbox toggle with DB operations
+3. **Export dropdown** - Simple dropdown with file generation
+4. **Delete dialog** - Confirmation dialog with delete API
+5. **Edit flow** - Agent flow for field editing + re-extract
+6. **Wire up SelectionActions** - Connect bulk actions
+7. **Integration testing** - Verify all actions work together
 
 ---
 
-## Open Questions
+## Changes from v1 Design
 
-None - design is complete and validated.
+| Original (v1) | Updated (v2) | Reasoning |
+|---------------|--------------|-----------|
+| 4 agent flows | 1 agent flow (Edit only) | Simpler UI for simple actions |
+| Export via agent flow | Simple dropdown | Just a file download, no multi-step needed |
+| Delete via agent flow | Simple dialog | Just a confirmation, no multi-step needed |
+| Add-to-stack via agent flow | Checkbox dropdown | Direct toggle is faster |
+| Stack dropdown with navigation | Checkbox toggle | Simpler, immediate feedback |
+| Preview adds Edit to sub-bar | Preview doesn't change sub-bar | Cleaner separation: list = browse, detail = act |
+
+---
+
+## Code Review Findings
+
+### v2.1 Review (2026-01-05)
+
+| Finding | Resolution |
+|---------|------------|
+| Flow type should be `edit-document` not `edit` | Updated to match `extract-document` naming convention |
+| `document-detail-actions.tsx` missing from modified files | Added — needs Delete button and wiring |
+| Filter contexts not distinguished | Clarified: list uses `DocumentsFilterContext`, detail uses `DocumentDetailFilterContext` |
+| `allStacks` not fetched for Stack dropdown | Added note: `@subbar/[id]/page.tsx` must fetch both `assignedStacks` and `allStacks` |
+| `agent-store.ts` type update not mentioned | Added type definition snippet for `EditDocumentFlowStep` |
+| Stack dropdown checkbox UI already exists | Added to Prerequisites section — just needs DB operations |
+
+### v2.2 Review (2026-01-05)
+
+| Finding | Resolution |
+|---------|------------|
+| No delete endpoint exists in FastAPI | Use Supabase direct from frontend (aligns with architecture: FastAPI = agents only) |
+| Delete needs storage cleanup | 3-step process: fetch paths → delete DB → delete storage (best effort) |
+| RLS policy verification | Confirmed `documents_clerk_isolation` allows DELETE for owner |
+| Cascade behavior | Verified `ON DELETE CASCADE` on all related tables |
+| Sonner not installed | Added to Prerequisites — requires `npx shadcn@latest add sonner` |
+| Export filename format needed | Added: `{filename}_extraction_{YYYY-MM-DD}.csv/json` |
+| Success toasts missing | Added Toast Notifications section with success messages |
 
 ---
 
@@ -340,3 +447,4 @@ None - design is complete and validated.
 - `frontend/CLAUDE.md` - Agent system patterns
 - `docs/ARCHITECTURE.md` - System architecture
 - `docs/SCHEMA.md` - Database schema (extractions, stack_documents tables)
+- `docs/plans/issues/ACTIVE.md` - Issue #40 (Preview panel Open button)
