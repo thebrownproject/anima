@@ -78,6 +78,9 @@ export {
   IconTable as Table,
   IconClock as Clock,
   IconCalendar as Calendar,
+  IconCalendarMinus as CalendarMinus,
+  IconCalendarWeek as CalendarWeek,
+  IconCalendarMonth as CalendarMonth,
 
   // Filter
   IconFilterOff as FilterOff,
