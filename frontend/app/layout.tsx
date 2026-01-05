@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { shadcn } from '@clerk/themes'
 import NextTopLoader from 'nextjs-toploader'
 import { ThemeProvider } from '@/components/providers/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const geistSans = Geist({
@@ -61,6 +62,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <Toaster />
           </ThemeProvider>
         </body>
       </html>
