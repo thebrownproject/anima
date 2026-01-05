@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
-import type { DocumentStatus } from '@/types/documents'
 
 // Date range filter options
 export type DateRangeFilter = 'all' | 'today' | 'yesterday' | 'last7' | 'last30'
@@ -20,12 +19,14 @@ interface DocumentsFilterContextValue {
   // Date range filter
   dateRange: DateRangeFilter
   setDateRange: (value: DateRangeFilter) => void
-  // Status filter (multi-select, reuses existing DocumentStatus type)
-  statusFilter: Set<DocumentStatus>
-  setStatusFilter: (value: Set<DocumentStatus>) => void
-  toggleStatusFilter: (status: DocumentStatus) => void
+  // Stack filter (multi-select by stack ID)
+  stackFilter: Set<string>
+  toggleStackFilter: (stackId: string) => void
   // Active filter count for badge
   activeFilterCount: number
+  // Clear individual filters
+  clearDateFilter: () => void
+  clearStackFilter: (stackId: string) => void
   // Clear all filters
   clearFilters: () => void
 }
@@ -36,7 +37,7 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
   const [filterValue, setFilterValueState] = useState('')
   const [selectedCount, setSelectedCountState] = useState(0)
   const [dateRange, setDateRangeState] = useState<DateRangeFilter>('all')
-  const [statusFilter, setStatusFilterState] = useState<Set<DocumentStatus>>(new Set())
+  const [stackFilter, setStackFilterState] = useState<Set<string>>(new Set())
 
   const setFilterValue = useCallback((value: string) => {
     setFilterValueState(value)
@@ -50,34 +51,43 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
     setDateRangeState(value)
   }, [])
 
-  const setStatusFilter = useCallback((value: Set<DocumentStatus>) => {
-    setStatusFilterState(value)
+  const toggleStackFilter = useCallback((stackId: string) => {
+    setStackFilterState((prev) => {
+      const next = new Set(prev)
+      if (next.has(stackId)) {
+        next.delete(stackId)
+      } else {
+        next.add(stackId)
+      }
+      return next
+    })
   }, [])
 
-  const toggleStatusFilter = useCallback((status: DocumentStatus) => {
-    setStatusFilterState((prev) => {
+  const clearDateFilter = useCallback(() => {
+    setDateRangeState('all')
+  }, [])
+
+  const clearStackFilter = useCallback((stackId: string) => {
+    setStackFilterState((prev) => {
       const next = new Set(prev)
-      if (next.has(status)) {
-        next.delete(status)
-      } else {
-        next.add(status)
-      }
+      next.delete(stackId)
       return next
     })
   }, [])
 
   const clearFilters = useCallback(() => {
     setDateRangeState('all')
-    setStatusFilterState(new Set())
+    setStackFilterState(new Set())
   }, [])
 
   // Count active filters (non-default values)
+  // Stack filter counts each selected stack as one filter
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (dateRange !== 'all') count++
-    if (statusFilter.size > 0) count++
+    count += stackFilter.size
     return count
-  }, [dateRange, statusFilter])
+  }, [dateRange, stackFilter])
 
   const contextValue = useMemo(() => ({
     filterValue,
@@ -86,10 +96,11 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
     setSelectedCount,
     dateRange,
     setDateRange,
-    statusFilter,
-    setStatusFilter,
-    toggleStatusFilter,
+    stackFilter,
+    toggleStackFilter,
     activeFilterCount,
+    clearDateFilter,
+    clearStackFilter,
     clearFilters,
   }), [
     filterValue,
@@ -98,10 +109,11 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
     setSelectedCount,
     dateRange,
     setDateRange,
-    statusFilter,
-    setStatusFilter,
-    toggleStatusFilter,
+    stackFilter,
+    toggleStackFilter,
     activeFilterCount,
+    clearDateFilter,
+    clearStackFilter,
     clearFilters,
   ])
 

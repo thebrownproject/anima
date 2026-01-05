@@ -4,7 +4,6 @@ import * as Icons from '@/components/icons'
 import { ActionButton } from '@/components/layout/action-button'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -28,19 +27,10 @@ const DATE_OPTIONS = [
   { value: 'last30', label: 'Last 30 days' },
 ] as const
 
-const STATUS_OPTIONS = [
-  { value: 'completed', label: 'Extracted' },
-  { value: 'processing', label: 'Processing' },
-  { value: 'ocr_complete', label: 'OCR Complete' },
-  { value: 'failed', label: 'Failed' },
-] as const
-
 export function FilterButton() {
   const {
     dateRange,
     setDateRange,
-    statusFilter,
-    toggleStatusFilter,
     activeFilterCount,
     clearFilters,
   } = useDocumentsFilter()
@@ -68,19 +58,6 @@ export function FilterButton() {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuLabel>Status</DropdownMenuLabel>
-        {STATUS_OPTIONS.map((opt) => (
-          <DropdownMenuCheckboxItem
-            key={opt.value}
-            checked={statusFilter.has(opt.value)}
-            onCheckedChange={() => toggleStatusFilter(opt.value)}
-          >
-            {opt.label}
-          </DropdownMenuCheckboxItem>
-        ))}
 
         {activeFilterCount > 0 && (
           <>

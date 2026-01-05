@@ -45,9 +45,10 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   // Shared state from contexts
   const { selectedDocId, setSelectedDocId, setSignedUrl, setSignedUrlDocId, setMimeType, setOcrText, signedUrlDocId } = useSelectedDocument()
   const { panelRef, isCollapsed } = usePreviewPanel()
-  const { filterValue, setSelectedCount, dateRange, statusFilter } = useDocumentsFilter()
+  const { filterValue, setSelectedCount, dateRange } = useDocumentsFilter()
 
-  // Apply date and status filters to documents
+  // Apply date filter to documents
+  // Note: Stack filtering will be added in Task 2.1.6
   const filteredDocuments = React.useMemo(() => {
     let result = documents
 
@@ -57,13 +58,8 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       result = result.filter((doc) => isDateInRange(new Date(doc.uploaded_at), start, end))
     }
 
-    // Apply status filter (if any selected)
-    if (statusFilter.size > 0) {
-      result = result.filter((doc) => statusFilter.has(doc.status))
-    }
-
     return result
-  }, [documents, dateRange, statusFilter])
+  }, [documents, dateRange])
 
   // Create table first so we can use it in effects
   const table = useReactTable({
