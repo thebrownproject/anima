@@ -65,30 +65,32 @@ export function AgentCard({ className }: AgentCardProps) {
 
   return (
     <>
-      <motion.div
-        ref={cardRef}
-        layout
-        transition={springConfig}
-        className={cn(
-          'flex flex-col',
-          'bg-sidebar border rounded-xl shadow-md',
-          'transition-colors duration-150',
-          'hover:border-muted-foreground/30',
-          'focus-within:border-muted-foreground/30',
-          className
-        )}
-      >
-        {/* FIX #5: Conditionally render different content based on flow state */}
-        {flow ? (
-          <ActiveFlowContent
-            flow={flow}
-            isExpanded={isExpanded}
-            onCloseRequest={handleCloseRequest}
-          />
-        ) : (
-          <IdleContent isExpanded={isExpanded} />
-        )}
-      </motion.div>
+      <div className={cn('relative', className)}>
+        <motion.div
+          ref={cardRef}
+          layout
+          transition={springConfig}
+          className={cn(
+            'relative flex flex-col',
+            'bg-sidebar border rounded-xl',
+            'shadow-[0_0_2px_rgba(0,0,0,0.04),0_0_12px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.08),0_8px_32px_rgba(0,0,0,0.1)]',
+            'transition-colors duration-150',
+            'hover:border-muted-foreground/30',
+            'focus-within:border-muted-foreground/30'
+          )}
+        >
+          {/* FIX #5: Conditionally render different content based on flow state */}
+          {flow ? (
+            <ActiveFlowContent
+              flow={flow}
+              isExpanded={isExpanded}
+              onCloseRequest={handleCloseRequest}
+            />
+          ) : (
+            <IdleContent isExpanded={isExpanded} />
+          )}
+        </motion.div>
+      </div>
 
       {/* Confirmation dialog */}
       <ConfirmClose
