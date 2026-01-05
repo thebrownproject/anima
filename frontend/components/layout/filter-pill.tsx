@@ -14,7 +14,9 @@ export function FilterPill({ icon, label, onRemove }: FilterPillProps) {
       <span className="size-3.5 [&>svg]:size-full">{icon}</span>
       {label}
       <button
+        type="button"
         onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
         className="size-5 hover:bg-muted rounded grid place-items-center"
       >
         <Icons.X className="size-3" />
