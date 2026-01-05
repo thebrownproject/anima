@@ -4,6 +4,7 @@ import * as Icons from '@/components/icons'
 import { ActionButton } from '@/components/layout/action-button'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -56,31 +57,34 @@ export function FilterButton({ stacks }: FilterButtonProps) {
             <span>Date</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            <DropdownMenuItem onClick={() => setDateRange('all')}>
-              <Icons.Clock className="size-4" />
-              <span>All time</span>
-              {dateRange === 'all' && <Icons.Check className="ml-auto size-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDateRange('today')}>
+            <DropdownMenuCheckboxItem
+              checked={dateRange === 'today'}
+              onCheckedChange={() => setDateRange(dateRange === 'today' ? 'all' : 'today')}
+            >
               <Icons.Calendar className="size-4" />
               <span>Today</span>
-              {dateRange === 'today' && <Icons.Check className="ml-auto size-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDateRange('yesterday')}>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={dateRange === 'yesterday'}
+              onCheckedChange={() => setDateRange(dateRange === 'yesterday' ? 'all' : 'yesterday')}
+            >
               <Icons.CalendarMinus className="size-4" />
               <span>Yesterday</span>
-              {dateRange === 'yesterday' && <Icons.Check className="ml-auto size-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDateRange('last7')}>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={dateRange === 'last7'}
+              onCheckedChange={() => setDateRange(dateRange === 'last7' ? 'all' : 'last7')}
+            >
               <Icons.CalendarWeek className="size-4" />
               <span>Last 7 days</span>
-              {dateRange === 'last7' && <Icons.Check className="ml-auto size-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDateRange('last30')}>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={dateRange === 'last30'}
+              onCheckedChange={() => setDateRange(dateRange === 'last30' ? 'all' : 'last30')}
+            >
               <Icons.CalendarMonth className="size-4" />
               <span>Last 30 days</span>
-              {dateRange === 'last30' && <Icons.Check className="ml-auto size-4" />}
-            </DropdownMenuItem>
+            </DropdownMenuCheckboxItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
@@ -93,11 +97,14 @@ export function FilterButton({ stacks }: FilterButtonProps) {
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {stacks.map((stack) => (
-                <DropdownMenuItem key={stack.id} onClick={() => toggleStackFilter(stack.id)}>
+                <DropdownMenuCheckboxItem
+                  key={stack.id}
+                  checked={stackFilter.has(stack.id)}
+                  onCheckedChange={() => toggleStackFilter(stack.id)}
+                >
                   <Icons.Stack className="size-4" />
                   <span>{stack.name}</span>
-                  {stackFilter.has(stack.id) && <Icons.Check className="ml-auto size-4" />}
-                </DropdownMenuItem>
+                </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
