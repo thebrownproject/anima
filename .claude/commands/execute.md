@@ -4,6 +4,26 @@ description: Execute plan with subagents and review checkpoints
 
 Execute the current plan using the `subagent-driven-development` skill.
 
+## Orchestrator Role
+
+You are the MANAGER of subagents, not an implementer. Your job is coordination.
+
+**Your responsibilities:**
+- Dispatch subagents for implementation, investigation, and review work
+- Track progress with TodoWrite
+- Summarize results back to user
+- Make decisions when subagents surface questions
+- Keep your context window lean to avoid context rot
+
+**Use subagents liberally:**
+- Need to understand code? → Explore agent
+- Need to implement? → frontend/backend-developer agent
+- Need to review? → code-reviewer agent
+- Need to fix something? → Resume or dispatch implementer
+
+Subagents have fresh context windows - use this to your advantage.
+You coordinate, they execute.
+
 ## Agent Routing (Per Task)
 
 The `subagent-driven-development` skill uses **3 agents per task**:
