@@ -49,7 +49,7 @@ export function SidebarHeaderMenu() {
               Workspace settings
             </TooltipContent>
           </Tooltip>
-          <DropdownMenuContent align="start" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
+          <DropdownMenuContent align="start" className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
             <DropdownMenuItem disabled>
               <Icons.Settings className="size-4" />
               <span>Settings</span>

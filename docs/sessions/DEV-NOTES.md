@@ -7111,3 +7111,66 @@ docs/plans/in-progress/documents-subbar/
 3. Use 3-agent pattern: frontend-developer (impl) → frontend-developer (spec) → code-reviewer
 4. Continue through Tasks 2.1.2-2.1.8
 5. Then continue with Phase 3-6
+
+---
+
+## Session 93 - 2026-01-06 - Filter Redesign Plan Refinement + Review
+
+**Feature**: Documents Sub-bar (Filter Redesign)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Filter Redesign Plan Discussion**:
+  - Discussed FilterPill component (custom vs Badge) - chose custom for dismiss functionality
+  - Confirmed pills layout: pills left, filter button right, Search separate
+  - Decided on client-side `useStacks()` hook vs server component split
+
+- [x] **Expanded All 8 Tasks with Reference Implementations**:
+  - Task 2.1.1: Status filter removal checklist (14 removal points across 3 files)
+  - Task 2.1.2: FilterPill component code
+  - Task 2.1.3: Marked as SKIPPED (dead code - using client hook)
+  - Task 2.1.4: FilterButton with sub-menus + stacks prop
+  - Task 2.1.5: FilterBar component code
+  - Task 2.1.6: Table filtering logic (stacks instead of status)
+  - Task 2.1.7: useStacks hook + page integration
+  - Task 2.1.8: Filter-aware empty state
+
+- [x] **Parallel Agent Review**:
+  - Dispatched frontend-developer + code-reviewer agents
+  - Frontend review: Found `createBrowserSupabaseClient` doesn't exist
+  - Code review: Found Task 2.1.3 is dead code, missing icon exports
+  - Applied all fixes to plan
+
+- [x] **Fixed /orchestrate Command**:
+  - Updated to invoke `superpowers:dispatching-parallel-agents` skill first
+
+- [x] **Minor UI Fix**:
+  - Reduced sidebar dropdown width from `w-56` to `w-52`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| FilterPill component | Custom (not Badge) | Badge lacks dismiss functionality |
+| Stacks fetching | Client-side hook | Simpler than server/client split |
+| Task 2.1.3 | Skipped | Server query unused - hook handles it |
+| useStacks implementation | Use `useSupabase()` | `createBrowserSupabaseClient` doesn't exist |
+
+### Files Modified
+
+```
+.claude/commands/orchestrate.md          # Invoke skill first
+docs/plans/in-progress/documents-subbar/02.1-filter-redesign.md  # Full refinement
+frontend/components/layout/sidebar/sidebar-header-menu.tsx       # w-52 width
+```
+
+### Next Session
+
+**Task**: Execute Filter Redesign (Phase 2.1)
+
+**Process**:
+1. Add missing icon exports (Calendar, FilterOff)
+2. Run `/execute` on 02.1-filter-redesign.md
+3. Tasks: 2.1.1 → 2.1.2 → 2.1.4 → 2.1.5 → 2.1.6 → 2.1.7 → 2.1.8 (skip 2.1.3)
+4. Use 3-agent pattern per task

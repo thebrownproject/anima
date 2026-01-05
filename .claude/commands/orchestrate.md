@@ -2,13 +2,23 @@
 description: Dispatch parallel agents for independent tasks
 ---
 
-Orchestrate parallel agent execution using the `superpowers:dispatching-parallel-agents` pattern.
+Orchestrate parallel agent execution.
+
+## FIRST: Invoke the Skill
+
+**IMPORTANT**: Before doing anything else, invoke the dispatching skill:
+
+```
+Skill("superpowers:dispatching-parallel-agents")
+```
+
+Then follow the skill's workflow with the input below.
 
 ## Input
 
 $ARGUMENTS
 
-## Process
+## Fallback Process (if skill unavailable)
 
 ### 1. Understand the Task
 
