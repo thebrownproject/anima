@@ -7041,3 +7041,73 @@ docs/plans/in-progress/documents-subbar/
 2. Start with Phase 1: Install Sonner
 3. Continue through all 15 tasks in order
 4. Verify each phase builds before moving on
+
+---
+
+## Session 92 - 2026-01-05 - Phase 1-2 Execution + Filter Redesign Plan
+
+**Feature**: Documents Sub-bar
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 1: Install Sonner** (Task 1):
+  - Installed via `npx shadcn@latest add sonner`
+  - Added Toaster to root layout inside ThemeProvider
+  - Commit: `535b981`
+
+- [x] **Phase 2: Filter Dropdown** (Tasks 2-5):
+  - Task 2: Extended DocumentsFilterContext with dateRange, statusFilter, activeFilterCount
+  - Task 3: Implemented filter dropdown UI with date radio group + status checkboxes
+  - Task 4: Created date boundary utilities in `lib/date.ts`
+  - Task 5: Applied filters to documents table via useMemo
+  - Commits: `59324ce`, `9e69646`, `73ae396`, `7937c02`
+
+- [x] **Updated /execute command**:
+  - Clarified 3-agent-per-task pattern (implementer → spec reviewer → code quality reviewer)
+  - Added MCP verification instructions for code quality reviewer
+  - Documented dispatch patterns for each agent type
+
+- [x] **Filter Redesign Plan** (02.1-filter-redesign.md):
+  - User requested sub-menus (like Theme menu), Linear-style pills, stacks filter
+  - Remove status filter, add stacks filter instead
+  - 8 tasks planned for redesign
+  - Added filter-aware empty state task
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Agent pattern | 3 agents per task | Spec reviewer catches over/under-building, code quality catches issues |
+| Filter redesign priority | Before Phase 3-6 | User wants new UX before continuing |
+| Filter pills | Individual (not combined) | Each stack gets own pill with X button |
+| Filter button layout | Pills left, icon-only button right | Linear-style UX |
+
+### Files Modified
+
+```
+frontend/
+├── app/layout.tsx                         # Added Toaster
+├── components/ui/sonner.tsx               # New (shadcn)
+├── components/documents/
+│   ├── documents-filter-context.tsx       # Filter state
+│   └── documents-table.tsx                # Filter logic
+├── components/layout/filter-button.tsx    # Filter dropdown UI
+└── lib/date.ts                            # Date utilities
+
+.claude/commands/execute.md                # 3-agent pattern docs
+
+docs/plans/in-progress/documents-subbar/
+└── 02.1-filter-redesign.md                # New redesign plan
+```
+
+### Next Session
+
+**Task**: Execute Filter Redesign (Phase 2.1)
+
+**Process**:
+1. Run `/execute` to implement 02.1-filter-redesign.md
+2. Start with Task 2.1.1: Update filter context (remove status, add stacks)
+3. Use 3-agent pattern: frontend-developer (impl) → frontend-developer (spec) → code-reviewer
+4. Continue through Tasks 2.1.2-2.1.8
+5. Then continue with Phase 3-6

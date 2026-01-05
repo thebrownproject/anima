@@ -17,7 +17,7 @@
 
 ---
 
-## Status: Not Started
+## Status: Phase 2 Complete, Redesign Planned
 
 ---
 
@@ -25,8 +25,9 @@
 
 | File | Description | Tasks | Status |
 |------|-------------|-------|--------|
-| [01-prerequisites.md](./01-prerequisites.md) | Install Sonner toast component | 1 | ⬚ |
-| [02-filter-dropdown.md](./02-filter-dropdown.md) | Filter state, date utilities, dropdown UI | 2-5 | ⬚ |
+| [01-prerequisites.md](./01-prerequisites.md) | Install Sonner toast component | 1 | ✅ |
+| [02-filter-dropdown.md](./02-filter-dropdown.md) | Filter state, date utilities, dropdown UI | 2-5 | ✅ |
+| [02.1-filter-redesign.md](./02.1-filter-redesign.md) | Sub-menus, pills, stacks filter | 2.1.1-2.1.8 | ⬚ |
 | [03-stack-dropdown.md](./03-stack-dropdown.md) | Stack toggle with DB operations | 6-8 | ⬚ |
 | [04-export-dropdown.md](./04-export-dropdown.md) | CSV/JSON export functionality | 9-10 | ⬚ |
 | [05-delete-dialog.md](./05-delete-dialog.md) | Delete confirmation dialog | 11-12 | ⬚ |

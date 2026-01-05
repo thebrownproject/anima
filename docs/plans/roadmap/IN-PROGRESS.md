@@ -1,10 +1,12 @@
 # In Progress
 
-**Documents Sub-bar** (`plans/in-progress/documents-subbar/`) - Ready to Execute
+**Documents Sub-bar** (`plans/in-progress/documents-subbar/`) - Phase 2 Complete, Redesign Next
 - Design: Complete (v2.2)
-- Implementation Plan: Complete (15 tasks across 6 phases, reviewed)
-- Features: Filter dropdown, Export/Delete dialogs, Stack toggle, Bulk delete
-- Next: Run `/superpowers:execute-plan` to implement
+- Phase 1: ✅ Sonner toast installed
+- Phase 2: ✅ Filter dropdown (Tasks 2-5 complete)
+- **Phase 2.1**: Filter Redesign (8 tasks) - sub-menus, Linear-style pills, stacks filter
+- Phases 3-6: Pending (Stack toggle, Export, Delete, Bulk delete)
+- Next: Run `/execute` to implement 02.1-filter-redesign.md
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused
 - Design: Complete (v2)

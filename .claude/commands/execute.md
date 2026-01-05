@@ -4,14 +4,111 @@ description: Execute plan with subagents and review checkpoints
 
 Execute the current plan using the `subagent-driven-development` skill.
 
-## Subagent Instructions
+## Agent Routing (Per Task)
 
-When dispatching subagents (implementer, spec-reviewer, or code-reviewer),
-include these MCP verification instructions in the prompt:
+The `subagent-driven-development` skill uses **3 agents per task**:
+
+| Role | Frontend Task | Backend Task | Purpose |
+|------|---------------|--------------|---------|
+| 1. Implementer | `frontend-developer` | `backend-developer` | Implement, test, commit, self-review |
+| 2. Spec Reviewer | `frontend-developer` | `backend-developer` | Verify code matches spec exactly |
+| 3. Code Quality Reviewer | `superpowers:code-reviewer` | `superpowers:code-reviewer` | Review code quality |
+
+**Order matters:** Spec review MUST pass before code quality review.
+
+**Per-task flow:**
+```
+Implementer → Spec Reviewer (✅?) → Code Quality Reviewer (✅?) → Next Task
+                    ↓ ❌                      ↓ ❌
+              Implementer fixes         Implementer fixes
+```
+
+### Dispatch Patterns
+
+**1. Implementer** (provide full task text from plan):
+```
+Task(
+  subagent_type: "frontend-developer",  // or backend-developer
+  prompt: "Implement Task N: [name]
+
+  ## Task Description
+  [FULL TEXT of task from plan - paste it, don't make subagent read file]
+
+  ## Context
+  [Where this fits, dependencies, architectural context]
+
+  ## Your Job
+  1. Implement exactly what the task specifies
+  2. Write tests if applicable
+  3. Verify implementation works (run build)
+  4. Commit your work
+  5. Self-review before reporting back
+
+  Report: What you implemented, files changed, any issues"
+)
+```
+
+**2. Spec Reviewer** (verify implementation matches spec):
+```
+Task(
+  subagent_type: "frontend-developer",  // or backend-developer
+  prompt: "Review spec compliance for Task N
+
+  ## What Was Requested
+  [FULL TEXT of task requirements]
+
+  ## What Implementer Claims They Built
+  [From implementer's report]
+
+  ## Your Job
+  Read the actual code and verify:
+  - Missing requirements? (things not implemented)
+  - Extra work? (things added that weren't requested)
+  - Misunderstandings? (wrong interpretation)
+
+  Report: ✅ Spec compliant OR ❌ Issues: [list with file:line refs]"
+)
+```
+
+**3. Code Quality Reviewer** (only after spec passes):
+```
+Task(
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "Review code quality for Task N
+
+  BASE_SHA: [commit before task]
+  HEAD_SHA: [current commit]
+
+  What was implemented: [summary]
+  Files changed: [list]
+
+  ## MCP Verification Required
+
+  Before completing your review, verify against current docs:
+  - **context7**: Resolve library IDs and query docs to verify React/Next.js patterns
+  - **shadcn MCP**: Use `view_items_in_registries` and `get_item_examples_from_registries`
+    to verify component usage matches official shadcn/ui patterns
+  - **perplexity**: Check current best practices if uncertain about any pattern
+
+  Flag any code that doesn't match current documentation."
+)
+```
+
+### Review Loops
+
+If reviewer finds issues:
+1. Resume **implementer** to fix (don't fix manually)
+2. Reviewer reviews again
+3. Repeat until ✅ approved
+4. Only then move to next stage/task
+
+## MCP Verification
+
+All subagents should include these verification instructions:
 
 - **context7**: Resolve library ID then fetch current docs to verify API usage
 - **shadcn MCP**: Use `view_items_in_registries` and `get_item_examples_from_registries`
-  to verify component patterns match official examples
+  to verify component patterns match official examples (frontend)
 - **perplexity**: Verify against current best practices if uncertain
 
 Subagents should verify against current documentation, not just training knowledge.

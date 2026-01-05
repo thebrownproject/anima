@@ -8,14 +8,34 @@ arguments:
 
 Dispatch a debugging subagent to investigate this issue systematically.
 
+## Determine Agent Type
+
+Based on the issue description, choose the appropriate agent:
+
+| Issue Type | Agent | Examples |
+|------------|-------|----------|
+| Frontend | `frontend-developer` | React, Next.js, components, UI, hooks, Supabase JS |
+| Backend | `backend-developer` | FastAPI, Python, agents, API endpoints, OCR, tools |
+| Unclear | Ask user | "Is this a frontend or backend issue?" |
+
 ## Spawn Debugging Agent
 
-Use the Task tool with `subagent_type: "general-purpose"`.
+Use the Task tool with appropriate `subagent_type`:
+
+**For frontend issues:**
+```
+subagent_type: "frontend-developer"
+```
+
+**For backend issues:**
+```
+subagent_type: "backend-developer"
+```
 
 **Prompt for the agent:**
 
 ```
-You are debugging an issue. Follow the `systematic-debugging` skill exactly.
+You are debugging an issue. Follow systematic debugging.
 
 ## Issue to Investigate
 
@@ -44,7 +64,8 @@ $ARGUMENTS
 ## MCP Verification
 
 - Use **context7** to verify API usage if relevant
-- Use **perplexity** to check for known issues with libraries/frameworks
+- Use **shadcn MCP** for component patterns (frontend)
+- Use **perplexity** to check for known issues
 
 ## Report Format
 
