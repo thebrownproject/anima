@@ -77,6 +77,10 @@ export {
   // Data
   IconTable as Table,
   IconClock as Clock,
+  IconCalendar as Calendar,
+
+  // Filter
+  IconFilterOff as FilterOff,
 
   // Lists
   IconList as List,
