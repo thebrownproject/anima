@@ -58,34 +58,46 @@ export function FilterButton({ stacks }: FilterButtonProps) {
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             <DropdownMenuItem
-              onClick={() => setDateRange(dateRange === 'today' ? 'all' : 'today')}
-              className="gap-2"
+              onSelect={(e) => {
+                e.preventDefault()
+                setDateRange(dateRange === 'today' ? 'all' : 'today')
+              }}
+              className="group/item gap-2"
             >
-              <Checkbox checked={dateRange === 'today'} className="pointer-events-none" />
+              <Checkbox checked={dateRange === 'today'} className="pointer-events-none opacity-0 group-hover/item:opacity-100 data-[state=checked]:opacity-100 transition-opacity" />
               <Icons.Calendar className="size-4" />
               <span>Today</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => setDateRange(dateRange === 'yesterday' ? 'all' : 'yesterday')}
-              className="gap-2"
+              onSelect={(e) => {
+                e.preventDefault()
+                setDateRange(dateRange === 'yesterday' ? 'all' : 'yesterday')
+              }}
+              className="group/item gap-2"
             >
-              <Checkbox checked={dateRange === 'yesterday'} className="pointer-events-none" />
+              <Checkbox checked={dateRange === 'yesterday'} className="pointer-events-none opacity-0 group-hover/item:opacity-100 data-[state=checked]:opacity-100 transition-opacity" />
               <Icons.CalendarMinus className="size-4" />
               <span>Yesterday</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => setDateRange(dateRange === 'last7' ? 'all' : 'last7')}
-              className="gap-2"
+              onSelect={(e) => {
+                e.preventDefault()
+                setDateRange(dateRange === 'last7' ? 'all' : 'last7')
+              }}
+              className="group/item gap-2"
             >
-              <Checkbox checked={dateRange === 'last7'} className="pointer-events-none" />
+              <Checkbox checked={dateRange === 'last7'} className="pointer-events-none opacity-0 group-hover/item:opacity-100 data-[state=checked]:opacity-100 transition-opacity" />
               <Icons.CalendarWeek className="size-4" />
               <span>Last 7 days</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => setDateRange(dateRange === 'last30' ? 'all' : 'last30')}
-              className="gap-2"
+              onSelect={(e) => {
+                e.preventDefault()
+                setDateRange(dateRange === 'last30' ? 'all' : 'last30')
+              }}
+              className="group/item gap-2"
             >
-              <Checkbox checked={dateRange === 'last30'} className="pointer-events-none" />
+              <Checkbox checked={dateRange === 'last30'} className="pointer-events-none opacity-0 group-hover/item:opacity-100 data-[state=checked]:opacity-100 transition-opacity" />
               <Icons.CalendarMonth className="size-4" />
               <span>Last 30 days</span>
             </DropdownMenuItem>
@@ -103,10 +115,13 @@ export function FilterButton({ stacks }: FilterButtonProps) {
               {stacks.map((stack) => (
                 <DropdownMenuItem
                   key={stack.id}
-                  onClick={() => toggleStackFilter(stack.id)}
-                  className="gap-2"
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    toggleStackFilter(stack.id)
+                  }}
+                  className="group/item gap-2"
                 >
-                  <Checkbox checked={stackFilter.has(stack.id)} className="pointer-events-none" />
+                  <Checkbox checked={stackFilter.has(stack.id)} className="pointer-events-none opacity-0 group-hover/item:opacity-100 data-[state=checked]:opacity-100 transition-opacity" />
                   <Icons.Stack className="size-4" />
                   <span>{stack.name}</span>
                 </DropdownMenuItem>
