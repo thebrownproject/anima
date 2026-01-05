@@ -1,12 +1,13 @@
 'use client'
 
 import { SubBar } from '@/components/layout/sub-bar'
-import { FilterButton } from '@/components/layout/filter-button'
+import { FilterBar } from '@/components/layout/filter-bar'
 import { ExpandableSearch } from '@/components/layout/expandable-search'
 import { SelectionActions } from '@/components/layout/selection-actions'
 import { ActionButton } from '@/components/layout/action-button'
 import { useAgentStore, initialUploadData } from '@/components/agent'
 import { useDocumentsFilter } from '@/components/documents/documents-filter-context'
+import { useStacks } from '@/hooks/use-stacks'
 import * as Icons from '@/components/icons'
 
 /**
@@ -16,13 +17,14 @@ import * as Icons from '@/components/icons'
  */
 export default function DocumentsSubBar() {
   const { filterValue, setFilterValue, selectedCount } = useDocumentsFilter()
+  const { stacks } = useStacks()
   const openFlow = useAgentStore((state) => state.openFlow)
 
   return (
     <SubBar
       left={
         <>
-          <FilterButton stacks={[]} />
+          <FilterBar stacks={stacks} />
           <ExpandableSearch
             value={filterValue}
             onChange={setFilterValue}
