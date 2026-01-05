@@ -10,7 +10,7 @@
 
 ---
 
-## Task 8: Create Export Dropdown Component
+## Task 10: Create Export Dropdown Component
 
 **Files:**
 - Create: `frontend/components/documents/export-dropdown.tsx`
@@ -159,7 +159,7 @@ git commit -m "feat: add export dropdown with CSV/JSON download"
 
 ---
 
-## Task 9: Wire Up Export in Document Detail Actions
+## Task 10: Wire Up Export in Document Detail Actions
 
 **Files:**
 - Modify: `frontend/app/(app)/@subbar/documents/[id]/page.tsx`

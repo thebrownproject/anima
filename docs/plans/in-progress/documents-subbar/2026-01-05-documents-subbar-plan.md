@@ -26,11 +26,11 @@
 | File | Description | Tasks | Status |
 |------|-------------|-------|--------|
 | [01-prerequisites.md](./01-prerequisites.md) | Install Sonner toast component | 1 | ⬚ |
-| [02-filter-dropdown.md](./02-filter-dropdown.md) | Filter state context and dropdown UI | 2-4 | ⬚ |
-| [03-stack-dropdown.md](./03-stack-dropdown.md) | Stack toggle with DB operations | 5-7 | ⬚ |
-| [04-export-dropdown.md](./04-export-dropdown.md) | CSV/JSON export functionality | 8-9 | ⬚ |
-| [05-delete-dialog.md](./05-delete-dialog.md) | Delete confirmation dialog | 10-11 | ⬚ |
-| [06-selection-actions.md](./06-selection-actions.md) | Bulk delete via selection actions | 12-14 | ⬚ |
+| [02-filter-dropdown.md](./02-filter-dropdown.md) | Filter state, date utilities, dropdown UI | 2-5 | ⬚ |
+| [03-stack-dropdown.md](./03-stack-dropdown.md) | Stack toggle with DB operations | 6-8 | ⬚ |
+| [04-export-dropdown.md](./04-export-dropdown.md) | CSV/JSON export functionality | 9-10 | ⬚ |
+| [05-delete-dialog.md](./05-delete-dialog.md) | Delete confirmation dialog | 11-12 | ⬚ |
+| [06-selection-actions.md](./06-selection-actions.md) | Bulk delete via selection actions | 13-15 | ⬚ |
 
 ---
 
@@ -42,25 +42,26 @@
 ### Phase 2: Filter Dropdown (02-filter-dropdown.md)
 2. Extend DocumentsFilterContext with filter state
 3. Implement filter dropdown UI
-4. Apply filters to documents table
+4. Create date boundary utilities (`lib/date.ts`) - reusable for Stacks
+5. Apply filters to documents table
 
 ### Phase 3: Stack Dropdown (03-stack-dropdown.md)
-5. Add getAllStacks query
-6. Fetch allStacks in SubBar server component
-7. Wire up stack dropdown with DB operations
+6. Add getAllStacks query
+7. Fetch allStacks in SubBar server component
+8. Wire up stack dropdown with DB operations
 
 ### Phase 4: Export Dropdown (04-export-dropdown.md)
-8. Create export dropdown component
-9. Wire up export in document detail actions
+9. Create export dropdown component
+10. Wire up export in document detail actions
 
 ### Phase 5: Delete Dialog (05-delete-dialog.md)
-10. Create delete dialog component
-11. Wire up delete in document detail actions
+11. Create delete dialog component
+12. Wire up delete in document detail actions
 
 ### Phase 6: Selection Actions (06-selection-actions.md)
-12. Create bulk delete dialog
-13. Wire up SelectionActions in documents list
-14. Sync table selection with context
+13. Create bulk delete dialog
+14. Wire up SelectionActions in documents list
+15. Sync table selection with context
 
 ---
 

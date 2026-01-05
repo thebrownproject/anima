@@ -183,16 +183,93 @@ git commit -m "feat: implement filter dropdown with date and status filters"
 
 ---
 
-## Task 4: Apply Filters to Documents Table
+## Task 4: Create Date Boundary Utilities
+
+**Files:**
+- Create: `frontend/lib/date.ts`
+
+**Why:** Date boundary logic will be reused in Stacks pages for filtering. Extract to shared utility.
+
+**Step 1: Create date utility file**
+
+```tsx
+// frontend/lib/date.ts
+
+/**
+ * Get the start of today (midnight local time).
+ */
+export function getStartOfToday(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+/**
+ * Get a date N days ago from start of today.
+ */
+export function getDaysAgo(days: number): Date {
+  return new Date(getStartOfToday().getTime() - days * 24 * 60 * 60 * 1000)
+}
+
+/**
+ * Get date range boundaries for common filter options.
+ * Returns [startDate, endDate] where endDate is exclusive.
+ */
+export function getDateRangeBounds(
+  range: 'today' | 'yesterday' | 'last7' | 'last30'
+): [Date, Date | null] {
+  const startOfToday = getStartOfToday()
+
+  switch (range) {
+    case 'today':
+      return [startOfToday, null] // null = no upper bound
+    case 'yesterday':
+      return [getDaysAgo(1), startOfToday] // yesterday only, excludes today
+    case 'last7':
+      return [getDaysAgo(7), null]
+    case 'last30':
+      return [getDaysAgo(30), null]
+  }
+}
+
+/**
+ * Check if a date falls within a range.
+ * @param date - Date to check
+ * @param start - Start of range (inclusive)
+ * @param end - End of range (exclusive), or null for no upper bound
+ */
+export function isDateInRange(date: Date, start: Date, end: Date | null): boolean {
+  if (date < start) return false
+  if (end && date >= end) return false
+  return true
+}
+```
+
+**Step 2: Verify build**
+
+Run: `cd frontend && npm run build`
+Expected: Build succeeds.
+
+**Step 3: Commit**
+
+```bash
+git add frontend/lib/date.ts
+git commit -m "feat: add date boundary utilities for filtering"
+```
+
+---
+
+## Task 5: Apply Filters to Documents Table
 
 **Files:**
 - Modify: `frontend/components/documents/documents-table.tsx`
 
-**Step 1: Add filter logic to documents table**
+**Step 1: Add filter logic using date utilities**
 
-Import `useDocumentsFilter` and filter the documents array based on `dateRange` and `statusFilter` before passing to the table. Use `useMemo` for performance.
+Import `useDocumentsFilter` and the new date utilities. Filter documents using `useMemo` for performance.
 
 ```tsx
+import { getDateRangeBounds, isDateInRange } from '@/lib/date'
+
 const { dateRange, statusFilter } = useDocumentsFilter()
 
 const filteredDocuments = useMemo(() => {
@@ -200,33 +277,8 @@ const filteredDocuments = useMemo(() => {
 
   // Apply date filter
   if (dateRange !== 'all') {
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-    switch (dateRange) {
-      case 'today':
-        result = result.filter((doc) => new Date(doc.uploaded_at) >= startOfToday)
-        break
-      case 'yesterday': {
-        // Yesterday only: >= start of yesterday AND < start of today
-        const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000)
-        result = result.filter((doc) => {
-          const d = new Date(doc.uploaded_at)
-          return d >= startOfYesterday && d < startOfToday
-        })
-        break
-      }
-      case 'last7':
-        result = result.filter((doc) =>
-          new Date(doc.uploaded_at) >= new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000)
-        )
-        break
-      case 'last30':
-        result = result.filter((doc) =>
-          new Date(doc.uploaded_at) >= new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000)
-        )
-        break
-    }
+    const [start, end] = getDateRangeBounds(dateRange)
+    result = result.filter((doc) => isDateInRange(new Date(doc.uploaded_at), start, end))
   }
 
   // Apply status filter (if any selected)

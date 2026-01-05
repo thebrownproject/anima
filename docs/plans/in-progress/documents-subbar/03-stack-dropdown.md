@@ -12,7 +12,7 @@
 
 ---
 
-## Task 5: Add getAllStacks Query
+## Task 8: Add getAllStacks Query
 
 **Files:**
 - Modify: `frontend/lib/queries/stacks.ts`
@@ -61,7 +61,7 @@ git commit -m "feat: add getAllStacks query for stack dropdown"
 
 ---
 
-## Task 6: Fetch allStacks in SubBar Server Component
+## Task 8: Fetch allStacks in SubBar Server Component
 
 **Files:**
 - Modify: `frontend/app/(app)/@subbar/documents/[id]/page.tsx`
@@ -152,7 +152,7 @@ git commit -m "feat: fetch allStacks for stack dropdown in document detail"
 
 ---
 
-## Task 7: Wire Up Stack Dropdown with DB Operations
+## Task 8: Wire Up Stack Dropdown with DB Operations
 
 **Files:**
 - Modify: `frontend/components/documents/stacks-dropdown.tsx`

@@ -10,7 +10,7 @@
 
 ---
 
-## Task 12: Create Bulk Delete Dialog
+## Task 15: Create Bulk Delete Dialog
 
 **Files:**
 - Create: `frontend/components/documents/bulk-delete-dialog.tsx`
@@ -145,7 +145,7 @@ git commit -m "feat: add bulk delete dialog for multiple documents"
 
 ---
 
-## Task 13: Wire Up SelectionActions in Documents List
+## Task 15: Wire Up SelectionActions in Documents List
 
 **Files:**
 - Modify: `frontend/components/documents/documents-filter-context.tsx`
@@ -361,7 +361,7 @@ git commit -m "feat: enable bulk delete in selection actions with bidirectional 
 
 ---
 
-## Task 14: Sync Table Selection with Context
+## Task 15: Sync Table Selection with Context
 
 **Files:**
 - Modify: `frontend/components/documents/documents-table.tsx`

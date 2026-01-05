@@ -10,7 +10,7 @@
 
 ---
 
-## Task 10: Create Delete Dialog Component
+## Task 12: Create Delete Dialog Component
 
 **Files:**
 - Create: `frontend/components/documents/delete-dialog.tsx`
@@ -135,7 +135,7 @@ git commit -m "feat: add delete confirmation dialog with Supabase operations"
 
 ---
 
-## Task 11: Wire Up Delete in Document Detail Actions
+## Task 12: Wire Up Delete in Document Detail Actions
 
 **Files:**
 - Modify: `frontend/components/documents/document-detail-actions.tsx`
