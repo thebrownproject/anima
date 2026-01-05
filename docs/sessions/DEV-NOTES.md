@@ -7174,3 +7174,71 @@ frontend/components/layout/sidebar/sidebar-header-menu.tsx       # w-52 width
 2. Run `/execute` on 02.1-filter-redesign.md
 3. Tasks: 2.1.1 → 2.1.2 → 2.1.4 → 2.1.5 → 2.1.6 → 2.1.7 → 2.1.8 (skip 2.1.3)
 4. Use 3-agent pattern per task
+
+
+---
+
+## Session 94 - 2026-01-06 - Filter Redesign Phase 2.1 (Tasks 2.1.1, 2.1.2, 2.1.4)
+
+**Feature**: Documents Sub-bar (Filter Redesign)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 2.1.1**: Updated filter context
+  - Removed status filter (statusFilter, toggleStatusFilter)
+  - Added stack filter (stackFilter, toggleStackFilter)
+  - Added clearDateFilter and clearStackFilter functions
+
+- [x] **Task 2.1.2**: Created FilterPill component
+  - Custom pill with dismiss functionality
+  - Added aria-label for accessibility
+
+- [x] **Task 2.1.4**: Redesigned FilterButton with sub-menus
+  - Date and Stacks sub-menus
+  - Checkbox on left (matching table pattern)
+  - Removed "All time" option (implied when no filter)
+  - Dropdown stays open on selection
+  - Hover visibility for checkboxes
+
+- [x] **Workflow improvements**:
+  - Added orchestrator role guidance to /execute command
+  - Added skill invocation requirement to /execute command
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Checkbox vs check mark | Checkbox on left | Matches table pattern, better UX |
+| "All time" option | Removed | Implied when no filter selected |
+| Subbar architecture | Keep client component | Consistency with stacks subbar |
+| Dropdown behavior | Stay open on selection | Better multi-select UX |
+
+### Files Modified
+
+```
+frontend/components/documents/
+├── documents-filter-context.tsx       # Stack filter, clear functions
+└── filter-pill.tsx                    # New component
+
+frontend/components/layout/
+└── filter-button.tsx                  # Sub-menus, checkbox style
+
+.claude/commands/execute.md            # Orchestrator role, skill invocation
+```
+
+### Tasks Remaining (Phase 2.1)
+
+- [ ] Task 2.1.5: Create FilterBar component
+- [ ] Task 2.1.6: Update documents table filtering
+- [ ] Task 2.1.7: Wire up useStacks hook
+- [ ] Task 2.1.8: Filter-aware empty state
+
+### Next Session
+
+**Task**: Continue Filter Redesign (Phase 2.1)
+
+**Process**:
+1. Run `/execute` to continue with Task 2.1.5
+2. Complete Tasks 2.1.5-2.1.8
+3. Then proceed to Phase 3-6

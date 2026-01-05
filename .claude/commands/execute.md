@@ -10,7 +10,7 @@ description: Execute plan with subagents and review checkpoints
 Skill("superpowers:subagent-driven-development")
 ```
 
-This skill contains the full workflow for executing plans with subagents. Read it and follow it exactly.
+This skill contains the full workflow for executing plans with subagents. Read it and follow it.
 
 ---
 
@@ -21,6 +21,7 @@ Execute the current plan using the `subagent-driven-development` skill.
 You are the MANAGER of subagents, not an implementer. Your job is coordination.
 
 **Your responsibilities:**
+
 - Dispatch subagents for implementation, investigation, and review work
 - Track progress with TodoWrite
 - Summarize results back to user
@@ -28,6 +29,7 @@ You are the MANAGER of subagents, not an implementer. Your job is coordination.
 - Keep your context window lean to avoid context rot
 
 **Use subagents liberally:**
+
 - Need to understand code? → Explore agent
 - Need to implement? → frontend/backend-developer agent
 - Need to review? → code-reviewer agent
@@ -40,15 +42,16 @@ You coordinate, they execute.
 
 The `subagent-driven-development` skill uses **3 agents per task**:
 
-| Role | Frontend Task | Backend Task | Purpose |
-|------|---------------|--------------|---------|
-| 1. Implementer | `frontend-developer` | `backend-developer` | Implement, test, commit, self-review |
-| 2. Spec Reviewer | `frontend-developer` | `backend-developer` | Verify code matches spec exactly |
-| 3. Code Quality Reviewer | `superpowers:code-reviewer` | `superpowers:code-reviewer` | Review code quality |
+| Role                     | Frontend Task               | Backend Task                | Purpose                              |
+| ------------------------ | --------------------------- | --------------------------- | ------------------------------------ |
+| 1. Implementer           | `frontend-developer`        | `backend-developer`         | Implement, test, commit, self-review |
+| 2. Spec Reviewer         | `frontend-developer`        | `backend-developer`         | Verify code matches spec exactly     |
+| 3. Code Quality Reviewer | `superpowers:code-reviewer` | `superpowers:code-reviewer` | Review code quality                  |
 
 **Order matters:** Spec review MUST pass before code quality review.
 
 **Per-task flow:**
+
 ```
 Implementer → Spec Reviewer (✅?) → Code Quality Reviewer (✅?) → Next Task
                     ↓ ❌                      ↓ ❌
@@ -58,6 +61,7 @@ Implementer → Spec Reviewer (✅?) → Code Quality Reviewer (✅?) → Next T
 ### Dispatch Patterns
 
 **1. Implementer** (provide full task text from plan):
+
 ```
 Task(
   subagent_type: "frontend-developer",  // or backend-developer
@@ -81,6 +85,7 @@ Task(
 ```
 
 **2. Spec Reviewer** (verify implementation matches spec):
+
 ```
 Task(
   subagent_type: "frontend-developer",  // or backend-developer
@@ -103,6 +108,7 @@ Task(
 ```
 
 **3. Code Quality Reviewer** (only after spec passes):
+
 ```
 Task(
   subagent_type: "superpowers:code-reviewer",
@@ -129,6 +135,7 @@ Task(
 ### Review Loops
 
 If reviewer finds issues:
+
 1. Resume **implementer** to fix (don't fix manually)
 2. Reviewer reviews again
 3. Repeat until ✅ approved
@@ -148,10 +155,12 @@ Subagents should verify against current documentation, not just training knowled
 ## Checkpoint Rule
 
 Pause for human review after:
+
 - Completing a phase (as defined in the plan)
 - Or when a meaningful chunk of work is done
 
 Present:
+
 - Summary of what was built
 - Key decisions made by subagents
 - Any patterns or issues worth noting
@@ -168,6 +177,7 @@ git worktree list
 ```
 
 If NOT in a worktree, ask:
+
 > "This feature could use an isolated worktree for clean separation.
 > Want me to set one up using `using-git-worktrees`, or proceed in the current branch?"
 
