@@ -6,6 +6,7 @@ Archive of resolved issues for reference.
 
 | # | Type | Issue | Resolution | Date |
 |---|------|-------|------------|------|
+| 39 | bug | Tooltip persistence on page navigation | Prevent focus events on TooltipTrigger (Radix issue #2029) | 2026-01-05 |
 | 24 | bug | Layout breaks at narrow viewports when sidebar + preview open | Added `overflow-hidden` to ResizablePanelGroup + `min-w-0` to both panels | 2025-12-28 |
 | 23 | bug | Chevron expansion resizes Field/Value columns | Added `table-fixed` class and explicit column widths | 2025-12-28 |
 | 22 | bug | Visual preview empty on documents list | Combined useEffect fetches signed URL and OCR text in parallel | 2025-12-28 |

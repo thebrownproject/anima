@@ -30,9 +30,26 @@ function Tooltip({
 }
 
 function TooltipTrigger({
+  onFocus,
+  onFocusCapture,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+  // Prevent focus events from opening tooltips to fix persistence after navigation
+  // See: https://github.com/radix-ui/primitives/issues/2029
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      onFocus={(e) => {
+        e.preventDefault()
+        onFocus?.(e)
+      }}
+      onFocusCapture={(e) => {
+        e.stopPropagation()
+        onFocusCapture?.(e)
+      }}
+      {...props}
+    />
+  )
 }
 
 function TooltipContent({

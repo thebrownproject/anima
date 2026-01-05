@@ -1,36 +1,4 @@
-# Stackdocs Roadmap
-
-**Last Updated:** 2026-01-01
-
----
-
-## Current Focus
-
-### In Progress
-
-**Documents Sub-bar** (`plans/in-progress/documents-subbar/`) - 🆕 Design Complete
-- Design: Complete
-- Implementation Plan: Not yet created
-- Features: Filter dropdown, Edit/Export/Delete/Add-to-Stack agent flows
-- Stack dropdown with navigation and flow trigger
-
-**Stacks UI** (`plans/in-progress/stacks/`) - ⏸️ Paused
-- Design: Complete (v2)
-- Implementation Plan: 3 phases (foundation, pages, tables)
-- Database: Ready (migrations 004 & 005 applied)
-- Frontend: Phases 1-2 complete, Phase 3 partial
-- Remaining: "Not extracted" indicator, CSV export (deferred until Stack Agent built)
-
-### Todo
-
-| Feature | Location | Description |
-|---------|----------|-------------|
-| Stack Agent | `plans/todo/stack-agent/` | Extraction agent, SSE routes, tools |
-| Backend Hardening | `plans/todo/backend-hardening/` | Security headers, rate limiting, logging |
-
----
-
-## Completed
+# Complete
 
 | Feature | Date | Summary |
 |---------|------|---------|
@@ -57,35 +25,3 @@
 | Planning Reorganization | Dec 2025 | Kanban docs structure, superpowers workflow |
 | Architecture Migration | Dec 2025 | LangChain to Anthropic SDK direct |
 | Backend Core | Nov 2025 | FastAPI + Supabase + Mistral OCR + Claude extraction |
-
----
-
-## Future Features (P1 - Post-MVP)
-
-| Feature | Description | Dependencies |
-|---------|-------------|--------------|
-| Batch upload | Process multiple documents at once | Frontend |
-| Saved templates | Reusable custom field configs | Frontend |
-| Stripe integration | Paid tiers, usage limits | Frontend |
-| CSV export improvements | Match Xero import specs | User feedback |
-| Email forwarding | Forward invoices to auto-process | Infrastructure |
-
----
-
-## Future Features (P2 - Later)
-
-- Xero/QuickBooks integration
-- API access for programmatic extraction
-- Team accounts (shared document libraries)
-- Webhook notifications
-
----
-
-## Related Documentation
-
-| Doc | Purpose |
-|-----|---------|
-| `PRD.md` | Product requirements |
-| `ARCHITECTURE.md` | System design |
-| `SCHEMA.md` | Database schema |
-| `plans/` | Feature plans (kanban) |
