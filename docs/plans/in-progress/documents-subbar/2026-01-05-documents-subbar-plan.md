@@ -1,0 +1,83 @@
+# Documents Sub-bar Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Complete the documents sub-bar with functional Filter, Export, Delete, Stack toggle, and SelectionActions.
+
+**Scope:** Frontend only. Edit flow (agent) is deferred to a future task.
+
+**Architecture:**
+- Simple UI components for most actions (Export dropdown, Delete dialog, Stack checkboxes)
+- Filter state managed through existing React contexts
+- All database operations go through Supabase directly (not FastAPI)
+
+**Tech Stack:** Next.js 16, shadcn/ui (AlertDialog, DropdownMenu), Sonner (toast), Supabase JS client
+
+**Design Doc:** `2026-01-01-documents-subbar-design.md`
+
+---
+
+## Status: Not Started
+
+---
+
+## Plan Structure
+
+| File | Description | Tasks | Status |
+|------|-------------|-------|--------|
+| [01-prerequisites.md](./01-prerequisites.md) | Install Sonner toast component | 1 | ⬚ |
+| [02-filter-dropdown.md](./02-filter-dropdown.md) | Filter state context and dropdown UI | 2-4 | ⬚ |
+| [03-stack-dropdown.md](./03-stack-dropdown.md) | Stack toggle with DB operations | 5-7 | ⬚ |
+| [04-export-dropdown.md](./04-export-dropdown.md) | CSV/JSON export functionality | 8-9 | ⬚ |
+| [05-delete-dialog.md](./05-delete-dialog.md) | Delete confirmation dialog | 10-11 | ⬚ |
+| [06-selection-actions.md](./06-selection-actions.md) | Bulk delete via selection actions | 12-14 | ⬚ |
+
+---
+
+## Implementation Order
+
+### Phase 1: Prerequisites (01-prerequisites.md)
+1. Install Sonner toast component
+
+### Phase 2: Filter Dropdown (02-filter-dropdown.md)
+2. Extend DocumentsFilterContext with filter state
+3. Implement filter dropdown UI
+4. Apply filters to documents table
+
+### Phase 3: Stack Dropdown (03-stack-dropdown.md)
+5. Add getAllStacks query
+6. Fetch allStacks in SubBar server component
+7. Wire up stack dropdown with DB operations
+
+### Phase 4: Export Dropdown (04-export-dropdown.md)
+8. Create export dropdown component
+9. Wire up export in document detail actions
+
+### Phase 5: Delete Dialog (05-delete-dialog.md)
+10. Create delete dialog component
+11. Wire up delete in document detail actions
+
+### Phase 6: Selection Actions (06-selection-actions.md)
+12. Create bulk delete dialog
+13. Wire up SelectionActions in documents list
+14. Sync table selection with context
+
+---
+
+## Deferred Work
+
+| Feature | Reason |
+|---------|--------|
+| Edit Flow (Agent) | Requires new agent flow implementation |
+| Stack filter in Filter dropdown | Needs stacks list in documents context |
+| Add to Stack bulk action | Needs stack selection modal |
+
+---
+
+## Success Criteria
+
+- [ ] Filter dropdown filters documents by date and status
+- [ ] Stack dropdown allows toggling stack membership via checkboxes
+- [ ] Export downloads CSV or JSON extraction data
+- [ ] Delete shows confirmation dialog and removes document
+- [ ] Bulk selection delete works for multiple documents
