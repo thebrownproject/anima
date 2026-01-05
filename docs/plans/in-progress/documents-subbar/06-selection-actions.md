@@ -21,10 +21,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { createClerkSupabaseClient } from '@/lib/supabase'
+import { useSupabase } from '@/hooks/use-supabase'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +48,7 @@ export function BulkDeleteDialog({
   documentIds,
   onComplete,
 }: BulkDeleteDialogProps) {
-  const { getToken } = useAuth()
+  const supabase = useSupabase()
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -57,7 +56,6 @@ export function BulkDeleteDialog({
 
   const handleDelete = async () => {
     setIsDeleting(true)
-    const supabase = createClerkSupabaseClient(getToken)
 
     try {
       // Step 1: Get file paths before deletion
@@ -117,7 +115,10 @@ export function BulkDeleteDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
+            onClick={async (e) => {
+              e.preventDefault()  // Prevent default close - we control via onOpenChange
+              await handleDelete()
+            }}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
@@ -155,11 +156,13 @@ git commit -m "feat: add bulk delete dialog for multiple documents"
 
 Replace `selectedCount` with `selectedIds` (derive count from length). Add callback registration for table to provide its `setRowSelection` function, enabling context to clear table selection.
 
+> **Note:** The `RowSelectionState` type is NOT needed in this file - we only store `string[]` IDs.
+> The type is only used in the table component.
+
 ```tsx
 'use client'
 
 import { createContext, useContext, useState, useCallback, useMemo, useRef, ReactNode } from 'react'
-import type { RowSelectionState } from '@tanstack/react-table'
 
 /**
  * Context for sharing filter and selection state between
@@ -244,6 +247,11 @@ export function useDocumentsFilter() {
 
 **Step 2: Update SelectionActions to enable Delete**
 
+**Breaking Change:** The `SelectionActionsProps` interface changes:
+- `onDelete?: () => void` is REMOVED (delete is now handled internally via BulkDeleteDialog)
+- `selectedIds: string[]` is ADDED (required for delete operation)
+- `onClearSelection: () => void` is ADDED (required to clear selection after delete)
+
 Remove `disabled` from Delete menu item, add state for dialog:
 
 ```tsx
@@ -269,7 +277,7 @@ interface SelectionActionsProps {
   selectedCount: number
   selectedIds: string[]
   onClearSelection: () => void
-  onAddToStack?: () => void
+  onAddToStack?: () => void  // PLACEHOLDER: Not implemented yet (see Deferred Work in main plan)
 }
 
 export function SelectionActions({
@@ -300,6 +308,7 @@ export function SelectionActions({
             <TooltipContent side="bottom">Bulk operations</TooltipContent>
           </Tooltip>
           <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+            {/* Add to Stack: disabled placeholder - see Deferred Work in main plan */}
             <DropdownMenuItem onClick={onAddToStack} disabled>
               <Icons.FolderPlus className="mr-2 size-4" />
               Add to Stack

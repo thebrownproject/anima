@@ -21,10 +21,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { createClerkSupabaseClient } from '@/lib/supabase'
+import { useSupabase } from '@/hooks/use-supabase'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,14 +45,13 @@ interface DeleteDialogProps {
 }
 
 export function DeleteDialog({ documentId, filename, filePath }: DeleteDialogProps) {
-  const { getToken } = useAuth()
+  const supabase = useSupabase()
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [open, setOpen] = useState(false)
 
   const handleDelete = async () => {
     setIsDeleting(true)
-    const supabase = createClerkSupabaseClient(getToken)
 
     try {
       // Step 1: Delete from database (cascades to related tables)
@@ -107,7 +105,10 @@ export function DeleteDialog({ documentId, filename, filePath }: DeleteDialogPro
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
+            onClick={async (e) => {
+              e.preventDefault()  // Prevent default close - we control via setOpen
+              await handleDelete()
+            }}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
@@ -137,115 +138,68 @@ git commit -m "feat: add delete confirmation dialog with Supabase operations"
 ## Task 11: Wire Up Delete in Document Detail Actions
 
 **Files:**
-- Modify: `frontend/app/(app)/@subbar/documents/[id]/page.tsx`
-- Modify: `frontend/components/documents/document-detail-sub-bar.tsx`
 - Modify: `frontend/components/documents/document-detail-actions.tsx`
 
-**Data Flow:**
-The DeleteDialog needs `documentId`, `filename`, and `filePath`. Currently the subbar server component only fetches stacks. We need to use `getDocumentWithExtraction()` (already cached) to get the full document data.
+> **Note:** The server component and SubBar props were already updated in Task 9 (Phase 4) with
+> the UNIFIED interface that includes all fields needed for Stack toggle, Export, AND Delete.
+> This task only adds the DeleteDialog to DocumentDetailActions.
 
-> **Note:** Database uses `file_path` (snake_case), but React props use `filePath` (camelCase).
+**Step 1: Add DeleteDialog to DocumentDetailActions**
 
-**Step 1: Update server component to fetch document data**
-
-```tsx
-// frontend/app/(app)/@subbar/documents/[id]/page.tsx
-import { getDocumentWithExtraction } from '@/lib/queries/documents'
-import { DocumentDetailSubBar } from '@/components/documents/document-detail-sub-bar'
-
-interface DocumentDetailSubBarPageProps {
-  params: Promise<{ id: string }>
-}
-
-export default async function DocumentDetailSubBarPage({ params }: DocumentDetailSubBarPageProps) {
-  const { id } = await params
-  const document = await getDocumentWithExtraction(id)
-
-  return (
-    <DocumentDetailSubBar
-      documentId={id}
-      filename={document?.filename ?? 'Unknown'}
-      filePath={document?.file_path ?? null}
-      assignedStacks={document?.stacks ?? []}
-    />
-  )
-}
-```
-
-**Step 2: Update DocumentDetailSubBar props interface**
-
-```tsx
-// frontend/components/documents/document-detail-sub-bar.tsx
-interface DocumentDetailSubBarProps {
-  documentId: string
-  filename: string
-  filePath: string | null
-  assignedStacks: StackSummary[]
-}
-
-export function DocumentDetailSubBar({
-  documentId,
-  filename,
-  filePath,
-  assignedStacks,
-}: DocumentDetailSubBarProps) {
-  // ... existing code ...
-
-  // Update DocumentDetailActions call:
-  <DocumentDetailActions
-    documentId={documentId}
-    filename={filename}
-    filePath={filePath}
-    assignedStacks={assignedStacks}
-  />
-}
-```
-
-**Step 3: Update DocumentDetailActions props and add DeleteDialog**
+Update the component from Task 9 to include DeleteDialog:
 
 ```tsx
 // frontend/components/documents/document-detail-actions.tsx
 'use client'
 
 import { StacksDropdown } from '@/components/documents/stacks-dropdown'
+import { ExportDropdown } from '@/components/documents/export-dropdown'
 import { DeleteDialog } from '@/components/documents/delete-dialog'
 import { ActionButton } from '@/components/layout/action-button'
 import * as Icons from '@/components/icons'
+import type { StackSummary } from '@/types/stacks'
 
+// UNIFIED interface (defined in Task 9) - includes all props for all actions
 interface DocumentDetailActionsProps {
-  documentId: string
-  filename: string
-  filePath: string | null
-  assignedStacks: Array<{ id: string; name: string }>
+  documentId: string                              // For Delete, Stack toggle
+  filename: string                                // For Export, Delete
+  filePath: string | null                         // For Delete (storage cleanup)
+  extractedFields: Record<string, unknown> | null // For Export
+  assignedStacks: StackSummary[]                  // For Stack toggle
+  allStacks: StackSummary[]                       // For Stack toggle
 }
 
 export function DocumentDetailActions({
   documentId,
   filename,
   filePath,
+  extractedFields,
   assignedStacks,
+  allStacks,
 }: DocumentDetailActionsProps) {
   return (
     <>
-      <StacksDropdown assignedStacks={assignedStacks} />
+      <StacksDropdown
+        documentId={documentId}
+        assignedStacks={assignedStacks}
+        allStacks={allStacks}
+      />
       <ActionButton icon={<Icons.Edit />} tooltip="Edit document and extractions">
         Edit
       </ActionButton>
-      <ActionButton icon={<Icons.Download />} tooltip="Download extraction data">
-        Export
-      </ActionButton>
+      <ExportDropdown filename={filename} extractedFields={extractedFields} />
       <DeleteDialog documentId={documentId} filename={filename} filePath={filePath} />
     </>
   )
 }
 ```
 
-**Step 4: Verify build**
+**Step 2: Verify build**
 
 Run: `cd frontend && npm run build`
 Expected: Build succeeds.
 
-**Step 5: Commit**
+**Step 3: Commit**
 
 ```bash
 git add frontend/app/(app)/@subbar/documents/[id]/page.tsx frontend/components/documents/document-detail-sub-bar.tsx frontend/components/documents/document-detail-actions.tsx

@@ -32,14 +32,13 @@ setDateRange: (value: DateRangeFilter) => void
 statusFilter: Set<DocumentStatus>
 setStatusFilter: (value: Set<DocumentStatus>) => void
 toggleStatusFilter: (status: DocumentStatus) => void
-// Stack filter (multi-select by stack ID, empty = all) - used in Phase 3
-stackFilter: Set<string>
-setStackFilter: (value: Set<string>) => void
-toggleStackFilter: (stackId: string) => void
 // Active filter count for badge
 activeFilterCount: number
 // Clear all filters
 clearFilters: () => void
+
+// NOTE: Stack filter (stackFilter, setStackFilter, toggleStackFilter) is DEFERRED.
+// See "Deferred Work" in main plan - requires stacks list in documents context.
 ```
 
 **Step 2: Implement the state and callbacks in provider**
@@ -203,24 +202,31 @@ const filteredDocuments = useMemo(() => {
   if (dateRange !== 'all') {
     const now = new Date()
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    let cutoff: Date
 
     switch (dateRange) {
       case 'today':
-        cutoff = startOfToday
+        result = result.filter((doc) => new Date(doc.uploaded_at) >= startOfToday)
         break
-      case 'yesterday':
-        cutoff = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000)
+      case 'yesterday': {
+        // Yesterday only: >= start of yesterday AND < start of today
+        const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000)
+        result = result.filter((doc) => {
+          const d = new Date(doc.uploaded_at)
+          return d >= startOfYesterday && d < startOfToday
+        })
         break
+      }
       case 'last7':
-        cutoff = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000)
+        result = result.filter((doc) =>
+          new Date(doc.uploaded_at) >= new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000)
+        )
         break
       case 'last30':
-        cutoff = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000)
+        result = result.filter((doc) =>
+          new Date(doc.uploaded_at) >= new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000)
+        )
         break
     }
-
-    result = result.filter((doc) => new Date(doc.uploaded_at) >= cutoff)
   }
 
   // Apply status filter (if any selected)

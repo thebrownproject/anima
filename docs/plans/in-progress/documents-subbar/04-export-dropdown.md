@@ -86,12 +86,14 @@ export function ExportDropdown({ filename, extractedFields }: ExportDropdownProp
 
     try {
       const flat = flattenFields(extractedFields)
-      const headers = Object.keys(flat)
-      const values = Object.values(flat).map(v => `"${v.replace(/"/g, '""')}"`)
+      // Escape both headers and values (headers may contain commas from nested paths)
+      const escapeCsvField = (v: string) => `"${v.replace(/"/g, '""')}"`
+      const headers = Object.keys(flat).map(escapeCsvField)
+      const values = Object.values(flat).map(escapeCsvField)
 
       const csv = [headers.join(','), values.join(',')].join('\n')
       downloadFile(csv, `${baseFilename}_extraction_${dateStr}.csv`, 'text/csv')
-      toast.success('Exported to CSV')
+      toast.success('CSV exported')
     } catch (error) {
       console.error('CSV export failed:', error)
       toast.error('Failed to export CSV')
@@ -107,24 +109,28 @@ export function ExportDropdown({ filename, extractedFields }: ExportDropdownProp
     try {
       const json = JSON.stringify(extractedFields, null, 2)
       downloadFile(json, `${baseFilename}_extraction_${dateStr}.json`, 'application/json')
-      toast.success('Exported to JSON')
+      toast.success('JSON exported')
     } catch (error) {
       console.error('JSON export failed:', error)
       toast.error('Failed to export JSON')
     }
   }
 
+  const hasData = extractedFields !== null
+
   return (
     <DropdownMenu>
       <Tooltip>
         <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <ActionButton icon={<Icons.Download />}>
+          <DropdownMenuTrigger asChild disabled={!hasData}>
+            <ActionButton icon={<Icons.Download />} disabled={!hasData}>
               Export
             </ActionButton>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent side="bottom">Download extraction data</TooltipContent>
+        <TooltipContent side="bottom">
+          {hasData ? 'Download extraction data' : 'No extraction data available'}
+        </TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
         <DropdownMenuItem onClick={handleExportCSV}>
@@ -162,11 +168,16 @@ git commit -m "feat: add export dropdown with CSV/JSON download"
 
 **Step 1: Update server component to fetch extraction data**
 
-Switch from `getDocumentStacks()` to `getDocumentWithExtraction()` to get extraction data:
+Switch from `getDocumentStacks()` to `getDocumentWithExtraction()` + `getAllStacks()` to get all required data.
+
+> **Note:** This task builds on Task 6 (Phase 3) which already added `getAllStacks()`. The props interface
+> here is the UNIFIED interface that includes all fields needed for Export (Task 8-9), Delete (Task 10-11),
+> and Stack toggle (Task 5-7).
 
 ```tsx
 // frontend/app/(app)/@subbar/documents/[id]/page.tsx
 import { getDocumentWithExtraction } from '@/lib/queries/documents'
+import { getAllStacks } from '@/lib/queries/stacks'
 import { DocumentDetailSubBar } from '@/components/documents/document-detail-sub-bar'
 
 interface DocumentDetailSubBarPageProps {
@@ -175,7 +186,12 @@ interface DocumentDetailSubBarPageProps {
 
 export default async function DocumentDetailSubBarPage({ params }: DocumentDetailSubBarPageProps) {
   const { id } = await params
-  const document = await getDocumentWithExtraction(id)
+
+  // Fetch in parallel for faster loading
+  const [document, allStacks] = await Promise.all([
+    getDocumentWithExtraction(id),
+    getAllStacks(),
+  ])
 
   if (!document) {
     return null
@@ -183,9 +199,12 @@ export default async function DocumentDetailSubBarPage({ params }: DocumentDetai
 
   return (
     <DocumentDetailSubBar
+      documentId={id}
       filename={document.filename}
+      filePath={document.file_path}
       extractedFields={document.extracted_fields}
       assignedStacks={document.stacks}
+      allStacks={allStacks}
     />
   )
 }
@@ -193,33 +212,53 @@ export default async function DocumentDetailSubBarPage({ params }: DocumentDetai
 
 **Step 2: Update DocumentDetailSubBar props interface**
 
-Add `filename` and `extractedFields` props, pass through to actions:
+This is the UNIFIED interface including all fields needed for Export, Delete, and Stack operations:
 
 ```tsx
 // frontend/components/documents/document-detail-sub-bar.tsx
+import type { StackSummary } from '@/types/stacks'
+
 interface DocumentDetailSubBarProps {
-  filename: string
-  extractedFields: Record<string, unknown> | null
-  assignedStacks: StackSummary[]
+  documentId: string                              // For Delete, Stack toggle
+  filename: string                                // For Export, Delete
+  filePath: string | null                         // For Delete (storage cleanup)
+  extractedFields: Record<string, unknown> | null // For Export
+  assignedStacks: StackSummary[]                  // For Stack toggle
+  allStacks: StackSummary[]                       // For Stack toggle
 }
 
 export function DocumentDetailSubBar({
+  documentId,
   filename,
+  filePath,
   extractedFields,
-  assignedStacks
+  assignedStacks,
+  allStacks,
 }: DocumentDetailSubBarProps) {
-  // ... existing code ...
+  const { fieldSearch, setFieldSearch, selectedFieldCount } = useDocumentDetailFilter()
 
   return (
     <SubBar
-      // ... left prop unchanged ...
+      left={
+        <>
+          <FilterButton />
+          <ExpandableSearch
+            value={fieldSearch}
+            onChange={setFieldSearch}
+            placeholder="Search fields..."
+          />
+        </>
+      }
       right={
         <>
           <SelectionActions selectedCount={selectedFieldCount} />
           <DocumentDetailActions
+            documentId={documentId}
             filename={filename}
+            filePath={filePath}
             extractedFields={extractedFields}
             assignedStacks={assignedStacks}
+            allStacks={allStacks}
           />
         </>
       }
@@ -230,30 +269,47 @@ export function DocumentDetailSubBar({
 
 **Step 3: Update DocumentDetailActions props and use ExportDropdown**
 
-Add props and replace static Export button:
+This is the UNIFIED interface - includes all props for Stack toggle, Export, and Delete:
 
 ```tsx
 // frontend/components/documents/document-detail-actions.tsx
+'use client'
+
+import { StacksDropdown } from '@/components/documents/stacks-dropdown'
 import { ExportDropdown } from '@/components/documents/export-dropdown'
+import { ActionButton } from '@/components/layout/action-button'
+import * as Icons from '@/components/icons'
+import type { StackSummary } from '@/types/stacks'
 
 interface DocumentDetailActionsProps {
-  filename: string
-  extractedFields: Record<string, unknown> | null
-  assignedStacks: Array<{ id: string; name: string }>
+  documentId: string                              // For Delete, Stack toggle
+  filename: string                                // For Export, Delete
+  filePath: string | null                         // For Delete (storage cleanup)
+  extractedFields: Record<string, unknown> | null // For Export
+  assignedStacks: StackSummary[]                  // For Stack toggle
+  allStacks: StackSummary[]                       // For Stack toggle
 }
 
 export function DocumentDetailActions({
+  documentId,
   filename,
+  filePath,
   extractedFields,
-  assignedStacks
+  assignedStacks,
+  allStacks,
 }: DocumentDetailActionsProps) {
   return (
     <>
-      <StacksDropdown assignedStacks={assignedStacks} />
+      <StacksDropdown
+        documentId={documentId}
+        assignedStacks={assignedStacks}
+        allStacks={allStacks}
+      />
       <ActionButton icon={<Icons.Edit />} tooltip="Edit document and extractions">
         Edit
       </ActionButton>
       <ExportDropdown filename={filename} extractedFields={extractedFields} />
+      {/* DeleteDialog will be added in Task 11 */}
     </>
   )
 }

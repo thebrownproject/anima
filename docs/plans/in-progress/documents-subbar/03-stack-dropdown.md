@@ -17,12 +17,17 @@
 **Files:**
 - Modify: `frontend/lib/queries/stacks.ts`
 
+> **Note:** `getStacksForSidebar()` already exists but has `limit(10)` and orders by `updated_at`.
+> We need `getAllStacks()` without a limit, ordered alphabetically by `name` for dropdown UX.
+
 **Step 1: Add cached query for all user stacks**
 
 ```tsx
 /**
  * Get all stacks for the current user (minimal data for dropdowns).
  * Wrapped with React cache() to deduplicate requests.
+ *
+ * Unlike getStacksForSidebar(), this has no limit and orders by name.
  */
 export const getAllStacks = cache(async function getAllStacks(): Promise<StackSummary[]> {
   const supabase = await createServerSupabaseClient()
@@ -87,7 +92,51 @@ export default async function DocumentDetailSubBarPage({ params }: DocumentDetai
 
 **Step 2: Update DocumentDetailSubBar props**
 
-Modify `frontend/components/documents/document-detail-sub-bar.tsx` to accept `documentId` and `allStacks` props and pass them to `DocumentDetailActions`.
+Modify `frontend/components/documents/document-detail-sub-bar.tsx` to accept `documentId` and `allStacks` props and pass them to `DocumentDetailActions`:
+
+```tsx
+// frontend/components/documents/document-detail-sub-bar.tsx
+import type { StackSummary } from '@/types/stacks'
+
+interface DocumentDetailSubBarProps {
+  documentId: string
+  assignedStacks: StackSummary[]
+  allStacks: StackSummary[]
+}
+
+export function DocumentDetailSubBar({
+  documentId,
+  assignedStacks,
+  allStacks,
+}: DocumentDetailSubBarProps) {
+  const { fieldSearch, setFieldSearch, selectedFieldCount } = useDocumentDetailFilter()
+
+  return (
+    <SubBar
+      left={
+        <>
+          <FilterButton />
+          <ExpandableSearch
+            value={fieldSearch}
+            onChange={setFieldSearch}
+            placeholder="Search fields..."
+          />
+        </>
+      }
+      right={
+        <>
+          <SelectionActions selectedCount={selectedFieldCount} />
+          <DocumentDetailActions
+            documentId={documentId}
+            assignedStacks={assignedStacks}
+            allStacks={allStacks}
+          />
+        </>
+      }
+    />
+  )
+}
+```
 
 **Step 3: Verify build**
 
@@ -109,6 +158,12 @@ git commit -m "feat: fetch allStacks for stack dropdown in document detail"
 - Modify: `frontend/components/documents/stacks-dropdown.tsx`
 - Modify: `frontend/components/documents/document-detail-actions.tsx`
 
+**Breaking Change:** The existing `StacksDropdown` interface changes:
+- `onToggleStack?: (stackId, assigned) => void` is REMOVED (handled internally now)
+- `documentId: string` is ADDED (required for DB operations)
+- `allStacks` becomes required (was optional)
+- Empty state logic changes: now shows "No stacks" when `allStacks.length === 0` (not when `assignedStacks.length === 0`)
+
 **Key Implementation Details:**
 - Add `documentId` prop (required for DB operations)
 - Delete from junction table requires **two** `.eq()` conditions (document_id AND stack_id)
@@ -120,10 +175,9 @@ git commit -m "feat: fetch allStacks for stack dropdown in document detail"
 ```tsx
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { createClerkSupabaseClient } from '@/lib/supabase'
+import { useSupabase } from '@/hooks/use-supabase'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -147,12 +201,11 @@ export function StacksDropdown({
   assignedStacks,
   allStacks,
 }: StacksDropdownProps) {
-  const { getToken } = useAuth()
+  const supabase = useSupabase()
   const router = useRouter()
   const assignedIds = new Set(assignedStacks.map((s) => s.id))
 
   const handleToggleStack = async (stackId: string, stackName: string, shouldAssign: boolean) => {
-    const supabase = createClerkSupabaseClient(async () => getToken({ template: 'supabase' }))
 
     try {
       if (shouldAssign) {
@@ -161,7 +214,7 @@ export function StacksDropdown({
           .insert({ document_id: documentId, stack_id: stackId })
 
         if (error) throw error
-        toast.success(`Added to ${stackName}`)
+        toast.success(`Added to "${stackName}"`)
       } else {
         // Junction table delete requires BOTH conditions
         const { error } = await supabase
@@ -171,7 +224,7 @@ export function StacksDropdown({
           .eq('stack_id', stackId)
 
         if (error) throw error
-        toast.success(`Removed from ${stackName}`)
+        toast.success(`Removed from "${stackName}"`)
       }
 
       router.refresh()
