@@ -18,7 +18,7 @@ You are wrapping up the current development session. Document progress, update p
 
 ## Step 2: Update DEV-NOTES.md
 
-Add a session entry at the END of `docs/DEV-NOTES.md`:
+Add a session entry at the END of `docs/sessions/DEV-NOTES.md`:
 
 ```markdown
 ---
@@ -60,18 +60,17 @@ Add a session entry at the END of `docs/DEV-NOTES.md`:
 
 Keep notes detailed enough that grepping session titles gives useful context.
 
-## Step 3: Update ROADMAP.md (if plans changed)
+## Step 3: Update Roadmap (if plans changed)
 
-Update ROADMAP.md if ANY of these happened this session:
+Update roadmap files if ANY of these happened this session:
 - **New plan created** in `docs/plans/todo/` or `docs/plans/in-progress/`
 - **Feature phase completed** (e.g., backend done, frontend started)
 - **Priorities changed**
 
 Steps:
-1. Read `docs/ROADMAP.md`
-2. Add new features to "Todo" or "In Progress" sections
-3. Update existing feature status as needed
-4. Move completed features to "Completed" section
+1. Update `docs/plans/roadmap/IN-PROGRESS.md` for current work changes
+2. Update `docs/plans/roadmap/TODO.md` for new planned features
+3. Move completed features to `docs/plans/roadmap/COMPLETE.md`
 
 ## Step 4: Git Commit
 
@@ -137,9 +136,9 @@ If the entire feature is complete:
    git mv docs/plans/in-progress/[feature] docs/plans/complete/
    ```
 
-2. Update reference docs (ARCHITECTURE.md, SCHEMA.md) to reflect new reality
+2. Update reference docs (`docs/specs/ARCHITECTURE.md`, `docs/specs/SCHEMA.md`) to reflect new reality
 
-3. Update ROADMAP.md to move feature to "Completed"
+3. Move feature from `docs/plans/roadmap/IN-PROGRESS.md` to `COMPLETE.md`
 
 ## Important Notes
 

@@ -445,6 +445,6 @@ app/(app)/@subbar/documents/[id]/page.tsx         # Fetch allStacks for dropdown
 ## Related Documentation
 
 - `frontend/CLAUDE.md` - Agent system patterns
-- `docs/ARCHITECTURE.md` - System architecture
-- `docs/SCHEMA.md` - Database schema (extractions, stack_documents tables)
+- `docs/specs/ARCHITECTURE.md` - System architecture
+- `docs/specs/SCHEMA.md` - Database schema (extractions, stack_documents tables)
 - `docs/plans/issues/ACTIVE.md` - Issue #40 (Preview panel Open button)

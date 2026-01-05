@@ -415,6 +415,6 @@ Build a general-purpose document data extraction tool that uses AI to extract st
 
 ## Related Documentation
 
-- **Architecture**: `docs/ARCHITECTURE.md` (data flow, API endpoints)
-- **Database schema**: `docs/SCHEMA.md` (table definitions, relationships)
-- **Roadmap**: `docs/ROADMAP.md` (feature priorities)
+- **Architecture**: `docs/specs/ARCHITECTURE.md` (data flow, API endpoints)
+- **Database schema**: `docs/specs/SCHEMA.md` (table definitions, relationships)
+- **Roadmap**: `docs/plans/roadmap/` (IN-PROGRESS.md, TODO.md, COMPLETE.md)

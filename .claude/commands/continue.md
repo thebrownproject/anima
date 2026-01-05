@@ -8,12 +8,7 @@ arguments:
 
 You are resuming the **Stackdocs** project. Get oriented and wait for direction.
 
-**FIRST**: Activate the using-superpowers skill to ensure proper workflow:
-```
-/superpowers:using-superpowers
-```
-
-**TOKEN BUDGET**: Target <5,000 tokens for initial context loading. Use grep/offset/limit to read selectively.
+**TOKEN BUDGET**: Target <1,000 tokens for initial context loading. Use grep/offset/limit to read selectively.
 
 ## Handover Prompt (if provided)
 
@@ -27,28 +22,27 @@ $ARGUMENTS
 
 Read in order:
 
-1. **Read ROADMAP.md** (current progress):
+1. **Read IN-PROGRESS.md** (current work):
 
    ```
-   Read docs/ROADMAP.md
+   Read docs/plans/roadmap/IN-PROGRESS.md
    ```
 
-   - Shows what's In Progress vs Todo vs Completed
-   - Identifies current feature being worked on
+2. **Latest session only** from DEV-NOTES:
 
-2. **Latest session only** from `docs/DEV-NOTES.md`:
+   ```bash
+   # Get last session line number (use Bash, not Grep tool)
+   grep -n "^## Session" docs/sessions/DEV-NOTES.md | tail -1 | cut -d: -f1
+   ```
 
-   - First run: `grep -n "^## Session" docs/DEV-NOTES.md | tail -1`
-   - Extract the line number (e.g., "2137:## Session 18 - ..." → 2137)
-   - Then use Read tool with offset: `Read docs/DEV-NOTES.md offset=[line_number]`
-   - **Key benefit**: "Next Session" section shows what to work on next
+   Then read with offset: `Read docs/sessions/DEV-NOTES.md offset=[number from above]`
 
-3. **If handover prompt provided above**: Use it as additional context alongside DEV-NOTES. The handover may contain more detailed decisions and specific next steps.
+3. **If handover prompt provided above**: Use it as additional context alongside DEV-NOTES.
 
 4. **Skip reading these at startup** (grep on-demand instead):
-   - `docs/PRD.md` - Only grep specific requirements when needed
-   - `docs/ARCHITECTURE.md` - Grep for specific sections during implementation
-   - `docs/SCHEMA.md` - Grep for table definitions when needed
+   - `docs/specs/PRD.md` - Only grep specific requirements when needed
+   - `docs/specs/ARCHITECTURE.md` - Grep for specific sections during implementation
+   - `docs/specs/SCHEMA.md` - Grep for table definitions when needed
 
 ## Step 2: Check Git Status
 
@@ -59,7 +53,7 @@ git status --short
 
 ## Step 3: Identify Current Work
 
-From ROADMAP.md and latest DEV-NOTES session:
+From IN-PROGRESS.md and latest DEV-NOTES session:
 
 - What feature is **In Progress**?
 - What was the **last completed task**?
@@ -77,7 +71,7 @@ ls docs/plans/in-progress/
 📍 Stackdocs Status
 
 **Branch:** [name]
-**Current Feature:** [feature name from ROADMAP In Progress]
+**Current Feature:** [feature name from IN-PROGRESS.md]
 
 **Progress:**
 ✅ Last: [What was completed in last session]

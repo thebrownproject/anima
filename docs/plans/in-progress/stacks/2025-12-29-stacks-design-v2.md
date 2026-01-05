@@ -269,4 +269,4 @@ stack_table_rows (one row per document per table)
 
 - Previous design: `2025-12-20-stacks-design.md` (archived)
 - Database migrations: `backend/migrations/004_add_stacks_schema.sql`, `005_remove_extraction_id_from_stack_rows.sql`
-- Schema docs: `docs/SCHEMA.md`
+- Schema docs: `docs/specs/SCHEMA.md`

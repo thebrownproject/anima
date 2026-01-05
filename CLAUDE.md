@@ -48,15 +48,15 @@ This project uses the **superpowers workflow** for planning and implementing fea
 
 **Reference Docs:**
 
-| Doc                    | Purpose                                    |
-| ---------------------- | ------------------------------------------ |
-| `docs/ARCHITECTURE.md` | System design, data flows, API surface     |
-| `docs/SCHEMA.md`       | Database tables, relationships, migrations |
-| `docs/PRD.md`          | Product requirements, user stories         |
-| `docs/ROADMAP.md`      | Feature priorities                         |
-| `docs/DEV-NOTES.md`    | Session history & decisions (NEVER read full - grep for context) |
-| `docs/CLAUDE.md`       | Planning index, workflow details           |
-| `docs/plans/issues/`   | Issue tracking (ACTIVE.md + COMPLETED.md) |
+| Doc                          | Purpose                                    |
+| ---------------------------- | ------------------------------------------ |
+| `docs/specs/ARCHITECTURE.md` | System design, data flows, API surface     |
+| `docs/specs/SCHEMA.md`       | Database tables, relationships, migrations |
+| `docs/specs/PRD.md`          | Product requirements, user stories         |
+| `docs/plans/roadmap/`        | IN-PROGRESS.md, TODO.md, COMPLETE.md, FUTURE.md |
+| `docs/sessions/DEV-NOTES.md` | Session history (NEVER read full - grep for context) |
+| `docs/CLAUDE.md`             | Planning index, workflow details           |
+| `docs/plans/issues/`         | Issue tracking (ACTIVE.md + COMPLETED.md)  |
 
 ---
 
@@ -138,7 +138,7 @@ See `backend/CLAUDE.md` for agents, endpoints, and deployment.
 
 **DO NOT** create tables/buckets - they already exist.
 
-See `docs/SCHEMA.md` for complete database schema.
+See `docs/specs/SCHEMA.md` for complete database schema.
 
 ---
 

@@ -13,7 +13,7 @@
 ### Completing Features
 1. Finish execution via `/superpowers:execute-plan`
 2. Move folder: `git mv plans/in-progress/<feature> plans/complete/`
-3. **Update reference docs** (ARCHITECTURE.md, SCHEMA.md) to reflect new reality
+3. **Update reference docs** (`specs/ARCHITECTURE.md`, `specs/SCHEMA.md`) to reflect new reality
 
 ### Parking Ideas
 - Not ready to start? Move to `plans/todo/`
@@ -27,10 +27,10 @@ Never read in full. Grep to find what you need:
 
 ```bash
 # List all sessions (shows date + what was done)
-grep "^## Session" docs/DEV-NOTES.md
+grep "^## Session" docs/sessions/DEV-NOTES.md
 
 # Find sessions about a topic
-grep "^## Session.*OCR\|^## Session.*Migration" docs/DEV-NOTES.md
+grep "^## Session.*OCR\|^## Session.*Migration" docs/sessions/DEV-NOTES.md
 
 # Then read specific session with offset
 ```
@@ -39,15 +39,15 @@ grep "^## Session.*OCR\|^## Session.*Migration" docs/DEV-NOTES.md
 
 ## When to Read What
 
-| I need to know...              | Read this                 |
-|--------------------------------|---------------------------|
-| What feature to build next     | ROADMAP.md                |
-| Why we're building it          | PRD.md                    |
-| How the system fits together   | ARCHITECTURE.md           |
-| What tables/columns exist      | SCHEMA.md                 |
-| What happened last session     | DEV-NOTES.md (grep only)  |
-| Current issues/ideas           | plans/issues/ACTIVE.md    |
-| Active feature plans           | plans/in-progress/        |
+| I need to know...              | Read this                          |
+|--------------------------------|------------------------------------|
+| What feature to build next     | `plans/roadmap/IN-PROGRESS.md`     |
+| Why we're building it          | `specs/PRD.md`                     |
+| How the system fits together   | `specs/ARCHITECTURE.md`            |
+| What tables/columns exist      | `specs/SCHEMA.md`                  |
+| What happened last session     | `sessions/DEV-NOTES.md` (grep only)|
+| Current issues/ideas           | `plans/issues/ACTIVE.md`           |
+| Active feature plans           | `plans/in-progress/`               |
 
 ---
 
@@ -56,18 +56,24 @@ grep "^## Session.*OCR\|^## Session.*Migration" docs/DEV-NOTES.md
 ```
 docs/
 ├── CLAUDE.md              # This file - planning workflow
-├── DEV-NOTES.md           # Session history
-├── ROADMAP.md             # Feature priorities
-├── PRD.md                 # Product requirements
-├── ARCHITECTURE.md        # System design
-├── SCHEMA.md              # Database schema
-├── marketing/             # Marketing assets
-└── plans/
-    ├── issues/            # Issue tracking
-    │   ├── ACTIVE.md      # Open issues and ideas
-    │   └── COMPLETED.md   # Resolved issues archive
-    ├── todo/              # Features designed, ready to implement
-    ├── in-progress/       # Currently being worked on
-    ├── complete/          # Done
-    └── archive/           # Superseded/abandoned plans
+├── specs/                 # System specifications
+│   ├── ARCHITECTURE.md    # System design
+│   ├── SCHEMA.md          # Database schema
+│   └── PRD.md             # Product requirements
+├── sessions/              # Session history
+│   └── DEV-NOTES.md       # Dev notes (grep only)
+├── plans/
+│   ├── roadmap/           # Feature priorities
+│   │   ├── IN-PROGRESS.md # Current work
+│   │   ├── TODO.md        # Ready to implement
+│   │   ├── COMPLETE.md    # Done
+│   │   └── FUTURE.md      # P1/P2 backlog
+│   ├── issues/            # Issue tracking
+│   │   ├── ACTIVE.md      # Open issues
+│   │   └── COMPLETED.md   # Resolved issues
+│   ├── todo/              # Detailed plans - ready
+│   ├── in-progress/       # Detailed plans - active
+│   ├── complete/          # Detailed plans - done
+│   └── archive/           # Superseded plans
+└── marketing/             # Marketing assets
 ```
