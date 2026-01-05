@@ -6977,3 +6977,67 @@ docs/plans/issues/ACTIVE.md  # Added #40 (Preview panel Open button)
 2. Install Sonner: `npx shadcn@latest add sonner`
 3. Start with Filter dropdown (self-contained)
 4. Continue through implementation order in design doc
+
+---
+
+## Session 91 - 2026-01-05 - Documents Sub-bar Plan Review ✅
+
+**Feature**: Documents Sub-bar
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Reviewed implementation plan with 6 subagents**:
+  - Each phase reviewed against context7 docs and existing codebase
+  - Verified shadcn component patterns, Supabase API usage, props threading
+  - Initial commit: `8f8fd1f`
+
+- [x] **Applied 14 code review fixes**:
+  - Critical: `useSupabase()` hook instead of verbose pattern
+  - Critical: `e.preventDefault()` in AlertDialogAction onClick
+  - Critical: Unified props interface across Task 9 and Task 11
+  - Important: Removed unused imports, documented breaking changes
+  - Minor: Toast consistency, CSV header escaping, disabled states
+  - Commit: `8631b43`
+
+- [x] **Added date utilities task**:
+  - New Task 4: Create `lib/date.ts` with reusable boundary functions
+  - Will be reused for Stacks page filtering
+  - Renumbered all tasks (now 15 total)
+  - Commit: `3f1f227`
+
+- [x] **Existing pattern audit**:
+  - Verified no duplicate utilities exist
+  - Confirmed `useSupabase()` hook is the correct pattern
+  - Confirmed `getAllStacks` query genuinely needs to be created
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Supabase client pattern | `useSupabase()` hook | Existing hook handles Clerk auth cleanly |
+| Date filtering | Extract to `lib/date.ts` | Will be reused in Stacks pages |
+| ConfirmClose pattern | Reference only | Delete dialogs have different needs (loading state, async) |
+
+### Files Modified
+
+```
+docs/plans/in-progress/documents-subbar/
+├── 2026-01-05-documents-subbar-plan.md  # Updated task numbers
+├── 01-prerequisites.md                   # Toaster placement clarified
+├── 02-filter-dropdown.md                 # Added Task 4: date utilities
+├── 03-stack-dropdown.md                  # useSupabase, breaking changes
+├── 04-export-dropdown.md                 # Unified props, disabled state
+├── 05-delete-dialog.md                   # useSupabase, preventDefault
+└── 06-selection-actions.md               # useSupabase, bidirectional sync
+```
+
+### Next Session
+
+**Task**: Execute Documents Sub-bar implementation plan
+
+**Process**:
+1. Run `/superpowers:execute-plan` or `/superpowers:subagent-driven-development`
+2. Start with Phase 1: Install Sonner
+3. Continue through all 15 tasks in order
+4. Verify each phase builds before moving on

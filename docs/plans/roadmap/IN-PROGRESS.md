@@ -1,10 +1,10 @@
 # In Progress
 
-**Documents Sub-bar** (`plans/in-progress/documents-subbar/`) - Design Complete
-- Design: Complete
-- Implementation Plan: Not yet created
-- Features: Filter dropdown, Edit/Export/Delete/Add-to-Stack agent flows
-- Stack dropdown with navigation and flow trigger
+**Documents Sub-bar** (`plans/in-progress/documents-subbar/`) - Ready to Execute
+- Design: Complete (v2.2)
+- Implementation Plan: Complete (15 tasks across 6 phases, reviewed)
+- Features: Filter dropdown, Export/Delete dialogs, Stack toggle, Bulk delete
+- Next: Run `/superpowers:execute-plan` to implement
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused
 - Design: Complete (v2)
