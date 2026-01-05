@@ -2,9 +2,9 @@
 
 import * as Icons from '@/components/icons'
 import { ActionButton } from '@/components/layout/action-button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -57,34 +57,38 @@ export function FilterButton({ stacks }: FilterButtonProps) {
             <span>Date</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            <DropdownMenuCheckboxItem
-              checked={dateRange === 'today'}
-              onCheckedChange={() => setDateRange(dateRange === 'today' ? 'all' : 'today')}
+            <DropdownMenuItem
+              onClick={() => setDateRange(dateRange === 'today' ? 'all' : 'today')}
+              className="gap-2"
             >
+              <Checkbox checked={dateRange === 'today'} className="pointer-events-none" />
               <Icons.Calendar className="size-4" />
               <span>Today</span>
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={dateRange === 'yesterday'}
-              onCheckedChange={() => setDateRange(dateRange === 'yesterday' ? 'all' : 'yesterday')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setDateRange(dateRange === 'yesterday' ? 'all' : 'yesterday')}
+              className="gap-2"
             >
+              <Checkbox checked={dateRange === 'yesterday'} className="pointer-events-none" />
               <Icons.CalendarMinus className="size-4" />
               <span>Yesterday</span>
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={dateRange === 'last7'}
-              onCheckedChange={() => setDateRange(dateRange === 'last7' ? 'all' : 'last7')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setDateRange(dateRange === 'last7' ? 'all' : 'last7')}
+              className="gap-2"
             >
+              <Checkbox checked={dateRange === 'last7'} className="pointer-events-none" />
               <Icons.CalendarWeek className="size-4" />
               <span>Last 7 days</span>
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={dateRange === 'last30'}
-              onCheckedChange={() => setDateRange(dateRange === 'last30' ? 'all' : 'last30')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setDateRange(dateRange === 'last30' ? 'all' : 'last30')}
+              className="gap-2"
             >
+              <Checkbox checked={dateRange === 'last30'} className="pointer-events-none" />
               <Icons.CalendarMonth className="size-4" />
               <span>Last 30 days</span>
-            </DropdownMenuCheckboxItem>
+            </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
@@ -97,14 +101,15 @@ export function FilterButton({ stacks }: FilterButtonProps) {
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {stacks.map((stack) => (
-                <DropdownMenuCheckboxItem
+                <DropdownMenuItem
                   key={stack.id}
-                  checked={stackFilter.has(stack.id)}
-                  onCheckedChange={() => toggleStackFilter(stack.id)}
+                  onClick={() => toggleStackFilter(stack.id)}
+                  className="gap-2"
                 >
+                  <Checkbox checked={stackFilter.has(stack.id)} className="pointer-events-none" />
                   <Icons.Stack className="size-4" />
                   <span>{stack.name}</span>
-                </DropdownMenuCheckboxItem>
+                </DropdownMenuItem>
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
