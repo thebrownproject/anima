@@ -84,6 +84,8 @@ export {
 
   // Filter
   IconFilterOff as FilterOff,
+  IconFilter2Exclamation as FilterExclamation,
+  IconFilter2X as FilterX,
 
   // Lists
   IconList as List,
