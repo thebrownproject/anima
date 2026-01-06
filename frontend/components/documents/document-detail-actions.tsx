@@ -12,7 +12,7 @@ interface DocumentDetailActionsProps {
 export function DocumentDetailActions({ documentId, assignedStacks }: DocumentDetailActionsProps) {
   return (
     <>
-      <StacksDropdown assignedStacks={assignedStacks} />
+      <StacksDropdown documentId={documentId} assignedStacks={assignedStacks} />
       <ActionButton icon={<Icons.Edit />} tooltip="Edit document and extractions">
         Edit
       </ActionButton>
