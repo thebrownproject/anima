@@ -8,6 +8,7 @@ import { useDocumentDetailFilter } from '@/components/documents/document-detail-
 import type { StackSummary } from '@/types/stacks'
 
 interface DocumentDetailSubBarProps {
+  documentId: string
   assignedStacks: StackSummary[]
 }
 
@@ -16,7 +17,7 @@ interface DocumentDetailSubBarProps {
  * Receives server-fetched data (assignedStacks) as props.
  * Uses context for client-side state (fieldSearch, selectedFieldCount).
  */
-export function DocumentDetailSubBar({ assignedStacks }: DocumentDetailSubBarProps) {
+export function DocumentDetailSubBar({ documentId, assignedStacks }: DocumentDetailSubBarProps) {
   const { fieldSearch, setFieldSearch, selectedFieldCount } = useDocumentDetailFilter()
 
   return (
@@ -31,7 +32,7 @@ export function DocumentDetailSubBar({ assignedStacks }: DocumentDetailSubBarPro
       right={
         <>
           <SelectionActions selectedCount={selectedFieldCount} />
-          <DocumentDetailActions assignedStacks={assignedStacks} />
+          <DocumentDetailActions documentId={documentId} assignedStacks={assignedStacks} />
         </>
       }
     />

@@ -13,5 +13,5 @@ export default async function DocumentDetailSubBarPage({ params }: DocumentDetai
   const { id } = await params
   const assignedStacks = await getDocumentStacks(id)
 
-  return <DocumentDetailSubBar assignedStacks={assignedStacks} />
+  return <DocumentDetailSubBar documentId={id} assignedStacks={assignedStacks} />
 }

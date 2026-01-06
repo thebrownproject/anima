@@ -5,10 +5,11 @@ import { ActionButton } from '@/components/layout/action-button'
 import * as Icons from '@/components/icons'
 
 interface DocumentDetailActionsProps {
+  documentId: string
   assignedStacks: Array<{ id: string; name: string }>
 }
 
-export function DocumentDetailActions({ assignedStacks }: DocumentDetailActionsProps) {
+export function DocumentDetailActions({ documentId, assignedStacks }: DocumentDetailActionsProps) {
   return (
     <>
       <StacksDropdown assignedStacks={assignedStacks} />
