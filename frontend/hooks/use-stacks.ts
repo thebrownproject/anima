@@ -4,13 +4,19 @@ import { useEffect, useState } from 'react'
 import { useSupabase } from '@/hooks/use-supabase'
 import type { StackSummary } from '@/types/stacks'
 
+// Module-level cache to prevent loading flash on remount
+let cache: StackSummary[] | null = null
+
 /**
  * Client-side hook to fetch active stacks.
  * Returns a list of stack summaries (id + name) for use in filters, dropdowns, etc.
+ *
+ * Uses module-level cache: if cache exists, returns it immediately (no loading state)
+ * while still fetching in background to refresh.
  */
 export function useStacks() {
-  const [stacks, setStacks] = useState<StackSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const [stacks, setStacks] = useState<StackSummary[]>(cache ?? [])
+  const [loading, setLoading] = useState(!cache)
   const supabase = useSupabase()
 
   useEffect(() => {
@@ -25,6 +31,7 @@ export function useStacks() {
 
       if (!ignore) {
         if (!error && data) {
+          cache = data
           setStacks(data)
         }
         setLoading(false)

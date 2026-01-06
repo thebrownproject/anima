@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -15,10 +13,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { ActionButton } from '@/components/layout/action-button'
-import { useStacks } from '@/hooks/use-stacks'
+import { StackPickerContent, useStacksAvailable } from '@/components/shared/stack-picker-content'
 import { useSupabase } from '@/hooks/use-supabase'
 import type { StackSummary } from '@/types/stacks'
 import * as Icons from '@/components/icons'
@@ -34,24 +30,12 @@ export function StacksDropdown({
 }: StacksDropdownProps) {
   const router = useRouter()
   const supabase = useSupabase()
-  const { stacks, loading } = useStacks()
+  const { hasStacks, loading } = useStacksAvailable()
   const assignedIds = new Set(assignedStacks.map((s) => s.id))
-  const [searchTerm, setSearchTerm] = useState('')
   const [open, setOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-focus search input when dropdown opens
-  useEffect(() => {
-    if (open) {
-      // Small delay to ensure dropdown is rendered
-      const timer = setTimeout(() => {
-        inputRef.current?.focus()
-      }, 0)
-      return () => clearTimeout(timer)
-    }
-  }, [open])
-
-  const handleToggleStack = async (stackId: string, stackName: string, shouldAssign: boolean) => {
+  const handleToggleStack = async (stackId: string, stackName: string) => {
+    const shouldAssign = !assignedIds.has(stackId)
     try {
       if (shouldAssign) {
         const { error } = await supabase
@@ -76,11 +60,6 @@ export function StacksDropdown({
     }
   }
 
-  // Filter stacks by search term (case-insensitive)
-  const filteredStacks = stacks.filter((stack) =>
-    stack.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
   // Button display logic
   const getDisplayText = () => {
     if (assignedStacks.length === 0) return 'No stacks'
@@ -96,7 +75,7 @@ export function StacksDropdown({
   }
 
   // No stacks exist and none assigned - show disabled ActionButton
-  if (stacks.length === 0 && assignedStacks.length === 0 && !loading) {
+  if (!hasStacks && assignedStacks.length === 0 && !loading) {
     return (
       <ActionButton icon={<Icons.Stack />} disabled>
         No stacks
@@ -105,15 +84,7 @@ export function StacksDropdown({
   }
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={(isOpen) => {
-        setOpen(isOpen)
-        if (!isOpen) {
-          setSearchTerm('')
-        }
-      }}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
@@ -125,53 +96,12 @@ export function StacksDropdown({
         <TooltipContent side="bottom">{getTooltipText()}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-48">
-        <div className="px-2 py-1">
-          <Input
-            ref={inputRef}
-            placeholder="Search stacks..."
-            aria-label="Search stacks"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => {
-              e.stopPropagation()
-              if (e.key === 'Enter') {
-                setOpen(false)
-              }
-            }}
-            className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0"
-          />
-        </div>
-        <DropdownMenuSeparator />
-        {loading ? (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-            Loading...
-          </div>
-        ) : filteredStacks.length > 0 ? (
-          filteredStacks.map((stack) => (
-            <DropdownMenuItem
-              key={stack.id}
-              onSelect={(e) => {
-                e.preventDefault()
-                handleToggleStack(stack.id, stack.name, !assignedIds.has(stack.id))
-              }}
-              className="group/item gap-2"
-            >
-              <Checkbox
-                checked={assignedIds.has(stack.id)}
-                className="pointer-events-none opacity-0 group-hover/item:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
-              />
-              <span className="flex-1">{stack.name}</span>
-            </DropdownMenuItem>
-          ))
-        ) : searchTerm ? (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-            No matching stacks
-          </div>
-        ) : (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-            No stacks available
-          </div>
-        )}
+        <StackPickerContent
+          onSelectStack={handleToggleStack}
+          selectedStackIds={assignedIds}
+          isOpen={open}
+          showStackIcon={false}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   )
