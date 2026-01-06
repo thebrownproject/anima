@@ -25,6 +25,9 @@ export function FilterBar({ stacks }: FilterBarProps) {
 
   return (
     <div className="flex items-center gap-2">
+      {/* Filter dropdown */}
+      <FilterButton stacks={stacks} />
+
       {/* Date pill */}
       {dateRange !== 'all' && (
         <FilterPill
@@ -43,9 +46,6 @@ export function FilterBar({ stacks }: FilterBarProps) {
           onRemove={() => clearStackFilter(stackId)}
         />
       ))}
-
-      {/* Filter dropdown */}
-      <FilterButton stacks={stacks} />
     </div>
   )
 }

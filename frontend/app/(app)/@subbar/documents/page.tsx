@@ -24,12 +24,12 @@ export default function DocumentsSubBar() {
     <SubBar
       left={
         <>
-          <FilterBar stacks={stacks} />
           <ExpandableSearch
             value={filterValue}
             onChange={setFilterValue}
             placeholder="Search documents..."
           />
+          <FilterBar stacks={stacks} />
         </>
       }
       right={
