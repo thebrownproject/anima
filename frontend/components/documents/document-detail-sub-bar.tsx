@@ -12,14 +12,21 @@ import type { StackSummary } from '@/types/stacks'
 interface DocumentDetailSubBarProps {
   documentId: string
   assignedStacks: StackSummary[]
+  filename: string
+  extractedFields: Record<string, unknown> | null
 }
 
 /**
  * Client component for document detail SubBar.
- * Receives server-fetched data (assignedStacks) as props.
+ * Receives server-fetched data (assignedStacks, filename, extractedFields) as props.
  * Uses context for client-side state (fieldSearch, selectedFieldCount).
  */
-export function DocumentDetailSubBar({ documentId, assignedStacks }: DocumentDetailSubBarProps) {
+export function DocumentDetailSubBar({
+  documentId,
+  assignedStacks,
+  filename,
+  extractedFields,
+}: DocumentDetailSubBarProps) {
   const { fieldSearch, setFieldSearch, selectedFieldCount } = useDocumentDetailFilter()
 
   return (
@@ -43,7 +50,12 @@ export function DocumentDetailSubBar({ documentId, assignedStacks }: DocumentDet
       right={
         <>
           <SelectionActions selectedCount={selectedFieldCount} />
-          <DocumentDetailActions documentId={documentId} assignedStacks={assignedStacks} />
+          <DocumentDetailActions
+            documentId={documentId}
+            assignedStacks={assignedStacks}
+            filename={filename}
+            extractedFields={extractedFields}
+          />
         </>
       }
     />
