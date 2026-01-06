@@ -2,6 +2,7 @@
 
 import { StacksDropdown } from '@/components/documents/stacks-dropdown'
 import { ExportDropdown } from '@/components/documents/export-dropdown'
+import { DeleteDialog } from '@/components/documents/delete-dialog'
 import { ActionButton } from '@/components/layout/action-button'
 import * as Icons from '@/components/icons'
 
@@ -10,6 +11,7 @@ interface DocumentDetailActionsProps {
   assignedStacks: Array<{ id: string; name: string }>
   filename: string
   extractedFields: Record<string, unknown> | null
+  filePath: string | null
 }
 
 export function DocumentDetailActions({
@@ -17,6 +19,7 @@ export function DocumentDetailActions({
   assignedStacks,
   filename,
   extractedFields,
+  filePath,
 }: DocumentDetailActionsProps) {
   return (
     <>
@@ -25,6 +28,7 @@ export function DocumentDetailActions({
         Edit
       </ActionButton>
       <ExportDropdown filename={filename} extractedFields={extractedFields} />
+      <DeleteDialog documentId={documentId} filename={filename} filePath={filePath} />
     </>
   )
 }

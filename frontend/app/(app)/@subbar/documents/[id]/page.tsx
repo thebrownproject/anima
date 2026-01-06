@@ -18,6 +18,7 @@ export default async function DocumentDetailSubBarPage({ params }: DocumentDetai
   const filename = document?.filename ?? ''
   const extractedFields = document?.extracted_fields ?? null
   const assignedStacks = document?.stacks ?? []
+  const filePath = document?.file_path ?? null
 
   return (
     <DocumentDetailSubBar
@@ -25,6 +26,7 @@ export default async function DocumentDetailSubBarPage({ params }: DocumentDetai
       assignedStacks={assignedStacks}
       filename={filename}
       extractedFields={extractedFields}
+      filePath={filePath}
     />
   )
 }

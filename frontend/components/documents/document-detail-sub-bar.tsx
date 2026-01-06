@@ -14,6 +14,7 @@ interface DocumentDetailSubBarProps {
   assignedStacks: StackSummary[]
   filename: string
   extractedFields: Record<string, unknown> | null
+  filePath: string | null
 }
 
 /**
@@ -26,6 +27,7 @@ export function DocumentDetailSubBar({
   assignedStacks,
   filename,
   extractedFields,
+  filePath,
 }: DocumentDetailSubBarProps) {
   const { fieldSearch, setFieldSearch, selectedFieldCount } = useDocumentDetailFilter()
 
@@ -55,6 +57,7 @@ export function DocumentDetailSubBar({
             assignedStacks={assignedStacks}
             filename={filename}
             extractedFields={extractedFields}
+            filePath={filePath}
           />
         </>
       }
