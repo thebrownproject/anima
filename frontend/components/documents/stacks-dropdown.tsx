@@ -10,9 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { ActionButton } from '@/components/layout/action-button'
 import { useStacks } from '@/hooks/use-stacks'
 import { useSupabase } from '@/hooks/use-supabase'
 import type { StackSummary } from '@/types/stacks'
@@ -83,12 +88,19 @@ export function StacksDropdown({
     return `${assignedStacks.length} Stacks`
   }
 
-  // No stacks exist and none assigned - show plain text
+  // Tooltip text based on assignment state
+  const getTooltipText = () => {
+    if (assignedStacks.length === 0) return 'Assign to stacks'
+    if (assignedStacks.length === 1) return `Assigned to ${assignedStacks[0].name}`
+    return `Assigned to ${assignedStacks.map((s) => s.name).join(', ')}`
+  }
+
+  // No stacks exist and none assigned - show disabled ActionButton
   if (stacks.length === 0 && assignedStacks.length === 0 && !loading) {
     return (
-      <span className="text-xs text-muted-foreground/60 px-2">
+      <ActionButton icon={<Icons.Stack />} disabled>
         No stacks
-      </span>
+      </ActionButton>
     )
   }
 
@@ -102,22 +114,17 @@ export function StacksDropdown({
         }
       }}
     >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={
-            assignedStacks.length > 0
-              ? `Manage stacks. Currently assigned: ${assignedStacks.map(s => s.name).join(', ')}`
-              : 'Assign to stacks'
-          }
-          className="h-auto px-2 py-1 text-xs text-muted-foreground hover:text-foreground gap-1"
-        >
-          {getDisplayText()}
-          <Icons.ChevronDown className="size-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <ActionButton icon={<Icons.Stack />}>
+              {getDisplayText()}
+            </ActionButton>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{getTooltipText()}</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end" className="w-48">
         <div className="px-2 py-1">
           <Input
             ref={inputRef}

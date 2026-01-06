@@ -58,6 +58,7 @@ export function SelectionActions({
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setDeleteDialogOpen(true)}
+              disabled={selectedIds.length === 0}
               className="gap-2"
             >
               <Icons.Trash className="size-4" />
