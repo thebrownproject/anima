@@ -7328,3 +7328,67 @@ Phase 2.1 complete. Remaining phases:
 1. Run `/continue` to load context
 2. Check plan for Phase 3 requirements
 3. Execute Phase 3 (Stack toggle)
+
+---
+
+## Session 96 - 2026-01-06 - Phase 3 Stack Dropdown + Phase 2.2 Plan
+
+**Feature**: Documents Sub-bar (Phase 3: Stack Dropdown)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 1: Thread documentId prop through subbar chain**
+  - Modified `@subbar/documents/[id]/page.tsx`, `document-detail-sub-bar.tsx`, `document-detail-actions.tsx`
+  - Pass documentId from server component through to StacksDropdown
+
+- [x] **Task 2: Wire up StacksDropdown with DB operations**
+  - Uses `useStacks()` hook for client-side stack fetching (not server-side)
+  - Supabase operations for add/remove from `stack_documents` junction table
+  - Toast notifications for success/failure
+  - `router.refresh()` to sync server state
+
+- [x] **UI Polish: StacksDropdown Linear-style**
+  - Added search input at top (filters stack options)
+  - Checkbox visibility: hidden by default, visible on hover/checked
+  - Input styling: borderless, compact (`h-5`), `onKeyDown` stopPropagation
+
+- [x] **Created Phase 2.2 Plan**
+  - `docs/plans/in-progress/documents-subbar/02.2-search-in-filter.md`
+  - Tasks 9-13: Move document search into FilterButton dropdown
+  - Add FilterButton to document detail (search only)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Stack fetching | Client-side `useStacks()` | Consistent with documents list filter, reuses existing hook |
+| StacksDropdown search | Local state (not context) | Only filters dropdown options, not documents table |
+| Phase 2.2 scope | Move search into filter + add to detail | Linear-style UX, cleaner subbar |
+
+### Files Modified
+
+```
+frontend/app/(app)/@subbar/documents/[id]/page.tsx
+frontend/components/documents/document-detail-sub-bar.tsx
+frontend/components/documents/document-detail-actions.tsx
+frontend/components/documents/stacks-dropdown.tsx
+docs/plans/in-progress/documents-subbar/02.2-search-in-filter.md
+docs/plans/roadmap/IN-PROGRESS.md
+```
+
+### Tasks Remaining
+
+- [ ] Phase 2.2: Search in Filter (Tasks 9-13)
+- [ ] Phase 4: Export
+- [ ] Phase 5: Delete
+- [ ] Phase 6: Bulk delete
+
+### Next Session
+
+**Task**: Execute Phase 2.2 - Search in Filter dropdown
+
+**Process**:
+1. Run `/continue` to load context
+2. Run `/execute` on Phase 2.2 plan
+3. Implement Tasks 9-13 (search in FilterButton, search pill, detail page)
