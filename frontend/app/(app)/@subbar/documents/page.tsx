@@ -7,6 +7,7 @@ import { ActionButton } from '@/components/layout/action-button'
 import { useAgentStore, initialUploadData } from '@/components/agent'
 import { useDocumentsFilter } from '@/components/documents/documents-filter-context'
 import { useSelectedDocument } from '@/components/documents/selected-document-context'
+import { usePreviewPanel } from '@/components/documents/preview-panel-context'
 import { DocumentDetailActions } from '@/components/documents/document-detail-actions'
 import { useStacks } from '@/hooks/use-stacks'
 import * as Icons from '@/components/icons'
@@ -19,8 +20,10 @@ import * as Icons from '@/components/icons'
  * Right side states:
  * 1. No selection, no preview -> Upload button only
  * 2. Checkboxes selected -> SelectionActions + Upload
- * 3. Document previewed -> Document actions (Stacks, Edit, Export, Delete) + Upload
+ * 3. Document previewed (panel visible) -> Document actions (Stacks, Edit, Export, Delete) + Upload
  * 4. Both selection AND preview -> SelectionActions | separator | Document actions + Upload
+ *
+ * Note: Document actions only show when preview panel is visible (not collapsed).
  */
 export default function DocumentsSubBar() {
   const { selectedCount, selectedIds, clearSelection } = useDocumentsFilter()
@@ -31,8 +34,12 @@ export default function DocumentsSubBar() {
     assignedStacks,
     extractedFields,
   } = useSelectedDocument()
+  const { isCollapsed } = usePreviewPanel()
   const { stacks } = useStacks()
   const openFlow = useAgentStore((state) => state.openFlow)
+
+  // Document actions only show when preview panel is visible
+  const showDocumentActions = selectedDocId && filename && !isCollapsed
 
   return (
     <SubBar
@@ -48,13 +55,13 @@ export default function DocumentsSubBar() {
             />
           )}
 
-          {/* Separator when both selection and preview */}
-          {selectedCount > 0 && selectedDocId && (
+          {/* Separator when both selection and preview visible */}
+          {selectedCount > 0 && showDocumentActions && (
             <div className="h-4 w-px bg-border" />
           )}
 
-          {/* Document actions (when previewed) */}
-          {selectedDocId && filename && (
+          {/* Document actions (when preview panel is visible) */}
+          {showDocumentActions && (
             <DocumentDetailActions
               documentId={selectedDocId}
               assignedStacks={assignedStacks}
