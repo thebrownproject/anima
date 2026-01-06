@@ -76,10 +76,10 @@ export function DeleteDialog({ documentId, filename, filePath }: DeleteDialogPro
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete document?</AlertDialogTitle>
+          <AlertDialogTitle>Delete &ldquo;{filename}&rdquo;?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete <strong>{filename}</strong> and all its
-            extracted data. This action cannot be undone.
+            This will permanently delete this document and all its extracted
+            data. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
