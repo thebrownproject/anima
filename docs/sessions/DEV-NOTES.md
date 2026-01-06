@@ -7480,3 +7480,68 @@ docs/plans/roadmap/IN-PROGRESS.md
 1. Run `/continue` to load context
 2. Review Phase 4 plan (if exists) or create one
 3. Implement export for documents and stacks
+
+---
+
+## Session 98 - 2026-01-06 - Phase 4 Export + Phase 5 Delete
+
+**Feature**: Documents Sub-bar (Phases 4 & 5)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 4: Export Dropdown**
+  - Created `export-dropdown.tsx` with CSV/JSON download
+  - CSV: Flattens nested objects (dot notation), semicolon-joins arrays, proper escaping
+  - JSON: Pretty-printed
+  - Filename format: `{original}_extraction_{YYYY-MM-DD}.csv|json`
+  - Wired through server component → SubBar → Actions
+  - Style polish: right-aligned, auto-width, FileExport/Csv/Json icons
+
+- [x] **Phase 5: Delete Dialog**
+  - Created `delete-dialog.tsx` with AlertDialog
+  - Supabase delete: DB (cascades) + Storage (best effort)
+  - Added `filePath` prop through component chain
+  - Toast notifications, navigation after delete
+
+- [x] **Linear-style UI polish**
+  - Fixed `--destructive-foreground` CSS variable (was missing - caused black text on red)
+  - Title shows filename: `Delete "filename.pdf"?`
+  - Dialog positioned at 1/3 from top (was 50%)
+  - Overlay lightened to 30% opacity (was 50%)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Export toast timing | Keep "CSV exported" | Can't detect actual file save, message is clear enough |
+| Alert dialog position | top-1/3 | Match Linear's UX pattern |
+| Overlay opacity | bg-black/30 | Lighter like Linear, less intrusive |
+| YAGNI for props | Add as needed | Didn't add allStacks/filePath until Delete phase needed it |
+
+### Files Created
+
+- `frontend/components/documents/export-dropdown.tsx`
+- `frontend/components/documents/delete-dialog.tsx`
+
+### Files Modified
+
+- `frontend/components/icons/index.ts` - Added FileExport, Csv, Json
+- `frontend/app/(app)/@subbar/documents/[id]/page.tsx` - Added filePath, extractedFields props
+- `frontend/components/documents/document-detail-sub-bar.tsx` - Pass new props
+- `frontend/components/documents/document-detail-actions.tsx` - ExportDropdown + DeleteDialog
+- `frontend/app/globals.css` - Added --destructive-foreground variable
+- `frontend/components/ui/alert-dialog.tsx` - Position top-1/3, overlay 30%
+
+### Tasks Remaining
+
+- [ ] Phase 6: Selection Actions / Bulk Delete
+
+### Next Session
+
+**Task**: Phase 6 - Selection Actions (Bulk Delete)
+
+**Process**:
+1. Run `/continue` to load context
+2. Review Phase 6 plan (`06-selection-actions.md`)
+3. Implement bulk delete for documents list
