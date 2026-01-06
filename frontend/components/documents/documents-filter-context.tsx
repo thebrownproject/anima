@@ -76,6 +76,7 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const clearFilters = useCallback(() => {
+    setFilterValueState('')
     setDateRangeState('all')
     setStackFilterState(new Set())
   }, [])
@@ -84,10 +85,11 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
   // Stack filter counts each selected stack as one filter
   const activeFilterCount = useMemo(() => {
     let count = 0
-    if (dateRange !== 'all') count++
+    if (filterValue) count += 1
+    if (dateRange !== 'all') count += 1
     count += stackFilter.size
     return count
-  }, [dateRange, stackFilter])
+  }, [filterValue, dateRange, stackFilter])
 
   const contextValue = useMemo(() => ({
     filterValue,

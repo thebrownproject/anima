@@ -18,7 +18,7 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ stacks }: FilterBarProps) {
-  const { dateRange, stackFilter, clearDateFilter, clearStackFilter } = useDocumentsFilter()
+  const { dateRange, stackFilter, filterValue, setFilterValue, clearDateFilter, clearStackFilter } = useDocumentsFilter()
 
   // Map stack IDs to names for pills
   const stackMap = new Map(stacks.map((s) => [s.id, s.name]))
@@ -27,6 +27,15 @@ export function FilterBar({ stacks }: FilterBarProps) {
     <div className="flex items-center gap-2">
       {/* Filter dropdown */}
       <FilterButton stacks={stacks} />
+
+      {/* Search pill */}
+      {filterValue && (
+        <FilterPill
+          icon={<Icons.Search className="size-full" />}
+          label={`"${filterValue}"`}
+          onRemove={() => setFilterValue('')}
+        />
+      )}
 
       {/* Date pill */}
       {dateRange !== 'all' && (
