@@ -51,7 +51,11 @@ export function DocumentDetailSubBar({
       }
       right={
         <>
-          <SelectionActions selectedCount={selectedFieldCount} />
+          <SelectionActions
+            selectedCount={selectedFieldCount}
+            selectedIds={[]}  // Field selection doesn't have document IDs
+            onClearSelection={() => {}}  // No-op for field selection (not wired up)
+          />
           <DocumentDetailActions
             documentId={documentId}
             assignedStacks={assignedStacks}

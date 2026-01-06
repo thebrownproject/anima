@@ -59,7 +59,8 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
   const { panelRef, isCollapsed } = usePreviewPanel();
   const {
     filterValue,
-    setSelectedCount,
+    setSelectedIds,
+    registerResetRowSelection,
     dateRange,
     stackFilter,
     clearFilters,
@@ -123,11 +124,17 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     });
   }, [filterValue]);
 
-  // Sync selection count to context for SubBar
-  const tableSelectedCount = table.getFilteredSelectedRowModel().rows.length;
+  // Register reset function so context can clear table selection (bidirectional sync)
   React.useEffect(() => {
-    setSelectedCount(tableSelectedCount);
-  }, [tableSelectedCount, setSelectedCount]);
+    registerResetRowSelection(() => setRowSelection({}));
+  }, [registerResetRowSelection]);
+
+  // Sync selected IDs to context for SubBar (table -> context)
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  React.useEffect(() => {
+    const ids = selectedRows.map((row) => row.original.id);
+    setSelectedIds(ids);
+  }, [selectedRows, setSelectedIds]);
 
   // Fetch signed URL and OCR text when selected document changes
   // Uses signedUrlDocId to avoid re-fetching for the same document

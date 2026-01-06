@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import * as Icons from '@/components/icons'
 import { ActionButton } from '@/components/layout/action-button'
 import {
@@ -13,51 +14,65 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { BulkDeleteDialog } from '@/components/documents/bulk-delete-dialog'
 
 interface SelectionActionsProps {
   selectedCount: number
-  onDelete?: () => void
-  onAddToStack?: () => void
+  selectedIds: string[]
+  onClearSelection: () => void
+  onAddToStack?: () => void  // PLACEHOLDER: Not implemented yet (see Deferred Work in main plan)
 }
 
 export function SelectionActions({
   selectedCount,
-  onDelete,
+  selectedIds,
+  onClearSelection,
   onAddToStack,
 }: SelectionActionsProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
   if (selectedCount === 0) return null
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground">
-        {selectedCount} selected
-      </span>
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <ActionButton icon={<Icons.ChevronDown />}>
-                Actions
-              </ActionButton>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Bulk operations</TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
-          <DropdownMenuItem onClick={onAddToStack} disabled>
-            <Icons.FolderPlus className="mr-2 size-4" />
-            Add to Stack
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={onDelete}
-            disabled
-            className="text-destructive focus:text-destructive"
-          >
-            <Icons.Trash className="mr-2 size-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {selectedCount} selected
+        </span>
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <ActionButton icon={<Icons.ChevronDown />}>
+                  Actions
+                </ActionButton>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Bulk operations</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+            {/* Add to Stack: disabled placeholder - see Deferred Work in main plan */}
+            <DropdownMenuItem onClick={onAddToStack} disabled>
+              <Icons.FolderPlus className="mr-2 size-4" />
+              Add to Stack
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setDeleteDialogOpen(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Icons.Trash className="mr-2 size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <BulkDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        documentIds={selectedIds}
+        onComplete={onClearSelection}
+      />
+    </>
   )
 }

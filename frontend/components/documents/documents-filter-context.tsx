@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useRef, ReactNode } from 'react'
 
 // Date range filter options
 export type DateRangeFilter = 'all' | 'today' | 'yesterday' | 'last7' | 'last30'
@@ -8,14 +8,23 @@ export type DateRangeFilter = 'all' | 'today' | 'yesterday' | 'last7' | 'last30'
 /**
  * Context for sharing filter and selection state between
  * the DocumentsSubBar (parallel route) and DocumentsTable (page).
+ *
+ * Bidirectional selection sync:
+ * - Table → Context: Table calls setSelectedIds when selection changes
+ * - Context → Table: clearSelection calls registered resetRowSelection callback
  */
 interface DocumentsFilterContextValue {
   // Search filter for filename column
   filterValue: string
   setFilterValue: (value: string) => void
-  // Selection count from table
-  selectedCount: number
-  setSelectedCount: (count: number) => void
+  // Selection state (IDs stored, count derived)
+  selectedIds: string[]
+  selectedCount: number  // Derived from selectedIds.length
+  setSelectedIds: (ids: string[]) => void
+  // Table registers its setRowSelection so context can clear it
+  registerResetRowSelection: (reset: () => void) => void
+  // Clears both context state AND table rowSelection
+  clearSelection: () => void
   // Date range filter
   dateRange: DateRangeFilter
   setDateRange: (value: DateRangeFilter) => void
@@ -35,17 +44,36 @@ const DocumentsFilterContext = createContext<DocumentsFilterContextValue | null>
 
 export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
   const [filterValue, setFilterValueState] = useState('')
-  const [selectedCount, setSelectedCountState] = useState(0)
+  const [selectedIds, setSelectedIdsState] = useState<string[]>([])
   const [dateRange, setDateRangeState] = useState<DateRangeFilter>('all')
   const [stackFilter, setStackFilterState] = useState<Set<string>>(new Set())
+
+  // Ref to hold the table's reset function (avoids re-renders)
+  const resetRowSelectionRef = useRef<(() => void) | null>(null)
 
   const setFilterValue = useCallback((value: string) => {
     setFilterValueState(value)
   }, [])
 
-  const setSelectedCount = useCallback((count: number) => {
-    setSelectedCountState(count)
+  const setSelectedIds = useCallback((ids: string[]) => {
+    setSelectedIdsState(ids)
   }, [])
+
+  const registerResetRowSelection = useCallback((reset: () => void) => {
+    resetRowSelectionRef.current = reset
+  }, [])
+
+  const clearSelection = useCallback(() => {
+    // Clear context state
+    setSelectedIdsState([])
+    // Clear table's rowSelection state via registered callback
+    if (resetRowSelectionRef.current) {
+      resetRowSelectionRef.current()
+    }
+  }, [])
+
+  // Derive selectedCount from selectedIds
+  const selectedCount = selectedIds.length
 
   const setDateRange = useCallback((value: DateRangeFilter) => {
     setDateRangeState(value)
@@ -94,8 +122,11 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo(() => ({
     filterValue,
     setFilterValue,
+    selectedIds,
     selectedCount,
-    setSelectedCount,
+    setSelectedIds,
+    registerResetRowSelection,
+    clearSelection,
     dateRange,
     setDateRange,
     stackFilter,
@@ -107,8 +138,11 @@ export function DocumentsFilterProvider({ children }: { children: ReactNode }) {
   }), [
     filterValue,
     setFilterValue,
+    selectedIds,
     selectedCount,
-    setSelectedCount,
+    setSelectedIds,
+    registerResetRowSelection,
+    clearSelection,
     dateRange,
     setDateRange,
     stackFilter,

@@ -135,7 +135,11 @@ export function StackDetailSubBar({ tables, stackId }: StackDetailSubBarProps) {
       right={
         <div className="flex items-center gap-2">
           {isDocumentsActive && (
-            <SelectionActions selectedCount={selectedDocCount} />
+            <SelectionActions
+              selectedCount={selectedDocCount}
+              selectedIds={[]}  // Stack document selection doesn't wire up bulk delete yet
+              onClearSelection={() => {}}  // No-op (not wired up)
+            />
           )}
           {isDocumentsActive && (
             <ActionButton icon={<Icons.Plus />} tooltip="Add documents" className="mr-2">

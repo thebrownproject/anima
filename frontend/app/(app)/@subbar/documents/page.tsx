@@ -15,7 +15,7 @@ import * as Icons from '@/components/icons'
  * Search is now integrated into FilterButton dropdown.
  */
 export default function DocumentsSubBar() {
-  const { selectedCount } = useDocumentsFilter()
+  const { selectedCount, selectedIds, clearSelection } = useDocumentsFilter()
   const { stacks } = useStacks()
   const openFlow = useAgentStore((state) => state.openFlow)
 
@@ -24,7 +24,11 @@ export default function DocumentsSubBar() {
       left={<FilterBar stacks={stacks} />}
       right={
         <>
-          <SelectionActions selectedCount={selectedCount} />
+          <SelectionActions
+            selectedCount={selectedCount}
+            selectedIds={selectedIds}
+            onClearSelection={clearSelection}
+          />
           <ActionButton
             icon={<Icons.Upload />}
             onClick={() => openFlow({ type: 'upload', step: 'dropzone', data: initialUploadData })}
