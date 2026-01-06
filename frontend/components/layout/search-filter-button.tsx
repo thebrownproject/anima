@@ -8,6 +8,11 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import * as Icons from '@/components/icons'
 
 interface SearchFilterButtonProps {
@@ -43,11 +48,16 @@ export function SearchFilterButton({
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <ActionButton icon={<Icons.Filter />}>
-          {!value && 'Filter'}
-        </ActionButton>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <ActionButton icon={<Icons.Filter />}>
+              {!value && 'Filter'}
+            </ActionButton>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Filter</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent
         align="start"
         className="w-52"
