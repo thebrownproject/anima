@@ -86,7 +86,7 @@ export function FilterButton({ stacks }: FilterButtonProps) {
                 setOpen(false)
               }
             }}
-            className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0"
+            className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0 bg-transparent"
           />
         </div>
         <DropdownMenuSeparator />

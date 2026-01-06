@@ -56,7 +56,7 @@ export function StackPickerContent({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => e.stopPropagation()}
-          className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0"
+          className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0 bg-transparent"
         />
       </div>
       <DropdownMenuSeparator />
