@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useRef, useEffect } from 'react'
 import * as Icons from '@/components/icons'
 import { ActionButton } from '@/components/layout/action-button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -38,10 +39,24 @@ export function FilterButton({ stacks }: FilterButtonProps) {
     clearFilters,
   } = useDocumentsFilter()
 
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus search input when dropdown opens
+  useEffect(() => {
+    if (open) {
+      // Small delay to ensure dropdown is rendered
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [open])
+
   const hasActiveFilters = activeFilterCount > 0
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
@@ -52,15 +67,25 @@ export function FilterButton({ stacks }: FilterButtonProps) {
         </TooltipTrigger>
         <TooltipContent side="bottom">Filter documents</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="start" className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
+      <DropdownMenuContent
+          align="start"
+          className="w-52"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
         {/* Search input */}
         <div className="px-2 py-1">
           <Input
+            ref={inputRef}
             placeholder="Search documents..."
             aria-label="Search documents"
             value={filterValue}
             onChange={(e) => setFilterValue(e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === 'Enter') {
+                setOpen(false)
+              }
+            }}
             className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0"
           />
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -32,6 +32,19 @@ export function StacksDropdown({
   const { stacks, loading } = useStacks()
   const assignedIds = new Set(assignedStacks.map((s) => s.id))
   const [searchTerm, setSearchTerm] = useState('')
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus search input when dropdown opens
+  useEffect(() => {
+    if (open) {
+      // Small delay to ensure dropdown is rendered
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [open])
 
   const handleToggleStack = async (stackId: string, stackName: string, shouldAssign: boolean) => {
     try {
@@ -80,7 +93,15 @@ export function StacksDropdown({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen)
+        if (!isOpen) {
+          setSearchTerm('')
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -99,11 +120,17 @@ export function StacksDropdown({
       <DropdownMenuContent align="start" className="w-48">
         <div className="px-2 py-1">
           <Input
+            ref={inputRef}
             placeholder="Search stacks..."
             aria-label="Search stacks"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === 'Enter') {
+                setOpen(false)
+              }
+            }}
             className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0"
           />
         </div>
