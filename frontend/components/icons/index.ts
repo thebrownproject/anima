@@ -79,6 +79,7 @@ export {
   IconClock as Clock,
   IconCalendar as Calendar,
   IconCalendarMinus as CalendarMinus,
+  IconCalendarEvent as CalendarEvent,
   IconCalendarWeek as CalendarWeek,
   IconCalendarMonth as CalendarMonth,
 

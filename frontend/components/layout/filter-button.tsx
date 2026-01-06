@@ -76,7 +76,7 @@ export function FilterButton({ stacks }: FilterButtonProps) {
               className="group/item gap-2"
             >
               <Checkbox checked={dateRange === 'yesterday'} className="pointer-events-none opacity-0 group-hover/item:opacity-100 data-[state=checked]:opacity-100 transition-opacity" />
-              <Icons.CalendarMinus className="size-4" />
+              <Icons.CalendarEvent className="size-4" />
               <span>Yesterday</span>
             </DropdownMenuItem>
             <DropdownMenuItem
