@@ -7545,3 +7545,68 @@ docs/plans/roadmap/IN-PROGRESS.md
 1. Run `/continue` to load context
 2. Review Phase 6 plan (`06-selection-actions.md`)
 3. Implement bulk delete for documents list
+
+---
+
+## Session 99 - 2026-01-06 - Phase 6 Bulk Delete + Phase 7 Planning
+
+**Feature**: Documents Sub-bar (Phase 6)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 6: Selection Actions / Bulk Delete**
+  - Created `bulk-delete-dialog.tsx` - multi-document delete with storage cleanup
+  - Updated `documents-filter-context.tsx` - bidirectional sync (selectedIds[], registerResetRowSelection, clearSelection)
+  - Updated `selection-actions.tsx` - integrated BulkDeleteDialog, new props interface
+  - Updated `documents-table.tsx` - register reset callback, sync selected IDs to context
+  - Added placeholder props to `document-detail-sub-bar.tsx` and `stack-detail-sub-bar.tsx`
+
+- [x] **Performance Optimization**
+  - Added useMemo for selectedIdsList to prevent effect running every render
+  - Effect now only runs when selection actually changes
+
+- [x] **Bug Fix**
+  - Disabled Delete in SelectionActions when `selectedIds.length === 0`
+  - Prevents "Delete 0 documents?" dialog on document detail page (field selection context)
+
+- [x] **Phase 7 Plan Created**
+  - Created `07-selection-preview-actions.md` with 5 tasks
+  - Brainstormed Task 20 Step 3 design (context-based data flow for preview panel)
+  - Code reviewed and incorporated recommendations (isLoadingExtraction, DocumentMetadata type)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Selection state | Context (not props) | Consistent with existing SelectedDocumentContext pattern |
+| Extraction fetch | On-demand (not in list query) | Keeps list query light, parallel fetch adds no latency |
+| Loading state | Add isLoadingExtraction boolean | Distinguish "loading" from "no extraction exists" |
+| Batched setter | setDocumentMetadata | Reduces re-renders vs 4 separate setters |
+
+### Files Created
+
+- `frontend/components/documents/bulk-delete-dialog.tsx`
+- `docs/plans/in-progress/documents-subbar/07-selection-preview-actions.md`
+
+### Files Modified
+
+- `frontend/components/documents/documents-filter-context.tsx`
+- `frontend/components/layout/selection-actions.tsx`
+- `frontend/components/documents/documents-table.tsx`
+- `frontend/components/documents/document-detail-sub-bar.tsx`
+- `frontend/components/stacks/stack-detail-sub-bar.tsx`
+- `frontend/app/(app)/@subbar/documents/page.tsx`
+
+### Tasks Remaining
+
+- [ ] Phase 7: Selection & Preview Actions (5 tasks)
+
+### Next Session
+
+**Task**: Phase 7 - Selection & Preview Actions
+
+**Process**:
+1. Run `/continue` with handover prompt
+2. Run `/execute` to implement Phase 7 tasks
+3. Tasks: Field deletion, Add to Stack, Preview panel actions, Remove upload button
