@@ -144,7 +144,7 @@ export function ExportDropdown({ filename, extractedFields }: ExportDropdownProp
         <TooltipContent side="bottom">{tooltipText}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent
-          align="start"
+          align="end"
           className="w-48"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
