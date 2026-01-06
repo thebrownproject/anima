@@ -46,6 +46,9 @@ export {
   IconFolder as Folder,
   IconFolderPlus as FolderPlus,
   IconDownload as Download,
+  IconFileExport as FileExport,
+  IconCsv as Csv,
+  IconJson as Json,
   IconEdit as Edit,
   IconFilter2 as Filter,
 

@@ -136,7 +136,7 @@ export function ExportDropdown({ filename, extractedFields }: ExportDropdownProp
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <ActionButton icon={<Icons.Download />} disabled={isDisabled}>
+            <ActionButton icon={<Icons.FileExport />} disabled={isDisabled}>
               Export
             </ActionButton>
           </DropdownMenuTrigger>
@@ -148,11 +148,11 @@ export function ExportDropdown({ filename, extractedFields }: ExportDropdownProp
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
         <DropdownMenuItem onSelect={handleExportCSV} className="gap-2">
-          <Icons.FileText className="size-4" />
+          <Icons.Csv className="size-4" />
           <span>Export as CSV</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={handleExportJSON} className="gap-2">
-          <Icons.FileText className="size-4" />
+          <Icons.Json className="size-4" />
           <span>Export as JSON</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
