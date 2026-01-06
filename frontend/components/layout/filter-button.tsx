@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -130,14 +129,12 @@ export function FilterButton({ stacks }: FilterButtonProps) {
           </DropdownMenuSub>
         )}
 
-        {/* Clear all filters - shown when filters are active */}
+        {/* Clear - shown when filters are active */}
         {activeFilterCount > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={clearFilters} className="text-muted-foreground">
-              Clear all filters
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem onClick={clearFilters}>
+            <Icons.FilterX className="size-4" />
+            Clear
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

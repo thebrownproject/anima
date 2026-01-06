@@ -289,7 +289,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
               // Truly empty - no documents uploaded
               <TableRow className="hover:bg-transparent !border-0">
                 <TableCell colSpan={columns.length} className="h-48">
-                  <div className="flex flex-col items-center justify-center text-center py-8 gap-2">
+                  <div className="flex flex-col items-center justify-center text-center py-8 gap-3">
                     <Icons.Files className="size-8 text-muted-foreground/50" />
                     <p className="text-sm text-muted-foreground">
                       No documents uploaded
@@ -313,7 +313,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
               // Has documents but filtered to zero
               <TableRow className="hover:bg-transparent !border-0">
                 <TableCell colSpan={columns.length} className="h-48">
-                  <div className="flex flex-col items-center justify-center text-center py-8 gap-2">
+                  <div className="flex flex-col items-center justify-center text-center py-8 gap-3">
                     <Icons.FilterExclamation className="size-8 text-muted-foreground/50" />
                     <p className="text-sm text-muted-foreground">No results for current filters</p>
                     <ActionButton icon={<Icons.FilterX />} onClick={clearFilters}>
