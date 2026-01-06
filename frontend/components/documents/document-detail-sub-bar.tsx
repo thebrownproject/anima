@@ -5,6 +5,7 @@ import { SubBar } from '@/components/layout/sub-bar'
 import { ActionButton } from '@/components/layout/action-button'
 import { SearchFilterButton } from '@/components/layout/search-filter-button'
 import { FilterPill } from '@/components/layout/filter-pill'
+import { Separator } from '@/components/ui/separator'
 import { DocumentDetailActions } from '@/components/documents/document-detail-actions'
 import { BulkDeleteFieldsDialog } from '@/components/documents/bulk-delete-fields-dialog'
 import { useDocumentDetailFilter } from '@/components/documents/document-detail-filter-context'
@@ -105,7 +106,7 @@ export function DocumentDetailSubBar({
             )}
             {/* Separator when both field selection and document actions are shown */}
             {selectedFieldCount > 0 && (
-              <div className="h-4 w-px bg-border" />
+              <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
             )}
             <DocumentDetailActions
               documentId={documentId}

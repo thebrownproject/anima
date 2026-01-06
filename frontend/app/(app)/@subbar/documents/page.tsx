@@ -3,6 +3,7 @@
 import { SubBar } from '@/components/layout/sub-bar'
 import { FilterBar } from '@/components/layout/filter-bar'
 import { SelectionActions } from '@/components/layout/selection-actions'
+import { Separator } from '@/components/ui/separator'
 import { useDocumentsFilter } from '@/components/documents/documents-filter-context'
 import { useSelectedDocument } from '@/components/documents/selected-document-context'
 import { usePreviewPanel } from '@/components/documents/preview-panel-context'
@@ -53,7 +54,7 @@ export default function DocumentsSubBar() {
 
           {/* Separator when both selection and preview visible */}
           {selectedCount > 0 && showDocumentActions && (
-            <div className="h-4 w-px bg-border" />
+            <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
           )}
 
           {/* Document actions (when preview panel is visible) */}
