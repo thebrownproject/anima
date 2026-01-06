@@ -7242,3 +7242,89 @@ frontend/components/layout/
 1. Run `/execute` to continue with Task 2.1.5
 2. Complete Tasks 2.1.5-2.1.8
 3. Then proceed to Phase 3-6
+
+---
+
+## Session 95 - 2026-01-06 - Filter Redesign Phase 2.1 Complete
+
+**Feature**: Documents Sub-bar (Filter Redesign)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 2.1.5**: Created FilterBar component
+  - Renders filter pills + FilterButton in flex container
+  - DATE_LABELS mapping for pill display
+
+- [x] **Task 2.1.6**: Updated documents table filtering
+  - Replaced statusFilter with stackFilter logic
+  - Uses OR logic (doc appears if in ANY selected stack)
+
+- [x] **Task 2.1.7**: Wired up useStacks hook
+  - Client-side stack fetching with race condition protection
+  - Integrated FilterBar in documents subbar
+
+- [x] **Task 2.1.8**: Filter-aware empty states
+  - "No documents uploaded" with Files icon + Upload ActionButton
+  - "No results for current filters" with FilterExclamation icon + Clear ActionButton
+
+- [x] **UI Polish**:
+  - Reordered subbar: Search → Filter → Pills (Linear-style)
+  - Filter button icon-only when filters active
+  - Fixed checkbox tick colors in filter dropdown
+  - Fixed FilterPill vertical alignment
+  - Added CalendarEvent icon for Yesterday
+  - FilterX icon for Clear button
+  - Removed separator in filter dropdown
+  - Removed table row border on empty states
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Subbar layout | Search → Filter → Pills | Linear-style, cleaner appearance |
+| Filter button with filters | Icon-only (no text/count) | Pills already show active filters |
+| Empty state buttons | ActionButton components | Consistent with rest of app |
+| Empty state text | Minimal ("No documents uploaded", "No results for current filters") | Clean, not cluttered |
+
+### Files Modified
+
+```
+frontend/components/layout/
+├── filter-bar.tsx              # New - pills + filter button container
+├── filter-button.tsx           # Redesigned, icon-only when active
+├── filter-pill.tsx             # Fixed vertical alignment
+
+frontend/components/documents/
+├── documents-table.tsx         # Stack filtering, empty states
+├── documents-filter-context.tsx # Stack filter (from Session 94)
+
+frontend/components/ui/
+├── checkbox.tsx                # Fixed tick color inheritance
+
+frontend/components/icons/
+├── index.ts                    # Added CalendarEvent, FilterExclamation, FilterX
+
+frontend/hooks/
+├── use-stacks.ts               # New - client-side stack fetching
+
+frontend/app/(app)/@subbar/documents/
+├── page.tsx                    # Reordered layout
+```
+
+### Tasks Remaining
+
+Phase 2.1 complete. Remaining phases:
+- [ ] Phase 3: Stack toggle
+- [ ] Phase 4: Export
+- [ ] Phase 5: Delete
+- [ ] Phase 6: Bulk delete
+
+### Next Session
+
+**Task**: Continue Documents Sub-bar - Phase 3+
+
+**Process**:
+1. Run `/continue` to load context
+2. Check plan for Phase 3 requirements
+3. Execute Phase 3 (Stack toggle)
