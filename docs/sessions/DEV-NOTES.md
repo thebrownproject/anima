@@ -7610,3 +7610,77 @@ docs/plans/roadmap/IN-PROGRESS.md
 1. Run `/continue` with handover prompt
 2. Run `/execute` to implement Phase 7 tasks
 3. Tasks: Field deletion, Add to Stack, Preview panel actions, Remove upload button
+
+---
+
+## Session 100 - 2026-01-06 - Phase 7 Tasks 17-19 Complete
+
+**Feature**: Documents Sub-bar (Phase 7)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 17: Field Deletion on Document Detail**
+  - Created `bulk-delete-fields-dialog.tsx` for deleting selected fields from extraction JSON
+  - Upgraded `document-detail-filter-context.tsx` with bidirectional selection sync (selectedFieldIds, registerResetRowSelection, clearFieldSelection)
+  - Updated `extracted-data-table.tsx` to sync selection via context
+  - Fixed bug: selection was using row indices instead of field IDs
+  - Fixed: disabled/hidden checkboxes on child rows (only top-level fields selectable)
+  - Updated delete labels to singular/plural ("Delete field" vs "Delete fields")
+
+- [x] **Task 18: FieldSelectionActions**
+  - Completed inline as part of Task 17 (simplified approach - no separate component needed)
+
+- [x] **Task 19: Add to Stack for Documents List**
+  - Created `StackPickerContent` shared component (search + stack list UI)
+  - Created `StackPickerSub` submenu wrapper for use in dropdown menus
+  - Refactored `StacksDropdown` to use shared `StackPickerContent`
+  - Wired up bulk "Add to Stack" in `SelectionActions`
+  - Added module-level cache to `useStacks()` hook to prevent loading flash
+
+- [x] **Bug Fix: Dark mode search input backgrounds**
+  - Added `dark:bg-transparent` to search inputs in dropdowns
+  - Fixed in: `stack-picker-content.tsx`, `filter-button.tsx`, `search-filter-button.tsx`
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Stack picker pattern | Submenu (not dialog) | Matches existing UI patterns, fewer clicks |
+| Shared component approach | Extract `StackPickerContent` | Used by both `StackPickerSub` and `StacksDropdown` |
+| Stacks caching | Simple module-level cache | Right-sized solution vs React Query overkill |
+| Child row selection | Disabled + hidden checkboxes | Only top-level fields should be deletable |
+
+### Files Created
+
+- `frontend/components/documents/bulk-delete-fields-dialog.tsx`
+- `frontend/components/shared/stack-picker-content.tsx`
+- `frontend/components/shared/stack-picker-sub.tsx`
+
+### Files Modified
+
+- `frontend/components/documents/document-detail-filter-context.tsx`
+- `frontend/components/documents/extracted-data-table.tsx`
+- `frontend/components/documents/extracted-columns.tsx`
+- `frontend/components/documents/document-detail-sub-bar.tsx`
+- `frontend/components/documents/document-detail-client.tsx`
+- `frontend/components/documents/stacks-dropdown.tsx`
+- `frontend/components/layout/selection-actions.tsx`
+- `frontend/components/layout/filter-button.tsx`
+- `frontend/components/layout/search-filter-button.tsx`
+- `frontend/hooks/use-stacks.ts`
+
+### Tasks Remaining
+
+- [ ] Task 20: Document preview panel actions
+- [ ] Task 21: Remove Upload button from documents subbar
+
+### Next Session
+
+**Task**: Complete Phase 7 - Tasks 20-21
+
+**Process**:
+1. Run `/continue`
+2. Implement Task 20: Preview panel action buttons
+3. Implement Task 21: Remove redundant Upload button
+4. Final review and phase completion

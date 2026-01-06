@@ -15,10 +15,13 @@
   - SelectionActions wired with bulk delete
   - Performance optimization (useMemo for selection IDs)
   - Bug fix: disabled delete on document detail (field selection context)
-- **Phase 7**: Pending (Selection & Preview Actions)
-  - Plan created: `07-selection-preview-actions.md`
-  - Scope: Field deletion, Add to Stack, Preview panel actions, Remove upload button
-- Next: Phase 7 implementation
+- **Phase 7**: In Progress (Selection & Preview Actions) - Session 100
+  - ✅ Task 17: Field deletion on document detail (BulkDeleteFieldsDialog, context sync)
+  - ✅ Task 18: FieldSelectionActions (inlined in Task 17)
+  - ✅ Task 19: Add to Stack bulk action (StackPickerContent, StackPickerSub shared components)
+  - ⏳ Task 20: Preview panel actions
+  - ⏳ Task 21: Remove Upload button
+- Next: Complete Tasks 20-21
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused
 - Design: Complete (v2)
