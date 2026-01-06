@@ -103,6 +103,10 @@ export function DocumentDetailSubBar({
                 </DropdownMenu>
               </div>
             )}
+            {/* Separator when both field selection and document actions are shown */}
+            {selectedFieldCount > 0 && (
+              <div className="h-4 w-px bg-border" />
+            )}
             <DocumentDetailActions
               documentId={documentId}
               assignedStacks={assignedStacks}
