@@ -7,11 +7,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +28,8 @@ interface FilterButtonProps {
 
 export function FilterButton({ stacks }: FilterButtonProps) {
   const {
+    filterValue,
+    setFilterValue,
     dateRange,
     setDateRange,
     stackFilter,
@@ -49,6 +53,19 @@ export function FilterButton({ stacks }: FilterButtonProps) {
         <TooltipContent side="bottom">Filter documents</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="start" className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
+        {/* Search input */}
+        <div className="px-2 py-1">
+          <Input
+            placeholder="Search documents..."
+            aria-label="Search documents"
+            value={filterValue}
+            onChange={(e) => setFilterValue(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0"
+          />
+        </div>
+        <DropdownMenuSeparator />
+
         {/* Date sub-menu */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
