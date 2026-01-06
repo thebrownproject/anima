@@ -10,7 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ExpandableSearch } from '@/components/layout/expandable-search'
+import { SearchFilterButton } from '@/components/layout/search-filter-button'
+import { FilterPill } from '@/components/layout/filter-pill'
 import { Separator } from '@/components/ui/separator'
 import { SelectionActions } from '@/components/layout/selection-actions'
 import { useStackDetailFilter } from '@/components/stacks/stack-detail-filter-context'
@@ -122,11 +123,18 @@ export function StackDetailSubBar({ tables, stackId }: StackDetailSubBarProps) {
           {isDocumentsActive && (
             <SelectionActions selectedCount={selectedDocCount} />
           )}
-          <ExpandableSearch
+          <SearchFilterButton
             value={searchFilter}
             onChange={setSearchFilter}
             placeholder={isDocumentsActive ? 'Search documents...' : 'Search table...'}
           />
+          {searchFilter && (
+            <FilterPill
+              icon={<Icons.Search className="size-full" />}
+              label={`"${searchFilter}"`}
+              onRemove={() => setSearchFilter('')}
+            />
+          )}
           {isDocumentsActive && (
             <ActionButton icon={<Icons.Plus />} tooltip="Add documents" className="mr-2">
               Add

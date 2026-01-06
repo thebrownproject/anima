@@ -1,63 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import { SubBar } from '@/components/layout/sub-bar'
 import { SelectionActions } from '@/components/layout/selection-actions'
+import { SearchFilterButton } from '@/components/layout/search-filter-button'
+import { FilterPill } from '@/components/layout/filter-pill'
 import { DocumentDetailActions } from '@/components/documents/document-detail-actions'
 import { useDocumentDetailFilter } from '@/components/documents/document-detail-filter-context'
-import { ActionButton } from '@/components/layout/action-button'
-import { FilterPill } from '@/components/layout/filter-pill'
-import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import * as Icons from '@/components/icons'
 import type { StackSummary } from '@/types/stacks'
-
-function DetailFilterButton() {
-  const { fieldSearch, setFieldSearch } = useDocumentDetailFilter()
-  const [open, setOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (open) {
-      const timer = setTimeout(() => {
-        inputRef.current?.focus()
-      }, 0)
-      return () => clearTimeout(timer)
-    }
-  }, [open])
-
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <ActionButton icon={<Icons.Filter />}>
-          {!fieldSearch && 'Filter'}
-        </ActionButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
-        <div className="px-2 py-1">
-          <Input
-            ref={inputRef}
-            placeholder="Search fields..."
-            aria-label="Search fields"
-            value={fieldSearch}
-            onChange={(e) => setFieldSearch(e.target.value)}
-            onKeyDown={(e) => {
-              e.stopPropagation()
-              if (e.key === 'Enter') {
-                setOpen(false)
-              }
-            }}
-            className="h-5 text-sm border-0 shadow-none focus-visible:ring-0 pl-0.5 pr-0"
-          />
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
 
 interface DocumentDetailSubBarProps {
   documentId: string
@@ -76,7 +26,11 @@ export function DocumentDetailSubBar({ documentId, assignedStacks }: DocumentDet
     <SubBar
       left={
         <>
-          <DetailFilterButton />
+          <SearchFilterButton
+            value={fieldSearch}
+            onChange={setFieldSearch}
+            placeholder="Search fields..."
+          />
           {fieldSearch && (
             <FilterPill
               icon={<Icons.Search className="size-full" />}
