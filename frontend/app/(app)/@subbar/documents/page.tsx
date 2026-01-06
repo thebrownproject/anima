@@ -2,7 +2,6 @@
 
 import { SubBar } from '@/components/layout/sub-bar'
 import { FilterBar } from '@/components/layout/filter-bar'
-import { ExpandableSearch } from '@/components/layout/expandable-search'
 import { SelectionActions } from '@/components/layout/selection-actions'
 import { ActionButton } from '@/components/layout/action-button'
 import { useAgentStore, initialUploadData } from '@/components/agent'
@@ -12,26 +11,17 @@ import * as Icons from '@/components/icons'
 
 /**
  * SubBar for documents list page.
- * Renders search, filter, selection actions, and upload button.
- * Consumes filter state from DocumentsFilterContext (shared with DocumentsTable).
+ * Renders filter bar, selection actions, and upload button.
+ * Search is now integrated into FilterButton dropdown.
  */
 export default function DocumentsSubBar() {
-  const { filterValue, setFilterValue, selectedCount } = useDocumentsFilter()
+  const { selectedCount } = useDocumentsFilter()
   const { stacks } = useStacks()
   const openFlow = useAgentStore((state) => state.openFlow)
 
   return (
     <SubBar
-      left={
-        <>
-          <ExpandableSearch
-            value={filterValue}
-            onChange={setFilterValue}
-            placeholder="Search documents..."
-          />
-          <FilterBar stacks={stacks} />
-        </>
-      }
+      left={<FilterBar stacks={stacks} />}
       right={
         <>
           <SelectionActions selectedCount={selectedCount} />
