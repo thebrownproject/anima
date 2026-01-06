@@ -55,6 +55,9 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     setMimeType,
     setOcrText,
     signedUrlDocId,
+    setDocumentMetadata,
+    setExtractedFields,
+    setIsLoadingExtraction,
   } = useSelectedDocument();
   const { panelRef, isCollapsed } = usePreviewPanel();
   const {
@@ -140,7 +143,7 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     setSelectedIds(selectedIdsList);
   }, [selectedIdsList, setSelectedIds]);
 
-  // Fetch signed URL and OCR text when selected document changes
+  // Fetch signed URL, OCR text, and extraction when selected document changes
   // Uses signedUrlDocId to avoid re-fetching for the same document
   React.useEffect(() => {
     if (!selectedDocId) {
@@ -156,6 +159,15 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       setMimeType(selectedDoc.mime_type);
     }
 
+    // Set document metadata immediately from local document data
+    if (selectedDoc) {
+      setDocumentMetadata({
+        filename: selectedDoc.filename,
+        filePath: selectedDoc.file_path,
+        assignedStacks: selectedDoc.stacks || [],
+      });
+    }
+
     // Skip fetch if we already have a signed URL for this document
     if (signedUrlDocId === selectedDocId) {
       return;
@@ -167,8 +179,11 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       try {
         const supabase = createClerkSupabaseClient(getToken);
 
-        // Fetch signed URL and OCR text in parallel
-        const [urlResult, ocrResult] = await Promise.all([
+        // Start loading extraction
+        setIsLoadingExtraction(true);
+
+        // Fetch signed URL, OCR text, and extraction in parallel
+        const [urlResult, ocrResult, extractionResult] = await Promise.all([
           selectedDoc?.file_path
             ? supabase.storage
                 .from("documents")
@@ -179,12 +194,19 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
             .select("raw_text")
             .eq("document_id", selectedDocId)
             .maybeSingle(),
+          supabase
+            .from("extractions")
+            .select("extracted_fields")
+            .eq("document_id", selectedDocId)
+            .maybeSingle(),
         ]);
 
         if (!isCancelled) {
           setSignedUrl(urlResult.data?.signedUrl ?? null);
           setSignedUrlDocId(selectedDocId);
           setOcrText(ocrResult.data?.raw_text ?? null);
+          setExtractedFields(extractionResult.data?.extracted_fields ?? null);
+          setIsLoadingExtraction(false);
         }
       } catch (error) {
         console.error("Failed to fetch preview data:", error);
@@ -192,6 +214,8 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
           setSignedUrl(null);
           setSignedUrlDocId(null);
           setOcrText(null);
+          setExtractedFields(null);
+          setIsLoadingExtraction(false);
         }
       }
     };
@@ -205,12 +229,17 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     selectedDocId,
     selectedDoc?.file_path,
     selectedDoc?.mime_type,
+    selectedDoc?.filename,
+    selectedDoc?.stacks,
     signedUrlDocId,
     getToken,
     setSignedUrl,
     setSignedUrlDocId,
     setMimeType,
     setOcrText,
+    setDocumentMetadata,
+    setExtractedFields,
+    setIsLoadingExtraction,
   ]);
 
   // Note: We intentionally do NOT clear selection when preview collapses

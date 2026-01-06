@@ -2,6 +2,17 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
 
+interface StackSummary {
+  id: string
+  name: string
+}
+
+interface DocumentMetadata {
+  filename: string
+  filePath: string | null
+  assignedStacks: StackSummary[]
+}
+
 interface SelectedDocumentContextValue {
   // Document selection state
   selectedDocId: string | null
@@ -15,6 +26,16 @@ interface SelectedDocumentContextValue {
   setMimeType: (type: string) => void
   ocrText: string | null
   setOcrText: (text: string | null) => void
+  // Document metadata for subbar actions
+  filename: string | null
+  filePath: string | null
+  assignedStacks: StackSummary[]
+  setDocumentMetadata: (metadata: DocumentMetadata) => void
+  // Extraction data for export
+  extractedFields: Record<string, unknown> | null
+  setExtractedFields: (fields: Record<string, unknown> | null) => void
+  isLoadingExtraction: boolean
+  setIsLoadingExtraction: (loading: boolean) => void
 }
 
 const SelectedDocumentContext = createContext<SelectedDocumentContextValue | null>(null)
@@ -25,11 +46,26 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
   const [signedUrlDocId, setSignedUrlDocIdState] = useState<string | null>(null)
   const [mimeType, setMimeTypeState] = useState<string>('')
   const [ocrText, setOcrTextState] = useState<string | null>(null)
+  // Document metadata for subbar actions
+  const [filename, setFilenameState] = useState<string | null>(null)
+  const [filePath, setFilePathState] = useState<string | null>(null)
+  const [assignedStacks, setAssignedStacksState] = useState<StackSummary[]>([])
+  // Extraction data for export
+  const [extractedFields, setExtractedFieldsState] = useState<Record<string, unknown> | null>(null)
+  const [isLoadingExtraction, setIsLoadingExtractionState] = useState(false)
 
   const setSelectedDocId = useCallback((id: string | null) => {
     setSelectedDocIdState(id)
     // Don't clear URL here - causes race condition with react-pdf
     // Consumer will fetch new URL and call setSignedUrl when ready
+    // Clear metadata when deselecting
+    if (id === null) {
+      setFilenameState(null)
+      setFilePathState(null)
+      setAssignedStacksState([])
+      setExtractedFieldsState(null)
+      setIsLoadingExtractionState(false)
+    }
   }, [])
 
   const setSignedUrl = useCallback((url: string | null) => {
@@ -48,6 +84,20 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setOcrTextState(text)
   }, [])
 
+  const setDocumentMetadata = useCallback((metadata: DocumentMetadata) => {
+    setFilenameState(metadata.filename)
+    setFilePathState(metadata.filePath)
+    setAssignedStacksState(metadata.assignedStacks)
+  }, [])
+
+  const setExtractedFields = useCallback((fields: Record<string, unknown> | null) => {
+    setExtractedFieldsState(fields)
+  }, [])
+
+  const setIsLoadingExtraction = useCallback((loading: boolean) => {
+    setIsLoadingExtractionState(loading)
+  }, [])
+
   const contextValue = useMemo(() => ({
     selectedDocId,
     setSelectedDocId,
@@ -59,7 +109,26 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setMimeType,
     ocrText,
     setOcrText,
-  }), [selectedDocId, setSelectedDocId, signedUrl, setSignedUrl, signedUrlDocId, setSignedUrlDocId, mimeType, setMimeType, ocrText, setOcrText])
+    // Document metadata
+    filename,
+    filePath,
+    assignedStacks,
+    setDocumentMetadata,
+    // Extraction data
+    extractedFields,
+    setExtractedFields,
+    isLoadingExtraction,
+    setIsLoadingExtraction,
+  }), [
+    selectedDocId, setSelectedDocId,
+    signedUrl, setSignedUrl,
+    signedUrlDocId, setSignedUrlDocId,
+    mimeType, setMimeType,
+    ocrText, setOcrText,
+    filename, filePath, assignedStacks, setDocumentMetadata,
+    extractedFields, setExtractedFields,
+    isLoadingExtraction, setIsLoadingExtraction,
+  ])
 
   return (
     <SelectedDocumentContext.Provider value={contextValue}>
