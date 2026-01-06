@@ -63,6 +63,11 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
       );
     },
     cell: ({ row }) => {
+      // Don't render checkbox for child rows
+      if (row.original.depth > 0) {
+        return null;
+      }
+
       const isSelected = row.getIsSelected();
       const tooltipText = isSelected ? "Deselect row" : "Select row";
       return (
@@ -71,7 +76,6 @@ export const extractedColumns: ColumnDef<ExtractedFieldRow>[] = [
             <span className="flex h-full items-center">
               <Checkbox
                 checked={isSelected}
-                disabled={!row.getCanSelect()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
                 aria-label="Select row"
                 onClick={(e) => e.stopPropagation()}

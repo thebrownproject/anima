@@ -62,7 +62,7 @@ export function SelectionActions({
               className="gap-2"
             >
               <Icons.Trash className="size-4" />
-              <span>Delete</span>
+              <span>Delete {selectedCount === 1 ? 'document' : 'documents'}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

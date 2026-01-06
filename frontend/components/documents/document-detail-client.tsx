@@ -26,7 +26,7 @@ export function DocumentDetailClient({
 
   // Shared state from contexts
   const { setSelectedDocId, setSignedUrl, setSignedUrlDocId, signedUrlDocId, setMimeType, setOcrText } = useSelectedDocument()
-  const { fieldSearch, setSelectedFieldCount } = useDocumentDetailFilter()
+  const { fieldSearch } = useDocumentDetailFilter()
 
   // Sync selected document to context and fetch signed URL client-side
   // Uses signedUrlDocId to avoid re-fetching for the same document
@@ -121,7 +121,6 @@ export function DocumentDetailClient({
           confidenceScores={document.confidence_scores}
           changedFields={changedFields}
           searchFilter={fieldSearch}
-          onSelectionChange={setSelectedFieldCount}
         />
       </div>
       {/* Agent bar rendered by AgentContainer in root layout */}

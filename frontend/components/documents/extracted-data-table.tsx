@@ -21,13 +21,13 @@ import {
 import { cn } from "@/lib/utils";
 import { extractedColumns } from "./extracted-columns";
 import { transformExtractedFields } from "@/lib/transform-extracted-fields";
+import { useDocumentDetailFilter } from "@/components/documents/document-detail-filter-context";
 
 interface ExtractedDataTableProps {
   fields: Record<string, unknown> | null;
   confidenceScores: Record<string, number> | null;
   changedFields?: Set<string>;
   searchFilter?: string;
-  onSelectionChange?: (count: number) => void;
 }
 
 export function ExtractedDataTable({
@@ -35,10 +35,17 @@ export function ExtractedDataTable({
   confidenceScores,
   changedFields = new Set(),
   searchFilter = "",
-  onSelectionChange,
 }: ExtractedDataTableProps) {
   const [expanded, setExpanded] = React.useState<ExpandedState>({});
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+
+  // Bidirectional selection sync with context
+  const { setSelectedFieldIds, registerResetRowSelection } = useDocumentDetailFilter();
+
+  // Register the reset callback on mount so context can clear table selection
+  React.useEffect(() => {
+    registerResetRowSelection(() => setRowSelection({}));
+  }, [registerResetRowSelection]);
 
   const data = React.useMemo(
     () => transformExtractedFields(fields, confidenceScores),
@@ -48,7 +55,7 @@ export function ExtractedDataTable({
   const table = useReactTable({
     data,
     columns: extractedColumns,
-    enableRowSelection: true,
+    enableRowSelection: (row) => row.original.depth === 0,
     onRowSelectionChange: setRowSelection,
     state: {
       expanded,
@@ -66,15 +73,11 @@ export function ExtractedDataTable({
     },
   });
 
-  // Notify parent of selection changes
-  // Note: Use rowSelection state directly since getFilteredSelectedRowModel()
-  // may not work correctly with nested/expandable rows
+  // Sync selection to context when it changes
   React.useEffect(() => {
-    const selectedCount = Object.keys(rowSelection).filter(
-      (key) => rowSelection[key]
-    ).length;
-    onSelectionChange?.(selectedCount);
-  }, [rowSelection, onSelectionChange]);
+    const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id);
+    setSelectedFieldIds(selectedIds);
+  }, [rowSelection, setSelectedFieldIds, table]);
 
   if (!fields || Object.keys(fields).length === 0) {
     return (
