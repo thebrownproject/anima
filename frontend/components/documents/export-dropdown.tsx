@@ -145,7 +145,6 @@ export function ExportDropdown({ filename, extractedFields }: ExportDropdownProp
       </Tooltip>
       <DropdownMenuContent
           align="end"
-          className="w-48"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
         <DropdownMenuItem onSelect={handleExportCSV} className="gap-2">
