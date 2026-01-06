@@ -108,6 +108,7 @@ export function StackDetailSubBar({ tables, stackId }: StackDetailSubBarProps) {
           <ActionButton
             icon={<Icons.Plus />}
             tooltip="Create table"
+            className="opacity-50 hover:opacity-100 transition-opacity"
           >
             <span className="sr-only">Create table</span>
           </ActionButton>
