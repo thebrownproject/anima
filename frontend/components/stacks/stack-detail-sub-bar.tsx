@@ -68,11 +68,6 @@ export function StackDetailSubBar({ tables, stackId }: StackDetailSubBarProps) {
             Docs
           </ActionButton>
 
-          <Separator
-            orientation="vertical"
-            className="mx-1 data-[orientation=vertical]:h-4"
-          />
-
           {visibleTables.map((table) => (
             <ActionButton
               key={table.id}
@@ -116,13 +111,12 @@ export function StackDetailSubBar({ tables, stackId }: StackDetailSubBarProps) {
           >
             <span className="sr-only">Create table</span>
           </ActionButton>
-        </div>
-      }
-      right={
-        <div className="flex items-center gap-2">
-          {isDocumentsActive && (
-            <SelectionActions selectedCount={selectedDocCount} />
-          )}
+
+          <Separator
+            orientation="vertical"
+            className="mx-1 data-[orientation=vertical]:h-4"
+          />
+
           <SearchFilterButton
             value={searchFilter}
             onChange={setSearchFilter}
@@ -134,6 +128,13 @@ export function StackDetailSubBar({ tables, stackId }: StackDetailSubBarProps) {
               label={`"${searchFilter}"`}
               onRemove={() => setSearchFilter('')}
             />
+          )}
+        </div>
+      }
+      right={
+        <div className="flex items-center gap-2">
+          {isDocumentsActive && (
+            <SelectionActions selectedCount={selectedDocCount} />
           )}
           {isDocumentsActive && (
             <ActionButton icon={<Icons.Plus />} tooltip="Add documents" className="mr-2">
