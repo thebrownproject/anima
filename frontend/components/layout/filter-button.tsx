@@ -133,7 +133,7 @@ export function FilterButton({ stacks }: FilterButtonProps) {
         {activeFilterCount > 0 && (
           <DropdownMenuItem onClick={clearFilters}>
             <Icons.FilterX className="size-4" />
-            Clear
+            <span>Clear</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
