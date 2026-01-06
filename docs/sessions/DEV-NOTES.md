@@ -7392,3 +7392,91 @@ docs/plans/roadmap/IN-PROGRESS.md
 1. Run `/continue` to load context
 2. Run `/execute` on Phase 2.2 plan
 3. Implement Tasks 9-13 (search in FilterButton, search pill, detail page)
+
+---
+
+## Session 97 - 2026-01-06 - Phase 2.2 Search in Filter + DRY Refactor
+
+**Feature**: Documents Sub-bar (Phase 2.2: Search in Filter)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 9: Add search input to FilterButton dropdown**
+  - Added Input component at top of dropdown
+  - Wired to existing filterValue context
+  - Styling matches StacksDropdown pattern
+
+- [x] **Task 10: Add search pill to FilterBar**
+  - FilterPill with Search icon when search active
+  - Updated activeFilterCount to include search
+  - Updated clearFilters to clear search
+
+- [x] **Task 11: Remove ExpandableSearch from documents SubBar**
+  - Simplified SubBar left slot to just FilterBar
+
+- [x] **Bug fix: Dropdown UX improvements**
+  - Close dropdown on Enter key
+  - Auto-focus search input when dropdown opens
+  - Applied to FilterButton and StacksDropdown
+
+- [x] **Task 13: Add FilterButton to document detail**
+  - Created DetailFilterButton (later refactored to SearchFilterButton)
+  - Uses DocumentDetailFilterContext
+
+- [x] **DRY Refactor: Create SearchFilterButton**
+  - Extracted reusable SearchFilterButton component
+  - Used in: document detail, stacks list, stack detail
+  - Deleted ExpandableSearch component
+
+- [x] **Stacks consistency: Move filter to left**
+  - Moved SearchFilterButton from right to left in stack detail subbar
+  - Removed separator between Docs and table tabs
+  - Made "+" button subtle (opacity-50 hover:opacity-100)
+
+- [x] **Polish: Accessibility and tooltips**
+  - Added tooltip to SearchFilterButton
+  - Added sr-only text when filter is active
+  - Added clarifying comments for setTimeout(0) workaround
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| SearchFilterButton vs composing FilterButton | Separate components | FilterButton has submenus, SearchFilterButton is search-only. Different responsibilities. |
+| Filter position in stacks | Left side | Consistency with documents page pattern |
+| ExpandableSearch | Deleted | No longer used after refactoring to SearchFilterButton |
+| DetailFilterButton location | Inline in document-detail-sub-bar.tsx | Single use, tight coupling to context, small component |
+
+### Files Created
+
+- `frontend/components/layout/search-filter-button.tsx` - Reusable search dropdown
+
+### Files Modified
+
+- `frontend/components/layout/filter-button.tsx` - Added search input
+- `frontend/components/layout/filter-bar.tsx` - Added search pill
+- `frontend/components/documents/documents-filter-context.tsx` - Updated activeFilterCount, clearFilters
+- `frontend/components/documents/document-detail-sub-bar.tsx` - Uses SearchFilterButton
+- `frontend/components/stacks/stack-detail-sub-bar.tsx` - Uses SearchFilterButton, filter moved left
+- `frontend/app/(app)/@subbar/stacks/page.tsx` - Uses SearchFilterButton
+- `frontend/app/(app)/@subbar/documents/page.tsx` - Removed ExpandableSearch
+
+### Files Deleted
+
+- `frontend/components/layout/expandable-search.tsx` - Replaced by SearchFilterButton
+
+### Tasks Remaining
+
+- [ ] Phase 4: Export
+- [ ] Phase 5: Delete
+- [ ] Phase 6: Bulk delete
+
+### Next Session
+
+**Task**: Phase 4 - Export functionality
+
+**Process**:
+1. Run `/continue` to load context
+2. Review Phase 4 plan (if exists) or create one
+3. Implement export for documents and stacks
