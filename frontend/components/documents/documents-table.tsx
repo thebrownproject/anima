@@ -129,12 +129,16 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
     registerResetRowSelection(() => setRowSelection({}));
   }, [registerResetRowSelection]);
 
-  // Sync selected IDs to context for SubBar (table -> context)
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  // Derive selected IDs with stable reference (only changes when selection changes)
+  const selectedIdsList = React.useMemo(
+    () => table.getFilteredSelectedRowModel().rows.map((row) => row.original.id),
+    [table.getFilteredSelectedRowModel().rows]
+  );
+
+  // Sync selection to context when it changes
   React.useEffect(() => {
-    const ids = selectedRows.map((row) => row.original.id);
-    setSelectedIds(ids);
-  }, [selectedRows, setSelectedIds]);
+    setSelectedIds(selectedIdsList);
+  }, [selectedIdsList, setSelectedIds]);
 
   // Fetch signed URL and OCR text when selected document changes
   // Uses signedUrlDocId to avoid re-fetching for the same document

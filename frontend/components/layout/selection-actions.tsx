@@ -52,16 +52,16 @@ export function SelectionActions({
           </Tooltip>
           <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
             {/* Add to Stack: disabled placeholder - see Deferred Work in main plan */}
-            <DropdownMenuItem onClick={onAddToStack} disabled>
-              <Icons.FolderPlus className="mr-2 size-4" />
-              Add to Stack
+            <DropdownMenuItem onClick={onAddToStack} disabled className="gap-2">
+              <Icons.FolderPlus className="size-4" />
+              <span>Add to Stack</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setDeleteDialogOpen(true)}
-              className="text-destructive focus:text-destructive"
+              className="gap-2"
             >
-              <Icons.Trash className="mr-2 size-4" />
-              Delete
+              <Icons.Trash className="size-4" />
+              <span>Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
