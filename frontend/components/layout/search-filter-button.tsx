@@ -36,7 +36,8 @@ export function SearchFilterButton({
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-focus search input when dropdown opens
+  // Focus input after dropdown opens. setTimeout(0) defers focus
+  // until after Radix finishes rendering the dropdown content.
   useEffect(() => {
     if (open) {
       const timer = setTimeout(() => {
@@ -52,7 +53,7 @@ export function SearchFilterButton({
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
             <ActionButton icon={<Icons.Filter />}>
-              {!value && 'Filter'}
+              {value ? <span className="sr-only">Filter (active)</span> : 'Filter'}
             </ActionButton>
           </DropdownMenuTrigger>
         </TooltipTrigger>

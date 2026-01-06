@@ -42,10 +42,10 @@ export function FilterButton({ stacks }: FilterButtonProps) {
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-focus search input when dropdown opens
+  // Focus input after dropdown opens. setTimeout(0) defers focus
+  // until after Radix finishes rendering the dropdown content.
   useEffect(() => {
     if (open) {
-      // Small delay to ensure dropdown is rendered
       const timer = setTimeout(() => {
         inputRef.current?.focus()
       }, 0)
