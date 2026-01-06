@@ -73,6 +73,10 @@ Page-specific headers live in `app/(app)/@header/` as a parallel route slot. The
 
 **Why**: Server-component friendly, no hydration issues, idiomatic Next.js pattern.
 
+### Page Subbars (@subbar parallel route)
+
+Same pattern as headers. Filter contexts (e.g., `DocumentsFilterContext`) share state between subbar and page content.
+
 ### Data Fetching
 
 - **Reads/writes**: Use Supabase client directly (no FastAPI)

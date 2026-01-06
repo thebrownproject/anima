@@ -7684,3 +7684,70 @@ docs/plans/roadmap/IN-PROGRESS.md
 2. Implement Task 20: Preview panel action buttons
 3. Implement Task 21: Remove redundant Upload button
 4. Final review and phase completion
+
+---
+
+## Session 101 - 2026-01-06 - Phase 7 Complete, Documents Subbar Feature Done
+
+**Feature**: Documents Sub-bar (Phase 7 - Final)
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 20: Document actions in subbar when previewed**
+  - Expanded `SelectedDocumentContext` with document metadata (filename, filePath, assignedStacks, extractedFields)
+  - Updated `documents-table.tsx` to set metadata and fetch extraction on row click
+  - Updated `@subbar/documents/page.tsx` to show document actions when preview visible
+  - Reused `DocumentDetailActions` component (no duplication)
+  - Added condition: only show when `!isCollapsed` (preview panel visible)
+
+- [x] **Task 21: Remove Upload button from documents subbar**
+  - Removed redundant Upload button (available in sidebar)
+  - Cleaned up unused imports
+
+- [x] **Consistency fixes**
+  - Added separator between field selection and document actions in detail subbar
+  - Refactored all subbar dividers to use shadcn `Separator` component
+  - Updated home page buttons to use shadcn `Button` component
+  - Added `@subbar` documentation to frontend/CLAUDE.md
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Document actions location | In subbar (not preview panel) | Consistent with detail page, same position |
+| Both selection + preview | Show both with separator | User can see selection actions AND document actions |
+| Divider component | shadcn Separator | Consistency with header and stacks subbar |
+
+### Files Created
+
+None (reused existing components)
+
+### Files Modified
+
+- `frontend/components/documents/selected-document-context.tsx`
+- `frontend/components/documents/documents-table.tsx`
+- `frontend/app/(app)/@subbar/documents/page.tsx`
+- `frontend/components/documents/document-detail-sub-bar.tsx`
+- `frontend/app/page.tsx`
+- `frontend/CLAUDE.md`
+
+### Feature Complete
+
+Documents Sub-bar feature is now complete (all 7 phases):
+- Phase 1: Sonner toast
+- Phase 2: Filter dropdown + redesign + search
+- Phase 3: Stack dropdown
+- Phase 4: Export dropdown
+- Phase 5: Delete dialog
+- Phase 6: Selection actions / bulk delete
+- Phase 7: Selection & preview actions
+
+### Next Session
+
+**Task**: Resume Stacks UI or start new feature
+
+**Process**:
+1. Run `/continue`
+2. Check `docs/plans/roadmap/TODO.md` for next priority
+3. Resume Stacks UI Phase 3 or pick new feature

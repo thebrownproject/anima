@@ -5,6 +5,7 @@ import {
   SignedIn,
   SignedOut,
 } from '@clerk/nextjs'
+import { Button } from '@/components/ui/button'
 
 export default function HomePage() {
   return (
@@ -18,23 +19,16 @@ export default function HomePage() {
 
       <div className="flex gap-4">
         <SignedIn>
-          <Link
-            href="/documents"
-            className="rounded-md bg-primary px-6 py-2 text-primary-foreground hover:bg-primary/90"
-          >
-            Go to Documents
-          </Link>
+          <Button asChild>
+            <Link href="/documents">Go to Documents</Link>
+          </Button>
         </SignedIn>
         <SignedOut>
           <SignInButton mode="modal">
-            <button className="rounded-md border px-6 py-2 hover:bg-accent">
-              Sign In
-            </button>
+            <Button variant="outline">Sign In</Button>
           </SignInButton>
           <SignUpButton mode="modal">
-            <button className="rounded-md bg-primary px-6 py-2 text-primary-foreground hover:bg-primary/90">
-              Get Started
-            </button>
+            <Button>Get Started</Button>
           </SignUpButton>
         </SignedOut>
       </div>
