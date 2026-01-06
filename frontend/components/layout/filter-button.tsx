@@ -34,7 +34,7 @@ export function FilterButton({ stacks }: FilterButtonProps) {
     clearFilters,
   } = useDocumentsFilter()
 
-  const label = activeFilterCount > 0 ? `Filter (${activeFilterCount})` : 'Filter'
+  const hasActiveFilters = activeFilterCount > 0
 
   return (
     <DropdownMenu>
@@ -42,7 +42,7 @@ export function FilterButton({ stacks }: FilterButtonProps) {
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
             <ActionButton icon={<Icons.Filter />}>
-              {label}
+              {!hasActiveFilters && 'Filter'}
             </ActionButton>
           </DropdownMenuTrigger>
         </TooltipTrigger>
