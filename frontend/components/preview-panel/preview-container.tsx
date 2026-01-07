@@ -81,7 +81,7 @@ export function PreviewContainer({
 
   return (
     <Tabs value={effectiveTab} onValueChange={(v) => onTabChange(v as 'pdf' | 'text')} className="flex-1 min-h-0">
-      <div className="group relative h-full rounded-lg overflow-hidden bg-muted">
+      <div className="group relative h-full rounded-xl overflow-hidden bg-sidebar border shadow-[0_0_2px_rgba(0,0,0,0.04),0_0_12px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.08),0_8px_32px_rgba(0,0,0,0.1)]">
         {/* Top controls - fade in on hover */}
         <div
           className={cn(
