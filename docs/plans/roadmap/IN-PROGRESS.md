@@ -6,8 +6,9 @@
 - Phase 1: ✅ Complete (Tasks 1-4: icons, folder structure, context updates)
 - Phase 2: ✅ Complete (Tasks 5-12: all 8 components built and reviewed)
 - Phase 3: ✅ Complete (Tasks 13-18: integration, cleanup, polish)
-- Styling Polish: In Progress (shadow, colors, padding, PDF width)
-- Next: Continue visual polish, then move to `plans/complete/`
+- Styling Polish: ✅ Complete (loading states fixed, scrolling fixed)
+- Bug Fixes Remaining: Text tab flash, PDF/Text transition flash, metadata loading, localStorage persistence
+- Next: Fix remaining bugs, then move to `plans/complete/`
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused
 - Design: Complete (v2)

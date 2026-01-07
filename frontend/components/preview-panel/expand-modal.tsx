@@ -14,16 +14,10 @@ import { TextContent } from './text-content'
 import * as Icons from '@/components/icons'
 
 // Dynamic import to avoid SSR issues with react-pdf
+// Loading is handled inside PdfContent itself
 const PdfContent = dynamic(
   () => import('./pdf-content').then((mod) => ({ default: mod.PdfContent })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full items-center justify-center">
-        <Icons.Loader2 className="size-6 animate-spin text-muted-foreground/50" />
-      </div>
-    ),
-  }
+  { ssr: false }
 )
 
 interface ExpandModalProps {
@@ -86,7 +80,7 @@ export function ExpandModal({
 
         {/* Content area */}
         <div className="flex-1 min-h-0 overflow-hidden rounded-t-lg bg-muted m-4 mb-0">
-          {isPdf && pdfUrl ? (
+          {isPdf ? (
             <PdfContent
               url={pdfUrl}
               currentPage={currentPage}

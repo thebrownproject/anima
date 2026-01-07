@@ -8131,3 +8131,68 @@ c7347bc fix: increase preview padding and make PDF fill container width
 2. Review current styling with user
 3. Make additional visual adjustments as requested
 4. Once approved, move plan to `plans/complete/`
+
+---
+
+## Session 107 - 2026-01-07 - Preview Panel Loading Bug Fixes
+
+**Feature**: Preview Panel Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Fixed double loading spinner issue**:
+  - Root cause: Dynamic import loading placeholder + PdfContent internal loading = two spinners
+  - Removed duplicate `PdfLoadingPlaceholder` from dynamic import
+  - Consolidated all loading logic into `PdfContent` with `showLoading = !url || renderedUrl !== url`
+  - Used `position: absolute` + `opacity: 0` during loading to prevent layout shift
+
+- [x] **Fixed loading state coordination**:
+  - Removed `isLoading` state, now derived from `renderedUrl !== url`
+  - Added `renderedUrl` state to track which URL has been rendered
+  - No more cascading renders from useEffect setState
+
+- [x] **Fixed scrolling for tall PDFs**:
+  - Established proper flexbox height chain through parent containers
+  - TabsContent uses `flex-1 min-h-0` for proper flex sizing
+  - PdfContent has `h-full overflow-auto` for scroll handling
+
+- [x] **Fixed container height shrink-to-fit**:
+  - Container now shrinks to fit PDF content when PDF is shorter than viewport
+  - Uses conditional `min-h-[calc(100vh-290px)]` only during loading
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Loading state source | Derive from `renderedUrl !== url` | Eliminates gap between Document load and Page render |
+| PDF container during loading | `position: absolute` + `opacity: 0` | Allows PDF to load without affecting layout |
+| Scroll container | TabsContent with `flex-1 min-h-0` | Proper flexbox chain for overflow handling |
+
+### Files Modified
+
+```
+frontend/components/preview-panel/
+├── pdf-content.tsx        (major refactor: loading states, scrolling)
+├── preview-container.tsx  (flexbox layout, removed duplicate placeholder)
+└── expand-modal.tsx       (removed duplicate placeholder)
+```
+
+### Tasks Remaining (Bugs)
+
+- [ ] Text tab flashes "No OCR available" and shrinks container when loading new document
+- [ ] Screen flashes when switching from Text to PDF (but not PDF to Text)
+- [ ] Document metadata loads late under filename - needs position adjustment
+- [ ] Preview panel localStorage persistence broken (width, collapsed state not persisting on reload)
+- [ ] Scrollbar visibility on macOS (overlay scrollbars hide - consider shadcn ScrollArea)
+
+### Next Session
+
+**Task**: Fix remaining preview panel bugs
+
+**Process**:
+1. Run `/continue` with handover context
+2. Fix Text tab "No OCR available" flash
+3. Fix Text→PDF transition flash
+4. Fix metadata loading/positioning
+5. Restore localStorage persistence for preview panel state (was working before)

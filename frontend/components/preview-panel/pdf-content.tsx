@@ -1,23 +1,26 @@
-'use client'
+"use client";
 
-import { useState, useRef, useEffect } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
-import * as Icons from '@/components/icons'
-import 'react-pdf/dist/Page/AnnotationLayer.css'
-import 'react-pdf/dist/Page/TextLayer.css'
+import { useState, useRef, useEffect } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import * as Icons from "@/components/icons";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
+  "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
-).toString()
+).toString();
 
 interface PdfContentProps {
-  url: string
-  currentPage: number
-  onLoadSuccess: (info: { numPages: number }) => void
-  onLoadError?: (error: Error) => void
+  url: string | null;
+  currentPage: number;
+  onLoadSuccess: (info: { numPages: number }) => void;
+  onLoadError?: (error: Error) => void;
 }
+
+// Base width for initial render - will scale to fill container
+const BASE_WIDTH = 600;
 
 export function PdfContent({
   url,
@@ -25,33 +28,45 @@ export function PdfContent({
   onLoadSuccess,
   onLoadError,
 }: PdfContentProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [containerWidth, setContainerWidth] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+  const [pageHeight, setPageHeight] = useState(0);
+  const [renderedUrl, setRenderedUrl] = useState<string | null>(null);
 
-  // Track container width for responsive PDF sizing
+  // Scale PDF to fit container using CSS transform (prevents re-renders during resize)
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    const container = containerRef.current;
+    if (!container) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
-      const [entry] = entries
-      if (!entry) return
-      setContainerWidth(entry.contentRect.width)
-    })
+      const [entry] = entries;
+      if (!entry) return;
 
-    resizeObserver.observe(container)
-    return () => resizeObserver.disconnect()
-  }, [])
+      const containerWidth = entry.contentRect.width;
+      const newScale = containerWidth / BASE_WIDTH;
+      setScale(newScale);
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   function handleLoadSuccess({ numPages }: { numPages: number }) {
-    onLoadSuccess({ numPages })
+    onLoadSuccess({ numPages });
   }
 
   function handleLoadError(error: Error) {
-    setError(error.message)
-    onLoadError?.(error)
+    setError(error.message);
+    onLoadError?.(error);
   }
+
+  // Calculate scaled dimensions
+  const scaledWidth = BASE_WIDTH * scale;
+  const scaledHeight = pageHeight * scale;
+
+  // Show loading until this specific URL's page has rendered
+  const showLoading = !url || renderedUrl !== url;
 
   if (error) {
     return (
@@ -61,30 +76,59 @@ export function PdfContent({
           <p className="text-sm text-muted-foreground mt-1">{error}</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-auto">
-      {containerWidth && (
-        <Document
-          file={url}
-          onLoadSuccess={handleLoadSuccess}
-          onLoadError={handleLoadError}
-          loading={
-            <div className="flex h-[600px] items-center justify-center">
-              <Icons.Loader2 className="size-8 animate-spin text-muted-foreground" />
-            </div>
-          }
+    <div
+      ref={containerRef}
+      className={`h-full overflow-auto relative w-full ${showLoading ? "min-h-[calc(100vh-290px)]" : ""}`}
+    >
+      {/* Loading spinner - shows while URL is fetching OR PDF is loading */}
+      {showLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-sidebar z-10">
+          <Icons.Loader2 className="size-6 animate-spin text-muted-foreground/50" />
+        </div>
+      )}
+      {/* PDF container with scaling - positioned absolutely during loading to prevent layout shift */}
+      {url && (
+        <div
+          style={{
+            width: `${scaledWidth}px`,
+            height: scaledHeight > 0 ? `${scaledHeight}px` : "auto",
+            position: showLoading ? "absolute" : "relative",
+            opacity: showLoading ? 0 : 1,
+            top: 0,
+            left: 0,
+          }}
         >
-          <Page
-            pageNumber={currentPage}
-            width={containerWidth}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-          />
-        </Document>
+          <div
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              width: `${BASE_WIDTH}px`,
+            }}
+          >
+            <Document
+              file={url}
+              onLoadSuccess={handleLoadSuccess}
+              onLoadError={handleLoadError}
+              loading={null}
+            >
+              <Page
+                pageNumber={currentPage}
+                width={BASE_WIDTH}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                onRenderSuccess={(page) => {
+                  setPageHeight(page.height);
+                  setRenderedUrl(url);
+                }}
+              />
+            </Document>
+          </div>
+        </div>
       )}
     </div>
-  )
+  );
 }

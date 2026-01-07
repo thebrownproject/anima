@@ -7,19 +7,12 @@ import { PreviewControls } from './preview-controls'
 import { PageNavigation } from './page-navigation'
 import { TextContent } from './text-content'
 import { cn } from '@/lib/utils'
-import * as Icons from '@/components/icons'
-
 // Dynamic import to avoid SSR issues with react-pdf
+// No loading placeholder needed - PdfContent handles its own loading state internally
+// Using a separate placeholder caused two spinners to appear in different locations
 const PdfContent = dynamic(
   () => import('./pdf-content').then((mod) => ({ default: mod.PdfContent })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full items-center justify-center">
-        <Icons.Loader2 className="size-6 animate-spin text-muted-foreground/50" />
-      </div>
-    ),
-  }
+  { ssr: false }
 )
 
 interface PreviewContainerProps {
@@ -80,8 +73,8 @@ export function PreviewContainer({
   const showPageNav = effectiveTab === 'pdf' && totalPages > 1
 
   return (
-    <Tabs value={effectiveTab} onValueChange={(v) => onTabChange(v as 'pdf' | 'text')} className="flex-1 min-h-0">
-      <div className="group relative h-full rounded-xl overflow-hidden bg-sidebar border shadow-[0_0_2px_rgba(0,0,0,0.04),0_0_12px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.08),0_8px_32px_rgba(0,0,0,0.1)]">
+    <Tabs value={effectiveTab} onValueChange={(v) => onTabChange(v as 'pdf' | 'text')} className="min-h-0 max-h-full flex flex-col">
+      <div className="group relative min-h-0 flex-1 flex flex-col rounded-xl overflow-hidden bg-sidebar border shadow-[0_0_2px_rgba(0,0,0,0.04),0_0_12px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.08),0_8px_32px_rgba(0,0,0,0.1)]">
         {/* Top controls - fade in on hover */}
         <div
           className={cn(
@@ -99,19 +92,14 @@ export function PreviewContainer({
           />
         </div>
 
-        {/* Content area */}
-        <TabsContent value="pdf" className="h-full m-0 data-[state=inactive]:hidden">
-          {isPdfAvailable && pdfUrl ? (
+        {/* Content area - both tabs use h-full and handle their own scrolling internally */}
+        <TabsContent value="pdf" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
+          {isPdfAvailable ? (
             <PdfContent
-              key={pdfUrl}
               url={pdfUrl}
               currentPage={currentPage}
               onLoadSuccess={onPdfLoad}
             />
-          ) : isPdfAvailable && !pdfUrl ? (
-            <div className="flex h-full items-center justify-center">
-              <Icons.Loader2 className="size-6 animate-spin text-muted-foreground/50" />
-            </div>
           ) : (
             <div className="flex h-full items-center justify-center">
               <p className="text-sm text-muted-foreground">PDF preview not available</p>
@@ -119,7 +107,7 @@ export function PreviewContainer({
           )}
         </TabsContent>
 
-        <TabsContent value="text" className="h-full m-0 data-[state=inactive]:hidden">
+        <TabsContent value="text" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
           <TextContent text={ocrText} />
         </TabsContent>
 
