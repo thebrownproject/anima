@@ -165,6 +165,8 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
         filename: selectedDoc.filename,
         filePath: selectedDoc.file_path,
         assignedStacks: selectedDoc.stacks || [],
+        fileSize: selectedDoc.file_size_bytes,
+        pageCount: null,  // Set when PDF loads in preview panel
       });
     }
 

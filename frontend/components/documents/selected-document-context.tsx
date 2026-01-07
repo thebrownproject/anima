@@ -11,6 +11,8 @@ interface DocumentMetadata {
   filename: string
   filePath: string | null
   assignedStacks: StackSummary[]
+  fileSize: number | null  // bytes
+  pageCount: number | null
 }
 
 interface SelectedDocumentContextValue {
@@ -30,6 +32,8 @@ interface SelectedDocumentContextValue {
   filename: string | null
   filePath: string | null
   assignedStacks: StackSummary[]
+  fileSize: number | null
+  pageCount: number | null
   setDocumentMetadata: (metadata: DocumentMetadata) => void
   // Extraction data for export
   extractedFields: Record<string, unknown> | null
@@ -50,6 +54,9 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
   const [filename, setFilenameState] = useState<string | null>(null)
   const [filePath, setFilePathState] = useState<string | null>(null)
   const [assignedStacks, setAssignedStacksState] = useState<StackSummary[]>([])
+  // File metadata for preview panel
+  const [fileSize, setFileSizeState] = useState<number | null>(null)
+  const [pageCount, setPageCountState] = useState<number | null>(null)
   // Extraction data for export
   const [extractedFields, setExtractedFieldsState] = useState<Record<string, unknown> | null>(null)
   const [isLoadingExtraction, setIsLoadingExtractionState] = useState(false)
@@ -63,6 +70,8 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
       setFilenameState(null)
       setFilePathState(null)
       setAssignedStacksState([])
+      setFileSizeState(null)
+      setPageCountState(null)
       setExtractedFieldsState(null)
       setIsLoadingExtractionState(false)
     }
@@ -88,6 +97,8 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     setFilenameState(metadata.filename)
     setFilePathState(metadata.filePath)
     setAssignedStacksState(metadata.assignedStacks)
+    setFileSizeState(metadata.fileSize)
+    setPageCountState(metadata.pageCount)
   }, [])
 
   const setExtractedFields = useCallback((fields: Record<string, unknown> | null) => {
@@ -113,6 +124,8 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     filename,
     filePath,
     assignedStacks,
+    fileSize,
+    pageCount,
     setDocumentMetadata,
     // Extraction data
     extractedFields,
@@ -125,7 +138,7 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
     signedUrlDocId, setSignedUrlDocId,
     mimeType, setMimeType,
     ocrText, setOcrText,
-    filename, filePath, assignedStacks, setDocumentMetadata,
+    filename, filePath, assignedStacks, fileSize, pageCount, setDocumentMetadata,
     extractedFields, setExtractedFields,
     isLoadingExtraction, setIsLoadingExtraction,
   ])
