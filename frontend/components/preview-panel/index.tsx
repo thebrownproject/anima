@@ -2,3 +2,4 @@
 // Components will be added as implemented
 
 export { PreviewMetadata } from './preview-metadata'
+export { PageNavigation } from './page-navigation'
