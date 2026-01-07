@@ -40,8 +40,8 @@ export function PdfContent({
       const [entry] = entries
       if (!entry) return
 
-      const containerWidth = entry.contentRect.width - 32
-      const newScale = Math.min(containerWidth / BASE_WIDTH, 1)
+      const containerWidth = entry.contentRect.width
+      const newScale = containerWidth / BASE_WIDTH
       setScale(newScale)
     })
 
@@ -70,7 +70,7 @@ export function PdfContent({
   }
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-auto flex justify-center px-4">
+    <div ref={containerRef} className="h-full w-full overflow-auto flex justify-center">
       <div
         style={{
           transform: `scale(${scale})`,
