@@ -94,3 +94,7 @@ Lightweight tracking for items that don't need immediate action.
   - Clicking navigates to `/documents/[id]` detail page
   - Pattern similar to Linear/Notion preview panels
   - Related: Preview panel redesign (#36)
+- [ ] #41 `feature` Reusable EmptyState component - consistent empty state UI across all pages (2026-01-07)
+  - Props: icon, title, description, optional action button
+  - Use cases: no documents uploaded, no search results, no filters match, no stacks, preview panel (no doc selected)
+  - Design: Simple illustration + text pattern, keep it lightweight
