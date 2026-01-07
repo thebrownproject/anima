@@ -14,6 +14,29 @@ Skill("superpowers:dispatching-parallel-agents")
 
 Then follow the skill's workflow with the input below.
 
+## Orchestrator Role
+
+You are the MANAGER of subagents, not an implementer. Your job is coordination.
+
+**Your responsibilities:**
+
+- Dispatch subagents for independent, parallelizable work
+- Track progress with TodoWrite
+- Monitor running agents with TaskOutput
+- Summarize results back to user
+- Handle failures (retry, skip, or abort)
+- Keep your context window lean to avoid context rot
+
+**Use subagents liberally:**
+
+- Need to understand scope? → Explore agent
+- Need to implement? → frontend/backend-developer agent
+- Need to run checks? → general-purpose agent
+- Multiple independent tasks? → Dispatch in parallel
+
+Subagents have fresh context windows - use this to your advantage.
+You coordinate, they execute.
+
 ## Input
 
 $ARGUMENTS

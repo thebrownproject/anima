@@ -7751,3 +7751,74 @@ Documents Sub-bar feature is now complete (all 7 phases):
 1. Run `/continue`
 2. Check `docs/plans/roadmap/TODO.md` for next priority
 3. Resume Stacks UI Phase 3 or pick new feature
+
+---
+
+## Session 102 - 2026-01-07 - Preview Panel Redesign Brainstorm
+
+**Feature**: Preview Panel Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed preview panel redesign with superpowers:brainstorming skill**:
+  - Apple Finder-inspired design with rounded preview container
+  - Hover-reveal controls (tabs, expand, download, page nav)
+  - Gradient overlays for control visibility
+  - PDF/Text tab structure (renamed from Visual to Text)
+  - 2-line metadata section below preview
+  - Expand modal for full-size viewing
+  - Persistent last-viewed document via localStorage
+
+- [x] **Created design document**:
+  - File: `docs/plans/in-progress/preview-panel-redesign/2026-01-07-preview-panel-design.md`
+  - Wireframes for default and hover states
+  - Code examples for hover-reveal, expand modal, tab restructuring
+  - Component structure recommendation (8 files)
+
+- [x] **Frontend agent research on shadcn components**:
+  - Decided against Carousel (overkill for single-page PDF nav)
+  - Custom prev/next with existing react-pdf pattern
+  - Use existing Tabs, Dialog, Button components
+  - No new dependencies needed
+
+- [x] **Draft implementation plan created by subagent**:
+  - 7 phases, 19 tasks
+  - File: `docs/plans/in-progress/preview-panel-redesign/2026-01-07-preview-panel-plan.md`
+  - Needs rewrite using superpowers:write-plan skill properly
+
+- [x] **Added issue #41 for reusable EmptyState component**
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| PDF page navigation | Custom prev/next (not Carousel) | Carousel overkill, avoids embla-carousel dependency |
+| Tab naming | PDF \| Text | "Text" clearer than "Visual" or "OCR" |
+| Controls location | Inside preview container | Apple-style, cleaner, more immersive |
+| Control visibility | Hover to reveal | Clean default, gradient overlay for readability |
+| Metadata | 2 lines below preview | Filename + dot-separated details |
+| Expand view | Modal dialog | Keeps user in context |
+
+### Files Created
+
+- `docs/plans/in-progress/preview-panel-redesign/2026-01-07-preview-panel-design.md`
+- `docs/plans/in-progress/preview-panel-redesign/2026-01-07-preview-panel-plan.md`
+
+### Tasks Remaining
+
+- [ ] Rewrite implementation plan using `/superpowers:write-plan` skill in main chat
+- [ ] Verify plan completeness against design doc
+- [ ] Code review plan against MCP/shadcn docs
+- [ ] Begin implementation
+
+### Next Session
+
+**Task**: Finalize implementation plan with superpowers:write-plan skill
+
+**Process**:
+1. Run `/continue`
+2. Invoke `/superpowers:write-plan` directly in main chat
+3. Use existing draft plan as basis, follow skill workflow
+4. Run verification and code review agents
+5. Begin Phase 1 implementation if time permits
