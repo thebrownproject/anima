@@ -33,6 +33,7 @@ export {
   IconLayoutSidebar as PanelLeft,
   IconLayoutSidebarRight as PanelRight,
   IconAdjustmentsHorizontal as SlidersHorizontal,
+  IconArrowsMaximize as ArrowsMaximize,
 
   // Search
   IconSearch as Search,
