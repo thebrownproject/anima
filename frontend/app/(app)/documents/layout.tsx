@@ -5,7 +5,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from '@/components/ui/resizable'
-import { PreviewPanel } from '@/components/documents/preview-panel'
+import { PreviewPanel } from '@/components/preview-panel'
 import { usePreviewPanel } from '@/components/preview-panel/preview-panel-context'
 import { useSelectedDocument } from '@/components/documents/selected-document-context'
 
@@ -15,7 +15,7 @@ export default function DocumentsLayout({
   children: React.ReactNode
 }) {
   const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
-  const { signedUrl, ocrText, mimeType, selectedDocId, signedUrlDocId } = useSelectedDocument()
+  const { signedUrl, ocrText, mimeType, selectedDocId, signedUrlDocId, filename, fileSize, pageCount, extractedFields } = useSelectedDocument()
 
   // Show loading when URL is stale (document changed but URL not yet fetched)
   const isUrlStale = selectedDocId !== null && selectedDocId !== signedUrlDocId
@@ -70,6 +70,10 @@ export default function DocumentsLayout({
               pdfUrl={effectivePdfUrl}
               ocrText={effectiveOcrText}
               mimeType={mimeType}
+              filename={filename}
+              fileSize={fileSize}
+              pageCount={pageCount}
+              extractedFields={extractedFields}
             />
           </div>
         </ResizablePanel>
