@@ -7901,3 +7901,79 @@ Documents Sub-bar feature is now complete (all 7 phases):
 3. Review and commit after Phase 1
 4. Continue with Phase 2 and Phase 3
 5. Final testing against Task 18 checklist
+
+---
+
+## Session 104 - 2026-01-07 - Preview Panel Phase 1 Complete
+
+**Feature**: Preview Panel Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 1: Add ArrowsMaximize icon to barrel export**:
+  - Added `IconArrowsMaximize as ArrowsMaximize` to icons/index.ts
+  - Placed in "Layout & panels" section for semantic grouping
+
+- [x] **Task 2: Create preview-panel folder structure**:
+  - Created `frontend/components/preview-panel/index.tsx` with empty barrel
+  - **Deviation**: Moved to `/components/preview-panel/` instead of `/components/documents/preview-panel/` for reuse in Stacks
+
+- [x] **Task 3: Rename 'visual' tab to 'text'**:
+  - Updated all type definitions from `'pdf' | 'visual'` to `'pdf' | 'text'`
+  - Added localStorage migration for existing 'visual' values
+  - Updated preview-panel.tsx UI (TabsTrigger, TabsContent)
+  - **Deviation**: Moved `preview-panel-context.tsx` into preview-panel folder
+
+- [x] **Task 4: Add fileSize and pageCount to SelectedDocumentContext**:
+  - Extended DocumentMetadata interface
+  - Added state variables with proper cleanup on deselect
+  - Updated documents-table.tsx to pass file_size_bytes
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| preview-panel location | `/components/preview-panel/` | Will be reused in Stacks, not document-specific |
+| preview-panel-context location | Inside preview-panel folder | Co-locate generic preview state with component |
+| selected-document-context | Stays in `/documents/` | Document-specific, not generic preview behavior |
+
+### Files Created
+
+- `frontend/components/preview-panel/index.tsx`
+
+### Files Modified
+
+- `frontend/components/icons/index.ts` (ArrowsMaximize export)
+- `frontend/components/preview-panel/preview-panel-context.tsx` (moved + tab rename)
+- `frontend/components/documents/preview-panel.tsx` (tab rename)
+- `frontend/components/documents/selected-document-context.tsx` (fileSize, pageCount)
+- `frontend/components/documents/documents-table.tsx` (pass fileSize)
+- 6 files with updated import paths for preview-panel-context
+- `docs/plans/in-progress/preview-panel-redesign/README.md` (documented deviations)
+
+### Commits
+
+```
+51200c4 feat(icons): add ArrowsMaximize icon for preview expand button
+49ae9ef chore: scaffold preview-panel folder structure
+e9d268a refactor: move preview-panel to components root for reuse
+15c9de9 refactor: rename preview tab from 'visual' to 'text'
+3839acf refactor: move preview-panel-context into preview-panel folder
+15d67ae feat: add fileSize and pageCount to SelectedDocumentContext
+```
+
+### Tasks Remaining
+
+- [ ] Execute Phase 2: Components (Tasks 5-12)
+- [ ] Execute Phase 3: Integration (Tasks 13-18)
+
+### Next Session
+
+**Task**: Execute Phase 2 - Create all preview panel components
+
+**Process**:
+1. Run `/continue`
+2. Run `/execute` to continue with subagent-driven-development
+3. Tasks 5-12: preview-metadata, page-navigation, preview-controls, text-content, pdf-content, preview-container, expand-modal, preview-panel
+4. Review checkpoint after Phase 2

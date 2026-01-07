@@ -3,7 +3,10 @@
 **Preview Panel Redesign** (`plans/in-progress/preview-panel-redesign/`) - Active
 - Design: Complete (Apple Finder-inspired, hover controls, metadata)
 - Implementation Plan: Complete (18 tasks across 3 phases, reviewed by 2 agents)
-- Next: Run `/superpowers:execute-plan` to implement phase-by-phase
+- Phase 1: ✅ Complete (Tasks 1-4: icons, folder structure, context updates)
+- Phase 2: Pending (Tasks 5-12: all components)
+- Phase 3: Pending (Tasks 13-18: integration, cleanup, polish)
+- Next: Run `/execute` to continue with Phase 2
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused
 - Design: Complete (v2)

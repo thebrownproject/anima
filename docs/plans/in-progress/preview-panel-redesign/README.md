@@ -14,7 +14,7 @@
 
 | Phase | Description | Tasks | Status |
 |-------|-------------|-------|--------|
-| [Phase 1](./phase-1-foundation.md) | Foundation + Context updates | 1-4 | Pending |
+| [Phase 1](./phase-1-foundation.md) | Foundation + Context updates | 1-4 | ✅ Complete |
 | [Phase 2](./phase-2-components.md) | Leaf + Container components | 5-12 | Pending |
 | [Phase 3](./phase-3-integration.md) | Integration + Cleanup + Polish | 13-18 | Pending |
 
@@ -27,7 +27,7 @@
 ### File Structure (After)
 
 ```
-frontend/components/documents/preview-panel/
+frontend/components/preview-panel/
 ├── index.tsx                 # Barrel export
 ├── preview-panel.tsx         # Main orchestrator component
 ├── preview-container.tsx     # Rounded container with hover-reveal logic
@@ -90,4 +90,4 @@ During execution, the following changes were made to improve reusability:
 
 - Design: `./2026-01-07-preview-panel-design.md`
 - Current implementation: `frontend/components/documents/preview-panel.tsx`
-- Context providers: `frontend/components/documents/preview-panel-context.tsx`, `selected-document-context.tsx`
+- Context providers: `frontend/components/preview-panel/preview-panel-context.tsx`, `frontend/components/documents/selected-document-context.tsx`
