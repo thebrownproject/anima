@@ -20,7 +20,7 @@ interface TextContentProps {
 }
 
 export function TextContent({ text }: TextContentProps) {
-  if (!text) {
+  if (!text?.trim()) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground">No OCR text available</p>
