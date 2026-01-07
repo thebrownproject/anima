@@ -112,10 +112,12 @@ export function ExpandModal({
             />
           )}
 
-          <Button variant="outline" size="sm" onClick={onDownload}>
-            <Icons.Download className="size-4 mr-2" />
-            Download
-          </Button>
+          {activeTab === 'pdf' && pdfUrl && (
+            <Button variant="outline" size="sm" onClick={onDownload}>
+              <Icons.Download className="size-4 mr-2" />
+              Download
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
