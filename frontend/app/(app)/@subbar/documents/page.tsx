@@ -6,7 +6,7 @@ import { SelectionActions } from '@/components/layout/selection-actions'
 import { Separator } from '@/components/ui/separator'
 import { useDocumentsFilter } from '@/components/documents/documents-filter-context'
 import { useSelectedDocument } from '@/components/documents/selected-document-context'
-import { usePreviewPanel } from '@/components/documents/preview-panel-context'
+import { usePreviewPanel } from '@/components/preview-panel/preview-panel-context'
 import { DocumentDetailActions } from '@/components/documents/document-detail-actions'
 import { useStacks } from '@/hooks/use-stacks'
 

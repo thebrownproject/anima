@@ -6,7 +6,7 @@ import {
   ResizableHandle,
 } from '@/components/ui/resizable'
 import { PreviewPanel } from '@/components/documents/preview-panel'
-import { usePreviewPanel } from '@/components/documents/preview-panel-context'
+import { usePreviewPanel } from '@/components/preview-panel/preview-panel-context'
 import { useSelectedDocument } from '@/components/documents/selected-document-context'
 
 export default function DocumentsLayout({

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VisualPreview } from '@/components/documents/visual-preview'
-import { usePreviewPanel } from './preview-panel-context'
+import { usePreviewPanel } from '@/components/preview-panel/preview-panel-context'
 import * as Icons from '@/components/icons'
 
 // Dynamic import to avoid SSR issues with react-pdf

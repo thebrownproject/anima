@@ -71,6 +71,21 @@ From design doc:
 
 ---
 
+## Deviations from Plan
+
+During execution, the following changes were made to improve reusability:
+
+| Original Plan | Actual | Reason |
+|---------------|--------|--------|
+| `frontend/components/documents/preview-panel/` | `frontend/components/preview-panel/` | Component will be reused in Stacks, so moved to root components folder |
+| `preview-panel-context.tsx` stays in `/documents/` | Moved to `frontend/components/preview-panel/preview-panel-context.tsx` | Co-locate generic preview state (tab, localStorage) with component |
+
+**Import path changes:**
+- All imports of `preview-panel-context` now use `@/components/preview-panel/preview-panel-context`
+- `selected-document-context.tsx` remains in `/documents/` (document-specific)
+
+---
+
 ## Related Documents
 
 - Design: `./2026-01-07-preview-panel-design.md`

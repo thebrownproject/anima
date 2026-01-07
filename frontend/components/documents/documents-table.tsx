@@ -23,7 +23,7 @@ import {
 import { createClerkSupabaseClient } from "@/lib/supabase";
 import { getDateRangeBounds, isDateInRange } from "@/lib/date";
 import { columns } from "./columns";
-import { usePreviewPanel } from "./preview-panel-context";
+import { usePreviewPanel } from "@/components/preview-panel/preview-panel-context";
 import { useSelectedDocument } from "./selected-document-context";
 import { useDocumentsFilter } from "./documents-filter-context";
 import type { Document } from "@/types/documents";

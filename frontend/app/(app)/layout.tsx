@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PreviewPanelProvider } from "@/components/documents/preview-panel-context";
+import { PreviewPanelProvider } from "@/components/preview-panel/preview-panel-context";
 import { SelectedDocumentProvider } from "@/components/documents/selected-document-context";
 import { DocumentsFilterProvider } from "@/components/documents/documents-filter-context";
 import { DocumentDetailFilterProvider } from "@/components/documents/document-detail-filter-context";

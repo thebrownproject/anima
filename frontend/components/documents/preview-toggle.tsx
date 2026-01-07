@@ -3,7 +3,7 @@
 import * as Icons from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { usePreviewPanel } from './preview-panel-context'
+import { usePreviewPanel } from '@/components/preview-panel/preview-panel-context'
 import {
   Tooltip,
   TooltipContent,
