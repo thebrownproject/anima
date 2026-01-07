@@ -7822,3 +7822,82 @@ Documents Sub-bar feature is now complete (all 7 phases):
 3. Use existing draft plan as basis, follow skill workflow
 4. Run verification and code review agents
 5. Begin Phase 1 implementation if time permits
+
+---
+
+## Session 103 - 2026-01-07 - Preview Panel Plan Finalized
+
+**Feature**: Preview Panel Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Rewrote implementation plan using superpowers:write-plan skill**:
+  - Comprehensive 18-task plan with bite-sized steps
+  - TDD approach with exact file paths and complete code
+  - Commit points after each task
+  - Proper step-by-step format following skill requirements
+
+- [x] **Dispatched parallel review agents (orchestrate skill)**:
+  - Frontend-developer agent: Design verification review
+  - Code-reviewer agent: Plan review against docs and patterns
+
+- [x] **Applied fixes identified by review agents**:
+  - Fixed `file_size` → `file_size_bytes` (correct TypeScript field)
+  - Removed redundant `onClick` from TabsTrigger components
+  - Added input focus check to keyboard navigation
+  - Removed trailing slash from import path
+  - Added page reset useEffect when document changes
+  - Removed YAGNI individual setters (setFileSize, setPageCount)
+  - Added canDownload prop to hide download on Text tab
+  - Updated DialogTitle to use Radix VisuallyHidden (better accessibility)
+
+- [x] **Verified plan against Context7 documentation**:
+  - react-pdf: Worker setup, Document/Page props correct for v10.x
+  - shadcn/ui Tabs: Component hierarchy and props correct
+  - shadcn/ui Dialog: Structure correct, accessibility pattern verified
+  - React hooks: useCallback/useEffect patterns correct
+  - Tailwind CSS: All classes valid
+
+- [x] **Sharded plan into 3 phase files + README**:
+  - `README.md` - Overview with phase table, architecture, success criteria
+  - `phase-1-foundation.md` - Tasks 1-4 (icons, folder, context updates)
+  - `phase-2-components.md` - Tasks 5-12 (all components)
+  - `phase-3-integration.md` - Tasks 13-18 (integration, cleanup, polish)
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Plan structure | 3 sharded files | Fresh context per phase, natural review checkpoints |
+| DialogTitle accessibility | Radix VisuallyHidden | Better cross-browser support vs Tailwind sr-only |
+| Download button | Hide on Text tab | Text download not implemented, avoid confusion |
+| Keyboard nav | Check for input focus | Prevent arrow keys navigating pages when typing |
+
+### Files Created
+
+- `docs/plans/in-progress/preview-panel-redesign/README.md`
+- `docs/plans/in-progress/preview-panel-redesign/phase-1-foundation.md`
+- `docs/plans/in-progress/preview-panel-redesign/phase-2-components.md`
+- `docs/plans/in-progress/preview-panel-redesign/phase-3-integration.md`
+
+### Files Deleted
+
+- `docs/plans/in-progress/preview-panel-redesign/2026-01-07-preview-panel-plan.md` (replaced by sharded files)
+
+### Tasks Remaining
+
+- [ ] Execute Phase 1: Foundation (Tasks 1-4)
+- [ ] Execute Phase 2: Components (Tasks 5-12)
+- [ ] Execute Phase 3: Integration (Tasks 13-18)
+
+### Next Session
+
+**Task**: Execute implementation plan phase-by-phase
+
+**Process**:
+1. Run `/continue`
+2. Run `/superpowers:execute-plan` with `phase-1-foundation.md`
+3. Review and commit after Phase 1
+4. Continue with Phase 2 and Phase 3
+5. Final testing against Task 18 checklist
