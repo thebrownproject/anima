@@ -8048,3 +8048,86 @@ b16a56f feat: add PreviewContainer component
 2. Run `/execute` to continue with Phase 3
 3. Tasks 13-18: integrate new PreviewPanel, remove old code, final polish
 4. Complete feature and move to `plans/complete/`
+
+---
+
+## Session 106 - 2026-01-07 - Preview Panel Phase 3 Complete + Styling Polish
+
+**Feature**: Preview Panel Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Phase 3 Tasks 13-18**: Integration, cleanup, polish
+  - Task 13: Integrated new PreviewPanel into documents layout
+  - Task 14: fileSize already populated (previous session)
+  - Task 15: Added localStorage persistence for selected document
+  - Task 16: Deep cleanup - removed 3 old files (249 lines)
+  - Task 17: Dark mode gradient review (no changes needed)
+  - Task 18: Final checklist + fixed download button visibility in modal
+
+- [x] **Comprehensive code review**: Full feature review passed with suggestions
+  - 19/21 checklist items verified correct
+  - 1 bug fixed (download button in modal)
+  - Architecture, security, accessibility all approved
+
+- [x] **Styling polish** (user-requested):
+  - Added shadow to preview container (matching agent card)
+  - Changed background from `bg-muted` to `bg-sidebar border`
+  - Changed border radius from `rounded-lg` to `rounded-xl`
+  - Added bottom padding (`pb-20`) for agent bar clearance
+  - Increased outer padding to `p-8`
+  - Rewrote PDF rendering to use actual container width instead of transform scaling
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Preview panel background | `bg-sidebar border` | Match agent card styling for visual consistency |
+| PDF width approach | Direct width instead of CSS transform | Transform scaling doesn't affect layout box size, causing gaps |
+| Outer padding | `p-8` (doubled from `p-4`) | Better visual breathing room around the preview card |
+
+### Files Modified
+
+```
+frontend/components/preview-panel/
+├── preview-panel.tsx      (padding changes)
+├── preview-container.tsx  (shadow, bg-sidebar, rounded-xl)
+├── pdf-content.tsx        (rewritten for full-width rendering)
+└── expand-modal.tsx       (download button conditional)
+
+frontend/app/(app)/documents/layout.tsx  (new props)
+frontend/components/documents/selected-document-context.tsx  (localStorage)
+
+Deleted:
+├── frontend/components/documents/preview-panel.tsx (old)
+├── frontend/components/documents/visual-preview.tsx
+└── frontend/components/documents/pdf-viewer.tsx
+```
+
+### Commits
+
+```
+22fa53f feat: integrate new PreviewPanel into documents layout
+8100914 feat: persist selected document to localStorage
+35ef2fd chore: remove old preview components replaced by preview-panel/
+95715ff fix: hide download button on Text tab in expand modal
+d6a83d6 fix: preview panel styling - full width, shadow, agent bar clearance
+5586d65 fix: add padding around preview card and expand PDF to fill width
+c7347bc fix: increase preview padding and make PDF fill container width
+```
+
+### Tasks Remaining
+
+- [ ] Additional visual polish (user wants more styling changes)
+- [ ] Move plan to `plans/complete/` once styling finalized
+
+### Next Session
+
+**Task**: Continue preview panel visual polish
+
+**Process**:
+1. Run `/continue`
+2. Review current styling with user
+3. Make additional visual adjustments as requested
+4. Once approved, move plan to `plans/complete/`
