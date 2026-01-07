@@ -8,7 +8,7 @@ const STORAGE_KEY = 'stackdocs-preview-panel'
 interface PreviewPanelState {
   collapsed: boolean
   width: number
-  tab: 'pdf' | 'visual'
+  tab: 'pdf' | 'text'
 }
 
 const DEFAULT_STATE: PreviewPanelState = {
@@ -24,8 +24,8 @@ interface PreviewPanelContextValue {
   toggle: () => void
   panelWidth: number
   setPanelWidth: (width: number) => void
-  activeTab: 'pdf' | 'visual'
-  setActiveTab: (tab: 'pdf' | 'visual') => void
+  activeTab: 'pdf' | 'text'
+  setActiveTab: (tab: 'pdf' | 'text') => void
 }
 
 const PreviewPanelContext = createContext<PreviewPanelContextValue | null>(null)
@@ -36,7 +36,7 @@ export function PreviewPanelProvider({ children }: { children: ReactNode }) {
   // Initialize with defaults for SSR, sync with localStorage after mount
   const [isCollapsed, setIsCollapsedState] = useState(DEFAULT_STATE.collapsed)
   const [panelWidth, setPanelWidthState] = useState(DEFAULT_STATE.width)
-  const [activeTab, setActiveTabState] = useState<'pdf' | 'visual'>(DEFAULT_STATE.tab)
+  const [activeTab, setActiveTabState] = useState<'pdf' | 'text'>(DEFAULT_STATE.tab)
 
   // Sync with localStorage after mount to avoid hydration mismatch
   useEffect(() => {
@@ -46,7 +46,12 @@ export function PreviewPanelProvider({ children }: { children: ReactNode }) {
         const state = JSON.parse(saved) as Partial<PreviewPanelState>
         if (typeof state.collapsed === 'boolean') setIsCollapsedState(state.collapsed)
         if (typeof state.width === 'number') setPanelWidthState(state.width)
-        if (state.tab === 'pdf' || state.tab === 'visual') setActiveTabState(state.tab)
+        if (state.tab === 'pdf' || state.tab === 'text') {
+          setActiveTabState(state.tab)
+        } else if (state.tab === 'visual') {
+          // Migrate old 'visual' tab to 'text'
+          setActiveTabState('text')
+        }
       } catch {
         // Invalid JSON, use defaults
       }
@@ -75,7 +80,7 @@ export function PreviewPanelProvider({ children }: { children: ReactNode }) {
     persistState({ width })
   }, [persistState])
 
-  const setActiveTab = useCallback((tab: 'pdf' | 'visual') => {
+  const setActiveTab = useCallback((tab: 'pdf' | 'text') => {
     setActiveTabState(tab)
     persistState({ tab })
   }, [persistState])

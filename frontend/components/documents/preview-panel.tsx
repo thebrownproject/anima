@@ -29,11 +29,11 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
   const { activeTab, setActiveTab } = usePreviewPanel()
   const isPdf = mimeType === 'application/pdf'
 
-  // Determine effective tab: if PDF not available and tab is 'pdf', show visual
-  const effectiveTab = (activeTab === 'pdf' && !isPdf) ? 'visual' : activeTab
+  // Determine effective tab: if PDF not available and tab is 'pdf', show text
+  const effectiveTab = (activeTab === 'pdf' && !isPdf) ? 'text' : activeTab
 
   return (
-    <Tabs value={effectiveTab} onValueChange={(v) => setActiveTab(v as 'pdf' | 'visual')} className="flex flex-col h-full">
+    <Tabs value={effectiveTab} onValueChange={(v) => setActiveTab(v as 'pdf' | 'text')} className="flex flex-col h-full">
       {/* Header bar - matches table header height */}
       <div className="flex h-[40.5px] shrink-0 items-center px-4 border-b">
         <TabsList className="h-7 p-0.5 bg-muted/50">
@@ -45,10 +45,10 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
             PDF
           </TabsTrigger>
           <TabsTrigger
-            value="visual"
+            value="text"
             className="h-6 px-2.5 text-xs rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
           >
-            Visual
+            Text
           </TabsTrigger>
         </TabsList>
       </div>
@@ -69,7 +69,7 @@ export function PreviewPanel({ pdfUrl, ocrText, mimeType }: PreviewPanelProps) {
         )}
       </TabsContent>
 
-      <TabsContent value="visual" className="flex-1 mt-0 overflow-hidden">
+      <TabsContent value="text" className="flex-1 mt-0 overflow-hidden">
         <VisualPreview markdown={ocrText} />
       </TabsContent>
     </Tabs>
