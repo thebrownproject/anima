@@ -1,6 +1,8 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react'
+
+const STORAGE_KEY = 'stackdocs-last-document'
 
 interface StackSummary {
   id: string
@@ -60,6 +62,23 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
   // Extraction data for export
   const [extractedFields, setExtractedFieldsState] = useState<Record<string, unknown> | null>(null)
   const [isLoadingExtraction, setIsLoadingExtractionState] = useState(false)
+
+  // Restore last selected document from localStorage
+  useEffect(() => {
+    const lastDocId = localStorage.getItem(STORAGE_KEY)
+    if (lastDocId) {
+      setSelectedDocIdState(lastDocId)
+    }
+  }, [])
+
+  // Persist selected document to localStorage
+  useEffect(() => {
+    if (selectedDocId) {
+      localStorage.setItem(STORAGE_KEY, selectedDocId)
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  }, [selectedDocId])
 
   const setSelectedDocId = useCallback((id: string | null) => {
     setSelectedDocIdState(id)
