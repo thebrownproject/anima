@@ -19,8 +19,6 @@ interface PdfContentProps {
   onLoadError?: (error: Error) => void
 }
 
-const BASE_WIDTH = 600
-
 export function PdfContent({
   url,
   currentPage,
@@ -28,10 +26,10 @@ export function PdfContent({
   onLoadError,
 }: PdfContentProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(1)
+  const [containerWidth, setContainerWidth] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Scale PDF to fit container width
+  // Track container width for responsive PDF sizing
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -39,10 +37,7 @@ export function PdfContent({
     const resizeObserver = new ResizeObserver((entries) => {
       const [entry] = entries
       if (!entry) return
-
-      const containerWidth = entry.contentRect.width
-      const newScale = containerWidth / BASE_WIDTH
-      setScale(newScale)
+      setContainerWidth(entry.contentRect.width)
     })
 
     resizeObserver.observe(container)
@@ -70,14 +65,8 @@ export function PdfContent({
   }
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-auto flex justify-center">
-      <div
-        style={{
-          transform: `scale(${scale})`,
-          transformOrigin: 'top center',
-          width: `${BASE_WIDTH}px`,
-        }}
-      >
+    <div ref={containerRef} className="h-full w-full overflow-auto">
+      {containerWidth && (
         <Document
           file={url}
           onLoadSuccess={handleLoadSuccess}
@@ -90,12 +79,12 @@ export function PdfContent({
         >
           <Page
             pageNumber={currentPage}
-            width={BASE_WIDTH}
+            width={containerWidth}
             renderTextLayer={true}
             renderAnnotationLayer={true}
           />
         </Document>
-      </div>
+      )}
     </div>
   )
 }
