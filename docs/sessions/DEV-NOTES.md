@@ -7977,3 +7977,74 @@ e9d268a refactor: move preview-panel to components root for reuse
 2. Run `/execute` to continue with subagent-driven-development
 3. Tasks 5-12: preview-metadata, page-navigation, preview-controls, text-content, pdf-content, preview-container, expand-modal, preview-panel
 4. Review checkpoint after Phase 2
+
+---
+
+## Session 105 - 2026-01-07 - Preview Panel Phase 2 Complete
+
+**Feature**: Preview Panel Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Task 5: PreviewMetadata** - Filename + dot-separated details display
+- [x] **Task 6: PageNavigation** - PDF page prev/next controls with overlay/default variants
+- [x] **Task 7: PreviewControls** - Tab switcher + expand/download buttons for hover bar
+- [x] **Task 8: TextContent** - Markdown rendering for OCR text with link sanitization
+- [x] **Task 9: PdfContent** - PDF rendering with react-pdf and ResizeObserver scaling
+- [x] **Task 10: PreviewContainer** - Hover-reveal container with tabs and gradient overlays
+- [x] **Task 11: ExpandModal** - Full-screen viewing modal with accessible title
+- [x] **Task 12: PreviewPanel** - Main orchestrator component with state management
+
+All tasks went through 3-stage review: implementer → spec reviewer → code quality reviewer.
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Empty string handling in TextContent | Changed `!text` to `!text?.trim()` | Handles edge case where OCR returns empty string |
+| Keyboard handler duplication | Deferred to Phase 3 | Both PreviewContainer and ExpandModal have handlers; modal's `!open` check provides protection |
+
+### Files Created
+
+```
+frontend/components/preview-panel/
+├── preview-metadata.tsx
+├── page-navigation.tsx
+├── preview-controls.tsx
+├── text-content.tsx
+├── pdf-content.tsx
+├── preview-container.tsx
+├── expand-modal.tsx
+└── preview-panel.tsx
+```
+
+### Commits
+
+```
+d0d63ff feat: add PreviewMetadata component
+6425479 feat: add PageNavigation component
+ba4f151 feat: add PreviewControls component
+2b75dc0 feat: add TextContent component
+6d8a166 fix: handle empty string in TextContent empty state
+db649b6 feat: add PdfContent component
+b16a56f feat: add PreviewContainer component
+12fb53c feat: add ExpandModal component
+10d8bbe feat: add new PreviewPanel orchestrator component
+```
+
+### Tasks Remaining
+
+- [ ] Phase 3: Integration with existing pages
+- [ ] Phase 3: Cleanup old preview-panel.tsx
+- [ ] Phase 3: Polish and testing
+
+### Next Session
+
+**Task**: Execute Phase 3 - Integration, cleanup, polish (Tasks 13-18)
+
+**Process**:
+1. Run `/continue`
+2. Run `/execute` to continue with Phase 3
+3. Tasks 13-18: integrate new PreviewPanel, remove old code, final polish
+4. Complete feature and move to `plans/complete/`
