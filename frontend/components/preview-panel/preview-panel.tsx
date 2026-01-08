@@ -5,6 +5,7 @@ import { PreviewContainer } from './preview-container'
 import { PreviewMetadata } from './preview-metadata'
 import { ExpandModal } from './expand-modal'
 import { usePreviewPanel } from './preview-panel-context'
+import { useSelectedDocument } from '@/components/documents/selected-document-context'
 
 interface PreviewPanelProps {
   pdfUrl: string | null
@@ -30,6 +31,7 @@ export function PreviewPanel({
   onDownload,
 }: PreviewPanelProps) {
   const { activeTab, setActiveTab } = usePreviewPanel()
+  const { selectedDocId } = useSelectedDocument()
 
   // Local state for PDF page and modal
   const [currentPage, setCurrentPage] = useState(1)
@@ -43,15 +45,15 @@ export function PreviewPanel({
   const isPdf = mimeType === 'application/pdf'
 
   // Derive content ready state based on ACTIVE TAB, not document type
-  // For PDF tab: wait until the rendered URL matches current URL
+  // For PDF tab: wait until the rendered URL matches current URL (and URL exists)
   // For Text tab: wait until loading is complete (isLoading is false)
   const isContentReady = activeTab === 'pdf' && isPdf
-    ? contentReadyForUrl === pdfUrl
+    ? pdfUrl !== null && contentReadyForUrl === pdfUrl
     : !isLoading
 
-  // Reset page to 1 when document changes
+  // Reset page to 1 when document changes - intentional synchronization with URL
   useEffect(() => {
-    setCurrentPage(1)
+    setCurrentPage(1) // eslint-disable-line react-hooks/set-state-in-effect
   }, [pdfUrl])
 
   // Calculate field count for metadata
@@ -73,13 +75,19 @@ export function PreviewPanel({
   // Only show download when we have a PDF URL (text download not implemented)
   const canDownload = !!pdfUrl
 
-  // Empty state
-  if (!filename) {
+  // Empty state - show placeholder only when truly no document is selected
+  // (not during hydration/loading when selectedDocId exists but filename hasn't loaded yet)
+  if (!filename && !selectedDocId) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground">Select a document to preview</p>
       </div>
     )
+  }
+
+  // Document selected but still loading - show nothing to prevent flash
+  if (!filename) {
+    return null
   }
 
   return (

@@ -1,11 +1,41 @@
 'use client'
 
-import { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useRef, useState, useCallback, useMemo, ReactNode } from 'react'
 import type { ImperativePanelHandle } from 'react-resizable-panels'
 
 // Tab persistence uses a separate key from the panel layout
 // The panel layout (width/collapsed) is handled by react-resizable-panels autoSaveId
 const TAB_STORAGE_KEY = 'stackdocs-preview-tab'
+const PANEL_STORAGE_KEY = 'react-resizable-panels:stackdocs-preview-panel'
+
+// Read initial collapsed state from localStorage synchronously to avoid flash
+function getInitialCollapsed(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const saved = localStorage.getItem(PANEL_STORAGE_KEY)
+    if (saved) {
+      const state = JSON.parse(saved)
+      const panelKey = Object.keys(state)[0]
+      if (panelKey && state[panelKey]?.layout) {
+        const layout = state[panelKey].layout as number[]
+        // Preview panel is the second panel - collapsed if size is 0
+        return layout.length === 2 && layout[1] === 0
+      }
+    }
+  } catch {
+    // Invalid JSON, use default
+  }
+  return false
+}
+
+// Read initial tab from localStorage synchronously
+function getInitialTab(): 'pdf' | 'text' {
+  if (typeof window === 'undefined') return 'pdf'
+  const saved = localStorage.getItem(TAB_STORAGE_KEY)
+  if (saved === 'pdf' || saved === 'text') return saved
+  if (saved === 'visual') return 'text' // migrate old value
+  return 'pdf'
+}
 
 interface PreviewPanelContextValue {
   panelRef: React.RefObject<ImperativePanelHandle | null>
@@ -21,24 +51,9 @@ const PreviewPanelContext = createContext<PreviewPanelContextValue | null>(null)
 export function PreviewPanelProvider({ children }: { children: ReactNode }) {
   const panelRef = useRef<ImperativePanelHandle | null>(null)
 
-  // isCollapsed is synced via onCollapse/onExpand callbacks from ResizablePanel
-  // The library's autoSaveId handles persisting the actual collapsed state
-  const [isCollapsed, setIsCollapsed] = useState(false)
-
-  // Tab state with separate persistence (not handled by react-resizable-panels)
-  const [activeTab, setActiveTabState] = useState<'pdf' | 'text'>('pdf')
-
-  // Restore tab from localStorage after mount
-  useEffect(() => {
-    const saved = localStorage.getItem(TAB_STORAGE_KEY)
-    if (saved === 'pdf' || saved === 'text') {
-      setActiveTabState(saved)
-    } else if (saved === 'visual') {
-      // Migrate old 'visual' tab to 'text'
-      setActiveTabState('text')
-      localStorage.setItem(TAB_STORAGE_KEY, 'text')
-    }
-  }, [])
+  // Initialize from localStorage synchronously to avoid flash
+  const [isCollapsed, setIsCollapsed] = useState(getInitialCollapsed)
+  const [activeTab, setActiveTabState] = useState<'pdf' | 'text'>(getInitialTab)
 
   const setActiveTab = useCallback((tab: 'pdf' | 'text') => {
     setActiveTabState(tab)

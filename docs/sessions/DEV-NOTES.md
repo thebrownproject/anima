@@ -8196,3 +8196,72 @@ frontend/components/preview-panel/
 3. Fix Text→PDF transition flash
 4. Fix metadata loading/positioning
 5. Restore localStorage persistence for preview panel state (was working before)
+
+---
+
+## Session 108 - 2026-01-08 - Preview Panel Hydration Flash Fix
+
+**Feature**: Preview Panel Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Fixed hydration flash for preview panel**:
+  - Problem: On page refresh, panel briefly showed "Select a document" placeholder and wrong sizes
+  - Root cause: SSR/hydration mismatch - server renders with defaults, client updates after hydration
+  - Solution: Synchronous localStorage reads + mounted guard pattern
+
+- [x] **Synchronous localStorage initialization**:
+  - `selected-document-context.tsx`: Added `getInitialSelectedDocId()` for selectedDocId
+  - `preview-panel-context.tsx`: Added `getInitialCollapsed()` and `getInitialTab()`
+  - `layout.tsx`: Added `getInitialPanelSizes()` for panel widths
+
+- [x] **Mounted guard for ResizablePanelGroup**:
+  - ResizablePanelGroup only renders after client mount
+  - Prevents flash of wrong panel sizes during SSR
+  - Trade-off: ~1 frame delay (imperceptible)
+
+- [x] **Smart empty state logic in preview-panel.tsx**:
+  - `!filename && !selectedDocId` → show placeholder
+  - `!filename && selectedDocId` → show nothing (loading)
+  - Prevents placeholder flash during document load
+
+- [x] **Code review fixes**:
+  - Added ESLint suppression for intentional setCurrentPage useEffect
+  - Updated preview-panel-code-review.md with all fixes documented
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Mounted guard approach | Use `if (!mounted)` to delay ResizablePanelGroup | Only reliable way to prevent SSR flash with react-resizable-panels |
+| Empty state logic | Check selectedDocId not just filename | Distinguishes "no document" from "document loading" |
+| Performance trade-off | Accept ~1 frame delay | Correctness (no flash) over speed |
+
+### Files Modified
+
+```
+frontend/app/(app)/documents/layout.tsx
+frontend/components/documents/selected-document-context.tsx
+frontend/components/preview-panel/preview-panel-context.tsx
+frontend/components/preview-panel/preview-panel.tsx
+docs/plans/in-progress/preview-panel-redesign/preview-panel-code-review.md
+```
+
+### Tasks Remaining
+
+- [ ] Phase 3.1: Create PreviewContentContext (reduce prop drilling)
+- [ ] Phase 3.2: Simplify state naming (renderedUrl → hasRendered)
+- [ ] Phase 3.3: Group related props in layout.tsx
+- [ ] Deep code review pass on entire preview-panel folder
+
+### Next Session
+
+**Task**: Finalize preview panel code review + cleanup
+
+**Process**:
+1. Run `/continue` with context
+2. Implement Phase 3 items (one at a time)
+3. Run `/code-review` after each task
+4. Final pass: Review entire preview-panel folder
+5. Goal: Clean, production-ready preview panel code
