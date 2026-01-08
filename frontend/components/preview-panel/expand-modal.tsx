@@ -82,6 +82,7 @@ export function ExpandModal({
         <div className="flex-1 min-h-0 overflow-hidden rounded-t-lg bg-muted m-4 mb-0">
           {isPdf ? (
             <PdfContent
+              key={pdfUrl}
               url={pdfUrl}
               currentPage={currentPage}
               onLoadSuccess={onPdfLoad}

@@ -110,6 +110,7 @@ export function PreviewContainer({
         >
           {isPdfAvailable ? (
             <PdfContent
+              key={pdfUrl}
               url={pdfUrl}
               currentPage={currentPage}
               onLoadSuccess={onPdfLoad}
