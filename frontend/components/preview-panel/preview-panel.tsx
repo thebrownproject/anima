@@ -45,6 +45,12 @@ export function PreviewPanel({ content, metadata, onDownload }: PreviewPanelProp
     null
   );
 
+  // Track if we've mounted on the client - prevents placeholder flash during SSR/hydration
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isPdf = mimeType === "application/pdf";
 
   // Derive content ready state based on ACTIVE TAB, not document type
@@ -81,8 +87,13 @@ export function PreviewPanel({ content, metadata, onDownload }: PreviewPanelProp
   // Only show download when we have a PDF URL (text download not implemented)
   const canDownload = !!pdfUrl;
 
+  // Don't render anything until after hydration to prevent placeholder flash
+  // During SSR, selectedDocId is null (no localStorage), but on client it may have a value
+  if (!mounted) {
+    return null;
+  }
+
   // Empty state - show placeholder only when truly no document is selected
-  // (not during hydration/loading when selectedDocId exists but filename hasn't loaded yet)
   if (!filename && !selectedDocId) {
     return (
       <div className="flex h-full items-center justify-center">
