@@ -35,7 +35,7 @@ export function TextContent({ text, isLoading }: TextContentProps) {
   }
 
   return (
-    <div className="h-full overflow-auto p-4">
+    <div className="h-full overflow-auto pt-8 px-8">
       <div className="prose prose-sm dark:prose-invert max-w-none
         prose-headings:font-medium prose-headings:text-foreground
         prose-p:text-foreground prose-p:leading-relaxed

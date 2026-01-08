@@ -37,7 +37,7 @@ export function PreviewMetadata({
   }
 
   return (
-    <div className="px-4 py-3 shrink-0">
+    <div className="pr-4 py-3 shrink-0">
       <p className="font-medium text-foreground truncate" title={filename}>
         {filename}
       </p>

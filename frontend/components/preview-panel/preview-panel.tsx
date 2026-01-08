@@ -80,7 +80,7 @@ export function PreviewPanel({
   }
 
   return (
-    <div className="flex flex-col h-full p-8 pb-20 gap-0">
+    <div className="flex flex-col h-full p-8 pb-[85px]">
       <PreviewContainer
         activeTab={activeTab}
         onTabChange={setActiveTab}
