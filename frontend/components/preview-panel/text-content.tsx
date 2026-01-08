@@ -1,3 +1,5 @@
+"use client";
+
 import Markdown, { Components } from "react-markdown";
 
 // Sanitize links to only allow safe protocols (prevent javascript: XSS)
