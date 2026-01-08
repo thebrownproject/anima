@@ -35,7 +35,8 @@ export function PdfContent({
   const [scale, setScale] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [pageHeight, setPageHeight] = useState(0);
-  const [renderedUrl, setRenderedUrl] = useState<string | null>(null);
+  // Simple boolean suffices because parent uses key={pdfUrl}, causing full remount on URL change
+  const [hasRendered, setHasRendered] = useState(false);
 
   // Scale PDF to fit container using CSS transform (prevents re-renders during resize)
   useEffect(() => {
@@ -64,8 +65,8 @@ export function PdfContent({
   const scaledWidth = BASE_WIDTH * scale;
   const scaledHeight = pageHeight * scale;
 
-  // Show loading until this specific URL's page has rendered
-  const showLoading = !url || renderedUrl !== url;
+  // Show loading until page has rendered
+  const showLoading = !url || !hasRendered;
 
   if (error) {
     return (
@@ -121,7 +122,7 @@ export function PdfContent({
                 renderAnnotationLayer={true}
                 onRenderSuccess={(page) => {
                   setPageHeight(page.height);
-                  setRenderedUrl(url);
+                  setHasRendered(true);
                   onContentReady?.(url);
                 }}
               />
