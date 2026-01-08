@@ -17,7 +17,7 @@ interface PdfContentProps {
   currentPage: number;
   onLoadSuccess: (info: { numPages: number }) => void;
   onLoadError?: (error: Error) => void;
-  onContentReady?: () => void;
+  onContentReady?: (url: string) => void;
 }
 
 // Base width for initial render - will scale to fill container
@@ -125,7 +125,7 @@ export function PdfContent({
                 onRenderSuccess={(page) => {
                   setPageHeight(page.height);
                   setRenderedUrl(url);
-                  onContentReady?.();
+                  if (url) onContentReady?.(url);
                 }}
               />
             </Document>

@@ -26,7 +26,7 @@ interface PreviewContainerProps {
   totalPages: number
   onPageChange: (page: number) => void
   onPdfLoad: (info: { numPages: number }) => void
-  onContentReady?: () => void
+  onContentReady?: (url: string) => void
   // Text content
   ocrText: string | null
   isTextLoading?: boolean

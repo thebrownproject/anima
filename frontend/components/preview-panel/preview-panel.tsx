@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { PreviewContainer } from './preview-container'
 import { PreviewMetadata } from './preview-metadata'
 import { ExpandModal } from './expand-modal'
@@ -35,30 +35,21 @@ export function PreviewPanel({
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(pageCount ?? 0)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isContentReady, setIsContentReady] = useState(true)
 
-  // Track previous filename to detect document changes
-  const prevFilenameRef = useRef(filename)
+  // Track which URL's content is ready - compare with current pdfUrl to determine visibility
+  // This ensures metadata and PDF appear in the same render cycle
+  const [contentReadyForUrl, setContentReadyForUrl] = useState<string | null>(null)
 
   const isPdf = mimeType === 'application/pdf'
+
+  // Derive content ready state by comparing URLs
+  // For non-PDF documents, always show metadata immediately
+  const isContentReady = isPdf ? contentReadyForUrl === pdfUrl : true
 
   // Reset page to 1 when document changes
   useEffect(() => {
     setCurrentPage(1)
   }, [pdfUrl])
-
-  // Hide metadata when document changes (PDF only), show when content is ready
-  // For non-PDF documents, show metadata immediately since there's no PDF to load
-  useEffect(() => {
-    if (prevFilenameRef.current !== filename) {
-      if (isPdf) {
-        setIsContentReady(false)
-      } else {
-        setIsContentReady(true)
-      }
-      prevFilenameRef.current = filename
-    }
-  }, [filename, isPdf])
 
   // Calculate field count for metadata
   const fieldCount = extractedFields ? Object.keys(extractedFields).length : null
@@ -67,8 +58,8 @@ export function PreviewPanel({
     setTotalPages(numPages)
   }, [])
 
-  const handleContentReady = useCallback(() => {
-    setIsContentReady(true)
+  const handleContentReady = useCallback((url: string) => {
+    setContentReadyForUrl(url)
   }, [])
 
   const handlePageChange = useCallback((page: number) => {
