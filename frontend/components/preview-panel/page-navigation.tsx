@@ -1,22 +1,37 @@
+'use client'
+
 import { Button } from '@/components/ui/button'
 import * as Icons from '@/components/icons'
+import { usePreviewContentSafe } from './preview-content-context'
 import { cn } from '@/lib/utils'
 
 interface PageNavigationProps {
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
+  /** When provided, uses props instead of context (for use outside provider) */
+  currentPage?: number
+  totalPages?: number
+  onPageChange?: (page: number) => void
   variant?: 'overlay' | 'default'
   className?: string
 }
 
+/**
+ * Page navigation controls for PDF viewing.
+ * Uses PreviewContentContext by default, or accepts props for use outside the provider.
+ */
 export function PageNavigation({
-  currentPage,
-  totalPages,
-  onPageChange,
+  currentPage: currentPageProp,
+  totalPages: totalPagesProp,
+  onPageChange: onPageChangeProp,
   variant = 'default',
   className,
 }: PageNavigationProps) {
+  // Use context when props not provided (inside provider)
+  // Use props when provided (outside provider, e.g. in ExpandModal)
+  const context = usePreviewContentSafe()
+  const currentPage = currentPageProp ?? context?.currentPage ?? 1
+  const totalPages = totalPagesProp ?? context?.totalPages ?? 0
+  const onPageChange = onPageChangeProp ?? context?.setCurrentPage ?? (() => {})
+
   const isOverlay = variant === 'overlay'
 
   return (

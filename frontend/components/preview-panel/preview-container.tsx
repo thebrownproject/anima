@@ -6,6 +6,7 @@ import { PreviewControls } from './preview-controls'
 import { PageNavigation } from './page-navigation'
 import { TextContent } from './text-content'
 import { usePageKeyboardNav } from './hooks/use-page-keyboard-nav'
+import { usePreviewContent } from './preview-content-context'
 import { cn } from '@/lib/utils'
 // Dynamic import to avoid SSR issues with react-pdf
 // No loading placeholder needed - PdfContent handles its own loading state internally
@@ -22,9 +23,6 @@ interface PreviewContainerProps {
   isPdfAvailable: boolean
   // PDF state
   pdfUrl: string | null
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
   onPdfLoad: (info: { numPages: number }) => void
   onContentReady?: (url: string) => void
   // Text content
@@ -41,9 +39,6 @@ export function PreviewContainer({
   onTabChange,
   isPdfAvailable,
   pdfUrl,
-  currentPage,
-  totalPages,
-  onPageChange,
   onPdfLoad,
   onContentReady,
   ocrText,
@@ -52,12 +47,14 @@ export function PreviewContainer({
   onDownload,
   canDownload,
 }: PreviewContainerProps) {
+  const { currentPage, totalPages, setCurrentPage } = usePreviewContent()
+
   // Keyboard navigation for pages (ArrowLeft/Right)
   usePageKeyboardNav({
     enabled: activeTab === 'pdf',
     currentPage,
     totalPages,
-    onPageChange,
+    onPageChange: setCurrentPage,
   })
 
   // Determine effective tab when PDF not available
@@ -134,12 +131,7 @@ export function PreviewContainer({
               'opacity-0 group-hover:opacity-100 transition-opacity duration-200'
             )}
           >
-            <PageNavigation
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              variant="overlay"
-            />
+            <PageNavigation variant="overlay" />
           </div>
         )}
       </div>

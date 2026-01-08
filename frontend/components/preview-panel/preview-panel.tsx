@@ -5,6 +5,7 @@ import { PreviewContainer } from "./preview-container";
 import { PreviewMetadata } from "./preview-metadata";
 import { ExpandModal } from "./expand-modal";
 import { usePreviewPanel } from "./preview-panel-context";
+import { PreviewContentProvider } from "./preview-content-context";
 import { useSelectedDocument } from "@/components/documents/selected-document-context";
 
 interface PreviewPanelProps {
@@ -99,22 +100,26 @@ export function PreviewPanel({
 
   return (
     <div className="flex flex-col h-full p-8 pb-[85px]">
-      <PreviewContainer
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isPdfAvailable={isPdf}
-        pdfUrl={pdfUrl}
+      <PreviewContentProvider
         currentPage={currentPage}
         totalPages={totalPages}
-        onPageChange={setCurrentPage}
-        onPdfLoad={handlePdfLoad}
-        onContentReady={setContentReadyForUrl}
-        ocrText={ocrText}
-        isTextLoading={isLoading}
-        onExpand={() => setIsModalOpen(true)}
-        onDownload={handleDownload}
-        canDownload={canDownload}
-      />
+        setCurrentPage={setCurrentPage}
+        setTotalPages={setTotalPages}
+      >
+        <PreviewContainer
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isPdfAvailable={isPdf}
+          pdfUrl={pdfUrl}
+          onPdfLoad={handlePdfLoad}
+          onContentReady={setContentReadyForUrl}
+          ocrText={ocrText}
+          isTextLoading={isLoading}
+          onExpand={() => setIsModalOpen(true)}
+          onDownload={handleDownload}
+          canDownload={canDownload}
+        />
+      </PreviewContentProvider>
 
       {isContentReady && (
         <PreviewMetadata
