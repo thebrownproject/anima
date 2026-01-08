@@ -26,6 +26,7 @@ interface PreviewContainerProps {
   totalPages: number
   onPageChange: (page: number) => void
   onPdfLoad: (info: { numPages: number }) => void
+  onContentReady?: () => void
   // Text content
   ocrText: string | null
   isTextLoading?: boolean
@@ -44,6 +45,7 @@ export function PreviewContainer({
   totalPages,
   onPageChange,
   onPdfLoad,
+  onContentReady,
   ocrText,
   isTextLoading,
   onExpand,
@@ -111,6 +113,7 @@ export function PreviewContainer({
               url={pdfUrl}
               currentPage={currentPage}
               onLoadSuccess={onPdfLoad}
+              onContentReady={onContentReady}
             />
           ) : (
             <div className="flex h-full items-center justify-center">

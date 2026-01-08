@@ -17,6 +17,7 @@ interface PdfContentProps {
   currentPage: number;
   onLoadSuccess: (info: { numPages: number }) => void;
   onLoadError?: (error: Error) => void;
+  onContentReady?: () => void;
 }
 
 // Base width for initial render - will scale to fill container
@@ -27,6 +28,7 @@ export function PdfContent({
   currentPage,
   onLoadSuccess,
   onLoadError,
+  onContentReady,
 }: PdfContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -123,6 +125,7 @@ export function PdfContent({
                 onRenderSuccess={(page) => {
                   setPageHeight(page.height);
                   setRenderedUrl(url);
+                  onContentReady?.();
                 }}
               />
             </Document>

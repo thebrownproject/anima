@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { PreviewContainer } from './preview-container'
 import { PreviewMetadata } from './preview-metadata'
 import { ExpandModal } from './expand-modal'
@@ -35,6 +35,10 @@ export function PreviewPanel({
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(pageCount ?? 0)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isContentReady, setIsContentReady] = useState(true)
+
+  // Track previous filename to detect document changes
+  const prevFilenameRef = useRef(filename)
 
   const isPdf = mimeType === 'application/pdf'
 
@@ -43,11 +47,28 @@ export function PreviewPanel({
     setCurrentPage(1)
   }, [pdfUrl])
 
+  // Hide metadata when document changes (PDF only), show when content is ready
+  // For non-PDF documents, show metadata immediately since there's no PDF to load
+  useEffect(() => {
+    if (prevFilenameRef.current !== filename) {
+      if (isPdf) {
+        setIsContentReady(false)
+      } else {
+        setIsContentReady(true)
+      }
+      prevFilenameRef.current = filename
+    }
+  }, [filename, isPdf])
+
   // Calculate field count for metadata
   const fieldCount = extractedFields ? Object.keys(extractedFields).length : null
 
   const handlePdfLoad = useCallback(({ numPages }: { numPages: number }) => {
     setTotalPages(numPages)
+  }, [])
+
+  const handleContentReady = useCallback(() => {
+    setIsContentReady(true)
   }, [])
 
   const handlePageChange = useCallback((page: number) => {
@@ -90,6 +111,7 @@ export function PreviewPanel({
         totalPages={totalPages}
         onPageChange={handlePageChange}
         onPdfLoad={handlePdfLoad}
+        onContentReady={handleContentReady}
         ocrText={ocrText}
         isTextLoading={isLoading}
         onExpand={handleExpand}
@@ -97,13 +119,15 @@ export function PreviewPanel({
         canDownload={canDownload}
       />
 
-      <PreviewMetadata
-        filename={filename}
-        mimeType={mimeType}
-        fileSize={fileSize}
-        pageCount={totalPages > 0 ? totalPages : pageCount}
-        fieldCount={fieldCount}
-      />
+      {isContentReady && (
+        <PreviewMetadata
+          filename={filename}
+          mimeType={mimeType}
+          fileSize={fileSize}
+          pageCount={totalPages > 0 ? totalPages : pageCount}
+          fieldCount={fieldCount}
+        />
+      )}
 
       <ExpandModal
         open={isModalOpen}
