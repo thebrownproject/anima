@@ -46,17 +46,8 @@ interface SelectedDocumentContextValue {
 
 const SelectedDocumentContext = createContext<SelectedDocumentContextValue | null>(null)
 
-// Read from localStorage synchronously to avoid flash
-function getInitialSelectedDocId(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(STORAGE_KEY)
-}
-
-// Read once at module load time (before any component renders)
-const initialSelectedDocId = getInitialSelectedDocId()
-
 export function SelectedDocumentProvider({ children }: { children: ReactNode }) {
-  const [selectedDocId, setSelectedDocIdState] = useState<string | null>(initialSelectedDocId)
+  const [selectedDocId, setSelectedDocIdState] = useState<string | null>(null)
   const [signedUrl, setSignedUrlState] = useState<string | null>(null)
   const [signedUrlDocId, setSignedUrlDocIdState] = useState<string | null>(null)
   const [mimeType, setMimeTypeState] = useState<string>('')
