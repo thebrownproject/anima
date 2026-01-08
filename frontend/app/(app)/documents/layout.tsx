@@ -47,14 +47,8 @@ export default function DocumentsLayout({
         >
           <div className="h-full">
             <PreviewPanel
-              pdfUrl={effectivePdfUrl}
-              ocrText={effectiveOcrText}
-              isLoading={isUrlStale}
-              mimeType={mimeType}
-              filename={filename}
-              fileSize={fileSize}
-              pageCount={pageCount}
-              extractedFields={extractedFields}
+              content={{ pdfUrl: effectivePdfUrl, ocrText: effectiveOcrText, isLoading: isUrlStale }}
+              metadata={{ mimeType, filename, fileSize, pageCount, extractedFields }}
             />
           </div>
         </ResizablePanel>

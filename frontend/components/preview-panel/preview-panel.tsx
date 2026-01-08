@@ -8,29 +8,29 @@ import { usePreviewPanel } from "./preview-panel-context";
 import { PreviewContentProvider } from "./preview-content-context";
 import { useSelectedDocument } from "@/components/documents/selected-document-context";
 
-interface PreviewPanelProps {
+interface ContentProps {
   pdfUrl: string | null;
   ocrText: string | null;
   isLoading?: boolean;
+}
+
+interface MetadataProps {
   mimeType: string;
   filename: string | null;
   fileSize: number | null;
   pageCount: number | null;
   extractedFields: Record<string, unknown> | null;
+}
+
+interface PreviewPanelProps {
+  content: ContentProps;
+  metadata: MetadataProps;
   onDownload?: () => void;
 }
 
-export function PreviewPanel({
-  pdfUrl,
-  ocrText,
-  isLoading,
-  mimeType,
-  filename,
-  fileSize,
-  pageCount,
-  extractedFields,
-  onDownload,
-}: PreviewPanelProps) {
+export function PreviewPanel({ content, metadata, onDownload }: PreviewPanelProps) {
+  const { pdfUrl, ocrText, isLoading } = content;
+  const { mimeType, filename, fileSize, pageCount, extractedFields } = metadata;
   const { activeTab, setActiveTab } = usePreviewPanel();
   const { selectedDocId } = useSelectedDocument();
 
