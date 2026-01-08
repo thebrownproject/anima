@@ -1,12 +1,12 @@
 'use client'
 
-import { createContext, useContext, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useMemo, ReactNode, Dispatch, SetStateAction } from 'react'
 
 interface PreviewContentContextValue {
   currentPage: number
   totalPages: number
-  setCurrentPage: (page: number) => void
-  setTotalPages: (pages: number) => void
+  setCurrentPage: Dispatch<SetStateAction<number>>
+  setTotalPages: Dispatch<SetStateAction<number>>
 }
 
 const PreviewContentContext = createContext<PreviewContentContextValue | null>(null)
@@ -15,8 +15,8 @@ interface PreviewContentProviderProps {
   children: ReactNode
   currentPage: number
   totalPages: number
-  setCurrentPage: (page: number) => void
-  setTotalPages: (pages: number) => void
+  setCurrentPage: Dispatch<SetStateAction<number>>
+  setTotalPages: Dispatch<SetStateAction<number>>
 }
 
 /**

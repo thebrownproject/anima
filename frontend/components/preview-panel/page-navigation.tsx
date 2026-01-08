@@ -5,6 +5,8 @@ import * as Icons from '@/components/icons'
 import { usePreviewContentSafe } from './preview-content-context'
 import { cn } from '@/lib/utils'
 
+const noop = () => {}
+
 interface PageNavigationProps {
   /** When provided, uses props instead of context (for use outside provider) */
   currentPage?: number
@@ -30,7 +32,7 @@ export function PageNavigation({
   const context = usePreviewContentSafe()
   const currentPage = currentPageProp ?? context?.currentPage ?? 1
   const totalPages = totalPagesProp ?? context?.totalPages ?? 0
-  const onPageChange = onPageChangeProp ?? context?.setCurrentPage ?? (() => {})
+  const onPageChange = onPageChangeProp ?? context?.setCurrentPage ?? noop
 
   const isOverlay = variant === 'overlay'
 
