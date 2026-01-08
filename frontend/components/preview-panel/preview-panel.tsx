@@ -61,18 +61,6 @@ export function PreviewPanel({
     setTotalPages(numPages)
   }, [])
 
-  const handleContentReady = useCallback((url: string) => {
-    setContentReadyForUrl(url)
-  }, [])
-
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page)
-  }, [])
-
-  const handleExpand = useCallback(() => {
-    setIsModalOpen(true)
-  }, [])
-
   const handleDownload = useCallback(() => {
     if (onDownload) {
       onDownload()
@@ -103,12 +91,12 @@ export function PreviewPanel({
         pdfUrl={pdfUrl}
         currentPage={currentPage}
         totalPages={totalPages}
-        onPageChange={handlePageChange}
+        onPageChange={setCurrentPage}
         onPdfLoad={handlePdfLoad}
-        onContentReady={handleContentReady}
+        onContentReady={setContentReadyForUrl}
         ocrText={ocrText}
         isTextLoading={isLoading}
-        onExpand={handleExpand}
+        onExpand={() => setIsModalOpen(true)}
         onDownload={handleDownload}
         canDownload={canDownload}
       />
@@ -130,7 +118,7 @@ export function PreviewPanel({
         activeTab={activeTab}
         currentPage={currentPage}
         totalPages={totalPages}
-        onPageChange={handlePageChange}
+        onPageChange={setCurrentPage}
         onPdfLoad={handlePdfLoad}
         ocrText={ocrText}
         filename={filename}
