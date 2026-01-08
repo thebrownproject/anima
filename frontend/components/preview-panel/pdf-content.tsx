@@ -55,10 +55,6 @@ export function PdfContent({
     return () => resizeObserver.disconnect();
   }, []);
 
-  function handleLoadSuccess({ numPages }: { numPages: number }) {
-    onLoadSuccess({ numPages });
-  }
-
   function handleLoadError(error: Error) {
     setError(error.message);
     onLoadError?.(error);
@@ -114,7 +110,7 @@ export function PdfContent({
           >
             <Document
               file={url}
-              onLoadSuccess={handleLoadSuccess}
+              onLoadSuccess={onLoadSuccess}
               onLoadError={handleLoadError}
               loading={null}
             >
