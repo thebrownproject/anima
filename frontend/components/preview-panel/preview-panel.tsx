@@ -42,9 +42,12 @@ export function PreviewPanel({
 
   const isPdf = mimeType === 'application/pdf'
 
-  // Derive content ready state by comparing URLs
-  // For non-PDF documents, always show metadata immediately
-  const isContentReady = isPdf ? contentReadyForUrl === pdfUrl : true
+  // Derive content ready state based on ACTIVE TAB, not document type
+  // For PDF tab: wait until the rendered URL matches current URL
+  // For Text tab: wait until loading is complete (isLoading is false)
+  const isContentReady = activeTab === 'pdf' && isPdf
+    ? contentReadyForUrl === pdfUrl
+    : !isLoading
 
   // Reset page to 1 when document changes
   useEffect(() => {

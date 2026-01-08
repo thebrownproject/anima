@@ -84,7 +84,8 @@ export function PdfContent({
   return (
     <div
       ref={containerRef}
-      className={`h-full overflow-auto relative w-full ${showLoading ? "min-h-[calc(100vh-290px)]" : ""}`}
+      // Loading min-height: Adjust 299px to match header + padding. Increase = shorter loading area.
+      className={`h-full overflow-auto relative w-full ${showLoading ? "min-h-[calc(100vh-299px)]" : ""}`}
     >
       {/* Loading spinner - shows while URL is fetching OR PDF is loading */}
       {showLoading && (
