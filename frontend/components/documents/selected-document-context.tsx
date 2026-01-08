@@ -64,6 +64,14 @@ export function SelectedDocumentProvider({ children }: { children: ReactNode }) 
   const [isLoadingExtraction, setIsLoadingExtractionState] = useState(false)
 
 
+  // Restore selected document from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      setSelectedDocIdState(saved)
+    }
+  }, [])
+
   // Persist selected document to localStorage
   useEffect(() => {
     if (selectedDocId) {
