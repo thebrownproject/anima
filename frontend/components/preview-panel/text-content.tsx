@@ -1,6 +1,7 @@
 "use client";
 
 import Markdown, { Components } from "react-markdown";
+import { LOADING_MIN_HEIGHT } from "./constants";
 
 // Sanitize links to only allow safe protocols (prevent javascript: XSS)
 const markdownComponents: Components = {
@@ -25,8 +26,7 @@ interface TextContentProps {
 export function TextContent({ text, isLoading }: TextContentProps) {
   // While loading, show blank space with min-height to prevent container collapse
   if (isLoading) {
-    // Loading min-height: Adjust 299px to match header + padding. Keep in sync with pdf-content.tsx.
-    return <div className="h-full min-h-[calc(100vh-299px)]" />;
+    return <div className={`h-full ${LOADING_MIN_HEIGHT}`} />;
   }
 
   if (!text?.trim()) {

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import * as Icons from "@/components/icons";
+import { LOADING_MIN_HEIGHT } from "./constants";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
@@ -84,8 +85,7 @@ export function PdfContent({
   return (
     <div
       ref={containerRef}
-      // Loading min-height: Adjust 299px to match header + padding. Increase = shorter loading area.
-      className={`h-full overflow-auto relative w-full ${showLoading ? "min-h-[calc(100vh-299px)]" : ""}`}
+      className={`h-full overflow-auto relative w-full ${showLoading ? LOADING_MIN_HEIGHT : ""}`}
     >
       {/* Loading spinner - shows while URL is fetching OR PDF is loading */}
       {showLoading && (
