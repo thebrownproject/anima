@@ -126,7 +126,7 @@ export function PdfContent({
                 onRenderSuccess={(page) => {
                   setPageHeight(page.height);
                   setRenderedUrl(url);
-                  if (url) onContentReady?.(url);
+                  onContentReady?.(url);
                 }}
               />
             </Document>
