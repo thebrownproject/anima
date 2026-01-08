@@ -1,11 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useCallback } from 'react'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { PreviewControls } from './preview-controls'
 import { PageNavigation } from './page-navigation'
 import { TextContent } from './text-content'
+import { usePageKeyboardNav } from './hooks/use-page-keyboard-nav'
 import { cn } from '@/lib/utils'
 // Dynamic import to avoid SSR issues with react-pdf
 // No loading placeholder needed - PdfContent handles its own loading state internally
@@ -52,25 +52,13 @@ export function PreviewContainer({
   onDownload,
   canDownload,
 }: PreviewContainerProps) {
-  // Keyboard navigation for pages
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Don't navigate pages when user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (activeTab !== 'pdf' || totalPages <= 1) return
-      if (e.key === 'ArrowLeft' && currentPage > 1) {
-        onPageChange(currentPage - 1)
-      } else if (e.key === 'ArrowRight' && currentPage < totalPages) {
-        onPageChange(currentPage + 1)
-      }
-    },
-    [activeTab, currentPage, totalPages, onPageChange]
-  )
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  // Keyboard navigation for pages (ArrowLeft/Right)
+  usePageKeyboardNav({
+    enabled: activeTab === 'pdf',
+    currentPage,
+    totalPages,
+    onPageChange,
+  })
 
   // Determine effective tab when PDF not available
   const effectiveTab = activeTab === 'pdf' && !isPdfAvailable ? 'text' : activeTab

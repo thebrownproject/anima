@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -11,6 +10,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
 import { PageNavigation } from './page-navigation'
 import { TextContent } from './text-content'
+import { usePageKeyboardNav } from './hooks/use-page-keyboard-nav'
 import * as Icons from '@/components/icons'
 
 // Dynamic import to avoid SSR issues with react-pdf
@@ -47,25 +47,13 @@ export function ExpandModal({
   filename,
   onDownload,
 }: ExpandModalProps) {
-  // Keyboard navigation for pages
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Don't navigate pages when user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (!open || activeTab !== 'pdf' || totalPages <= 1) return
-      if (e.key === 'ArrowLeft' && currentPage > 1) {
-        onPageChange(currentPage - 1)
-      } else if (e.key === 'ArrowRight' && currentPage < totalPages) {
-        onPageChange(currentPage + 1)
-      }
-    },
-    [open, activeTab, currentPage, totalPages, onPageChange]
-  )
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  // Keyboard navigation for pages (ArrowLeft/Right)
+  usePageKeyboardNav({
+    enabled: open && activeTab === 'pdf',
+    currentPage,
+    totalPages,
+    onPageChange,
+  })
 
   const isPdf = activeTab === 'pdf'
 
