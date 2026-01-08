@@ -94,8 +94,18 @@ export function PreviewContainer({
           />
         </div>
 
-        {/* Content area - both tabs use h-full and handle their own scrolling internally */}
-        <TabsContent value="pdf" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
+        {/* Content area - both tabs always mounted with forceMount to prevent DOM reflow during tab switch */}
+        {/* Active tab stays in normal flow (flex-1), inactive tab is absolute + invisible */}
+        <TabsContent
+          value="pdf"
+          forceMount
+          className={cn(
+            'm-0',
+            effectiveTab === 'pdf'
+              ? 'flex-1 min-h-0'
+              : 'absolute inset-0 invisible pointer-events-none'
+          )}
+        >
           {isPdfAvailable ? (
             <PdfContent
               url={pdfUrl}
@@ -109,7 +119,16 @@ export function PreviewContainer({
           )}
         </TabsContent>
 
-        <TabsContent value="text" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
+        <TabsContent
+          value="text"
+          forceMount
+          className={cn(
+            'm-0',
+            effectiveTab === 'text'
+              ? 'flex-1 min-h-0'
+              : 'absolute inset-0 invisible pointer-events-none'
+          )}
+        >
           <TextContent text={ocrText} isLoading={isTextLoading} />
         </TabsContent>
 
