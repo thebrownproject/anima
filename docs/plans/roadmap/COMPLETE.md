@@ -2,6 +2,7 @@
 
 | Feature | Date | Summary |
 |---------|------|---------|
+| Preview Panel Redesign | Jan 2026 | Apple Finder-inspired UI, code review cleanup, SSR flash fixes, context/prop refactoring |
 | Documents Sub-bar | Jan 2026 | 7 phases: filters, stacks dropdown, export, delete, selection actions, preview actions |
 | Agent Bar Redesign | Jan 2026 | Config + Hook Hybrid architecture, 8 flow types, unified AgentCard |
 | Agent UI Refactor | Jan 2026 | Dynamic Island-style agent bar + popup, replaces old upload dialog |
