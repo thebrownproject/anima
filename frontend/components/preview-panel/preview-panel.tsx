@@ -9,6 +9,7 @@ import { usePreviewPanel } from './preview-panel-context'
 interface PreviewPanelProps {
   pdfUrl: string | null
   ocrText: string | null
+  isLoading?: boolean
   mimeType: string
   filename: string | null
   fileSize: number | null
@@ -20,6 +21,7 @@ interface PreviewPanelProps {
 export function PreviewPanel({
   pdfUrl,
   ocrText,
+  isLoading,
   mimeType,
   filename,
   fileSize,
@@ -89,6 +91,7 @@ export function PreviewPanel({
         onPageChange={handlePageChange}
         onPdfLoad={handlePdfLoad}
         ocrText={ocrText}
+        isTextLoading={isLoading}
         onExpand={handleExpand}
         onDownload={handleDownload}
         canDownload={canDownload}

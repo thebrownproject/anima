@@ -17,9 +17,15 @@ const markdownComponents: Components = {
 
 interface TextContentProps {
   text: string | null
+  isLoading?: boolean
 }
 
-export function TextContent({ text }: TextContentProps) {
+export function TextContent({ text, isLoading }: TextContentProps) {
+  // While loading, show blank space with min-height to prevent container collapse
+  if (isLoading) {
+    return <div className="h-full min-h-[calc(100vh-290px)]" />
+  }
+
   if (!text?.trim()) {
     return (
       <div className="flex h-full items-center justify-center">

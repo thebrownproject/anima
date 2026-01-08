@@ -28,6 +28,7 @@ interface PreviewContainerProps {
   onPdfLoad: (info: { numPages: number }) => void
   // Text content
   ocrText: string | null
+  isTextLoading?: boolean
   // Actions
   onExpand: () => void
   onDownload: () => void
@@ -44,6 +45,7 @@ export function PreviewContainer({
   onPageChange,
   onPdfLoad,
   ocrText,
+  isTextLoading,
   onExpand,
   onDownload,
   canDownload,
@@ -108,7 +110,7 @@ export function PreviewContainer({
         </TabsContent>
 
         <TabsContent value="text" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
-          <TextContent text={ocrText} />
+          <TextContent text={ocrText} isLoading={isTextLoading} />
         </TabsContent>
 
         {/* Bottom controls - PDF only, fade in on hover */}

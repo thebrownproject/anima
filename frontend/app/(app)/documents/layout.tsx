@@ -69,6 +69,7 @@ export default function DocumentsLayout({
             <PreviewPanel
               pdfUrl={effectivePdfUrl}
               ocrText={effectiveOcrText}
+              isLoading={isUrlStale}
               mimeType={mimeType}
               filename={filename}
               fileSize={fileSize}
