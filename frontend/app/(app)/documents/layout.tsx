@@ -9,26 +9,22 @@ import { PreviewPanel } from '@/components/preview-panel'
 import { usePreviewPanel } from '@/components/preview-panel/preview-panel-context'
 import { useSelectedDocument } from '@/components/documents/selected-document-context'
 
+// Default panel sizes (only used when no saved state exists)
+const DEFAULT_MAIN_SIZE = 60
+const DEFAULT_PREVIEW_SIZE = 40
+
 export default function DocumentsLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { panelRef, isCollapsed, setIsCollapsed, panelWidth, setPanelWidth } = usePreviewPanel()
+  const { panelRef, isCollapsed, setIsCollapsed } = usePreviewPanel()
   const { signedUrl, ocrText, mimeType, selectedDocId, signedUrlDocId, filename, fileSize, pageCount, extractedFields } = useSelectedDocument()
 
   // Show loading when URL is stale (document changed but URL not yet fetched)
   const isUrlStale = selectedDocId !== null && selectedDocId !== signedUrlDocId
   const effectivePdfUrl = isUrlStale ? null : signedUrl
   const effectiveOcrText = isUrlStale ? null : ocrText
-
-  const mainPanelSize = 100 - panelWidth
-
-  const handleLayoutChange = (sizes: number[]) => {
-    if (sizes[1] !== undefined) {
-      setPanelWidth(sizes[1])
-    }
-  }
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
@@ -37,11 +33,11 @@ export default function DocumentsLayout({
       <ResizablePanelGroup
         direction="horizontal"
         className="flex-1 min-h-0 overflow-hidden"
-        onLayout={handleLayoutChange}
+        autoSaveId="stackdocs-preview-panel"
       >
         {/* Main content panel - pages render here */}
         <ResizablePanel
-          defaultSize={mainPanelSize}
+          defaultSize={DEFAULT_MAIN_SIZE}
           minSize={40}
           className="overflow-hidden min-w-0 flex flex-col"
         >
@@ -56,7 +52,7 @@ export default function DocumentsLayout({
         {/* Preview panel - persists across navigation */}
         <ResizablePanel
           ref={panelRef}
-          defaultSize={panelWidth}
+          defaultSize={DEFAULT_PREVIEW_SIZE}
           minSize={30}
           maxSize={60}
           collapsible

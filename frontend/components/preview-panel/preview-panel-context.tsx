@@ -3,27 +3,15 @@
 import { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo, ReactNode } from 'react'
 import type { ImperativePanelHandle } from 'react-resizable-panels'
 
-const STORAGE_KEY = 'stackdocs-preview-panel'
-
-interface PreviewPanelState {
-  collapsed: boolean
-  width: number
-  tab: 'pdf' | 'text'
-}
-
-const DEFAULT_STATE: PreviewPanelState = {
-  collapsed: false,
-  width: 40,
-  tab: 'pdf',
-}
+// Tab persistence uses a separate key from the panel layout
+// The panel layout (width/collapsed) is handled by react-resizable-panels autoSaveId
+const TAB_STORAGE_KEY = 'stackdocs-preview-tab'
 
 interface PreviewPanelContextValue {
   panelRef: React.RefObject<ImperativePanelHandle | null>
   isCollapsed: boolean
   setIsCollapsed: (collapsed: boolean) => void
   toggle: () => void
-  panelWidth: number
-  setPanelWidth: (width: number) => void
   activeTab: 'pdf' | 'text'
   setActiveTab: (tab: 'pdf' | 'text') => void
 }
@@ -33,57 +21,29 @@ const PreviewPanelContext = createContext<PreviewPanelContextValue | null>(null)
 export function PreviewPanelProvider({ children }: { children: ReactNode }) {
   const panelRef = useRef<ImperativePanelHandle | null>(null)
 
-  // Initialize with defaults for SSR, sync with localStorage after mount
-  const [isCollapsed, setIsCollapsedState] = useState(DEFAULT_STATE.collapsed)
-  const [panelWidth, setPanelWidthState] = useState(DEFAULT_STATE.width)
-  const [activeTab, setActiveTabState] = useState<'pdf' | 'text'>(DEFAULT_STATE.tab)
+  // isCollapsed is synced via onCollapse/onExpand callbacks from ResizablePanel
+  // The library's autoSaveId handles persisting the actual collapsed state
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
-  // Sync with localStorage after mount to avoid hydration mismatch
+  // Tab state with separate persistence (not handled by react-resizable-panels)
+  const [activeTab, setActiveTabState] = useState<'pdf' | 'text'>('pdf')
+
+  // Restore tab from localStorage after mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
-        const state = JSON.parse(saved) as Partial<PreviewPanelState>
-        if (typeof state.collapsed === 'boolean') setIsCollapsedState(state.collapsed)
-        if (typeof state.width === 'number') setPanelWidthState(state.width)
-        if (state.tab === 'pdf' || state.tab === 'text') {
-          setActiveTabState(state.tab)
-        } else if (state.tab === 'visual') {
-          // Migrate old 'visual' tab to 'text'
-          setActiveTabState('text')
-        }
-      } catch {
-        // Invalid JSON, use defaults
-      }
+    const saved = localStorage.getItem(TAB_STORAGE_KEY)
+    if (saved === 'pdf' || saved === 'text') {
+      setActiveTabState(saved)
+    } else if (saved === 'visual') {
+      // Migrate old 'visual' tab to 'text'
+      setActiveTabState('text')
+      localStorage.setItem(TAB_STORAGE_KEY, 'text')
     }
   }, [])
-
-  const persistState = useCallback((updates: Partial<PreviewPanelState>) => {
-    if (typeof window === 'undefined') return
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      const current = saved ? JSON.parse(saved) : DEFAULT_STATE
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...updates }))
-    } catch {
-      // Reset to defaults if localStorage is corrupted
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULT_STATE, ...updates }))
-    }
-  }, [])
-
-  const setIsCollapsed = useCallback((collapsed: boolean) => {
-    setIsCollapsedState(collapsed)
-    persistState({ collapsed })
-  }, [persistState])
-
-  const setPanelWidth = useCallback((width: number) => {
-    setPanelWidthState(width)
-    persistState({ width })
-  }, [persistState])
 
   const setActiveTab = useCallback((tab: 'pdf' | 'text') => {
     setActiveTabState(tab)
-    persistState({ tab })
-  }, [persistState])
+    localStorage.setItem(TAB_STORAGE_KEY, tab)
+  }, [])
 
   const toggle = useCallback(() => {
     const panel = panelRef.current
@@ -101,11 +61,9 @@ export function PreviewPanelProvider({ children }: { children: ReactNode }) {
     isCollapsed,
     setIsCollapsed,
     toggle,
-    panelWidth,
-    setPanelWidth,
     activeTab,
     setActiveTab,
-  }), [panelRef, isCollapsed, setIsCollapsed, toggle, panelWidth, setPanelWidth, activeTab, setActiveTab])
+  }), [panelRef, isCollapsed, setIsCollapsed, toggle, activeTab, setActiveTab])
 
   return (
     <PreviewPanelContext.Provider value={contextValue}>
