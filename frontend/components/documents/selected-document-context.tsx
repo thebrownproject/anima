@@ -52,8 +52,11 @@ function getInitialSelectedDocId(): string | null {
   return localStorage.getItem(STORAGE_KEY)
 }
 
+// Read once at module load time (before any component renders)
+const initialSelectedDocId = getInitialSelectedDocId()
+
 export function SelectedDocumentProvider({ children }: { children: ReactNode }) {
-  const [selectedDocId, setSelectedDocIdState] = useState<string | null>(getInitialSelectedDocId)
+  const [selectedDocId, setSelectedDocIdState] = useState<string | null>(initialSelectedDocId)
   const [signedUrl, setSignedUrlState] = useState<string | null>(null)
   const [signedUrlDocId, setSignedUrlDocIdState] = useState<string | null>(null)
   const [mimeType, setMimeTypeState] = useState<string>('')
