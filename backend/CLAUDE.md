@@ -19,82 +19,33 @@ backend/
 │   ├── config.py                 # Environment config
 │   ├── database.py               # Supabase client setup
 │   ├── models.py                 # Pydantic models
-│   ├── routes/
-│   │   ├── document.py           # /api/document/* (upload, retry-ocr)
-│   │   ├── agent.py              # /api/agent/* (extract, correct)
-│   │   └── test.py               # /api/test/* (claude, mistral)
-│   ├── services/
-│   │   ├── ocr.py                # Mistral OCR integration
-│   │   ├── storage.py            # Supabase Storage operations
-│   │   └── usage.py              # Usage limit tracking
-│   └── agents/
+│   ├── routes/                   # See routes/CLAUDE.md for endpoints
+│   ├── services/                 # See services/CLAUDE.md for details
+│   └── agents/                   # See agents/CLAUDE.md for tools & patterns
 │       ├── extraction_agent/     # Single document extraction
-│       │   └── tools/            # read_ocr, save_extraction, set_field, etc.
 │       └── stack_agent/          # Multi-document batch extraction
-│           └── tools/            # read_documents, create_table, create_row, etc.
 ├── migrations/                   # SQL migration files
 └── tests/                        # Test files
 ```
 
 ## Agents
 
-Built with Claude Agent SDK. Agents operate autonomously with database tools.
+Built with Claude Agent SDK. Agents operate autonomously with scoped database tools.
 
-### extraction_agent
+- **extraction_agent** - Single document extraction → `extractions` table
+- **stack_agent** - Multi-document batch extraction → `stack_tables` / `stack_table_rows`
 
-Extracts structured data from a single document. Reads OCR text, writes JSONB to `extractions` table.
-
-| Tool              | Purpose                       |
-| ----------------- | ----------------------------- |
-| `read_ocr`        | Fetch OCR text for document   |
-| `read_extraction` | Read current extraction JSONB |
-| `save_extraction` | Write full extraction         |
-| `set_field`       | Update value at JSON path     |
-| `delete_field`    | Remove field at JSON path     |
-| `complete`        | Mark extraction complete      |
-
-### stack_agent
-
-Extracts across multiple documents into a unified table schema. One row per document.
-
-| Tool               | Purpose                        |
-| ------------------ | ------------------------------ |
-| `read_documents`   | List documents in stack        |
-| `read_ocr`         | Fetch OCR text for document    |
-| `read_tables`      | Read table definitions         |
-| `create_table`     | Create new table               |
-| `add_column`       | Add column to table            |
-| `set_column`       | Modify column definition       |
-| `delete_column`    | Remove column from table       |
-| `read_rows`        | Read existing rows             |
-| `create_row`       | Insert new row                 |
-| `set_row_field`    | Update value at JSON path      |
-| `delete_row_field` | Remove field at JSON path      |
-| `complete`         | Mark stack extraction complete |
+See `app/agents/CLAUDE.md` for tools, data flow, and security patterns.
 
 ## API Endpoints
 
-### Document
+| Route File | Endpoints |
+|------------|-----------|
+| `document.py` | `/api/document/upload`, `/api/document/retry-ocr` |
+| `agent.py` | `/api/agent/extract`, `/api/agent/correct`, `/api/agent/health` |
+| `test.py` | `/api/test/claude`, `/api/test/mistral` |
 
-| Endpoint                       | Purpose                                      |
-| ------------------------------ | -------------------------------------------- |
-| `POST /api/document/upload`    | Upload file, run Mistral OCR, save to `ocr_results` |
-| `POST /api/document/retry-ocr` | Retry OCR on failed documents                |
-
-### Agent
-
-| Endpoint                  | Purpose                                      |
-| ------------------------- | -------------------------------------------- |
-| `POST /api/agent/extract` | Trigger extraction_agent (SSE streaming)     |
-| `POST /api/agent/correct` | Resume session with correction instruction   |
-| `GET /api/agent/health`   | Agent health check                           |
-
-### Test
-
-| Endpoint               | Purpose                     |
-| ---------------------- | --------------------------- |
-| `GET /api/test/claude` | Test Claude SDK connectivity |
-| `GET /api/test/mistral`| Test Mistral OCR connectivity |
+See `app/routes/CLAUDE.md` for auth, SSE streaming, and patterns.
 
 ## Environment Variables
 
