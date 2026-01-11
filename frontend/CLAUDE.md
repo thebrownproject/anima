@@ -25,16 +25,18 @@ frontend/
 │   │   ├── documents/            # Documents list and detail pages
 │   │   └── stacks/               # Stacks list and detail pages
 │   └── api/webhooks/clerk/       # Clerk webhook for user sync
-├── components/
-│   ├── agent/                    # Agent system (card, flows, registry)
-│   ├── documents/                # Document tables, columns, preview, detail views
-│   ├── stacks/                   # Stack tables, detail views, table extraction
-│   ├── icons/                    # Centralized Tabler icon barrel export
-│   ├── layout/                   # App-level layout components
-│   │   └── sidebar/              # Sidebar and navigation components
+├── components/                   # See CLAUDE.md in each folder for details
+│   ├── agent/                    # Agent flow system (upload, extraction, stacks)
+│   ├── documents/                # Document tables, detail views, filters
+│   ├── icons/                    # Tabler icon barrel export
+│   ├── layout/                   # Headers, subbars, sidebar
+│   │   └── sidebar/              # Navigation sidebar components
+│   ├── preview-panel/            # Document preview (PDF/OCR text)
 │   ├── providers/                # Context providers (theme)
 │   ├── shared/                   # Reusable components (file-type-icon, stack-badges)
+│   ├── stacks/                   # Stack list, detail views, tables
 │   └── ui/                       # shadcn/ui primitives
+├── public/                       # Static assets
 ├── lib/
 │   ├── queries/                  # Data fetching with React cache()
 │   └── supabase/                 # Supabase client setup
@@ -91,68 +93,17 @@ Same pattern as headers. Filter contexts (e.g., `DocumentsFilterContext`) share 
 
 ### Icons
 
-All icons use Tabler Icons via a centralized barrel export:
+All icons use Tabler Icons via `@/components/icons` barrel export. Never import directly from `@tabler/icons-react`.
 
 ```typescript
 import * as Icons from "@/components/icons"
-
 <Icons.Check className="size-4" />
-<Icons.Search className="size-4" />
 ```
 
-- **Never import directly** from `@tabler/icons-react` - always use the barrel
-- **Naming**: `Icon` prefix stripped (e.g., `IconCheck` → `Check`)
-- **Type imports**: `import type { Icon } from "@/components/icons"`
-- **Adding icons**: Add new exports to `components/icons/index.ts`
+See `components/icons/CLAUDE.md` for naming conventions and adding new icons.
 
-### Agent System (Config + Hook Hybrid)
+### Agent Flow System
 
-The agent card (bottom of screen) handles document uploads and AI interactions using a registry-based flow system.
+Floating card at bottom of screen for uploads, extractions, and stack management. Uses a registry-based flow system.
 
-**Architecture:**
-- **AgentCard**: Unified component that renders any registered flow
-- **Flow Registry**: Maps flow types to their metadata + hooks
-- **FlowMetadata**: Static config (steps, icons, components)
-- **FlowHook**: Dynamic logic (state, handlers, props)
-
-**Directory Structure:**
-```
-components/agent/
-├── card/                    # AgentCard and subcomponents
-├── flows/                   # Flow implementations
-│   ├── types.tsx            # Core types
-│   ├── registry.ts          # Flow registry
-│   ├── documents/upload/    # Upload flow (complete)
-│   ├── documents/extract/   # Re-extract flow
-│   ├── stacks/              # Stack flows (create, edit, add-documents)
-│   └── tables/              # Table flows (create, manage-columns, extract)
-└── stores/agent-store.ts    # Zustand state
-```
-
-**8 Registered Flow Types:**
-
-| Category | Flows |
-|----------|-------|
-| documents | `upload`, `extract-document` |
-| stacks | `create-stack`, `edit-stack`, `add-documents` |
-| tables | `create-table`, `manage-columns`, `extract-table` |
-
-**Opening a Flow:**
-```typescript
-import { useAgentStore, initialUploadData } from '@/components/agent'
-
-const openFlow = useAgentStore((s) => s.openFlow)
-openFlow({ type: 'upload', step: 'dropzone', data: initialUploadData })
-```
-
-**Key Store Actions:**
-- `openFlow(flow)` - Start a flow
-- `setStep(step)` - Navigate steps
-- `setStatus(status, text)` - Update status
-- `close()` - Close flow, reset to idle
-
-**Adding New Flows:** See `flows/documents/upload/` as reference. Each flow needs:
-1. `metadata.ts` - FlowMetadata config
-2. `use-[name]-flow.ts` - Logic hook returning FlowHookResult
-3. `index.ts` - Barrel export
-4. Register in `flows/registry.ts`
+See `components/agent/CLAUDE.md` for architecture, flows, and adding new flows.
