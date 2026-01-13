@@ -8316,3 +8316,62 @@ Preview Panel Redesign moved to `plans/complete/`. Ready for MVP.
 ### Next Session
 
 Focus on Stacks UI or other MVP priorities.
+
+---
+
+## Session 110 - 2026-01-13 - Documents Redesign Design Complete
+
+**Feature**: Documents Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Brainstormed Documents Section Redesign**:
+  - Identified problem: redundant extraction systems (per-document + Stacks)
+  - Decision: Documents = file management, Stacks = all structured extraction
+  - AI metadata on upload: display_name, tags, summary
+
+- [x] **Created Design Document**:
+  - `docs/plans/in-progress/documents-redesign/2026-01-13-documents-redesign-design.md`
+  - Upload flow: Dropzone → Processing → Review Metadata → Complete
+  - Database: Add display_name, tags, summary, updated_at columns
+  - Remove `/documents/[id]` route entirely
+
+- [x] **Frontend Design Review**:
+  - Spawned frontend-developer agent for UX analysis
+  - Confirmed separation makes sense
+  - Identified document name interaction change (Link → span)
+
+- [x] **Code Review & Fixes**:
+  - Spawned code-reviewer agent
+  - Fixed: updated_at column, extractions migration strategy, error handling, status clarification
+  - Fixed minor: RLS note, API naming, duplicate UI elements
+
+- [x] **Explored Current Implementation**:
+  - Document table has row hover (`hover:bg-muted/30`)
+  - Document name is currently a Link with `hover:underline`
+  - Change: Make name a plain span, clicking selects row
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Per-document extraction | Remove | Teams use Stacks, not single-doc extraction |
+| AI metadata on upload | Yes | Auto-generate name, tags, summary for organization |
+| Existing extractions table | Keep read-only | No migration needed, deprecate post-MVP |
+| Document name interaction | Span, not Link | No navigation, row click selects |
+| Tags column type | TEXT[] | Simpler than JSONB for string arrays |
+
+### Files Created/Modified
+
+- `docs/plans/in-progress/documents-redesign/2026-01-13-documents-redesign-design.md` (new)
+- `docs/plans/roadmap/IN-PROGRESS.md` (updated)
+
+### Next Session
+
+**Task**: Create implementation plan for Documents Redesign
+
+**Process**:
+1. Use `/superpowers:write-plan` to create detailed task breakdown
+2. Split into multiple MD files for orchestrated implementation
+3. Phases: Database migration, Backend agent, Frontend upload flow, Frontend cleanup
