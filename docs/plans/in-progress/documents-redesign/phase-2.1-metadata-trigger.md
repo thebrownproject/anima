@@ -399,8 +399,40 @@ Upload (instant return) → OCR (background) → Metadata (background)
    | SSE streaming | Works naturally | Needs alternative |
    | User experience | Waits, sees result | Instant, watches progress |
 
+### SSE vs Realtime: Research Findings
+
+**Key insight:** SSE streaming does NOT work with BackgroundTasks (connection closes before task runs).
+
+**However:** Clerk + Supabase Realtime integration **already works** in this codebase:
+
+```typescript
+// frontend/lib/supabase.ts - already implemented
+export function createClerkSupabaseClient(getToken) {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    accessToken: getToken,
+    realtime: { accessToken: getToken },
+  })
+}
+```
+
+```sql
+-- RLS policies already use Clerk JWT (migration 009)
+USING ((SELECT auth.jwt()->>'sub') = user_id)
+```
+
+**Reference files:**
+- `frontend/lib/supabase.ts` - Clerk-authenticated Supabase client
+- `frontend/hooks/use-extraction-realtime.ts` - Working Realtime subscription pattern
+- `backend/migrations/009_clerk_supabase_integration.sql` - RLS policies for Clerk
+
+**For background chain:** Subscribe to `documents` table status changes via Realtime (same pattern as extraction hook). No SSE needed - Realtime handles progress updates.
+
+**Token refresh:** Hook already refreshes Clerk token every 50s (before 60s expiry) to keep WebSocket auth valid.
+
+---
+
 ### Decision Needed
 
 Before implementing Phase 2.1, decide:
 - **Keep sync OCR** (simpler, Phase 2.1 as planned) OR
-- **Refactor to full chain** (better UX, more work, need to solve SSE question)
+- **Refactor to full chain** (better UX, Realtime for progress - integration already works)
