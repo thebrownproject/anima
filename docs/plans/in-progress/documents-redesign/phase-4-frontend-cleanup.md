@@ -328,14 +328,62 @@ interface SelectedDocumentContextType {
 }
 ```
 
-**Add state and setters to provider:**
+**Add state and setters to provider (follow existing pattern with `useCallback` wrappers):**
+
 ```tsx
-const [displayName, setDisplayName] = useState<string | null>(null)
-const [tags, setTags] = useState<string[] | null>(null)
-const [summary, setSummary] = useState<string | null>(null)
+// Add state declarations (after existing state, ~line 64)
+const [displayName, setDisplayNameState] = useState<string | null>(null)
+const [tags, setTagsState] = useState<string[] | null>(null)
+const [summary, setSummaryState] = useState<string | null>(null)
+
+// Add useCallback wrappers (after existing setters, ~line 130)
+const setDisplayName = useCallback((name: string | null) => {
+  setDisplayNameState(name)
+}, [])
+
+const setTags = useCallback((tags: string[] | null) => {
+  setTagsState(tags)
+}, [])
+
+const setSummary = useCallback((summary: string | null) => {
+  setSummaryState(summary)
+}, [])
 ```
 
-**Export in useSelectedDocument:**
+**CRITICAL:** The `useCallback` wrappers are required. Without them, the context value changes on every render, causing infinite re-render loops.
+
+**Also update `setSelectedDocId` to clear new fields on deselect (~line 89-97):**
+```tsx
+if (id === null) {
+  // ... existing clears ...
+  setDisplayNameState(null)
+  setTagsState(null)
+  setSummaryState(null)
+}
+```
+
+**Add to `contextValue` useMemo (~line 132):**
+```tsx
+const contextValue = useMemo(() => ({
+  // ... existing ...
+  displayName,
+  tags,
+  summary,
+  setDisplayName,
+  setTags,
+  setSummary,
+}), [
+  // ... existing deps ...
+  displayName,
+  tags,
+  summary,
+  setDisplayName,
+  setTags,
+  setSummary,
+])
+```
+
+**Export in useSelectedDocument (return statement):**
 ```tsx
 return {
   // ... existing ...
@@ -465,6 +513,113 @@ metadata={{
   summary,        // NEW
 }}
 ```
+
+---
+
+## Task 3f: Update Documents Header Breadcrumb for Selected Document
+
+**Purpose:** Show the selected document name in the breadcrumb when a document is being previewed. This replaces the UX from the removed `/documents/[id]` route.
+
+**Behavior:**
+```
+No document selected:
+📄 Documents
+
+Document selected (preview open):
+📄 Documents  >  📎 Invoice - Acme Corp - March 2026.pdf
+                    ↑ display_name (fallback to filename)
+```
+
+**Step 3f-1: Extend PageHeader to accept extra breadcrumb**
+
+**File:** `frontend/components/layout/page-header.tsx`
+
+Add to `PageHeaderProps` interface (~line 50):
+```tsx
+interface PageHeaderProps {
+  title?: string
+  icon?: ReactNode
+  actions?: ReactNode
+  /** Optional extra breadcrumb to append (e.g., selected document) */
+  extraBreadcrumb?: {
+    label: string
+    icon?: ReactNode
+  }
+}
+```
+
+Update the component to render the extra breadcrumb after the pathname breadcrumbs (~line 117, before closing `</BreadcrumbList>`):
+
+```tsx
+{/* Extra breadcrumb for selected item (e.g., document preview) */}
+{extraBreadcrumb && (
+  <>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage className="flex items-center gap-1.5">
+        {extraBreadcrumb.icon}
+        <span className="max-w-[200px] truncate">{extraBreadcrumb.label}</span>
+      </BreadcrumbPage>
+    </BreadcrumbItem>
+  </>
+)}
+```
+
+**Step 3f-2: Update documents header to show selected document**
+
+**File:** `frontend/app/(app)/@header/documents/page.tsx`
+
+Replace entire file with client component:
+
+```tsx
+'use client'
+
+import { PageHeader } from '@/components/layout/page-header'
+import { PreviewToggle } from '@/components/documents/preview-toggle'
+import { useSelectedDocument } from '@/components/documents/selected-document-context'
+import { FileTypeIcon } from '@/components/shared/file-type-icon'
+
+/**
+ * Header slot for documents list page.
+ * Shows breadcrumb with selected document name when preview is open.
+ */
+export default function DocumentsHeaderSlot() {
+  const { selectedDocId, displayName, filename, mimeType } = useSelectedDocument()
+
+  // Show selected document in breadcrumb when preview is open
+  const extraBreadcrumb = selectedDocId
+    ? {
+        label: displayName || filename || 'Document',
+        icon: <FileTypeIcon mimeType={mimeType || 'application/pdf'} className="size-4" />,
+      }
+    : undefined
+
+  return (
+    <PageHeader
+      extraBreadcrumb={extraBreadcrumb}
+      actions={<PreviewToggle />}
+    />
+  )
+}
+```
+
+**Step 3f-3: Update default.tsx to match**
+
+**File:** `frontend/app/(app)/@header/documents/default.tsx`
+
+If this file exists and differs from page.tsx, update it to use the same client component pattern, or re-export from page.tsx:
+
+```tsx
+export { default } from './page'
+```
+
+**Acceptance criteria:**
+- [ ] Breadcrumb shows just "Documents" when no document selected
+- [ ] Breadcrumb shows "Documents > [document name]" when document selected
+- [ ] Uses `display_name` if available, falls back to `filename`
+- [ ] Shows file type icon (PDF, image, etc.) before document name
+- [ ] Long document names are truncated with ellipsis
+- [ ] Breadcrumb updates immediately when selection changes
 
 ---
 
@@ -832,6 +987,10 @@ Test in browser after build succeeds:
 - [ ] Navigate to `/documents` - page loads without errors
 - [ ] Click a document row - row becomes selected, preview panel opens
 - [ ] Click document name - same behavior as clicking row (no navigation)
+- [ ] Breadcrumb shows "Documents" when no document selected
+- [ ] Breadcrumb shows "Documents > [document name]" when document selected
+- [ ] Breadcrumb uses display_name if available, falls back to filename
+- [ ] Breadcrumb updates when clicking different documents
 - [ ] Preview panel shows metadata WITHOUT "X fields" or "Not extracted"
 - [ ] Preview panel shows display_name (or filename if null) as title
 - [ ] Preview panel shows tags as badges (if present)
@@ -852,6 +1011,7 @@ Test in browser after build succeeds:
 | 3c | Modify | `selected-document-context.tsx` - add new metadata state |
 | 3d | Modify | `documents-table.tsx` - fetch new metadata fields |
 | 3e | Modify | `documents/layout.tsx` - pass new metadata props |
+| 3f | Modify | `page-header.tsx`, `@header/documents/page.tsx` - breadcrumb for selected doc |
 | 4 | Modify | `preview-panel.tsx` - update MetadataProps interface |
 | 5 | Modify | `documents/layout.tsx` - remove extractedFields from metadata |
 | 5b | Remove | `documents-table.tsx` - remove extractions query |
