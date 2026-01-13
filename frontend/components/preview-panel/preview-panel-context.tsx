@@ -10,7 +10,7 @@ const PANEL_STORAGE_KEY = 'react-resizable-panels:stackdocs-preview-panel'
 
 // Read initial collapsed state from localStorage synchronously to avoid flash
 function getInitialCollapsed(): boolean {
-  if (typeof window === 'undefined') return true // Default collapsed for SSR
+  if (typeof window === 'undefined') return false
   try {
     const saved = localStorage.getItem(PANEL_STORAGE_KEY)
     if (saved) {
@@ -25,7 +25,7 @@ function getInitialCollapsed(): boolean {
   } catch {
     // Invalid JSON, use default
   }
-  return true // Default collapsed for first-time users
+  return false
 }
 
 // Read initial tab from localStorage synchronously

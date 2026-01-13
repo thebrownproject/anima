@@ -98,3 +98,9 @@ Lightweight tracking for items that don't need immediate action.
   - Props: icon, title, description, optional action button
   - Use cases: no documents uploaded, no search results, no filters match, no stacks, preview panel (no doc selected)
   - Design: Simple illustration + text pattern, keep it lightweight
+- [ ] #42 `bug` Preview toggle button out of sync with panel state (2026-01-13)
+  - Toggle button and panel state get out of sync on page refresh
+  - Attempted fix (defaulting `isCollapsed` to `true`) made it worse - reverted
+  - Root cause: Context state and ResizablePanel state not properly synced
+  - Need: Imperatively sync panel state with context on mount, or use panel as source of truth
+  - Files: `frontend/components/preview-panel/preview-panel-context.tsx`, `frontend/app/(app)/documents/layout.tsx`
