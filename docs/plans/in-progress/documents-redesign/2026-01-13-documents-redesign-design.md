@@ -50,6 +50,36 @@ This gives users a simple mental model: "Documents = files, Stacks = data"
 2. **Refactored preview metadata** - Shows new metadata fields
 3. **Clicking document = select only** - No navigation, just updates preview panel
 
+### Document Name Interaction Change
+
+Currently the document name is a `<Link>` that navigates to `/documents/[id]`:
+
+```tsx
+// Current
+<Link
+  href={`/documents/${doc.id}`}
+  onClick={(e) => e.stopPropagation()}
+  className="font-medium hover:underline truncate"
+>
+  {doc.filename}
+</Link>
+```
+
+Change to a plain span - clicking falls through to row selection:
+
+```tsx
+// New
+<span className="font-medium truncate">
+  {doc.filename}
+</span>
+```
+
+**Result:**
+- No underline on hover (not a link)
+- Clicking name selects the row (triggers existing row click handler)
+- Row hover state (`hover:bg-muted/30`) provides interaction feedback
+- Preview panel updates to show selected document
+
 ---
 
 ## Upload Flow (Revised)
@@ -195,6 +225,13 @@ The `extractions` table contains per-document extraction data that will no longe
 - **Keep table read-only** - Existing data remains accessible but no new records created
 - **Deprecate post-MVP** - Once users have migrated to Stacks, consider archiving/removing
 - **No data migration** - Extraction data structure differs from Stack tables, not worth migrating
+
+### Files to Update
+
+| File | Update |
+|------|--------|
+| `backend/migrations/` | Add new migration file (e.g., `006_document_metadata.sql`) |
+| `docs/specs/SCHEMA.md` | Update `documents` table definition with new columns |
 
 ---
 
