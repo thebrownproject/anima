@@ -2,7 +2,7 @@
 
 **Product:** Stackdocs MVP - Document Data Extractor
 **Version:** 1.2
-**Last Updated:** 2025-12-23
+**Last Updated:** 2026-01-13
 **Database:** Supabase PostgreSQL
 
 ---
@@ -52,7 +52,7 @@ CREATE TABLE public.users (
     subscription_tier VARCHAR(20) DEFAULT 'free',
     documents_limit INTEGER DEFAULT 5,
 
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
@@ -74,7 +74,14 @@ CREATE TABLE documents (
     mode VARCHAR(20) NOT NULL,              -- 'auto' or 'custom'
     status VARCHAR(20) DEFAULT 'processing', -- 'processing', 'ocr_complete', 'completed', 'failed'
     session_id VARCHAR(50),                  -- Claude Agent SDK session for corrections
-    uploaded_at TIMESTAMP DEFAULT NOW()
+
+    -- Document metadata (AI-generated)
+    display_name TEXT,                       -- AI-generated display name
+    tags TEXT[] DEFAULT '{}',                -- Tags for filtering/search
+    summary TEXT,                            -- One-line document summary
+
+    uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()     -- Auto-updated via trigger
 );
 
 -- Indexes
@@ -110,7 +117,7 @@ CREATE TABLE ocr_results (
     model VARCHAR(50) NOT NULL,              -- e.g., 'mistral-ocr-latest'
     ocr_engine VARCHAR(20) DEFAULT 'mistral',
 
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes
@@ -146,8 +153,8 @@ CREATE TABLE extractions (
     is_correction BOOLEAN DEFAULT false,     -- True if created via /api/agent/correct
     status VARCHAR(20) DEFAULT 'completed',  -- pending, in_progress, completed, failed
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes
@@ -174,8 +181,8 @@ CREATE TABLE stacks (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(20) DEFAULT 'active',     -- 'active', 'archived'
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes
@@ -191,7 +198,7 @@ CREATE TABLE stack_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     stack_id UUID NOT NULL REFERENCES stacks(id),
     document_id UUID NOT NULL REFERENCES documents(id),
-    added_at TIMESTAMP DEFAULT NOW(),
+    added_at TIMESTAMPTZ DEFAULT NOW(),
 
     UNIQUE(stack_id, document_id)  -- Prevent duplicate links
 );
@@ -221,8 +228,8 @@ CREATE TABLE stack_tables (
     session_id VARCHAR(50),                  -- Agent SDK session for corrections
     status VARCHAR(20) DEFAULT 'pending',    -- 'pending', 'processing', 'completed', 'failed'
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes
@@ -246,8 +253,8 @@ CREATE TABLE stack_table_rows (
     row_data JSONB NOT NULL,                 -- Column values for this document
     confidence_scores JSONB,
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
 
     UNIQUE(table_id, document_id)  -- One row per document per table
 );
@@ -319,6 +326,22 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
 **Note:** Both functions use `SECURITY DEFINER` and filter by `user_id` for safety.
+
+### `update_documents_updated_at`
+
+Trigger function that automatically updates the `updated_at` column on any row change.
+
+```sql
+CREATE OR REPLACE FUNCTION update_documents_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Note:** Attached to `documents` table via `documents_updated_at_trigger`.
 
 ---
 
@@ -438,6 +461,7 @@ Migration files are in `backend/migrations/`:
 | 007_add_extraction_rpc_functions.sql | RPC functions for JSONB field updates |
 | 008_add_html_tables.sql | Add html_tables column for OCR 3 |
 | 009_clerk_supabase_integration.sql | UUID→TEXT for user_id, Clerk RLS policies |
+| 010_document_metadata.sql | Add display_name, tags, summary, updated_at columns |
 
 ---
 
