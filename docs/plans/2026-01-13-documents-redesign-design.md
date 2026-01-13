@@ -107,8 +107,9 @@ Dropzone → Processing → Review Metadata → Complete
 
 **Step 4: Complete**
 - Document saved with metadata
+- Document status remains `ocr_complete` (metadata stored alongside OCR)
 - Status: "Document saved" (check icon)
-- Actions: "Add to Stack", "Upload Another", "Done"
+- Actions: "Upload Another", "Done"
 
 ### Key Decisions
 
@@ -158,19 +159,42 @@ Add columns:
 ALTER TABLE documents
 ADD COLUMN display_name TEXT,
 ADD COLUMN tags TEXT[] DEFAULT '{}',
-ADD COLUMN summary TEXT;
+ADD COLUMN summary TEXT,
+ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
+
+-- Trigger to auto-update updated_at
+CREATE OR REPLACE FUNCTION update_documents_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER documents_updated_at_trigger
+  BEFORE UPDATE ON documents
+  FOR EACH ROW
+  EXECUTE FUNCTION update_documents_updated_at();
 ```
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `display_name` | TEXT | AI-generated or user-edited display name |
-| `tags` | TEXT[] | Array of tags for filtering/search |
+| `tags` | TEXT[] | Array of tags for filtering/search (TEXT[] chosen over JSONB for simplicity - native Postgres array ops) |
 | `summary` | TEXT | One-line document summary |
+| `updated_at` | TIMESTAMP | Auto-updated on any row change |
 
 ### Migration Notes
-- Existing documents will have NULL for new fields
+- Existing documents will have NULL for new metadata fields
 - Could backfill by running metadata agent on existing docs (optional)
 - Original `file_name` preserved, `display_name` shown in UI
+- No RLS changes needed - existing `documents_clerk_isolation` policy covers new columns
+
+### Existing Extractions Migration
+The `extractions` table contains per-document extraction data that will no longer be used:
+- **Keep table read-only** - Existing data remains accessible but no new records created
+- **Deprecate post-MVP** - Once users have migrated to Stacks, consider archiving/removing
+- **No data migration** - Extraction data structure differs from Stack tables, not worth migrating
 
 ---
 
@@ -197,10 +221,19 @@ Copy from existing extraction agent, modify to output metadata only.
 - `read_ocr` - Read cached OCR text
 - `save_metadata` - Write to documents table
 
+### Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| OCR not ready | Wait for OCR to complete before running metadata agent |
+| Metadata generation fails | Save document with NULL metadata, user can retry via "Generate Metadata" action |
+| User cancels during processing | Document saved with NULL metadata (can be processed later) |
+| Agent timeout | Same as failure - NULL metadata, allow retry |
+
 ### API Endpoint
 
 ```
-POST /api/document/process-metadata
+POST /api/document/metadata
 {
   "document_id": "uuid"
 }
