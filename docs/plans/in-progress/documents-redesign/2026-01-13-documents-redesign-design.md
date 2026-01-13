@@ -230,7 +230,7 @@ The `extractions` table contains per-document extraction data that will no longe
 
 | File | Update |
 |------|--------|
-| `backend/migrations/` | Add new migration file (e.g., `006_document_metadata.sql`) |
+| `backend/migrations/` | Add new migration file: `010_document_metadata.sql` |
 | `docs/specs/SCHEMA.md` | Update `documents` table definition with new columns |
 
 ---
