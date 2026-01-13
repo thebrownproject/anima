@@ -7,7 +7,7 @@ Tools are registered with the MCP server for agent use.
 
 from supabase import Client
 
-from .read_ocr import create_read_ocr_tool
+from ...shared.tools import create_read_ocr_tool  # Use shared tool
 from .read_extraction import create_read_extraction_tool
 from .save_extraction import create_save_extraction_tool
 from .set_field import create_set_field_tool, parse_json_path
