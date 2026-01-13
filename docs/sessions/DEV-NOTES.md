@@ -8445,3 +8445,64 @@ Focus on Stacks UI or other MVP priorities.
 4. Verify trigger works
 5. Update SCHEMA.md
 6. Continue to Phase 2 (backend agent)
+
+---
+
+## Session 112 - 2026-01-13 - Documents Redesign Phase 1 Complete
+
+**Feature**: Documents Redesign
+**Branch**: feature/documents-redesign (worktree)
+
+### Tasks Completed
+
+- [x] **Set up git worktree** for isolated feature development:
+  - Created `.worktrees/documents-redesign` with `feature/documents-redesign` branch
+  - Installed frontend/backend dependencies
+  - Copied env files from main repo
+
+- [x] **Phase 1: Database Migration**:
+  - Created `backend/migrations/010_document_metadata.sql`
+  - Added columns: `display_name`, `tags`, `summary`, `updated_at`
+  - Created `update_documents_updated_at` trigger function
+  - Applied migration via Supabase MCP
+
+- [x] **TIMESTAMPTZ standardization**:
+  - Converted all 13 timestamp columns across all tables to TIMESTAMPTZ
+  - Tables affected: documents, extractions, ocr_results, stack_documents, stack_table_rows, stack_tables, stacks, users
+  - Enables proper timezone handling (Melbourne, Australia)
+
+- [x] **Documentation updates**:
+  - Updated `docs/specs/SCHEMA.md` with new columns and trigger
+  - Updated migration descriptions in both migration file and SCHEMA.md
+
+- [x] **Bug logged #42**:
+  - Preview toggle button sync issue identified
+  - Attempted fix caused worse sync issues - reverted
+  - Logged for future investigation
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| TIMESTAMPTZ for all | Convert all 13 timestamp columns | User in Melbourne (UTC+10/11), ensures proper timezone handling |
+| Keep TIMESTAMP default sizes | Don't change defaultSize on ResizablePanel | Changing caused sync issues with context state |
+| Defer preview panel fix | Log as bug #42 | Root cause needs deeper investigation |
+
+### Files Modified
+
+- `backend/migrations/010_document_metadata.sql` (new)
+- `docs/specs/SCHEMA.md` (updated)
+- `docs/plans/issues/ACTIVE.md` (added bug #42)
+- `docs/plans/in-progress/documents-redesign/README.md` (Phase 1 marked complete)
+- `docs/plans/in-progress/documents-redesign/phase-1-database.md` (marked complete)
+
+### Next Session
+
+**Task**: Execute Phase 2 - Backend Metadata Agent
+
+**Process**:
+1. Run `/continue` to load context
+2. Run `/superpowers:execute-plan` or continue subagent-driven development
+3. Create `document_processor_agent` with tools: `read_ocr`, `save_metadata`
+4. Add `POST /api/document/metadata` endpoint
+5. Test with existing documents

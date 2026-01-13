@@ -4,6 +4,7 @@
 **Phase:** 1 of N (Database Changes)
 **Design Doc:** `2026-01-13-documents-redesign-design.md`
 **Created:** 2026-01-13
+**Status:** ✅ Complete (2026-01-13)
 
 ---
 
@@ -197,18 +198,19 @@ Add a new row:
 
 After completing all tasks:
 
-- [ ] Migration file exists at `backend/migrations/010_document_metadata.sql`
-- [ ] All 4 columns exist in production database (`display_name`, `tags`, `summary`, `updated_at`)
-- [ ] `updated_at` trigger fires on row updates
-- [ ] `SCHEMA.md` reflects new schema
-- [ ] Existing documents have NULL for `display_name` and `summary`, empty array `{}` for `tags`
-- [ ] RLS policy `documents_clerk_isolation` still works (no changes needed - it covers all columns)
+- [x] Migration file exists at `backend/migrations/010_document_metadata.sql`
+- [x] All 4 columns exist in production database (`display_name`, `tags`, `summary`, `updated_at`)
+- [x] `updated_at` trigger fires on row updates
+- [x] `SCHEMA.md` reflects new schema
+- [x] Existing documents have NULL for `display_name` and `summary`, empty array `{}` for `tags`
+- [x] RLS policy `documents_clerk_isolation` still works (no changes needed - it covers all columns)
 
 ---
 
 ## Notes
 
 - **No RLS changes needed** - The existing `documents_clerk_isolation` policy covers all columns automatically
+- **TIMESTAMPTZ conversion** - Also converted all 13 timestamp columns across all tables to TIMESTAMPTZ for proper timezone handling (user in Melbourne, Australia)
 - **No backfill required** - Existing documents will have NULL metadata, processed on-demand
 - **TEXT[] for tags** - Chosen over JSONB for simplicity; native Postgres array operations
 - **Trigger function reusable** - Could be attached to other tables in future if needed

@@ -17,7 +17,7 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| [Phase 1](./phase-1-database.md) | Database migration - add metadata columns | Pending |
+| [Phase 1](./phase-1-database.md) | Database migration - add metadata columns | ✅ Complete |
 | [Phase 2](./phase-2-backend-agent.md) | Document processor agent for metadata generation | Pending |
 | [Phase 3](./phase-3-upload-flow.md) | Frontend upload flow with metadata review step | Pending |
 | [Phase 4](./phase-4-frontend-cleanup.md) | Remove /documents/[id], update table interactions | Pending |

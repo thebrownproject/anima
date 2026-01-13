@@ -3,9 +3,9 @@
 **Documents Redesign** (`plans/in-progress/documents-redesign/`) - Active
 - Design: Complete
 - Implementation Plan: Complete (4 phases, reviewed)
-- Execution: Ready to start Phase 1
+- Execution: Phase 1 ✅ Complete, Phase 2 next
 - Scope: Remove per-document extraction, add AI metadata on upload (name, tags, summary)
-- Database: Migration needed (display_name, tags, summary, updated_at columns)
+- Database: Migration applied (display_name, tags, summary, updated_at + all timestamps to TIMESTAMPTZ)
 - Blocks: Stacks UI completion (extraction moving to Stacks only)
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused
