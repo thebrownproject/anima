@@ -1,0 +1,296 @@
+# Documents Section Redesign
+
+**Date:** 2026-01-13
+**Status:** Design Complete
+**Author:** Fraser + Claude
+
+## Problem
+
+The current Documents section has two issues:
+
+1. **Redundant extraction systems** - Per-document extraction (`/documents/[id]`) duplicates what Stacks does, creating maintenance burden and user confusion.
+
+2. **Unclear value proposition** - Clicking a document without extractions shows an empty "No data extracted" page. The per-document extraction feels like a demo feature rather than something teams would actually use.
+
+3. **Confusing navigation** - Clicking a document navigates away from the list to a separate page, breaking the flow.
+
+## Solution
+
+**Clear separation of concerns:**
+
+| Section | Purpose | AI Features |
+|---------|---------|-------------|
+| **Documents** | File management - upload, organize, preview, assign to stacks | Metadata generation (name, tags, summary) |
+| **Stacks** | Structured data extraction - tables, rows, columns | Full extraction agent |
+
+This gives users a simple mental model: "Documents = files, Stacks = data"
+
+---
+
+## Documents Section Changes
+
+### What Gets Removed
+
+1. **`/documents/[id]` route** - No more per-document extraction detail page
+2. **Per-document extraction UI** - No "Extract" button for individual documents
+3. **"X fields" indicator** - Remove extraction count from document metadata
+4. **`extract-document` agent flow** - Remove incomplete re-extraction flow
+
+### What Stays
+
+1. **Documents list** - Name, Stacks (tags), Date columns
+2. **Preview panel** - PDF and Text tabs
+3. **Document actions** - Filter, Edit, Export, Delete in toolbar
+4. **Stack assignment** - Assign documents to stacks from documents page
+5. **Upload flow** - Via Agent Card (modified, see below)
+
+### What's New
+
+1. **AI-generated metadata on upload** - Display name, tags, summary
+2. **Refactored preview metadata** - Shows new metadata fields
+3. **Clicking document = select only** - No navigation, just updates preview panel
+
+---
+
+## Upload Flow (Revised)
+
+### Current Flow
+```
+Dropzone → Configure (auto/custom) → Fields (if custom) → Extracting → Complete
+```
+
+### New Flow
+```
+Dropzone → Processing → Review Metadata → Complete
+```
+
+### Step Details
+
+**Step 1: Dropzone** (existing)
+- User drops/selects file
+- File uploads to storage
+- Status: "Select a document"
+
+**Step 2: Processing** (new)
+- OCR runs on document
+- Metadata agent generates: display_name, tags, summary
+- Status: "Analyzing document..." (spinner)
+- Agent Card collapsed to status bar
+
+**Step 3: Review Metadata** (new)
+- Agent Card expands with pre-filled results
+- User can edit any field before confirming
+- Status: "Review document details"
+
+```
+┌─────────────────────────────────────────────────┐
+│ Document Details                                │
+│                                                 │
+│ Name                                            │
+│ [Invoice - Acme Corp - March 2026.pdf     ]    │
+│                                                 │
+│ Tags                                            │
+│ [invoice] [acme-corp] [$1,250] [+]             │
+│                                                 │
+│ Summary                                         │
+│ ┌─────────────────────────────────────────────┐│
+│ │ Monthly consulting invoice from Acme Corp   ││
+│ │ dated March 15, 2026 for $1,250.00         ││
+│ └─────────────────────────────────────────────┘│
+│                                                 │
+│ Add to Stack (optional)                         │
+│ [Select a stack...                        ▼]   │
+│                                                 │
+│              [Regenerate]  [Save Document]      │
+└─────────────────────────────────────────────────┘
+```
+
+**Step 4: Complete**
+- Document saved with metadata
+- Status: "Document saved" (check icon)
+- Actions: "Add to Stack", "Upload Another", "Done"
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Stack assignment in upload | Optional | Don't force users into stacks, but educate them |
+| Metadata editable | Yes | Keep user in the loop, AI assists but doesn't decide |
+| Regenerate button | Yes | Let users re-run if AI got it wrong |
+| Summary editable | Yes | Users may want to add context |
+
+---
+
+## Preview Panel Changes
+
+### Current Metadata Display
+```
+file-sample_150kB.pdf
+PDF · 139 KB · 4 pages · 6 fields
+```
+
+### New Metadata Display
+```
+Invoice - Acme Corp - March 2026        ← display_name (or original if not set)
+PDF · 139 KB · 4 pages
+[invoice] [acme-corp] [$1,250]          ← tags (clickable to filter?)
+"Monthly consulting invoice from..."     ← summary (truncated, expand on hover)
+```
+
+### Tabs
+- **PDF** - Visual document preview (unchanged)
+- **Text** - OCR text view (unchanged)
+- No "Data" tab - extraction happens in Stacks
+
+### Actions (top-right toolbar)
+- Expand/collapse preview
+- Download document
+- (Remove any extraction-related actions)
+
+---
+
+## Database Changes
+
+### `documents` Table Updates
+
+Add columns:
+```sql
+ALTER TABLE documents
+ADD COLUMN display_name TEXT,
+ADD COLUMN tags TEXT[] DEFAULT '{}',
+ADD COLUMN summary TEXT;
+```
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `display_name` | TEXT | AI-generated or user-edited display name |
+| `tags` | TEXT[] | Array of tags for filtering/search |
+| `summary` | TEXT | One-line document summary |
+
+### Migration Notes
+- Existing documents will have NULL for new fields
+- Could backfill by running metadata agent on existing docs (optional)
+- Original `file_name` preserved, `display_name` shown in UI
+
+---
+
+## Backend Changes
+
+### New Agent: `document_processor_agent`
+
+Copy from existing extraction agent, modify to output metadata only.
+
+**Input:**
+- `document_id` - Document to process
+- `ocr_text` - Already extracted OCR text
+
+**Output:**
+```json
+{
+  "display_name": "Invoice - Acme Corp - March 2026.pdf",
+  "tags": ["invoice", "acme-corp", "$1,250"],
+  "summary": "Monthly consulting invoice from Acme Corp dated March 15, 2026 for $1,250.00 covering development services."
+}
+```
+
+**Tools:**
+- `read_ocr` - Read cached OCR text
+- `save_metadata` - Write to documents table
+
+### API Endpoint
+
+```
+POST /api/document/process-metadata
+{
+  "document_id": "uuid"
+}
+
+Response (SSE stream):
+- tool events (Reading document, Generating metadata...)
+- result: { display_name, tags, summary }
+```
+
+### What Gets Removed
+- Per-document extraction endpoints (if any exist separately)
+- `extract-document` flow backend support
+
+---
+
+## Frontend Changes Summary
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `app/(app)/documents/[id]/` | **Delete entire directory** |
+| `components/agent/flows/upload/` | Add `upload-metadata.tsx` step |
+| `components/agent/flows/upload/metadata.ts` | Update flow steps |
+| `components/agent/flows/extract/` | **Delete or deprecate** |
+| `components/preview-panel/` | Update metadata display |
+| `components/documents/document-row.tsx` | Remove click navigation, just select |
+
+### New Components
+
+```
+components/agent/flows/upload/
+  upload-metadata.tsx    ← New step component
+```
+
+### Flow Registration Update
+
+```ts
+// upload/metadata.ts
+export const uploadFlowMetadata: FlowMetadata = {
+  steps: [
+    { id: 'dropzone', ... },
+    { id: 'processing', ... },      // New
+    { id: 'metadata', ... },        // New (replaces configure/fields)
+    { id: 'complete', ... }
+  ]
+}
+```
+
+---
+
+## Post-MVP Features
+
+### Smart Search (RAG)
+- User asks questions in chat bar
+- Agent searches documents using metadata + OCR text
+- Returns answers with document citations
+- Example: "Which invoices are over $1000?"
+
+### Bulk Upload
+- Select multiple files
+- Process metadata for each
+- Review/edit in batch before saving
+
+### Backfill Metadata
+- Button to process existing documents
+- Run metadata agent on docs with NULL display_name
+
+---
+
+## Success Criteria
+
+1. **No `/documents/[id]` route** - Clicking documents stays on list
+2. **Upload shows metadata review** - Users see AI-generated name/tags/summary
+3. **Preview panel shows metadata** - Display name, tags, summary visible
+4. **All extraction in Stacks** - No per-document extraction UI remains
+5. **Database updated** - New columns exist and are populated on upload
+
+---
+
+## Open Questions
+
+1. **Tag format** - Free-form text or predefined categories?
+   - **Recommendation:** Free-form for MVP, AI generates what makes sense
+
+2. **Summary length** - How long should summaries be?
+   - **Recommendation:** 1-2 sentences, ~150 characters max
+
+3. **Regenerate scope** - Regenerate all metadata or individual fields?
+   - **Recommendation:** All metadata for MVP, simpler UX
+
+4. **Existing documents** - Backfill immediately or lazy?
+   - **Recommendation:** Lazy - only process when user requests or uploads new
