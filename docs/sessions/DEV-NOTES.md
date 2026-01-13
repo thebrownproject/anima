@@ -8375,3 +8375,73 @@ Focus on Stacks UI or other MVP priorities.
 1. Use `/superpowers:write-plan` to create detailed task breakdown
 2. Split into multiple MD files for orchestrated implementation
 3. Phases: Database migration, Backend agent, Frontend upload flow, Frontend cleanup
+
+---
+
+## Session 111 - 2026-01-13 - Documents Redesign Plans Reviewed
+
+**Feature**: Documents Redesign
+**Branch**: main
+
+### Tasks Completed
+
+- [x] **Loaded context from previous session**:
+  - Read handover prompt with plan status
+  - Verified 4 phase plan files exist in `docs/plans/in-progress/documents-redesign/`
+
+- [x] **Context7 Library Verification**:
+  - Verified FastAPI StreamingResponse, Form, HTTPException patterns
+  - Verified Supabase Python `.table().select().eq().execute()` patterns
+  - Verified shadcn/ui Badge, Tooltip component usage
+  - Verified React hooks patterns (useState, useEffect, useCallback)
+  - All code in plans matches current library documentation
+
+- [x] **Full Code Review of All 4 Phases**:
+  - Dispatched code-reviewer agent for comprehensive review
+  - Cross-referenced plan code against existing codebase patterns
+  - Identified 1 critical issue, 3 important issues
+
+- [x] **Fixed Critical Issue - Phase 4 Task 3c**:
+  - Added `useCallback` wrappers for `setDisplayName`, `setTags`, `setSummary`
+  - Without this, context would cause infinite re-render loops
+  - Updated plan to match existing `selected-document-context.tsx` pattern
+
+- [x] **Discussed SSE Architecture**:
+  - Clarified Supabase Realtime issue (`useExtractionRealtime`) is separate from SSE
+  - Confirmed new metadata flow uses SSE streaming (not Realtime subscriptions)
+  - Old Realtime hook becomes unused after Phase 4
+
+- [x] **Added Breadcrumb Enhancement - Phase 4 Task 3f**:
+  - New feature: Show selected document name in breadcrumb when preview open
+  - Behavior: "Documents" → "Documents > Invoice - Acme Corp.pdf"
+  - Uses `display_name` with fallback to `filename`
+  - Extends PageHeader with `extraBreadcrumb` prop
+
+- [x] **Committed all plan updates**:
+  - 0686328: Initial 4 phase plans
+  - f92404c: Critical fix + breadcrumb enhancement
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| useCallback pattern | Match existing context pattern | Prevents infinite re-renders |
+| Breadcrumb display | Show display_name, fallback to filename | Consistent with preview panel |
+| Realtime subscription | Will become unused after Phase 4 | New flow uses SSE directly |
+| Post-upload metadata editing | Defer to future | Current scope is upload flow only |
+
+### Files Modified
+
+- `docs/plans/in-progress/documents-redesign/phase-4-frontend-cleanup.md` (fixed Task 3c, added Task 3f)
+
+### Next Session
+
+**Task**: Execute Documents Redesign implementation starting with Phase 1
+
+**Process**:
+1. Run `/superpowers:execute-plan` targeting Phase 1 (database migration)
+2. Create migration file `010_document_metadata.sql`
+3. Apply via Supabase MCP tool
+4. Verify trigger works
+5. Update SCHEMA.md
+6. Continue to Phase 2 (backend agent)
