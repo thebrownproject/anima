@@ -1,5 +1,5 @@
 -- Migration: 010_document_metadata.sql
--- Description: Add metadata columns for document processing redesign
+-- Description: Add metadata columns for document processing redesign + convert all timestamps to TIMESTAMPTZ
 -- Design Doc: docs/plans/in-progress/documents-redesign/2026-01-13-documents-redesign-design.md
 
 -- Add new metadata columns

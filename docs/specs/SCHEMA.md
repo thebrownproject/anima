@@ -461,7 +461,7 @@ Migration files are in `backend/migrations/`:
 | 007_add_extraction_rpc_functions.sql | RPC functions for JSONB field updates |
 | 008_add_html_tables.sql | Add html_tables column for OCR 3 |
 | 009_clerk_supabase_integration.sql | UUID→TEXT for user_id, Clerk RLS policies |
-| 010_document_metadata.sql | Add display_name, tags, summary, updated_at columns |
+| 010_document_metadata.sql | Add display_name, tags, summary, updated_at columns; convert all timestamps to TIMESTAMPTZ |
 
 ---
 
