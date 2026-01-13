@@ -17,6 +17,7 @@
 |----------|--------|------|-------------|
 | `/api/document/upload` | POST | JWT | Upload file, run OCR, save to `ocr_results` |
 | `/api/document/retry-ocr` | POST | JWT | Retry OCR on failed documents |
+| `/api/document/metadata` | POST | JWT | Generate AI metadata (SSE stream) |
 | `/api/agent/extract` | POST | JWT | Run extraction agent (SSE stream) |
 | `/api/agent/correct` | POST | JWT | Resume session with correction instruction |
 | `/api/agent/health` | GET | None | Agent health check |
