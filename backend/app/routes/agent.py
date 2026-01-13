@@ -18,14 +18,10 @@ from fastapi.responses import StreamingResponse
 from ..agents.extraction_agent import extract_with_agent, correct_with_session
 from ..auth import get_current_user
 from ..database import get_supabase_client
+from ..utils.sse import sse_event
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-
-def sse_event(data: dict) -> str:
-    """Format data as SSE event."""
-    return f"data: {json.dumps(data)}\n\n"
 
 
 @router.post("/extract")

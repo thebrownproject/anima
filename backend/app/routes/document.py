@@ -3,18 +3,22 @@ Document upload endpoint - OCR only.
 
 Handles document upload and OCR processing synchronously.
 Extraction is handled separately via /api/agent/extract.
+Metadata generation via /api/document/metadata.
 """
 
 import logging
-from typing import Any
+from typing import Any, AsyncIterator
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi.responses import StreamingResponse
 
+from ..agents.document_processor_agent import process_document_metadata
 from ..auth import get_current_user
 from ..services.storage import upload_document, create_signed_url
 from ..services.ocr import extract_text_ocr
 from ..services.usage import check_usage_limit, increment_usage
 from ..database import get_supabase_client
+from ..utils.sse import sse_event
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -197,3 +201,80 @@ async def retry_ocr(
             status_code=500,
             detail=f"OCR processing failed: {str(e)}"
         )
+
+
+@router.post("/document/metadata")
+async def generate_metadata(
+    document_id: str = Form(...),
+    user_id: str = Depends(get_current_user),
+):
+    """
+    Generate metadata for a document using AI.
+
+    Requires document to have completed OCR processing.
+    Writes display_name, tags, summary to documents table.
+
+    Args:
+        document_id: Document UUID (must have OCR cached)
+        user_id: From Clerk JWT (injected via auth dependency)
+
+    Returns:
+        SSE stream with events:
+        - {"text": "..."} - Claude's response
+        - {"tool": "...", "input": {...}} - Tool activity
+        - {"complete": true}
+        - {"error": "..."}
+    """
+    supabase = get_supabase_client()
+
+    # Verify document exists and belongs to user
+    doc = supabase.table("documents") \
+        .select("id, status") \
+        .eq("id", document_id) \
+        .eq("user_id", user_id) \
+        .single() \
+        .execute()
+
+    if not doc.data:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Verify OCR is complete
+    if doc.data.get("status") not in ["ocr_complete", "completed"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document not ready. Status: {doc.data.get('status')}"
+        )
+
+    # Verify OCR results exist
+    ocr = supabase.table("ocr_results") \
+        .select("id") \
+        .eq("document_id", document_id) \
+        .single() \
+        .execute()
+
+    if not ocr.data:
+        raise HTTPException(status_code=400, detail="No OCR data found")
+
+    async def event_stream() -> AsyncIterator[str]:
+        """Generate SSE events from metadata processing."""
+        try:
+            async for event in process_document_metadata(
+                document_id=document_id,
+                user_id=user_id,
+                db=supabase,
+            ):
+                yield sse_event(event)
+
+        except Exception as e:
+            logger.error(f"Metadata stream error: {e}")
+            yield sse_event({"error": str(e)})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
