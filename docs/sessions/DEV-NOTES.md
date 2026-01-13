@@ -8506,3 +8506,80 @@ Focus on Stacks UI or other MVP priorities.
 3. Create `document_processor_agent` with tools: `read_ocr`, `save_metadata`
 4. Add `POST /api/document/metadata` endpoint
 5. Test with existing documents
+
+---
+
+## Session 113 - 2026-01-13 - Documents Redesign Phase 2 Complete
+
+**Feature**: Documents Redesign
+**Branch**: feature/documents-redesign (worktree at `.worktrees/documents-redesign`)
+
+### Tasks Completed
+
+- [x] **Phase 2: Backend Metadata Agent (9 tasks)**:
+  - Created `document_processor_agent/` directory structure
+  - Extracted `read_ocr` to shared tools (DRY refactor)
+  - Created `save_metadata` tool with validation
+  - Created `METADATA_SYSTEM_PROMPT` (discussed optimization, kept original)
+  - Created `agent.py` with `process_document_metadata()` async generator
+  - Created `POST /api/document/metadata` SSE endpoint
+  - Extracted `sse_event` to shared utils (DRY)
+  - Updated CLAUDE.md documentation files
+
+- [x] **Phase 2.1 Plan Created**:
+  - Plan for auto-triggering metadata after OCR
+  - Switched from `asyncio.create_task()` to FastAPI `BackgroundTasks`
+  - Added future exploration section for full background chain architecture
+
+- [x] **Architecture Research**:
+  - Researched sync vs background chain for upload flow
+  - Confirmed SSE doesn't work with BackgroundTasks (connection closes)
+  - Confirmed Clerk + Supabase Realtime integration already works
+  - Documented findings in Phase 2.1 plan
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Prompt optimization | Deferred | Keep original verbose prompt, optimize later |
+| Metadata trigger pattern | BackgroundTasks | More idiomatic for FastAPI than asyncio.create_task() |
+| Background chain architecture | Explore next session | Better UX but bigger refactor, need to decide |
+| SSE vs Realtime | Realtime for background chain | SSE requires open connection, BackgroundTasks close it |
+
+### Files Created
+
+- `backend/app/agents/document_processor_agent/__init__.py`
+- `backend/app/agents/document_processor_agent/agent.py`
+- `backend/app/agents/document_processor_agent/prompts.py`
+- `backend/app/agents/document_processor_agent/tools/__init__.py`
+- `backend/app/agents/document_processor_agent/tools/save_metadata.py`
+- `backend/app/agents/document_processor_agent/CLAUDE.md`
+- `backend/app/agents/shared/__init__.py`
+- `backend/app/agents/shared/tools/__init__.py`
+- `backend/app/agents/shared/tools/read_ocr.py`
+- `backend/app/utils/__init__.py`
+- `backend/app/utils/sse.py`
+- `docs/plans/in-progress/documents-redesign/phase-2.1-metadata-trigger.md`
+
+### Files Modified
+
+- `backend/app/agents/extraction_agent/tools/__init__.py` (use shared read_ocr)
+- `backend/app/routes/document.py` (new /metadata endpoint)
+- `backend/app/routes/agent.py` (use shared sse_event)
+- `backend/app/routes/CLAUDE.md`
+- `backend/CLAUDE.md`
+
+### Next Session
+
+**Task**: Decide on upload architecture before implementing Phase 2.1
+
+**Key Question**: Sync OCR (current) vs Background Chain (better UX)?
+
+**Process**:
+1. Review Phase 2.1 plan exploration section
+2. Decide: keep sync OCR or refactor to full background chain
+3. If sync: execute Phase 2.1 as planned
+4. If background chain: revise Phase 2.1 to include OCR refactor
+5. Then proceed to Phase 3 (Upload Flow) and Phase 4 (Frontend Cleanup)
+
+**Reference**: `docs/plans/in-progress/documents-redesign/phase-2.1-metadata-trigger.md` (see "Future Exploration" section)
