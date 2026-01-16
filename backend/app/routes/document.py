@@ -80,7 +80,6 @@ async def _run_ocr_background(
         logger.info(f"[{document_id}] Background OCR complete")
 
         # Chain: directly await metadata generation (cannot use BackgroundTasks here)
-        # TODO: _run_metadata_background will be added in Task 3
         await _run_metadata_background(document_id, user_id)
 
     except Exception as e:
@@ -89,6 +88,36 @@ async def _run_ocr_background(
         supabase.table("documents").update({
             "status": "failed"
         }).eq("id", document_id).execute()
+
+
+async def _run_metadata_background(
+    document_id: str,
+    user_id: str,
+) -> None:
+    """
+    Run metadata generation in background (fire-and-forget).
+
+    Consumes all events from the agent and logs completion/errors.
+    Does not propagate exceptions - OCR already succeeded.
+    Failures are logged but document stays at 'ocr_complete' (usable).
+    """
+    try:
+        supabase = get_supabase_client()
+        async for event in process_document_metadata(
+            document_id=document_id,
+            user_id=user_id,
+            db=supabase,
+        ):
+            # Log tool usage for debugging (optional, can remove if too noisy)
+            if "tool" in event:
+                logger.debug(f"[{document_id}] Metadata tool: {event['tool']}")
+            elif "complete" in event:
+                logger.info(f"[{document_id}] Metadata generation complete")
+            elif "error" in event:
+                logger.error(f"[{document_id}] Metadata generation failed: {event['error']}")
+    except Exception as e:
+        # Log but don't propagate - OCR already succeeded, document is usable
+        logger.error(f"[{document_id}] Background metadata task failed: {e}")
 
 
 @router.post("/document/upload")
