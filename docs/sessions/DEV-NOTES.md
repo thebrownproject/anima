@@ -8583,3 +8583,97 @@ Focus on Stacks UI or other MVP priorities.
 5. Then proceed to Phase 3 (Upload Flow) and Phase 4 (Frontend Cleanup)
 
 **Reference**: `docs/plans/in-progress/documents-redesign/phase-2.1-metadata-trigger.md` (see "Future Exploration" section)
+
+---
+
+## Session 114 - 2026-01-16 - Documents Redesign Plans Rewritten for Background Chain
+
+**Feature**: Documents Redesign
+**Branch**: feature/documents-redesign (worktree at `.worktrees/documents-redesign`)
+
+### Tasks Completed
+
+- [x] **Architecture Decision: Full Background Chain**:
+  - Decided to use instant upload response with chained BackgroundTasks
+  - Flow: Upload (instant) → OCR (background) → Metadata (background)
+  - Frontend watches progress via Supabase Realtime (not SSE)
+  - Three spinner states: "Uploading...", "Extracting text...", "Generating metadata..."
+
+- [x] **Phase 2.1 Plan Rewritten**:
+  - Backend-developer agent rewrote plan for background chain architecture
+  - Analyst agent verified all requirements captured
+  - Code-reviewer found critical issue: BackgroundTasks chaining pattern
+  - Fixed: Use `await _run_metadata_background()` directly (not nested add_task)
+  - Added manual test for `/api/document/metadata` regenerate endpoint
+  - Consistent `[document_id]` log format
+
+- [x] **Phase 3 Plan Rewritten**:
+  - Frontend-developer agent updated to use Realtime instead of SSE
+  - New `useDocumentRealtime` hook created (follows existing pattern)
+  - Analyst verified all 18 requirements captured
+  - Code-reviewer found 3 critical issues, all fixed:
+    1. Added missing `streamDocumentMetadata` function for regenerate
+    2. Fixed stale closure in `handleRealtimeUpdate`
+    3. Fixed `hasMetadata` tracking via useState
+  - Applied all important/minor fixes (type guards, aria-labels, memoization)
+
+- [x] **Phase 4 Plan Updated**:
+  - Frontend-developer agent aligned with new architecture
+  - Analyst found 2 missing items, both added:
+    1. Document list now shows `display_name || filename`
+    2. Document list now shows tag badges
+  - Code-reviewer verified cleanup completeness
+  - All important/minor fixes applied
+
+- [x] **Final Cross-Phase Review**:
+  - Code-reviewer verified consistency across all 3 phases
+  - Status values aligned: `uploading` → `processing` → `ocr_complete` / `failed`
+  - API endpoints match between backend and frontend
+  - Realtime pattern follows existing `useExtractionRealtime`
+  - **Verdict: Ready for implementation**
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Upload architecture | Full background chain | Better UX (instant response), watch progress via Realtime |
+| OCR execution | Background task | User doesn't wait 3-5s for OCR |
+| Metadata trigger | Chained from OCR | OCR success directly awaits metadata function |
+| Progress tracking | Supabase Realtime | SSE doesn't work with BackgroundTasks (connection closes) |
+| Frontend spinner | 3 distinct states | Maps to document status values from Realtime |
+| Regenerate button | Keep SSE | Manual action where user waits, SSE appropriate |
+
+### Files Modified
+
+- `docs/plans/in-progress/documents-redesign/phase-2.1-metadata-trigger.md` (completely rewritten)
+- `docs/plans/in-progress/documents-redesign/phase-3-upload-flow.md` (rewritten for Realtime)
+- `docs/plans/in-progress/documents-redesign/phase-4-frontend-cleanup.md` (updated for new architecture)
+
+### Agent Workflow Used
+
+| Phase | Agents Spawned | Purpose |
+|-------|----------------|---------|
+| 2.1 | backend-developer (×2), analyst, code-reviewer | Rewrite + fix critical issue |
+| 3 | frontend-developer, analyst, code-reviewer, frontend-developer (fix) | Full review cycle + fixes |
+| 4 | frontend-developer, analyst, code-reviewer | Full review cycle |
+| Final | code-reviewer | Cross-phase consistency check |
+
+### Pre-Implementation Checklist
+
+Before starting implementation, verify:
+- [ ] `Stack` icon exported from `@/components/icons`
+- [ ] `StackPickerContent` component exists at `@/components/shared/`
+- [ ] Phase 1 database migration applied
+
+### Next Session
+
+**Task**: Execute implementation starting with Phase 2.1
+
+**Process**:
+1. Run `/continue` to load context
+2. Verify pre-implementation checklist items
+3. Run `/superpowers:execute-plan` targeting Phase 2.1
+4. After Phase 2.1 complete, proceed to Phase 3
+5. After Phase 3 complete, proceed to Phase 4
+
+**All plans reviewed and ready for implementation.**

@@ -5,9 +5,10 @@
 - Implementation Plan: Complete (4 phases + 2.1 metadata trigger)
 - Phase 1 (Database): ✅ Complete - migration applied
 - Phase 2 (Backend Agent): ✅ Complete - document_processor_agent built
-- Phase 2.1 (Auto-trigger): Pending decision - sync vs background chain
-- Phase 3 (Upload Flow): Not started
-- Phase 4 (Frontend Cleanup): Not started
+- Phase 2.1 (Auto-trigger): ✅ Plan rewritten - background chain architecture
+- Phase 3 (Upload Flow): ✅ Plan rewritten - Realtime instead of SSE
+- Phase 4 (Frontend Cleanup): ✅ Plan updated - display_name + tags in list
+- **Status**: All plans reviewed and ready for implementation
 - Blocks: Stacks UI completion (extraction moving to Stacks only)
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused

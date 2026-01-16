@@ -1,27 +1,81 @@
 # Phase 3: Upload Flow Redesign
 
-**Phase:** 3 of 5
-**Depends on:** Phase 1 (Database), Phase 2 (Backend API)
-**Status:** Ready to implement
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Replace the current upload flow with a new Realtime-driven flow focused on metadata generation.
+
+**Architecture:** User drops file, frontend calls `POST /api/document/upload` (instant return), then subscribes to Supabase Realtime on that document_id. Backend runs OCR + metadata via BackgroundTasks, updating status and metadata fields in the database. Frontend shows spinner states based on status, then displays metadata form when complete.
+
+**Tech Stack:** Next.js, Zustand, Supabase Realtime, shadcn/ui
+
+---
 
 ## Overview
 
-Replace the current upload flow (Dropzone -> Configure -> Fields -> Extracting -> Complete) with a new flow focused on metadata generation (Dropzone -> Processing -> Metadata -> Complete).
+Replace the current upload flow (Dropzone -> Configure -> Fields -> Extracting -> Complete) with a new Realtime-driven flow (Dropzone -> Processing -> Metadata -> Complete).
 
 **Current flow:** User uploads, configures extraction method, optionally specifies fields, waits for extraction, views extracted data.
 
-**New flow:** User uploads, waits for OCR + metadata generation, reviews/edits AI-generated metadata (display_name, tags, summary), optionally assigns to stack, saves document.
+**New flow:** User uploads (instant return), watches processing via Realtime subscription, reviews/edits AI-generated metadata (display_name, tags, summary), optionally assigns to stack, saves document.
 
 ---
 
 ## Architecture Changes
+
+### Backend Flow (Phase 2.1 - Already Implemented)
+
+```
+POST /api/document/upload (instant return)
+     |
+     v
+BackgroundTask: OCR processing
+     | - Updates status: 'uploading' -> 'processing' -> 'ocr_complete'
+     | - On failure: status -> 'failed'
+     |
+     v on success (direct await)
+Metadata generation (fire-and-forget)
+     | - Writes display_name, tags, summary to documents table
+     | - Failures logged but don't affect OCR status
+```
+
+### Frontend Flow (This Phase)
+
+```
+User drops file
+     |
+     v
+Call POST /api/document/upload
+     | - Returns instantly with document_id, status: 'uploading'
+     |
+     v
+Subscribe to Realtime for document_id
+     | - Watch status field for progress
+     | - Watch display_name, tags, summary for metadata
+     |
+     v
+Show spinner states based on status:
+     | - 'uploading' -> "Uploading document..."
+     | - 'processing' -> "Extracting text..."
+     | - 'ocr_complete' + no metadata -> "Generating metadata..."
+     | - 'ocr_complete' + metadata populated -> Show metadata form
+     | - 'failed' -> Show error with "Retry" button
+     |
+     v
+User reviews/edits metadata, optionally assigns to stack
+     |
+     v
+Save metadata to database
+     |
+     v
+Complete
+```
 
 ### Flow Steps
 
 | Current Step | New Step | Purpose |
 |--------------|----------|---------|
 | `dropzone` | `dropzone` | File selection (unchanged) |
-| `configure` | `processing` | Processing state (OCR + metadata generation) |
+| `configure` | `processing` | Processing state (OCR + metadata generation via Realtime) |
 | `fields` | `metadata` | Review/edit AI-generated metadata |
 | `extracting` | (removed) | - |
 | `complete` | `complete` | Success state with actions |
@@ -156,103 +210,165 @@ import type { CustomField, ExtractionMethod } from '@/types/upload'
 
 ---
 
-### Task 2: Add Metadata API Helper
+### Task 2: Create useDocumentRealtime Hook
 
-**File:** `frontend/lib/agent-api.ts`
+**File:** `frontend/hooks/use-document-realtime.ts` (new file)
 
-**Purpose:** Add function to call `POST /api/document/metadata` endpoint with SSE streaming.
+**Purpose:** Subscribe to Supabase Realtime for document status and metadata updates. Based on the existing `useExtractionRealtime` pattern.
 
-**Add after `streamAgentExtraction` function (~line 282):**
+**Reference:** See `frontend/hooks/use-extraction-realtime.ts` for the established pattern.
 
 ```ts
-/**
- * Stream document metadata generation.
- *
- * Calls the backend to generate AI metadata (display_name, tags, summary)
- * for a document that has completed OCR.
- *
- * @param documentId - Document to generate metadata for
- * @param onEvent - Callback for each SSE event
- * @param authToken - Clerk auth token
- * @param signal - AbortController signal for cancellation
- */
-export async function streamDocumentMetadata(
-  documentId: string,
-  onEvent: OnEventCallback,
-  authToken: string,
-  signal?: AbortSignal
-): Promise<void> {
-  const formData = new FormData()
-  formData.append('document_id', documentId)
+// frontend/hooks/use-document-realtime.ts
+'use client'
 
-  const response = await fetch(`${API_URL}/api/document/metadata`, {
-    method: 'POST',
-    body: formData,
-    signal,
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useAuth } from '@clerk/nextjs'
+import { createClerkSupabaseClient } from '@/lib/supabase'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
-  if (!response.ok) {
-    throw new Error(await getResponseError(response))
-  }
+export type RealtimeStatus = 'connecting' | 'connected' | 'disconnected'
 
-  if (!response.body) {
-    throw new Error('No response body')
-  }
+export type DocumentStatus = 'uploading' | 'processing' | 'ocr_complete' | 'failed'
 
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const text = decoder.decode(value, { stream: true })
-      buffer += text
-
-      const messages = buffer.split('\n\n')
-      buffer = messages.pop() || ''
-
-      for (const message of messages) {
-        if (!message.trim()) continue
-        const lines = message.split('\n')
-        for (const line of lines) {
-          processSSELine(line, onEvent)
-        }
-      }
-    }
-
-    if (buffer.trim()) {
-      const lines = buffer.split('\n')
-      for (const line of lines) {
-        processSSELine(line, onEvent)
-      }
-    }
-  } finally {
-    reader.releaseLock()
-  }
+export interface DocumentUpdate {
+  status: DocumentStatus
+  display_name: string | null
+  tags: string[] | null
+  summary: string | null
 }
-```
 
-**Also update `humanizeToolName` (~line 26) to add metadata agent tools:**
+interface UseDocumentRealtimeOptions {
+  documentId: string | null
+  onUpdate: (update: DocumentUpdate) => void
+  enabled?: boolean
+}
 
-```ts
-const toolLabels: Record<string, string> = {
-  // ... existing tools ...
-  // Metadata agent tools
-  generate_metadata: 'Generating metadata',
-  save_metadata: 'Saving metadata',
+export function useDocumentRealtime({
+  documentId,
+  onUpdate,
+  enabled = true,
+}: UseDocumentRealtimeOptions): { status: RealtimeStatus } {
+  const { getToken } = useAuth()
+  const [status, setStatus] = useState<RealtimeStatus>('connecting')
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const onUpdateRef = useRef(onUpdate)
+
+  // Keep onUpdate ref current to avoid stale closures
+  useEffect(() => {
+    onUpdateRef.current = onUpdate
+  }, [onUpdate])
+
+  useEffect(() => {
+    // Skip if no documentId or disabled
+    if (!documentId || !enabled) {
+      setStatus('disconnected')
+      return
+    }
+
+    let mounted = true
+    let supabaseClient: ReturnType<typeof createClerkSupabaseClient> | null = null
+    let refreshInterval: NodeJS.Timeout | null = null
+
+    const setupRealtime = async () => {
+      const token = await getToken()
+
+      // Don't continue if unmounted during token fetch
+      if (!mounted) return
+
+      supabaseClient = createClerkSupabaseClient(() => getToken())
+
+      if (token) {
+        supabaseClient.realtime.setAuth(token)
+      }
+
+      const channel = supabaseClient
+        .channel(`document:${documentId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'documents',
+            filter: `id=eq.${documentId}`,
+          },
+          (payload) => {
+            if (!mounted) return
+
+            const newData = payload.new
+            if (!newData || typeof newData !== 'object') return
+
+            const record = newData as Record<string, unknown>
+            onUpdateRef.current({
+              status: record.status as DocumentStatus,
+              display_name: record.display_name as string | null,
+              tags: record.tags as string[] | null,
+              summary: record.summary as string | null,
+            })
+          }
+        )
+        .subscribe((subscribeStatus, err) => {
+          if (!mounted) return
+
+          if (subscribeStatus === 'SUBSCRIBED') {
+            setStatus('connected')
+          } else if (
+            subscribeStatus === 'CLOSED' ||
+            subscribeStatus === 'CHANNEL_ERROR' ||
+            subscribeStatus === 'TIMED_OUT'
+          ) {
+            console.error(`[Realtime] Document channel failed: ${subscribeStatus}`, err)
+            setStatus('disconnected')
+          }
+        })
+
+      if (!mounted) {
+        channel.unsubscribe()
+        return
+      }
+
+      channelRef.current = channel
+
+      // Refresh auth every 50 seconds (before Clerk's 60s expiry)
+      refreshInterval = setInterval(async () => {
+        if (!mounted) return
+        try {
+          const newToken = await getToken()
+          if (newToken && supabaseClient) {
+            supabaseClient.realtime.setAuth(newToken)
+          }
+        } catch (err) {
+          console.error('[Realtime] Token refresh error:', err)
+        }
+      }, 50000)
+    }
+
+    setupRealtime()
+
+    return () => {
+      mounted = false
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+      }
+      if (channelRef.current) {
+        channelRef.current.unsubscribe()
+        channelRef.current = null
+      }
+    }
+  }, [documentId, enabled, getToken])
+
+  return { status }
 }
 ```
 
 **Acceptance criteria:**
-- [ ] Function follows same pattern as `streamAgentExtraction`
-- [ ] Proper error handling and cleanup
-- [ ] Tool names humanized for status display
+- [ ] Hook follows same pattern as `useExtractionRealtime`
+- [ ] Subscribes to `documents` table changes for specific document_id
+- [ ] Returns status, display_name, tags, summary on update
+- [ ] Handles token refresh (50 second interval)
+- [ ] Cleans up subscription on unmount
+- [ ] `enabled` flag allows conditional subscription
+- [ ] TypeScript compiles without errors
 
 ---
 
@@ -260,52 +376,137 @@ const toolLabels: Record<string, string> = {
 
 **File:** `frontend/components/agent/flows/documents/upload/steps/upload-processing.tsx` (new file)
 
-**Purpose:** Show processing state while OCR and metadata generation run. Similar to current `upload-extracting.tsx` but for metadata generation.
+**Purpose:** Show processing state while OCR and metadata generation run via Realtime updates.
+
+**UI states based on document status:**
+- `uploading` -> "Uploading document..."
+- `processing` -> "Extracting text..."
+- `ocr_complete` + no metadata -> "Generating metadata..."
+- `ocr_complete` + metadata populated -> (transitions to metadata step)
+- `failed` -> Error with "Retry" button
 
 ```tsx
 // frontend/components/agent/flows/documents/upload/steps/upload-processing.tsx
 'use client'
 
-import { useMemo } from 'react'
 import * as Icons from '@/components/icons'
-import { useAgentEvents } from '../../../../stores/agent-store'
+import { Button } from '@/components/ui/button'
+import type { DocumentStatus } from '@/hooks/use-document-realtime'
 
-export function UploadProcessing() {
-  const events = useAgentEvents()
-  const toolEvents = useMemo(
-    () => events.filter((e) => e.type === 'tool'),
-    [events]
-  )
+interface UploadProcessingProps {
+  documentStatus: DocumentStatus | null
+  hasMetadata: boolean
+  onRetry: () => void
+  isRetrying: boolean
+}
 
+const statusMessages: Record<DocumentStatus, string> = {
+  uploading: 'Uploading document...',
+  processing: 'Extracting text...',
+  ocr_complete: 'Generating metadata...',
+  failed: 'Processing failed',
+}
+
+export function UploadProcessing({
+  documentStatus,
+  hasMetadata,
+  onRetry,
+  isRetrying,
+}: UploadProcessingProps) {
+  // Determine what to show
+  const isFailed = documentStatus === 'failed'
+
+  // Get message - show "Generating metadata..." when OCR complete but no metadata yet
+  const message = documentStatus
+    ? (documentStatus === 'ocr_complete' && !hasMetadata)
+      ? 'Generating metadata...'
+      : statusMessages[documentStatus]
+    : 'Starting upload...'
+
+  if (isFailed) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-destructive">
+          <Icons.AlertCircle className="size-4 shrink-0" />
+          <span>Document processing failed. Please try again.</span>
+        </div>
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            onClick={onRetry}
+            disabled={isRetrying}
+          >
+            {isRetrying ? (
+              <>
+                <Icons.Loader2 className="size-4 animate-spin mr-2" />
+                Retrying...
+              </>
+            ) : (
+              <>
+                <Icons.Refresh className="size-4 mr-2" />
+                Retry
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if upload step is complete (status is beyond 'uploading')
+  const uploadComplete = documentStatus && ['processing', 'ocr_complete', 'failed'].includes(documentStatus)
+
+  // Normal processing state
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm">
         <Icons.Loader2 className="size-4 animate-spin text-muted-foreground" />
-        <span>Analyzing document...</span>
+        <span>{message}</span>
       </div>
 
-      {toolEvents.length > 0 && (
-        <div className="space-y-1.5 max-h-32 overflow-y-auto">
-          {toolEvents.map((event, i) => (
-            <div
-              key={`tool-${i}`}
-              className="flex items-center gap-2 text-sm text-muted-foreground animate-in fade-in duration-150"
-            >
-              <Icons.Check className="size-3.5 text-green-500 shrink-0" />
-              <span>{event.content}</span>
-            </div>
-          ))}
+      {/* Progress indicators */}
+      <div className="space-y-1.5">
+        {/* Upload step */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {uploadComplete ? (
+            <Icons.Check className="size-3.5 text-green-500 shrink-0" />
+          ) : (
+            <Icons.Circle className="size-3.5 shrink-0" />
+          )}
+          <span>Upload file</span>
         </div>
-      )}
+
+        {/* OCR step */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {documentStatus === 'ocr_complete' ? (
+            <Icons.Check className="size-3.5 text-green-500 shrink-0" />
+          ) : (
+            <Icons.Circle className="size-3.5 shrink-0" />
+          )}
+          <span>Extract text</span>
+        </div>
+
+        {/* Metadata step */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {hasMetadata ? (
+            <Icons.Check className="size-3.5 text-green-500 shrink-0" />
+          ) : (
+            <Icons.Circle className="size-3.5 shrink-0" />
+          )}
+          <span>Generate metadata</span>
+        </div>
+      </div>
     </div>
   )
 }
 ```
 
 **Acceptance criteria:**
-- [ ] Shows spinner with "Analyzing document..." message
-- [ ] Displays tool events as they arrive (OCR, metadata generation)
-- [ ] Matches existing extracting step visual style
+- [ ] Shows spinner with appropriate message for each status
+- [ ] Shows progress indicators (checkmarks for completed steps)
+- [ ] Shows error state with "Retry" button when failed
+- [ ] Matches existing step visual style
+- [ ] Uses icons from `@/components/icons`
 
 ---
 
@@ -453,6 +654,7 @@ export function UploadMetadata({
               onKeyDown={handleKeyDown}
               placeholder="Add tag..."
               className="h-6 w-24 text-xs"
+              aria-label="New tag name"
             />
             <Button
               type="button"
@@ -667,6 +869,8 @@ export { UploadComplete } from './upload-complete'
 4. Update component mapping
 5. Update backable/confirmation steps
 
+**Note:** The `components` mapping in flow metadata provides step components to `AgentCard`. AgentCard spreads `stepProps[step]` to each component, so components receive their props via this mechanism.
+
 ```ts
 // frontend/components/agent/flows/documents/upload/metadata.ts
 import * as Icons from '@/components/icons'
@@ -723,26 +927,116 @@ export const uploadFlowMetadata: FlowMetadata<UploadFlowStep> = {
 
 ---
 
-### Task 8: Rewrite Upload Flow Hook
+### Task 8: Add `streamDocumentMetadata` to agent-api.ts
+
+**File:** `frontend/lib/agent-api.ts`
+
+**Purpose:** Add the missing SSE streaming function for manual metadata regeneration.
+
+**Add this function after `streamAgentExtraction`:**
+
+```ts
+/**
+ * Stream document metadata regeneration request.
+ *
+ * Uses fetch + ReadableStream with proper SSE buffering.
+ * Called when user clicks "Regenerate" on the metadata step.
+ *
+ * @param documentId - Document to regenerate metadata for (must have OCR cached)
+ * @param onEvent - Callback for each event
+ * @param authToken - Clerk auth token for Authorization header
+ * @param signal - AbortController signal for cancellation
+ */
+export async function streamDocumentMetadata(
+  documentId: string,
+  onEvent: OnEventCallback,
+  authToken: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const formData = new FormData()
+  formData.append('document_id', documentId)
+
+  const response = await fetch(`${API_URL}/api/document/metadata`, {
+    method: 'POST',
+    body: formData,
+    signal,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(await getResponseError(response))
+  }
+
+  if (!response.body) {
+    throw new Error('No response body')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const text = decoder.decode(value, { stream: true })
+      buffer += text
+
+      const messages = buffer.split('\n\n')
+      buffer = messages.pop() || ''
+
+      for (const message of messages) {
+        if (!message.trim()) continue
+        const lines = message.split('\n')
+        for (const line of lines) {
+          processSSELine(line, onEvent)
+        }
+      }
+    }
+
+    if (buffer.trim()) {
+      const lines = buffer.split('\n')
+      for (const line of lines) {
+        processSSELine(line, onEvent)
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+```
+
+**Acceptance criteria:**
+- [ ] Function follows same pattern as `streamAgentExtraction`
+- [ ] Calls `POST /api/document/metadata` endpoint
+- [ ] Properly handles SSE buffering
+- [ ] TypeScript compiles without errors
+
+---
+
+### Task 9: Rewrite Upload Flow Hook
 
 **File:** `frontend/components/agent/flows/documents/upload/use-upload-flow.ts`
 
 **Changes:**
-This is a significant rewrite. The new flow:
+This is a significant rewrite. The new flow uses Realtime for status tracking:
 
 1. **Dropzone** - User selects file
-2. **handleFileSelect** - Upload to storage, wait for OCR, call metadata API
-3. **Processing** - Show progress while OCR + metadata runs
-4. **Metadata** - User reviews/edits metadata, optionally assigns stack
-5. **handleSave** - Save metadata to database
-6. **handleRegenerate** - Re-run metadata generation
+2. **handleFileSelect** - Upload to storage (instant return), subscribe to Realtime
+3. **Processing** - Show progress based on Realtime status updates
+4. **Metadata** - Populate form when Realtime shows metadata complete
+5. **handleRegenerate** - Call SSE endpoint for manual regeneration
+6. **handleSave** - Save metadata to database
 7. **Complete** - Show success, offer to upload another or done
 
 ```ts
 // frontend/components/agent/flows/documents/upload/use-upload-flow.ts
 'use client'
 
-import { useCallback, useRef, useEffect, useState } from 'react'
+import { useCallback, useRef, useEffect, useState, useMemo } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { useShallow } from 'zustand/react/shallow'
@@ -754,15 +1048,20 @@ import {
 } from '../../../stores/agent-store'
 import { streamDocumentMetadata, type AgentEvent } from '@/lib/agent-api'
 import { getUploadErrorMessage } from '@/lib/upload-config'
-import { createClerkSupabaseClient } from '@/lib/supabase'
 import { useSupabase } from '@/hooks/use-supabase'
+import { useDocumentRealtime, type DocumentStatus, type DocumentUpdate } from '@/hooks/use-document-realtime'
 import type { FlowHookResult } from '../../types'
 
 export interface UploadFlowStepProps {
   dropzone: {
     onFileSelect: (file: File) => void
   }
-  processing: Record<string, never>
+  processing: {
+    documentStatus: DocumentStatus | null
+    hasMetadata: boolean
+    onRetry: () => void
+    isRetrying: boolean
+  }
   metadata: {
     data: UploadFlowData
     onUpdate: (data: Partial<UploadFlowData>) => void
@@ -788,6 +1087,10 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
   const abortControllerRef = useRef<AbortController | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const [documentStatus, setDocumentStatus] = useState<DocumentStatus | null>(null)
+  // Track whether we've received metadata via Realtime (avoids infinite loop from deriving from data)
+  const [hasReceivedMetadata, setHasReceivedMetadata] = useState(false)
 
   const actions = useAgentStore(
     useShallow((s) => ({
@@ -809,67 +1112,53 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
 
   const { setStep, updateFlowData, setStatus, addEvent, collapse, close } = actions
 
-  // Generate metadata via SSE stream
-  // Note: The backend agent writes metadata directly to the database via save_metadata tool.
-  // After completion, we fetch the updated document to get the generated metadata.
-  const generateMetadata = useCallback(async (documentId: string) => {
-    const handleEvent = (event: AgentEvent) => {
-      addEvent(event)
-      if (event.type === 'tool') {
-        setStatus('processing', event.content)
-      } else if (event.type === 'error') {
-        updateFlowData({ metadataError: event.content })
-        setStatus('error', event.content)
-        // Still advance to metadata step so user can manually edit or retry
-        setStep('metadata')
-      }
-      // Note: 'text' events are Claude's responses, not metadata.
-      // Metadata is written to DB by the agent, fetched below after complete.
+  // Handle Realtime updates from document
+  // Note: Don't include data.displayName, data.tags, data.summary in dependencies
+  // to avoid stale closure issues - just use what comes from the server
+  const handleRealtimeUpdate = useCallback((update: DocumentUpdate) => {
+    setDocumentStatus(update.status)
+
+    // Update status text based on document status
+    switch (update.status) {
+      case 'uploading':
+        setStatus('processing', 'Uploading document...')
+        break
+      case 'processing':
+        setStatus('processing', 'Extracting text...')
+        break
+      case 'ocr_complete':
+        // Check if metadata is populated
+        if (update.display_name || update.tags?.length || update.summary) {
+          // Metadata complete - update flow data and move to metadata step
+          setHasReceivedMetadata(true)
+          updateFlowData({
+            displayName: update.display_name || '',
+            tags: update.tags || [],
+            summary: update.summary || '',
+            uploadStatus: 'ready',
+          })
+          setStep('metadata')
+          setStatus('idle', 'Review document details')
+        } else {
+          // OCR complete but no metadata yet - still processing
+          setStatus('processing', 'Generating metadata...')
+        }
+        break
+      case 'failed':
+        updateFlowData({ uploadStatus: 'error', uploadError: 'Document processing failed' })
+        setStatus('error', 'Processing failed')
+        break
     }
+  }, [setStatus, setStep, updateFlowData])
 
-    try {
-      const token = await getToken()
-      if (!token) throw new Error('Not authenticated')
+  // Subscribe to Realtime updates for current document
+  const { status: realtimeStatus } = useDocumentRealtime({
+    documentId: data.documentId,
+    onUpdate: handleRealtimeUpdate,
+    enabled: step === 'processing' && !!data.documentId,
+  })
 
-      abortControllerRef.current?.abort()
-      abortControllerRef.current = new AbortController()
-
-      await streamDocumentMetadata(
-        documentId,
-        handleEvent,
-        token,
-        abortControllerRef.current.signal
-      )
-
-      // After agent completes, fetch the updated document to get metadata
-      const supabase = createClerkSupabaseClient(getToken)
-      const { data: doc } = await supabase
-        .from('documents')
-        .select('display_name, tags, summary')
-        .eq('id', documentId)
-        .single()
-
-      if (doc) {
-        updateFlowData({
-          displayName: doc.display_name || '',
-          tags: doc.tags || [],
-          summary: doc.summary || '',
-        })
-      }
-
-      setStep('metadata')
-      setStatus('idle', 'Review document details')
-
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') return
-      const message = error instanceof Error ? error.message : 'Metadata generation failed'
-      updateFlowData({ metadataError: message })
-      setStatus('error', message)
-      setStep('metadata')
-    }
-  }, [getToken, addEvent, setStatus, setStep, updateFlowData])
-
-  // Handle file selection - upload then generate metadata
+  // Handle file selection - upload then watch via Realtime
   const handleFileSelect = useCallback(async (file: File) => {
     updateFlowData({
       file,
@@ -880,6 +1169,7 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
     })
     setStep('processing')
     setStatus('processing', 'Uploading document...')
+    setDocumentStatus('uploading')
     collapse()
 
     try {
@@ -902,22 +1192,66 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
       }
 
       const result = await response.json()
+
+      // Store document_id - Realtime subscription will start automatically
       updateFlowData({
         documentId: result.document_id,
         uploadStatus: 'processing',
       })
-      setStatus('processing', 'Analyzing document...')
+      setDocumentStatus(result.status as DocumentStatus)
 
-      // Now generate metadata
-      await generateMetadata(result.document_id)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Upload failed'
       updateFlowData({ uploadStatus: 'error', uploadError: message })
       setStatus('error', message)
+      setDocumentStatus('failed')
     }
-  }, [getToken, updateFlowData, setStep, setStatus, collapse, generateMetadata])
+  }, [getToken, updateFlowData, setStep, setStatus, collapse])
 
-  // Regenerate metadata
+  // Retry failed OCR via backend endpoint
+  const handleRetry = useCallback(async () => {
+    if (!data.documentId) return
+
+    setIsRetrying(true)
+    setDocumentStatus('uploading')
+    setStatus('processing', 'Retrying...')
+    updateFlowData({ uploadStatus: 'uploading', uploadError: null })
+
+    try {
+      const token = await getToken()
+      if (!token) throw new Error('Not authenticated')
+
+      const formData = new FormData()
+      formData.append('document_id', data.documentId)
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/api/document/retry-ocr`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || 'Retry failed')
+      }
+
+      // Realtime subscription will handle status updates
+      setDocumentStatus('uploading')
+      updateFlowData({ uploadStatus: 'processing' })
+
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Retry failed'
+      updateFlowData({ uploadStatus: 'error', uploadError: message })
+      setStatus('error', message)
+      setDocumentStatus('failed')
+    } finally {
+      setIsRetrying(false)
+    }
+  }, [data.documentId, getToken, setStatus, updateFlowData])
+
+  // Regenerate metadata via SSE endpoint (manual regeneration)
+  // Note: Realtime subscription is disabled on metadata step, so no race condition
   const handleRegenerate = useCallback(async () => {
     if (!data.documentId) return
 
@@ -925,9 +1259,56 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
     updateFlowData({ metadataError: null })
     setStatus('processing', 'Regenerating metadata...')
 
-    await generateMetadata(data.documentId)
-    setIsRegenerating(false)
-  }, [data.documentId, generateMetadata, setStatus, updateFlowData])
+    const handleEvent = (event: AgentEvent) => {
+      addEvent(event)
+      if (event.type === 'tool') {
+        setStatus('processing', event.content)
+      } else if (event.type === 'error') {
+        updateFlowData({ metadataError: event.content })
+        setStatus('error', event.content)
+      }
+    }
+
+    try {
+      const token = await getToken()
+      if (!token) throw new Error('Not authenticated')
+
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = new AbortController()
+
+      await streamDocumentMetadata(
+        data.documentId,
+        handleEvent,
+        token,
+        abortControllerRef.current.signal
+      )
+
+      // After regeneration, fetch updated document
+      const { data: doc } = await supabase
+        .from('documents')
+        .select('display_name, tags, summary')
+        .eq('id', data.documentId)
+        .single()
+
+      if (doc) {
+        updateFlowData({
+          displayName: doc.display_name || '',
+          tags: doc.tags || [],
+          summary: doc.summary || '',
+        })
+      }
+
+      setStatus('idle', 'Review document details')
+
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
+      const message = error instanceof Error ? error.message : 'Regeneration failed'
+      updateFlowData({ metadataError: message })
+      setStatus('error', message)
+    } finally {
+      setIsRegenerating(false)
+    }
+  }, [data.documentId, getToken, supabase, addEvent, setStatus, updateFlowData])
 
   // Save metadata to database
   const handleSave = useCallback(async () => {
@@ -958,8 +1339,8 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
             document_id: data.documentId,
           })
 
-        // Ignore duplicate error (document already in stack)
-        if (stackError && !stackError.message.includes('duplicate')) {
+        // Ignore duplicate error (document already in stack) - use PostgreSQL error code
+        if (stackError && stackError.code !== '23505') {
           console.error('Failed to add to stack:', stackError)
         }
       }
@@ -984,6 +1365,8 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
 
   // Upload another - reset flow
   const handleUploadAnother = useCallback(() => {
+    setDocumentStatus(null)
+    setHasReceivedMetadata(false)
     updateFlowData({
       file: null,
       documentId: null,
@@ -1000,14 +1383,20 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
     setStatus('idle', 'Drop a file to get started')
   }, [updateFlowData, setStep, setStatus])
 
-  // No back navigation in new flow
+  // Empty - no back navigation in upload flow, but required by FlowHookResult interface
   const handleBack = useCallback(() => {}, [])
 
-  const stepProps: UploadFlowStepProps = {
+  // Memoize stepProps for performance
+  const stepProps: UploadFlowStepProps = useMemo(() => ({
     dropzone: {
       onFileSelect: handleFileSelect,
     },
-    processing: {},
+    processing: {
+      documentStatus,
+      hasMetadata: hasReceivedMetadata,
+      onRetry: handleRetry,
+      isRetrying,
+    },
     metadata: {
       data,
       onUpdate: updateFlowData,
@@ -1021,7 +1410,21 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
       onDone: handleDone,
       onUploadAnother: handleUploadAnother,
     },
-  }
+  }), [
+    handleFileSelect,
+    documentStatus,
+    hasReceivedMetadata,
+    handleRetry,
+    isRetrying,
+    data,
+    updateFlowData,
+    handleSave,
+    handleRegenerate,
+    isSaving,
+    isRegenerating,
+    handleDone,
+    handleUploadAnother,
+  ])
 
   return {
     step,
@@ -1034,18 +1437,40 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
 ```
 
 **Acceptance criteria:**
-- [ ] File upload triggers OCR + metadata generation
-- [ ] Processing step shows progress from SSE events
-- [ ] Metadata step receives AI-generated values
-- [ ] Regenerate re-runs metadata generation
+- [ ] File upload triggers instant return, Realtime subscription starts
+- [ ] Processing step shows progress based on Realtime status updates
+- [ ] Metadata step auto-populates when Realtime shows metadata complete
+- [ ] Retry button works for failed documents
+- [ ] Regenerate uses SSE endpoint for manual regeneration
 - [ ] Save writes to documents table + optional stack_documents
 - [ ] Done closes flow and refreshes page
 - [ ] Upload Another resets state
-- [ ] Proper abort controller cleanup
+- [ ] Proper abort controller cleanup for SSE
 
 ---
 
-### Task 9: Delete Old Step Components
+### Task 10: Add Missing Icon Exports
+
+**File:** `frontend/components/icons/index.ts`
+
+**Verify these icons are exported (add if missing):**
+- `Refresh` - for regenerate/retry button
+- `X` - for removing tags/stack
+- `Plus` - for adding tags
+- `ChevronDown` - for stack dropdown
+- `FileText` - for metadata step icon
+- `AlertCircle` - for error state
+- `Circle` - for progress indicators (unfilled)
+
+Check the existing barrel export and add any that are missing.
+
+**Acceptance criteria:**
+- [ ] All icons used in new components are exported
+- [ ] TypeScript finds all icon imports
+
+---
+
+### Task 11: Delete Old Step Components
 
 **Files to delete:**
 - `frontend/components/agent/flows/documents/upload/steps/upload-configure.tsx`
@@ -1063,36 +1488,28 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
 
 ---
 
-### Task 10: Add Missing Icon Exports
-
-**File:** `frontend/components/icons/index.ts`
-
-**Verify these icons are exported (add if missing):**
-- `Refresh` - for regenerate button
-- `X` - for removing tags/stack
-- `Plus` - for adding tags
-- `ChevronDown` - for stack dropdown
-- `FileText` - for metadata step icon
-
-Check the existing barrel export and add any that are missing.
-
-**Acceptance criteria:**
-- [ ] All icons used in new components are exported
-- [ ] TypeScript finds all icon imports
-
----
-
 ## Testing
 
 ### Manual Testing Checklist
 
 1. **Upload Flow**
    - [ ] Drop a PDF file
-   - [ ] See "Uploading document..." status
-   - [ ] See "Analyzing document..." with tool events
+   - [ ] See "Uploading document..." status (instant return)
+   - [ ] See "Extracting text..." status (via Realtime)
+   - [ ] See "Generating metadata..." status (via Realtime)
    - [ ] Arrive at metadata step with pre-filled values
 
-2. **Metadata Editing**
+2. **Realtime Updates**
+   - [ ] Status updates reflect in UI without polling
+   - [ ] Metadata populates automatically when backend completes
+   - [ ] Multiple uploads can be tracked (via different document_ids)
+
+3. **Failed Document Handling**
+   - [ ] Failed OCR shows error state with "Retry" button
+   - [ ] Retry triggers `POST /api/document/retry-ocr`
+   - [ ] Status updates after retry via Realtime
+
+4. **Metadata Editing**
    - [ ] Edit display name
    - [ ] Add a new tag
    - [ ] Remove an existing tag
@@ -1100,22 +1517,22 @@ Check the existing barrel export and add any that are missing.
    - [ ] Select a stack from dropdown
    - [ ] Remove stack selection
 
-3. **Regenerate**
+5. **Regenerate**
    - [ ] Click Regenerate button
-   - [ ] See loading state
+   - [ ] See loading state (SSE streaming)
    - [ ] Values update with new AI-generated content
 
-4. **Save**
+6. **Save**
    - [ ] Click Save Document
    - [ ] See loading state
    - [ ] Arrive at complete step
    - [ ] Verify document in database has metadata
 
-5. **Complete Actions**
+7. **Complete Actions**
    - [ ] "Upload Another" returns to dropzone
    - [ ] "Done" closes card and stays on page
 
-6. **Error Handling**
+8. **Error Handling**
    - [ ] Network error during upload shows error message
    - [ ] Metadata generation failure shows error but allows manual editing
    - [ ] Save failure shows error message
@@ -1126,9 +1543,9 @@ Check the existing barrel export and add any that are missing.
 
 This phase requires:
 - Phase 1 (Database): `display_name`, `tags`, `summary` columns on `documents` table
-- Phase 2 (Backend): `POST /api/document/metadata` endpoint operational
+- Phase 2.1 (Backend): Background processing chain with Realtime-compatible status updates
 
-If implementing before Phase 2 is complete, the metadata step will show errors but should still allow manual entry and saving.
+If implementing before Phase 2.1 is complete, the Realtime subscription will not receive updates and the flow will hang at processing.
 
 ---
 
@@ -1137,13 +1554,14 @@ If implementing before Phase 2 is complete, the metadata step will show errors b
 | File | Change |
 |------|--------|
 | `frontend/components/agent/stores/agent-store.ts` | Update types and helpers |
-| `frontend/lib/agent-api.ts` | Add `streamDocumentMetadata` function |
+| `frontend/hooks/use-document-realtime.ts` | New file - Realtime subscription hook |
 | `frontend/components/agent/flows/documents/upload/steps/upload-processing.tsx` | New file |
 | `frontend/components/agent/flows/documents/upload/steps/upload-metadata.tsx` | New file |
 | `frontend/components/agent/flows/documents/upload/steps/upload-complete.tsx` | Update props and messaging |
 | `frontend/components/agent/flows/documents/upload/steps/index.ts` | Update exports |
 | `frontend/components/agent/flows/documents/upload/metadata.ts` | Update flow config |
-| `frontend/components/agent/flows/documents/upload/use-upload-flow.ts` | Rewrite flow logic |
+| `frontend/lib/agent-api.ts` | Add `streamDocumentMetadata` function |
+| `frontend/components/agent/flows/documents/upload/use-upload-flow.ts` | Rewrite flow logic with Realtime |
 | `frontend/components/icons/index.ts` | Add any missing icons |
 
 **Files to delete:**
@@ -1154,3 +1572,36 @@ If implementing before Phase 2 is complete, the metadata step will show errors b
 | `frontend/components/agent/flows/documents/upload/steps/upload-extracting.tsx` |
 | `frontend/components/agent/flows/documents/upload/steps/extraction-method-card.tsx` |
 | `frontend/components/agent/flows/documents/upload/steps/field-tag-input.tsx` |
+
+---
+
+## Key Architecture Decisions
+
+### Why Realtime Instead of SSE
+
+**Previous approach (SSE):**
+- Frontend called `POST /api/document/upload` and waited for OCR
+- Then called `POST /api/document/metadata` with SSE stream for metadata
+- Required maintaining SSE connection and parsing events
+- Two separate network requests, blocking behavior
+
+**New approach (Realtime):**
+- Frontend calls `POST /api/document/upload` (instant return)
+- Backend runs OCR + metadata via BackgroundTasks, updates database
+- Frontend subscribes to Supabase Realtime for that document_id
+- Single network request, non-blocking, automatic updates
+
+**Benefits:**
+- Faster perceived performance (instant return)
+- Simpler frontend code (no SSE parsing for progress)
+- Consistent with rest of app (uses existing Realtime infrastructure)
+- Better error recovery (document status persisted in database)
+- User can close and reopen flow, status is preserved
+
+### SSE Still Used For Regenerate
+
+The "Regenerate" button still uses SSE via `POST /api/document/metadata` because:
+- It's a manual action that needs progress feedback
+- User is actively waiting and expects to see activity
+- The existing SSE infrastructure works well for this use case
+- Regenerate is less common than initial upload
