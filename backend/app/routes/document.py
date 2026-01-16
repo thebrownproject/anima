@@ -207,83 +207,63 @@ async def upload_and_ocr(
 
 @router.post("/document/retry-ocr")
 async def retry_ocr(
+    background_tasks: BackgroundTasks,
     document_id: str = Form(...),  # pyright: ignore[reportCallInDefaultInitializer]
     user_id: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
-    Retry OCR on an existing document (for failed OCR recovery).
+    Retry OCR on a failed document (async background).
 
     Use when:
     - File uploaded successfully but OCR failed
     - User clicks "Retry" button after error
 
+    Returns immediately. OCR runs in background.
+    Frontend watches progress via Supabase Realtime.
+
     Args:
+        background_tasks: FastAPI BackgroundTasks for async processing
         document_id: Existing document UUID
         user_id: From Clerk JWT (injected via auth dependency)
 
     Returns:
-        document_id, status, ocr_result
+        document_id, filename, status (always 'uploading')
     """
     supabase = get_supabase_client()
 
     # Verify document exists and user owns it
-    doc = supabase.table("documents").select("file_path, filename").eq("id", document_id).eq("user_id", user_id).single().execute()
+    doc = supabase.table("documents").select("file_path, filename, status").eq("id", document_id).eq("user_id", user_id).single().execute()
     if not doc.data:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Update status to processing
+    # Only allow retry on failed documents
+    if doc.data.get("status") not in ["failed", "uploading"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot retry OCR on document with status: {doc.data.get('status')}. Only 'failed' documents can be retried."
+        )
+
+    # Reset status to uploading and queue OCR
     supabase.table("documents").update({
-        "status": "processing"
+        "status": "uploading"
     }).eq("id", document_id).execute()
 
-    try:
-        # Get signed URL and run OCR
-        logger.info(f"Retrying OCR for document {document_id}")
-        signed_url = await create_signed_url(doc.data["file_path"])
-        ocr_result = await extract_text_ocr(signed_url)
+    logger.info(f"[{document_id}] Retrying OCR")
 
-        # Save/update OCR result
-        supabase.table("ocr_results").upsert({
-            "document_id": document_id,
-            "user_id": user_id,
-            "raw_text": ocr_result["text"],
-            "html_tables": ocr_result.get("html_tables"),
-            "page_count": ocr_result.get("page_count", 1),
-            "model": ocr_result.get("model", "mistral-ocr-latest"),
-            "processing_time_ms": ocr_result.get("processing_time_ms", 0),
-            "usage_info": ocr_result.get("usage_info", {}),
-            "layout_data": ocr_result.get("layout_data"),
-        }).execute()
+    # Queue OCR as background task
+    # Note: _run_ocr_background will await _run_metadata_background directly
+    background_tasks.add_task(
+        _run_ocr_background,
+        document_id,
+        doc.data["file_path"],
+        user_id,
+    )
 
-        # Update document status
-        supabase.table("documents").update({
-            "status": "ocr_complete"
-        }).eq("id", document_id).execute()
-
-        logger.info(f"OCR retry complete for document {document_id}")
-
-        return {
-            "document_id": document_id,
-            "filename": doc.data["filename"],
-            "status": "ocr_complete",
-            "ocr_result": {
-                "raw_text": ocr_result["text"],
-                "html_tables": ocr_result.get("html_tables"),
-                "page_count": ocr_result.get("page_count", 1),
-                "processing_time_ms": ocr_result.get("processing_time_ms", 0),
-                "model": ocr_result.get("model", "mistral-ocr-latest"),
-            }
-        }
-
-    except Exception as e:
-        logger.error(f"OCR retry failed for document {document_id}: {e}")
-        supabase.table("documents").update({
-            "status": "failed"
-        }).eq("id", document_id).execute()
-        raise HTTPException(
-            status_code=500,
-            detail=f"OCR processing failed: {str(e)}"
-        )
+    return {
+        "document_id": document_id,
+        "filename": doc.data["filename"],
+        "status": "uploading",
+    }
 
 
 @router.post("/document/metadata")
