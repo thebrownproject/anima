@@ -9,7 +9,7 @@ Metadata generation via /api/document/metadata.
 import logging
 from typing import Any, AsyncIterator
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..agents.document_processor_agent import process_document_metadata
