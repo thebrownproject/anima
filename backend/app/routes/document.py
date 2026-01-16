@@ -122,23 +122,31 @@ async def _run_metadata_background(
 
 @router.post("/document/upload")
 async def upload_and_ocr(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),  # pyright: ignore[reportCallInDefaultInitializer]
     user_id: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
-    Upload document and run OCR (synchronous).
+    Upload document and queue OCR processing (async background).
 
-    Returns full OCR result directly - no background processing.
-    Frontend can immediately show document preview after this completes.
+    Returns immediately after file upload. OCR runs in background.
+    Frontend watches progress via Supabase Realtime subscription.
+
+    Status flow:
+    - 'uploading' -> File saved, OCR queued
+    - 'processing' -> OCR in progress (set by background task)
+    - 'ocr_complete' -> Ready for extraction
+    - 'failed' -> OCR error (use retry-ocr endpoint)
 
     Args:
+        background_tasks: FastAPI BackgroundTasks for async processing
         file: Document file (PDF, JPG, PNG)
         user_id: From Clerk JWT (injected via auth dependency)
 
     Returns:
-        document_id, filename, status, ocr_result
+        document_id, filename, status (always 'uploading')
     """
-    # Check usage limit
+    # Check usage limit before upload
     can_upload = await check_usage_limit(user_id)
     if not can_upload:
         raise HTTPException(
@@ -153,7 +161,7 @@ async def upload_and_ocr(
     supabase = get_supabase_client()
 
     try:
-        # Create document record with 'processing' status
+        # Create document record with 'uploading' status
         supabase.table("documents").insert({
             "id": document_id,
             "user_id": user_id,
@@ -162,59 +170,38 @@ async def upload_and_ocr(
             "file_size_bytes": upload_result["file_size_bytes"],
             "mime_type": upload_result["mime_type"],
             "mode": "auto",  # Default, will be set properly during extraction
-            "status": "processing",
+            "status": "uploading",
         }).execute()
 
-        # Get signed URL and run OCR
-        logger.info(f"Starting OCR for document {document_id}")
-        signed_url = await create_signed_url(str(upload_result["file_path"]))
-        ocr_result = await extract_text_ocr(signed_url)
+        logger.info(f"[{document_id}] Document uploaded, queuing OCR")
 
-        # Save OCR result
-        supabase.table("ocr_results").upsert({
-            "document_id": document_id,
-            "user_id": user_id,
-            "raw_text": ocr_result["text"],
-            "html_tables": ocr_result.get("html_tables"),
-            "page_count": ocr_result.get("page_count", 1),
-            "model": ocr_result.get("model", "mistral-ocr-latest"),
-            "processing_time_ms": ocr_result.get("processing_time_ms", 0),
-            "usage_info": ocr_result.get("usage_info", {}),
-            "layout_data": ocr_result.get("layout_data"),
-        }).execute()
+        # Queue OCR as background task (runs after response returns)
+        # Note: _run_ocr_background will await _run_metadata_background directly
+        background_tasks.add_task(
+            _run_ocr_background,
+            document_id,
+            upload_result["file_path"],
+            user_id,
+        )
 
-        # Update document status to ocr_complete
-        supabase.table("documents").update({
-            "status": "ocr_complete"
-        }).eq("id", document_id).execute()
-
-        # Increment usage counter
-        await increment_usage(user_id)
-
-        logger.info(f"OCR complete for document {document_id}")
-
+        # Return immediately - frontend watches via Realtime
         return {
             "document_id": document_id,
             "filename": upload_result["filename"],
-            "status": "ocr_complete",
-            "ocr_result": {
-                "raw_text": ocr_result["text"],
-                "html_tables": ocr_result.get("html_tables"),
-                "page_count": ocr_result.get("page_count", 1),
-                "processing_time_ms": ocr_result.get("processing_time_ms", 0),
-                "model": ocr_result.get("model", "mistral-ocr-latest"),
-            }
+            "status": "uploading",
         }
 
     except Exception as e:
-        logger.error(f"OCR failed for document {document_id}: {e}")
-        # Update document status to failed
-        supabase.table("documents").update({
-            "status": "failed"
-        }).eq("id", document_id).execute()
+        logger.error(f"[{document_id}] Upload failed: {e}")
+        # Clean up: delete from storage if DB insert failed
+        try:
+            from ..services.storage import delete_document
+            await delete_document(upload_result["file_path"])
+        except Exception:
+            pass  # Best effort cleanup
         raise HTTPException(
             status_code=500,
-            detail=f"OCR processing failed: {str(e)}"
+            detail=f"Upload failed: {str(e)}"
         )
 
 
