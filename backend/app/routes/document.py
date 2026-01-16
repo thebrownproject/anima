@@ -24,6 +24,73 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+async def _run_ocr_background(
+    document_id: str,
+    file_path: str,
+    user_id: str,
+) -> None:
+    """
+    Run OCR processing in background.
+
+    On success: Updates status to 'ocr_complete' and awaits metadata generation.
+    On failure: Updates status to 'failed'.
+
+    Note: Background tasks cannot spawn other background tasks (no BackgroundTasks
+    instance available). Instead, we directly await _run_metadata_background().
+
+    Args:
+        document_id: Document UUID
+        file_path: Path in Supabase Storage
+        user_id: User who uploaded the document
+    """
+    supabase = get_supabase_client()
+
+    try:
+        # Update status to processing (OCR starting)
+        supabase.table("documents").update({
+            "status": "processing"
+        }).eq("id", document_id).execute()
+
+        # Get signed URL and run OCR
+        logger.info(f"[{document_id}] Background OCR starting")
+        signed_url = await create_signed_url(file_path)
+        ocr_result = await extract_text_ocr(signed_url)
+
+        # Save OCR result
+        supabase.table("ocr_results").upsert({
+            "document_id": document_id,
+            "user_id": user_id,
+            "raw_text": ocr_result["text"],
+            "html_tables": ocr_result.get("html_tables"),
+            "page_count": ocr_result.get("page_count", 1),
+            "model": ocr_result.get("model", "mistral-ocr-latest"),
+            "processing_time_ms": ocr_result.get("processing_time_ms", 0),
+            "usage_info": ocr_result.get("usage_info", {}),
+            "layout_data": ocr_result.get("layout_data"),
+        }).execute()
+
+        # Update document status to ocr_complete
+        supabase.table("documents").update({
+            "status": "ocr_complete"
+        }).eq("id", document_id).execute()
+
+        # Increment usage counter (OCR success = billable event)
+        await increment_usage(user_id)
+
+        logger.info(f"[{document_id}] Background OCR complete")
+
+        # Chain: directly await metadata generation (cannot use BackgroundTasks here)
+        # TODO: _run_metadata_background will be added in Task 3
+        await _run_metadata_background(document_id, user_id)
+
+    except Exception as e:
+        logger.error(f"[{document_id}] Background OCR failed: {e}")
+        # Update document status to failed
+        supabase.table("documents").update({
+            "status": "failed"
+        }).eq("id", document_id).execute()
+
+
 @router.post("/document/upload")
 async def upload_and_ocr(
     file: UploadFile = File(...),  # pyright: ignore[reportCallInDefaultInitializer]
