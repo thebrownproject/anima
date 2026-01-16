@@ -8677,3 +8677,73 @@ Before starting implementation, verify:
 5. After Phase 3 complete, proceed to Phase 4
 
 **All plans reviewed and ready for implementation.**
+
+---
+
+## Session 115 - 2026-01-16 - Phase 2.1 Implementation (Background Chain)
+
+**Feature**: Documents Redesign
+**Branch**: feature/documents-redesign (worktree)
+
+### Tasks Completed
+
+- [x] **Phase 2.1 Task 1: Add imports**:
+  - Added `BackgroundTasks` to FastAPI imports
+  - `process_document_metadata` was already imported
+
+- [x] **Phase 2.1 Task 2: Create _run_ocr_background()**:
+  - Async OCR processing with status updates
+  - Status flow: uploading → processing → ocr_complete/failed
+  - Chains to metadata generation on success
+
+- [x] **Phase 2.1 Task 3: Create _run_metadata_background()**:
+  - Fire-and-forget metadata generation
+  - Consumes events from document_processor_agent
+  - Failures logged but don't affect document status
+
+- [x] **Phase 2.1 Task 4: Refactor upload_and_ocr()**:
+  - Now returns instantly (~50ms) with status 'uploading'
+  - Queues OCR via BackgroundTasks
+  - Frontend tracks via Supabase Realtime
+
+- [x] **Phase 2.1 Task 5: Refactor retry_ocr()**:
+  - Same background task pattern as upload
+  - Only allows retry on failed/uploading documents
+
+- [x] **Phase 2.1 Tasks 7-8: Update documentation**:
+  - Updated backend/CLAUDE.md with processing flow diagram
+  - Updated routes/CLAUDE.md with new endpoint descriptions
+
+### Key Decisions
+
+| Decision | Choice | Reasoning |
+|----------|--------|-----------|
+| Background chain vs separate endpoints | Internal function chaining | Simpler, KISS, 1 HTTP request vs 3 |
+| Metadata failure handling | Fire-and-forget | Document stays usable at ocr_complete |
+| Task chaining pattern | Direct await (not nested BackgroundTasks) | BackgroundTasks unavailable in background context |
+
+### Commits
+
+- 49b0efb: add BackgroundTasks import
+- 24a7c64: add _run_ocr_background helper
+- d66eebe: add _run_metadata_background helper
+- e813959: refactor upload_and_ocr to instant return
+- e23247a: refactor retry_ocr to background pattern
+- 19acd9b: update CLAUDE.md docs
+
+### Tasks Remaining
+
+- [ ] Phase 2.1 Task 6: Manual testing (user verification)
+- [ ] Phase 3: Frontend upload flow redesign (11 tasks)
+- [ ] Phase 4: Frontend cleanup (17 tasks)
+
+### Next Session
+
+**Task**: Implement Phase 3 - Frontend Upload Flow Redesign
+
+**Process**:
+1. Run `/continue` with handover context
+2. Execute Phase 3 tasks via subagent-driven-development
+3. Create useDocumentRealtime hook
+4. Build UploadProcessing and UploadMetadata components
+5. Rewrite useUploadFlow hook
