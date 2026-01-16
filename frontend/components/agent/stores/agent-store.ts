@@ -4,10 +4,9 @@ import { devtools, persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 import type {} from '@redux-devtools/extension' // required for devtools typing
 import type { AgentEvent } from '@/lib/agent-api'
-import type { CustomField, ExtractionMethod } from '@/types/upload'
 
-// Upload step type (extends existing UploadStep with extraction states)
-export type UploadFlowStep = 'dropzone' | 'configure' | 'fields' | 'extracting' | 'complete'
+// Upload step type for new Realtime-driven flow
+export type UploadFlowStep = 'dropzone' | 'processing' | 'metadata' | 'complete'
 
 // Discriminated union for type-safe flow routing
 export type AgentFlow =
@@ -27,12 +26,14 @@ export type AgentFlow =
 export interface UploadFlowData {
   file: File | null
   documentId: string | null
-  documentName: string
-  extractionMethod: ExtractionMethod
-  customFields: CustomField[]
-  uploadStatus: 'idle' | 'uploading' | 'ready' | 'error'
+  displayName: string
+  tags: string[]
+  summary: string
+  stackId: string | null
+  stackName: string | null
+  uploadStatus: 'idle' | 'uploading' | 'processing' | 'ready' | 'error'
   uploadError: string | null
-  extractionError: string | null
+  metadataError: string | null
 }
 
 export type AgentStatus = 'idle' | 'processing' | 'waiting' | 'complete' | 'error'
@@ -66,12 +67,14 @@ interface AgentStore {
 export const initialUploadData: UploadFlowData = {
   file: null,
   documentId: null,
-  documentName: '',
-  extractionMethod: 'auto',
-  customFields: [],
+  displayName: '',
+  tags: [],
+  summary: '',
+  stackId: null,
+  stackName: null,
   uploadStatus: 'idle',
   uploadError: null,
-  extractionError: null,
+  metadataError: null,
 }
 
 export const useAgentStore = create<AgentStore>()(
@@ -180,23 +183,21 @@ function getStepStatusText(flowType: string, step: string): string {
   if (flowType === 'upload') {
     switch (step) {
       case 'dropzone': return 'Drop a file to get started'
-      case 'configure': return 'Configure extraction settings'
-      case 'fields': return 'Specify fields to extract'
-      case 'extracting': return 'Extracting...'
-      case 'complete': return 'Extraction complete'
+      case 'processing': return 'Analyzing document...'
+      case 'metadata': return 'Review document details'
+      case 'complete': return 'Document saved'
     }
   }
   // Default for other flows
   return 'Working...'
 }
 
-// Title helpers for flow steps (kept for backwards compatibility)
+// Title helpers for flow steps
 export function getUploadTitle(step: UploadFlowStep): string {
   switch (step) {
     case 'dropzone': return 'Upload Document'
-    case 'configure': return 'Configure Extraction'
-    case 'fields': return 'Specify Fields'
-    case 'extracting': return 'Extracting...'
+    case 'processing': return 'Processing'
+    case 'metadata': return 'Document Details'
     case 'complete': return 'Complete'
   }
 }
