@@ -15,8 +15,8 @@
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/document/upload` | POST | JWT | Upload file, run OCR, save to `ocr_results` |
-| `/api/document/retry-ocr` | POST | JWT | Retry OCR on failed documents |
+| `/api/document/upload` | POST | JWT | Upload file (instant), queue OCR + metadata as background tasks |
+| `/api/document/retry-ocr` | POST | JWT | Retry OCR on failed documents (queues background task) |
 | `/api/document/metadata` | POST | JWT | Generate AI metadata (SSE stream) |
 | `/api/agent/extract` | POST | JWT | Run extraction agent (SSE stream) |
 | `/api/agent/correct` | POST | JWT | Resume session with correction instruction |
@@ -32,7 +32,9 @@
 
 - **Form Data**: Agent/document endpoints use `Form(...)` for parameters, not JSON body
 
-- **Status Flow**: Documents go `processing` -> `ocr_complete` or `failed`. Extractions have `in_progress` -> `complete`
+- **Status Flow**: Documents go `uploading` -> `processing` -> `ocr_complete` or `failed`. Extractions have `in_progress` -> `complete`
+
+- **Background Task Chain**: `upload_and_ocr()` queues `_run_ocr_background()` which directly awaits `_run_metadata_background()` on success. Frontend tracks via Supabase Realtime. Note: Background tasks cannot spawn other background tasks (no `BackgroundTasks` instance available in background context).
 
 - **Usage Limits**: `document.py` checks `check_usage_limit()` before upload, calls `increment_usage()` after success
 

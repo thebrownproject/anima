@@ -41,9 +41,29 @@ See `app/agents/CLAUDE.md` for tools, data flow, and security patterns.
 
 | Route File | Endpoints |
 |------------|-----------|
-| `document.py` | `/api/document/upload`, `/api/document/retry-ocr` |
+| `document.py` | `/api/document/upload`, `/api/document/retry-ocr`, `/api/document/metadata` |
 | `agent.py` | `/api/agent/extract`, `/api/agent/correct`, `/api/agent/health` |
 | `test.py` | `/api/test/claude`, `/api/test/mistral` |
+
+## Document Processing Flow
+
+```
+Upload (instant return)
+     |
+     v
+BackgroundTask: OCR processing
+     | - Updates status: 'uploading' -> 'processing' -> 'ocr_complete'
+     | - On failure: status -> 'failed'
+     |
+     v on success (direct await, not BackgroundTasks chaining)
+Metadata generation (fire-and-forget)
+     | - Writes display_name, tags, summary to documents table
+     | - Failures logged but don't affect OCR status
+```
+
+- **Frontend tracking:** Supabase Realtime subscription on `documents` table
+- **Manual regenerate:** `POST /api/document/metadata` (SSE stream)
+- **Retry failed OCR:** `POST /api/document/retry-ocr`
 
 See `app/routes/CLAUDE.md` for auth, SSE streaming, and patterns.
 
