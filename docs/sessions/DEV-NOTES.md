@@ -8747,3 +8747,113 @@ Before starting implementation, verify:
 3. Create useDocumentRealtime hook
 4. Build UploadProcessing and UploadMetadata components
 5. Rewrite useUploadFlow hook
+
+---
+
+## Session 116 - 2026-01-16 - Phase 3 Implementation (Frontend Upload Flow)
+
+**Feature**: Documents Redesign
+**Branch**: feature/documents-redesign (worktree)
+
+### Tasks Completed
+
+All 11 Phase 3 tasks completed via subagent-driven-development:
+
+- [x] **Task 1: Update Agent Store Types**:
+  - Updated `UploadFlowStep` to new 4-step flow: `dropzone | processing | metadata | complete`
+  - Updated `UploadFlowData` interface with new fields: `displayName`, `tags`, `summary`, `stackId`, `stackName`, `metadataError`
+  - Updated `initialUploadData`, `getStepStatusText()`, `getUploadTitle()`
+  - Commit: a1bd21a
+
+- [x] **Task 2: Create useDocumentRealtime Hook**:
+  - New hook for Supabase Realtime subscription to document status updates
+  - Follows pattern from `useExtractionRealtime`
+  - Exports: `DocumentStatus`, `DocumentUpdate`, `RealtimeStatus`
+  - Commit: dc9fae6
+
+- [x] **Task 3: Create UploadProcessing Component**:
+  - Shows OCR/metadata generation progress with spinner
+  - Progress checklist with 3 items: Upload, Extract text, Generate metadata
+  - Error state with Retry button
+  - Commit: d957564
+
+- [x] **Task 4: Create UploadMetadata Component**:
+  - Edit AI-generated name, tags, summary
+  - Stack picker dropdown using `StackPickerContent`
+  - Regenerate and Save buttons with loading states
+  - Commit: 3345907
+
+- [x] **Task 5: Update UploadComplete Component**:
+  - Changed from "extraction" to "document saved" messaging
+  - Props: `documentName`, `onDone`, `onUploadAnother`
+  - Commit: df74d8c
+
+- [x] **Task 6: Update Steps Index Export**:
+  - Removed old component exports (UploadConfigure, UploadFields, UploadExtracting)
+  - Commit: 9930202
+
+- [x] **Task 7: Update Flow Metadata**:
+  - Updated steps array, icons, statusText, components mapping
+  - backableSteps: [] (no back in new flow)
+  - confirmationSteps: ['processing']
+  - Commit: e0fa941
+
+- [x] **Task 8: Add streamDocumentMetadata**:
+  - SSE streaming function for metadata regeneration
+  - Follows same pattern as `streamAgentExtraction`
+  - Commit: a973641
+
+- [x] **Task 9: Rewrite useUploadFlow Hook**:
+  - Complete rewrite for Realtime-driven flow
+  - Uses `useDocumentRealtime` for status updates
+  - Handlers: handleFileSelect, handleRealtimeUpdate, handleRetry, handleRegenerate, handleSave
+  - Commit: 136fc20
+
+- [x] **Task 10: Add Missing Icon Exports**:
+  - All required icons already exported (no changes needed)
+
+- [x] **Task 11: Delete Old Step Components**:
+  - Deleted: upload-configure.tsx, upload-fields.tsx, upload-extracting.tsx
+  - Deleted: extraction-method-card.tsx, field-tag-input.tsx
+  - Done in Task 9 commit
+
+### Build Status
+
+- `npm run build`: **PASSES** - TypeScript compiles, production build successful
+
+### Manual Testing Issue
+
+Upload flow stuck at "Uploading document..." during testing:
+- Frontend env missing `.env.local` (copied from main repo)
+- Dev servers restarted, but upload still not progressing
+- Added debug console.log statements to diagnose
+- Issue NOT resolved - needs investigation next session
+
+**Debug logging added to `use-upload-flow.ts`:**
+- `[Upload] Starting upload for:`
+- `[Upload] Getting auth token...`
+- `[Upload] Token received:`
+- `[Upload] Calling API:`
+- `[Upload] Response status:`
+- `[Upload] Success/Error response:`
+
+### Tasks Remaining
+
+- [ ] Debug upload flow issue (stuck at "Uploading document...")
+- [ ] Remove debug logging after fix
+- [ ] Complete manual testing checklist
+- [ ] Phase 4: Frontend cleanup (17 tasks)
+
+### Next Session
+
+**Task**: Debug and fix upload flow issue
+
+**Process**:
+1. Run `/continue` with this context
+2. Clear localStorage, refresh, try upload
+3. Check console for `[Upload]` debug messages
+4. Identify where the flow is getting stuck
+5. Fix the issue
+6. Remove debug logging
+7. Complete manual testing
+8. Begin Phase 4 if time permits

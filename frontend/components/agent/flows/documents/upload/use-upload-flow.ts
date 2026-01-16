@@ -125,6 +125,7 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
 
   // Handle file selection - upload then watch via Realtime
   const handleFileSelect = useCallback(async (file: File) => {
+    console.log('[Upload] Starting upload for:', file.name)
     updateFlowData({
       file,
       displayName: file.name.replace(/\.[^/.]+$/, ''), // Strip extension for default name
@@ -138,25 +139,31 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
     collapse()
 
     try {
+      console.log('[Upload] Getting auth token...')
       const token = await getToken()
+      console.log('[Upload] Token received:', token ? 'yes' : 'no')
       if (!token) throw new Error('Not authenticated')
 
       const formData = new FormData()
       formData.append('file', file)
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      console.log('[Upload] Calling API:', `${apiUrl}/api/document/upload`)
       const response = await fetch(`${apiUrl}/api/document/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       })
 
+      console.log('[Upload] Response status:', response.status)
       if (!response.ok) {
         const error = await response.json()
+        console.log('[Upload] Error response:', error)
         throw new Error(getUploadErrorMessage(response.status, error.detail))
       }
 
       const result = await response.json()
+      console.log('[Upload] Success response:', result)
 
       // Store document_id - Realtime subscription will start automatically
       updateFlowData({
@@ -166,6 +173,7 @@ export function useUploadFlow(): FlowHookResult<UploadFlowStep> & {
       setDocumentStatus(result.status as DocumentStatus)
 
     } catch (error) {
+      console.log('[Upload] Error caught:', error)
       const message = error instanceof Error ? error.message : 'Upload failed'
       updateFlowData({ uploadStatus: 'error', uploadError: message })
       setStatus('error', message)
