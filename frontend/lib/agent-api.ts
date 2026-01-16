@@ -279,3 +279,75 @@ export async function streamAgentExtraction(
     reader.releaseLock()
   }
 }
+
+/**
+ * Stream document metadata regeneration request.
+ *
+ * Uses fetch + ReadableStream with proper SSE buffering.
+ * Called when user clicks "Regenerate" on the metadata step.
+ *
+ * @param documentId - Document to regenerate metadata for (must have OCR cached)
+ * @param onEvent - Callback for each event
+ * @param authToken - Clerk auth token for Authorization header
+ * @param signal - AbortController signal for cancellation
+ */
+export async function streamDocumentMetadata(
+  documentId: string,
+  onEvent: OnEventCallback,
+  authToken: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const formData = new FormData()
+  formData.append('document_id', documentId)
+
+  const response = await fetch(`${API_URL}/api/document/metadata`, {
+    method: 'POST',
+    body: formData,
+    signal,
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(await getResponseError(response))
+  }
+
+  if (!response.body) {
+    throw new Error('No response body')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const text = decoder.decode(value, { stream: true })
+      buffer += text
+
+      const messages = buffer.split('\n\n')
+      buffer = messages.pop() || ''
+
+      for (const message of messages) {
+        if (!message.trim()) continue
+        const lines = message.split('\n')
+        for (const line of lines) {
+          processSSELine(line, onEvent)
+        }
+      }
+    }
+
+    if (buffer.trim()) {
+      const lines = buffer.split('\n')
+      for (const line of lines) {
+        processSSELine(line, onEvent)
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
