@@ -3,51 +3,42 @@ import * as Icons from '@/components/icons'
 import type { FlowMetadata } from '../../types'
 import type { UploadFlowStep } from '../../../stores/agent-store'
 
-// Step components
 import {
   UploadDropzone,
-  UploadConfigure,
-  UploadFields,
-  UploadExtracting,
+  UploadProcessing,
+  UploadMetadata,
   UploadComplete,
 } from './steps'
 
-/**
- * Static metadata for the upload flow.
- * Defines visual properties and step components.
- */
 export const uploadFlowMetadata: FlowMetadata<UploadFlowStep> = {
   type: 'upload',
 
-  steps: ['dropzone', 'configure', 'fields', 'extracting', 'complete'] as const,
+  steps: ['dropzone', 'processing', 'metadata', 'complete'] as const,
 
   icons: {
     dropzone: Icons.Upload,
-    configure: Icons.Settings,
-    fields: Icons.List,
-    extracting: Icons.Loader2,
+    processing: Icons.Loader2,
+    metadata: Icons.FileText,
     complete: Icons.Check,
   },
 
   statusText: {
     dropzone: 'Drop a file to get started',
-    configure: 'Configure extraction settings',
-    fields: 'Specify fields to extract',
-    extracting: 'Extracting...',
-    complete: 'Extraction complete',
+    processing: 'Analyzing document...',
+    metadata: 'Review document details',
+    complete: 'Document saved',
   },
 
   minimizedText: 'Continue file upload...',
 
   components: {
     dropzone: UploadDropzone,
-    configure: UploadConfigure,
-    fields: UploadFields,
-    extracting: UploadExtracting,
+    processing: UploadProcessing,
+    metadata: UploadMetadata,
     complete: UploadComplete,
   },
 
-  backableSteps: ['configure', 'fields'] as const,
+  backableSteps: [] as const, // No back navigation in new flow
 
-  confirmationSteps: ['configure', 'fields', 'extracting'] as const,
+  confirmationSteps: ['processing'] as const, // Only confirm close during processing
 }
