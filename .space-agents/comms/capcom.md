@@ -828,3 +828,35 @@ Space-Agents installed. HOUSTON standing by.
 - Move exploration folder from `staged/` to `complete/` when feature closes
 
 ---
+
+## [2026-01-25 18:58] Session 113
+
+**Branch:** main | **Git:** uncommitted changes
+
+### What Happened
+- Completed feature `stackdocs-830` (Superpowers to Space-Agents Migration) via orchestrated mode
+- Used Worker/Inspector/Analyst cycle for each of the 3 remaining tasks:
+  - `.5` Restructure Folders: Archived `docs/plans/` and `docs/sessions/` to `docs/archive/`, updated CLAUDE.md references
+  - `.6` Cleanup Commands: Archived 6 replaced commands (continue, wrap-up, handover-prompt, execute, orchestrate, issue) to `.claude/commands/archive/`, kept code-review.md and debug.md
+  - `.7` Cleanup Superpowers References: Updated `code-review.md` to remove superpowers prefix, verified no active CLAUDE.md references
+- Closed stale blocker bug `.10`
+- Additional cleanup requested by user:
+  - Moved `.claude/commands/archive/` → `docs/archive/commands/` for consolidated archive location
+  - Deleted `backend/scripts/migrate_devnotes_to_capcom.py` (one-time migration script, no longer needed)
+  - Deleted `backend/scripts/__pycache__/` (Python cache)
+  - Deleted `.space-agents/tmp/stackdocs-830/` (temporary mission prompts)
+  - Moved exploration folder from `staged/` → `complete/`
+
+### Decisions Made
+- Archived files left as historical records (no superpowers reference cleanup in docs/archive/)
+- Kept code-review.md and debug.md as they invoke superpowers skills that still exist and complement Space-Agents
+- Consolidated all archives under `docs/archive/` (plans, sessions, commands)
+
+### Gotchas
+- Worktree `.worktrees/documents-redesign/` still has old superpowers references - will resolve on merge/rebase
+- Analyst found terminology inconsistency in code-review.md (functional but could be cleaner)
+
+### Next Action
+- Pick next feature from Beads (`bd ready`) - Backend Production Hardening (e7z) has P1 tasks ready
+
+---

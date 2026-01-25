@@ -26,11 +26,9 @@ This project uses the **Space-Agents workflow** for planning and implementing fe
 | Plan    | `/exploration-plan`    | Task-by-task implementation plan in Beads     |
 | Execute | `/mission`             | Working code with Worker/Inspector/Analyst    |
 
-**Plan storage:** `docs/plans/` with kanban structure:
+**Plan storage:** Plans are now created directly in Beads via `/exploration-plan`. Use `bd list` and `bd ready` to view tasks.
 
-- `todo/` - Designed, ready to implement
-- `in-progress/` - Currently being worked on
-- `complete/` - Done
+> **Legacy plans:** Archived at `docs/archive/plans/` (read-only reference)
 
 **Session Commands:**
 
@@ -53,7 +51,7 @@ This project uses the **Space-Agents workflow** for planning and implementing fe
 | `docs/specs/ARCHITECTURE.md` | System design, data flows, API surface     |
 | `docs/specs/SCHEMA.md`       | Database tables, relationships, migrations |
 | `docs/specs/PRD.md`          | Product requirements, user stories         |
-| `docs/plans/roadmap/`        | IN-PROGRESS.md, TODO.md, COMPLETE.md, FUTURE.md |
+| `docs/archive/plans/roadmap/`| Legacy roadmap (archived)                  |
 | `.space-agents/comms/capcom.md` | Session history (CAPCOM - grep for context) |
 | `docs/CLAUDE.md`             | Planning index, workflow details           |
 | Beads                        | Issue tracking - use `bd list`, `bd show`, etc. |
