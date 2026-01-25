@@ -860,3 +860,41 @@ Space-Agents installed. HOUSTON standing by.
 - Pick next feature from Beads (`bd ready`) - Backend Production Hardening (e7z) has P1 tasks ready
 
 ---
+## [2026-01-25 19:05] Session 114
+
+**Branch:** main | **Git:** clean
+
+### What Happened
+- Brainstormed major product pivot: Stackdocs evolving from document extraction SaaS to "Living Workspace" (HAL-OS for the web)
+- Explored Fraser's HAL-OS repo (`~/Library/CloudStorage/OneDrive-Personal/HAL-OS/`) - understood OS metaphor (kernel=CLAUDE.md, storage=subsystems, apps=skills)
+- Explored Space-Agents repo (`~/Documents/space-agents/`) - understood Ralph loop, skill system, CAPCOM patterns
+- Reviewed AI Co-Founder competitive analysis (`/Users/fraserbrown/shiploop/.space-agents/exploration/ideas/2026-01-25-aicofounder-competitive-analysis/analysis.md`) - validated chat+canvas pattern (30k users, $100k revenue)
+- Created comprehensive exploration document: `.space-agents/exploration/ideas/2026-01-25-stackdocs-pivot-living-workspace/exploration.md`
+
+### Decisions Made
+- **Documents = File Explorer**: Keep existing Documents section as table-based file management (already built, still useful)
+- **Stacks = Canvas Workspaces**: Transform Stacks from tab-based views to draggable window canvases
+- **Keep existing nav**: Header + SubBar parallel routes stay, Agent Bar stays at bottom
+- **Canvas tech**: CSS Grid + Framer Motion drag (already using Framer, full control)
+- **MVP window types**: DocumentWindow, TableWindow, NotesWindow
+- **New component structure**: `components/canvas/` folder with StackCanvas, CanvasWindow, window types
+
+### Architecture Captured
+```
+Documents page → File browser (keep as-is)
+Stacks page → Canvas workspaces (transform)
+  └── StackDetailClient content replaced with StackCanvas
+      └── Draggable windows (Document, Table, Notes)
+```
+
+### In Progress
+- Exploration complete, document in `ideas/` folder
+- Ready for `/exploration-plan` to break Phase 1 into Beads tasks
+- No code changes this session (brainstorm only)
+
+### Next Action
+- Run `/exploration-plan` to create Phase 1 tasks in Beads
+- Build canvas foundation: StackCanvas, CanvasWindow, DocumentWindow
+- Replace StackDetailClient tab content with canvas
+
+---
