@@ -1,4 +1,8 @@
-# Stack Agent Routes Implementation Plan
+# Stack Agent Routes Implementation Plan [ARCHIVED]
+
+> **MIGRATED TO BEADS:** All tasks have been migrated to Beads issue tracker as epic `stackdocs-drg`.
+> Use `bd show stackdocs-drg` to view the epic and its child tasks.
+> This file is kept for historical reference and detailed implementation notes.
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 

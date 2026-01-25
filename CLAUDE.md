@@ -18,13 +18,13 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Development Workflow
 
-This project uses the **superpowers workflow** for planning and implementing features:
+This project uses the **Space-Agents workflow** for planning and implementing features:
 
-| Phase   | Skill                       | Output                                        |
-| ------- | --------------------------- | --------------------------------------------- |
-| Design  | `/superpowers:brainstorm`   | Design doc with requirements and architecture |
-| Plan    | `/superpowers:write-plan`   | Task-by-task implementation plan              |
-| Execute | `/superpowers:execute-plan` | Working code with review checkpoints          |
+| Phase   | Skill                  | Output                                        |
+| ------- | ---------------------- | --------------------------------------------- |
+| Explore | `/exploration`         | Brainstorm, debug, plan, or review modes      |
+| Plan    | `/exploration-plan`    | Task-by-task implementation plan in Beads     |
+| Execute | `/mission`             | Working code with Worker/Inspector/Analyst    |
 
 **Plan storage:** `docs/plans/` with kanban structure:
 
@@ -34,11 +34,11 @@ This project uses the **superpowers workflow** for planning and implementing fea
 
 **Session Commands:**
 
-| Command | When to Use |
-|---------|-------------|
-| `/continue` | Start of session - loads context, waits for direction |
-| `/wrap-up` | End of session - updates plans, DEV-NOTES, commits |
-| `/handover-prompt` | Mid-session handover - creates prompt for next session |
+| Command   | When to Use |
+|-----------|-------------|
+| `/launch` | Start of session - loads context, displays project status |
+| `/land`   | End of session - syncs CAPCOM and Beads, commits |
+| `/capcom` | Check mission status and progress |
 
 **MCP Tools Guide:**
 
@@ -54,9 +54,9 @@ This project uses the **superpowers workflow** for planning and implementing fea
 | `docs/specs/SCHEMA.md`       | Database tables, relationships, migrations |
 | `docs/specs/PRD.md`          | Product requirements, user stories         |
 | `docs/plans/roadmap/`        | IN-PROGRESS.md, TODO.md, COMPLETE.md, FUTURE.md |
-| `docs/sessions/DEV-NOTES.md` | Session history (NEVER read full - grep for context) |
+| `.space-agents/comms/capcom.md` | Session history (CAPCOM - grep for context) |
 | `docs/CLAUDE.md`             | Planning index, workflow details           |
-| `docs/plans/issues/`         | Issue tracking (ACTIVE.md + COMPLETED.md)  |
+| Beads                        | Issue tracking - use `bd list`, `bd show`, etc. |
 
 ---
 

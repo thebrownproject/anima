@@ -1,4 +1,8 @@
-# Backend Production Hardening Implementation Plan
+# Backend Production Hardening Implementation Plan [ARCHIVED]
+
+> **MIGRATED TO BEADS:** All tasks have been migrated to Beads issue tracker as epic `stackdocs-e7z`.
+> Use `bd show stackdocs-e7z` to view the epic and its child tasks.
+> This file is kept for historical reference and detailed implementation notes.
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
