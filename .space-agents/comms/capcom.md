@@ -898,3 +898,37 @@ Stacks page → Canvas workspaces (transform)
 - Replace StackDetailClient tab content with canvas
 
 ---
+
+## [2026-01-26 14:30] Session 115
+
+**Branch:** main | **Git:** clean
+
+### What Happened
+- Reviewed Beads structure: 4 epics with subtasks (e7z, 7vb, drg, 4z3) + 31 orphan items migrated from ACTIVE.md
+- Discussed organizing orphans into type-based epics (bugs, features, tasks) - decided against it since Beads already tracks type via `--type` filter
+- Discovered documents-redesign worktree at `.worktrees/documents-redesign` with 34 commits of Phase 1-3 work
+- Merged worktree back to main:
+  1. `git merge main` (in worktree) - brought Space-Agents setup into worktree
+  2. Resolved 2 doc conflicts (file location + IN-PROGRESS.md content)
+  3. `git merge feature/documents-redesign` (from main) - fast-forward merge
+  4. Cleaned up: `git worktree remove`, `git branch -d`
+- Started frontend (localhost:3000) and backend (localhost:8000) to verify merge
+- Tested upload flow - found bug: stuck on "Uploading document..." screen
+
+### Decisions Made
+- **Keep orphan items flat**: Type filtering (`bd list --type=bug`) already provides categorization; epics should group related work, not categories
+- **Merge strategy**: Merge main INTO worktree first (resolve conflicts there), then merge back to main (fast-forward)
+
+### Gotchas
+- Worktree venvs are gitignored - after deleting worktree, backend venv needed recreation in main
+- Can't `git checkout main` from worktree if main is already checked out elsewhere
+
+### In Progress
+- Documents Redesign feature merged but has upload flow bug
+- Upload stuck at "Uploading document..." step - doesn't progress to OCR/metadata steps
+
+### Next Action
+- Debug upload flow: check `use-upload-flow.ts`, `use-document-realtime.ts`, and backend `/api/document/upload` endpoint
+- Verify Realtime subscription is receiving status updates from backend
+
+---
