@@ -1,10 +1,16 @@
-# Active Issues
+# Active Issues [ARCHIVED]
 
-Lightweight tracking for items that don't need immediate action.
+> **MIGRATED TO BEADS:** All 31 issues have been migrated to the Beads issue tracker.
+> Use `bd list` to view issues or `bd show <id>` for details.
+> This file is kept for historical reference only.
 
-**Categories:** `bug` | `deprecation` | `tech-debt` | `feature`
+---
 
-**Workflow:** Notice something → add a line → move to COMPLETED.md when done
+~~Lightweight tracking for items that don't need immediate action.~~
+
+~~**Categories:** `bug` | `deprecation` | `tech-debt` | `feature`~~
+
+~~**Workflow:** Notice something → add a line → move to COMPLETED.md when done~~
 
 ---
 

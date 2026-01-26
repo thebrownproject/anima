@@ -85,3 +85,6 @@ temp/
 backend/spikes/spike_session_id.txt
 backend/spikes/*.tmp
 backend/spikes/test_*
+
+# bv (beads viewer) local config and caches
+.bv/

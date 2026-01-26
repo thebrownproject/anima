@@ -6,9 +6,9 @@
 - Phase 1 (Database): ✅ Complete - migration applied
 - Phase 2 (Backend Agent): ✅ Complete - document_processor_agent built
 - Phase 2.1 (Auto-trigger): ✅ Complete - background chain implemented
-- Phase 3 (Upload Flow): Not started
+- Phase 3 (Upload Flow): ✅ Complete - new upload steps built
 - Phase 4 (Frontend Cleanup): Not started
-- **Status**: Backend complete, frontend next
+- **Status**: Backend + upload flow complete, cleanup next
 - Blocks: Stacks UI completion (extraction moving to Stacks only)
 
 **Stacks UI** (`plans/in-progress/stacks/`) - Paused

@@ -1,4 +1,8 @@
-# Documents Redesign - Implementation Plan
+# Documents Redesign - Implementation Plan [ARCHIVED]
+
+> **MIGRATED TO BEADS:** All tasks have been migrated to Beads issue tracker as epic `stackdocs-7vb`.
+> Use `bd show stackdocs-7vb` to view the epic and its child tasks.
+> This folder is kept for historical reference and detailed implementation notes.
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 

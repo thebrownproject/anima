@@ -1,4 +1,8 @@
-# Stacks Feature Implementation Plan
+# Stacks Feature Implementation Plan [ARCHIVED]
+
+> **MIGRATED TO BEADS:** Remaining tasks have been migrated to Beads issue tracker as epic `stackdocs-4z3`.
+> Phases 1-2 are complete. Phase 3 deferred tasks (pending indicator, CSV export) are now in Beads.
+> Use `bd show stackdocs-4z3` to view the epic and its child tasks.
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
