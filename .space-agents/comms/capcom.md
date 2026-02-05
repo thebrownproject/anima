@@ -1048,3 +1048,47 @@ Stacks page → Canvas workspaces (transform)
 - Phase 6: Stretch goals
 
 ---
+
+## [2026-02-06 09:30] Session 116
+
+**Branch:** main | **Git:** uncommitted (spec artifact)
+
+### What Happened
+- Deep brainstorm session to revise Stackdocs v2 architecture from previous session's spec
+- Dispatched 4 parallel research agents to comprehensively analyze the current codebase:
+  - Frontend: App Router structure, agent flow system, Zustand stores, Supabase Realtime hooks, SSE consumption patterns
+  - Backend: Agent SDK usage, tool factory pattern, MCP server registration, SSE streaming, session resume
+  - Database: Full schema (8 tables, 10 migrations, RPC functions, RLS policies, storage bucket)
+  - Integrations: Clerk auth flow, Mistral OCR, Anthropic API, real-time communication channels
+- Worked through 6 major architecture decisions with Fraser (see Decisions Made)
+- Researched Sprites.dev (Fly.io's new product, launched Jan 2026) — significantly different from Fly Machines
+- Created comprehensive revised spec at `.space-agents/exploration/ideas/2026-02-06-stackdocs-v2-revised-architecture/spec.md`
+
+### Decisions Made
+1. **Python on Sprites** (not Node.js) — Preserve existing agent code (~1000 lines), avoid rewrite
+2. **Keep Supabase (trimmed)** — Strip to just `users` table with sprite mapping, billing, usage
+3. **Keep Vercel for frontend** — SSR, CDN, zero-config stays. Browser connects to Fly.io Bridge for WebSocket
+4. **Raw `ws` library** (not Socket.io) — 1:1 user-to-Sprite mapping, standard protocol
+5. **Sprites.dev for per-user VMs** — No Docker images; auto-sleep, checkpoints, 100GB persistent storage
+6. **One repo** — Add `bridge/` and `sprite/` alongside `frontend/` and `backend/`
+
+### Key Architecture
+- Vercel (www.stackdocs.io) — Next.js frontend, Clerk auth
+- Fly.io Bridge (ws.stackdocs.io) — ~300 line Node.js WS proxy, API key injection
+- Sprites.dev (per-user) — Python runtime, Claude Agent SDK, SQLite, 100GB filesystem
+
+### Gotchas
+- Sprites.dev does NOT use Docker images — standardized base Linux, code deployed via API
+- Sprites auto-sleep after 30s inactivity — need reconnection handling
+- Clerk JWT expires every 60s — 50s refresh pattern must carry to WebSocket connections
+- PostgreSQL TEXT[] arrays have no SQLite equivalent — must use JSON arrays
+
+### Documents Created
+- `.space-agents/exploration/ideas/2026-02-06-stackdocs-v2-revised-architecture/spec.md`
+
+### Next Action
+- `/brainstorm` Canvas UI design and MVP scope refinement
+- Then `/plan` to create implementation tasks from revised spec
+- Test Sprites.dev API: create sprite, exec commands, filesystem writes
+
+---
