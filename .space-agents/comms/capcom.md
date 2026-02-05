@@ -958,3 +958,93 @@ Stacks page → Canvas workspaces (transform)
 - Or continue with Phase 4 frontend cleanup tasks
 
 ---
+## [2026-02-06 08:51] Session 115
+
+**Branch:** main | **Git:** uncommitted (exploration artifacts)
+
+### What Happened
+- Brainstormed Stackdocs v2 pivot from multi-tenant SaaS to sovereign agent platform
+- Expored architectural overhaul: Vercel/Supabase/FastAPI → Fly.io-only platform
+- Validated Sprite-local storage architecture (docs + SQLite on each Sprite)
+- Researched v1 codebase with 4 parallel agents to identify patterns to preserve
+- Discovered WebSocket timeout issue in current architecture (likely Vercel 10s limit)
+- Confirmed cost model: 100GB Sprite storage = $1.97/month cold, $49.85/month hot
+- Decided target pricing $100-500/month makes Sprite architecture viable
+
+### Decisions Made
+- **Full Fly.io migration**: No Vercel, no Supabase PostgreSQL/Storage, no FastAPI backend
+- **Sprite-local storage**: Documents, OCR cache, SQLite all on Sprite filesystem (true isolation)
+- **Remove all shared infrastructure**: Only Clerk (auth), Stripe (billing), Anthropic/Mistral (via Gateway proxy)
+- **Dual-Pane Canvas UI**: Left pane (chat/missions) + Right pane (real-time agent workspace)
+- **Commander + specialist agents**: Orchestrator pattern with Researcher/Analyst/Coder specialists
+- **WebSocket bridge**: Gateway proxies browser connections to private Sprites over Fly 6PN network
+- **Security proxy**: Gateway injects API keys (ANTHROPIC_API_KEY, Mistral), Sprites never touch keys
+- **1-month MVP timeline**: Demo to consulting company, essential features only
+
+### Architecture (v1 → v2)
+**Preserve from v1:**
+- Tool factory pattern (scoped closures for Sprite security)
+- Claude Agent SDK patterns (MCP server, session resume, streaming)
+- Frontend patterns (Zustand stores, resizable panels, TanStack Table, agent flow system)
+- Session persistence (VARCHAR(50) for Agent SDK)
+
+**New components:**
+- Gateway (Next.js 15 + Socket.io): WebSocket server, OCR proxy, security proxy, Clerk auth
+- Sprite (Fly.io microVM): Node.js + Agent SDK, SQLite DB, 100GB filesystem, bash/Python access
+- Canvas UI: Dual-pane workspace with real-time artifact rendering (tables, markdown, charts)
+- WebSocket bridge: Browser ↔ Gateway ↔ Sprite (6PN private network)
+
+**Remove entirely:**
+- FastAPI backend (functionality moves to Gateway/Sprites)
+- Supabase PostgreSQL (user data moves to Sprite-local SQLite)
+- Supabase Storage (documents move to Sprite filesystems)
+- Vercel hosting (everything moves to Fly.io for WebSocket support)
+
+### Research Findings
+- **Extraction agent**: Already uses Claude Agent SDK, ~1,009 lines, can copy directly to Sprite runtime
+- **Database**: Clerk JWT + RLS pattern concept applies to Sprite isolation; `stacks` table → `sprites` with agent_config JSONB
+- **Frontend**: Agent flow system extends to Canvas; Supabase Realtime pattern adapts to Sprite WebSocket
+- **OCR/Storage**: Mistral OCR integration with signed URLs; move caching from Supabase to Sprite-local
+- **WebSocket timeout**: Current architecture has 10s limit (Vercel or Supabase Realtime), Fly.io solves this
+
+### Documents Created
+- `.space-agents/exploration/ideas/2026-02-06-stackdocs-v2-sovereign-agents/original-prompt.md`: Initial vision document
+- `.space-agents/exploration/ideas/2026-02-06-stackdocs-v2-sovereign-agents/spec.md`: Comprehensive exploration spec with architecture, requirements, constraints, cost model, research summary
+
+### MVP Scope (1-month demo)
+**Essential:**
+- Single Sprite deployment (manual fly launch)
+- Document extraction working (reuse current agents)
+- Canvas UI showing results (table/markdown renderer)
+- WebSocket bridge streaming live updates
+- Bash access demonstration
+- Commander + specialist agent architecture
+
+**Stretch:**
+- Time travel/checkpoints
+- Rich Canvas visualizations (Plotly)
+- Multi-agent crews (parallel specialists)
+- Terminal view component
+
+**Explicitly out of scope:**
+- Multi-user support (demo has 1 hardcoded Sprite)
+- Auto-provisioning (manual Sprite deploy)
+- Billing integration (architecture demo only)
+- Document sharing between Sprites (isolation by design)
+
+### Gotchas
+- Vercel WebSocket timeout is real issue (validates Fly.io migration)
+- Cost model works: 100GB Sprite = $1.97/month cold storage, viable at $100-500 pricing
+- No code changes this session (exploration only)
+- Existing v1 codebase patterns largely reusable with adaptation
+
+### Next Action
+- Run `/plan` to create implementation tasks from spec.md
+- Phase 1: Monorepo setup + Gateway scaffold
+- Phase 2: Sprite runtime + Commander agent
+- Phase 3: WebSocket bridge + Canvas UI foundation
+- Phase 4: OCR proxy + document extraction flow
+- Phase 5: Multi-agent crews + bash demonstration
+- Phase 6: Stretch goals
+
+---
