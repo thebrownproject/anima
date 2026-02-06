@@ -1138,3 +1138,36 @@ Stacks page → Canvas workspaces (transform)
 - Need Fly.io account and Sprites.dev API token before implementation
 
 ---
+
+## [2026-02-06 14:30] Session 118
+
+**Branch:** main | **Git:** uncommitted (spec update)
+
+### What Happened
+- Full architecture review of the v2 spec before committing to `/plan`
+- Walked through every major system boundary: Bridge scaling, file uploads, Sprite lifecycle, API keys, Canvas awareness, pre-compaction, message protocol, SQLite concurrency, Sprite provisioning, frontend routing, v1 migration
+- Sent research agent to investigate Claude Agent SDK compaction support — found server-side compaction beta (`compact-2026-01-12`) with `pause_after_compaction` hook, but `claude-agent-sdk` doesn't expose it
+- Updated spec at `.space-agents/exploration/ideas/2026-02-06-stackdocs-v2-revised-architecture/spec.md` with all findings
+
+### Decisions Made
+1. **Bridge scaling**: Single Fly.io Machine for MVP, horizontally scalable by design (connection state only)
+2. **File uploads**: Base64 over WS is fine — per-user connections, most files 1-5MB, no cross-user blocking
+3. **API keys**: Platform keys for MVP, BYOK post-MVP
+4. **Sprite provisioning**: Lazy — created on first stack open, not at signup
+5. **Message IDs**: Mandatory UUIDs on all WS messages, `request_id` for response correlation
+6. **Canvas**: Two-way awareness — agent receives Canvas state at session start + user interactions
+7. **Pre-compaction flush**: Deferred to post-MVP (requires raw Anthropic SDK, claude-agent-sdk doesn't expose compaction controls)
+8. **SQLite**: WAL mode, serialize subagent writes through main agent or write queue
+9. **Frontend**: Build v2 into existing repo as spike, reuse shadcn/Clerk/chat bar components
+10. **v1 migration**: Clean slate — no existing users, no migration needed
+
+### Gotchas
+- `claude-agent-sdk` wraps Claude Code and does NOT expose compaction/token management APIs — for pre-compaction flush, need raw `anthropic` SDK with custom agentic loop (post-MVP)
+- Server-side compaction beta (`compact-2026-01-12`) only supports Opus 4.6 currently
+- Minimum compaction threshold is 50,000 tokens
+
+### Next Action
+- `/plan` to create implementation tasks from the finalized + reviewed spec
+- Phase 1 should be Sprites.dev proof-of-concept (validate Service auto-restart on wake)
+
+---

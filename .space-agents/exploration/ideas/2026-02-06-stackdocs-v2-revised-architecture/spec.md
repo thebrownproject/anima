@@ -100,12 +100,18 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
 - [x] API keys injected as env vars at Service start on Sprite
 - [x] JWT validated on WebSocket connect only (trust connection, Clerk webhook for revocation)
 - [x] Full Claude Agent SDK on Sprite (Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, subagents, MCP, hooks)
+- [x] Platform API keys for MVP (BYOK option post-MVP)
+- [x] Lazy Sprite provisioning (created on first stack open, not at signup)
+- [x] Single Bridge Machine for MVP (horizontally scalable — connection state only, no persistent state)
+- [x] Mandatory UUIDs on all WebSocket messages (responses include `request_id`)
+- [x] Build v2 Canvas into existing frontend repo as spike (reuse shadcn, Clerk, chat bar)
 
 ### Canvas UI (Decided)
 
 - [x] React Flow (@xyflow/react) for infinite canvas with pan/zoom/grid
 - [x] Window types: Document, Table, Notes (MVP)
 - [x] Agent creates/updates/closes windows via WebSocket canvas_update messages
+- [x] Two-way Canvas awareness — agent receives Canvas state at session start + user interactions (close, edit, resize)
 - [x] Subbar as window manager (tabs for each window)
 - [x] Zustand + localStorage for Canvas state persistence
 - [x] Nested message format: `{ type: 'canvas_update', payload: { command, ... } }`
@@ -117,7 +123,7 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
 - [x] MEMORY.md — Persistent global memory, curated summaries
 - [x] memory/YYYY-MM-DD.md — Daily journals, append-only
 - [x] JSONL audit transcripts — Immutable record of all tool calls
-- [x] Pre-compaction memory flush — Silent agentic turn before context overflow
+- [x] Pre-compaction memory flush — Post-MVP (requires raw Anthropic SDK `pause_after_compaction`; claude-agent-sdk doesn't expose compaction controls)
 - [x] Heartbeat system — Periodic proactive agent wake-ups
 - [x] Hybrid BM25 + vector search via SQLite FTS5
 
@@ -289,6 +295,8 @@ CREATE TABLE public.stacks (
 );
 ```
 
+**Sprite provisioning lifecycle:** Stack record created at signup (`sprite_status: 'pending'`, `sprite_name: NULL`). On first stack open, Bridge provisions Sprite from golden checkpoint → `provisioning` → `active`. Lazy provisioning avoids paying for unused VMs.
+
 Everything else (documents, extractions, OCR, stacks data) lives on the Sprite's SQLite.
 
 ### Sprite SQLite Schema (On-Sprite)
@@ -355,7 +363,8 @@ interface WebSocketMessage {
   type: string
   payload: any
   timestamp: number
-  id?: string  // For request/response correlation
+  id: string          // Mandatory UUID on every message
+  request_id?: string // References the request this is responding to
 }
 
 // === Browser -> Sprite ===
@@ -651,7 +660,7 @@ Bridge sends periodic pings to Sprite to prevent 30s auto-sleep. Pings stop when
 - **Sprites.dev API** — Must use Sprites API for provisioning, exec, filesystem, checkpoints, services. No Docker images.
 - **Clerk JWT** — 60-second token lifetime. Validated once on WS connect. Clerk webhook for revocation.
 - **Python Agent SDK** — Claude Agent SDK is Python. Must stay Python on Sprites.
-- **SQLite limitations** — No TEXT[] arrays (use JSON), no stored procedures, no GIN indexes.
+- **SQLite limitations** — No TEXT[] arrays (use JSON), no stored procedures, no GIN indexes. Enable WAL mode for concurrent reads. Subagent writes should serialize through main agent or write queue.
 - **Base64 file encoding** — 33% overhead on wire for document uploads. 25MB file size limit.
 - **Sprites.dev regions** — Verify latency from Australia for real-time Canvas updates.
 
@@ -867,7 +876,28 @@ Same engine. Different interface. Different audience. Same power.
 - Subbar as window manager (taskbar pattern)
 - Component structure in `frontend/components/canvas/`
 
+### Session 118 — Architecture Review
+
+**Compaction / pre-compaction flush** (research agent):
+- Anthropic Messages API has server-side compaction beta (`compact-2026-01-12`)
+- `pause_after_compaction: true` returns `stop_reason == "compaction"` — this IS the hook for pre-compaction flush
+- Token counting API: `client.messages.count_tokens()` for proactive monitoring
+- **BUT** `claude-agent-sdk` does NOT expose compaction controls — it manages its own context internally
+- For pre-compaction flush, need raw `anthropic` SDK with custom agentic loop
+- Decision: Keep `claude-agent-sdk` for MVP, add raw SDK compaction post-MVP
+
+**Architecture review findings** (no changes to core decisions):
+- Bridge: single Machine for MVP, horizontally scalable by design (connection state only)
+- File uploads: base64 over WS is fine — per-user connection, most files 1-5MB, no cross-user blocking
+- Sprite provisioning: lazy (on first stack open, not at signup)
+- API keys: platform keys for MVP, BYOK post-MVP
+- Message protocol: mandatory UUIDs on all messages, `request_id` for response correlation
+- Canvas: two-way awareness — agent receives Canvas state + user interactions
+- SQLite: WAL mode for concurrent reads, serialize subagent writes
+- Frontend: build v2 into existing repo as spike, reuse shadcn/Clerk/chat bar components
+
 ---
 
 *Finalized: 2026-02-06, Session 117*
+*Reviewed: 2026-02-06, Session 118*
 *Previous version: Session 116 (architecture decisions only, Canvas/MVP/memory pending)*
