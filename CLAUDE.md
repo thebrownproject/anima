@@ -266,3 +266,4 @@ v1 tables (`documents`, `extractions`, `ocr_results`, etc.) still exist but are 
 5. **Sprites sleep after 30s** — Bridge keepalive prevents this during active sessions. Processes survive sleep (checkpoint), only TCP connections die.
 6. **Pre-compaction flush is post-MVP** — claude-agent-sdk doesn't expose compaction controls
 7. **Ask before adding** — No extra features without explicit request
+8. **Inspector bloat findings are not optional** — If a review/Inspector agent reports bloat (excessive lines, over-engineering, comment density), do NOT rationalize it away. Flag it to the user immediately and ask if they want a cleanup pass before continuing. Design targets (e.g. "~300 lines") are real constraints, not suggestions.
