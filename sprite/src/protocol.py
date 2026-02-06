@@ -527,11 +527,10 @@ def to_dict(message: ProtocolMessage) -> dict[str, Any]:
 
     # Handle CanvasUpdate blocks serialization specifically
     # (asdict already handles this, but we ensure correct structure)
-    if hasattr(message, "payload") and hasattr(message.payload, "blocks"):
-        if message.payload.blocks is not None:
-            result["payload"]["blocks"] = [
-                _serialize_block(b) for b in message.payload.blocks
-            ]
+    if message.type == "canvas_update" and message.payload.blocks is not None:
+        result["payload"]["blocks"] = [
+            _serialize_block(b) for b in message.payload.blocks
+        ]
 
     # Convert AgentEventMeta field names from snake_case to camelCase
     # to match the TypeScript interface (extractionId, sessionId)

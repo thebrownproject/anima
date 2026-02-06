@@ -1301,3 +1301,45 @@ Stacks page → Canvas workspaces (transform)
 - Start with: Define WebSocket message protocol (m7b.2.1) + React Flow canvas and base card (m7b.4.2) — both unblocked, can run in parallel
 
 ---
+
+## [2026-02-06 23:10] Session 123
+
+**Branch:** main | **Git:** uncommitted (protocol.py fix, beads)
+
+### What Happened
+- **Phase 1: Infrastructure Scaffold (m7b.2) — ACTIVATED, 2/9 tasks complete**
+- Ran orchestrated mission mode: Scout → Worker → Inspector cycle for each task
+
+**Task m7b.2.1: Define WebSocket message protocol — COMPLETE**
+- Created `bridge/src/protocol.ts` (449 lines) — TypeScript source of truth
+- Created `frontend/types/ws-protocol.ts` — frontend copy, imports `DocumentStatus` from `./documents` to avoid barrel collision
+- Created `sprite/src/protocol.py` (582 lines) — Python dataclasses matching TS exactly
+- All 8 message types (4 browser→sprite, 4 sprite→browser), 8 block types (composable card system)
+- Mandatory `id` (UUID) + `timestamp` on every message, type guard functions, `parseMessage()` utility
+- Fixed Pyright issue: replaced `hasattr()` union narrowing with `message.type == "canvas_update"` check
+- Inspector: PASS (7/7 requirements, quality clean)
+
+**Task m7b.2.2: Create Bridge project scaffold and WS server — COMPLETE**
+- Created `bridge/src/index.ts` (292 lines) — HTTP server, WS upgrade on `/ws/{stack_id}`, connection tracking
+- Created `bridge/src/auth.ts` (170 lines) — Clerk JWT validation via `@clerk/backend` `verifyToken()`, Supabase stack ownership lookup
+- Created `bridge/Dockerfile` (multi-stage Node 22), `bridge/fly.toml` (256MB, syd region)
+- Created `bridge/tests/auth.test.ts` (13 tests) + `bridge/tests/server.test.ts` (13 tests) — 26/26 pass
+- Auth flow: first message must be `type: 'auth'` with JWT, 10s timeout, 4001 (invalid JWT), 4003 (unauthorized stack)
+- Connection map: `Map<connectionId, { userId, stackId, spriteName, spriteStatus }>`
+- Inspector: PASS (6/6 requirements; info-level note about line count — protocol.ts inflates count, actual Bridge logic is ~462 lines)
+
+### Decisions Made
+1. **Barrel export strategy for DocumentStatus** — `ws-protocol.ts` uses `import type` from `./documents` rather than redefining. `export *` in index.ts works because `import type` doesn't re-export.
+2. **Protocol types stay as copies (not shared package)** — Inspector suggested `@stackdocs/protocol` package. Deferred as YAGNI for MVP. Current copy approach documented in each file.
+3. **Pyright narrowing via type check** — `message.type == "canvas_update"` instead of `hasattr(message.payload, "blocks")` for proper union type narrowing.
+
+### In Progress
+- **m7b.2.4 (golden checkpoint)** was next but requires live Sprites.dev interaction — paused for user decision on approach (manual vs automated via CLI)
+- **m7b.2.3 (Sprites API client)** is now unblocked (depends on m7b.2.2 which is done)
+
+### Next Action
+- Continue Phase 1: m7b.2.3 (Sprites API client + provisioning) is unblocked
+- Decide approach for m7b.2.4 (golden checkpoint) — manual procedure vs Sprites CLI automation
+- m7b.2.9 (Supabase migration) also unblocked and independent
+
+---
