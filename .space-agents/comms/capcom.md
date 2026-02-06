@@ -1092,3 +1092,49 @@ Stacks page → Canvas workspaces (transform)
 - Test Sprites.dev API: create sprite, exec commands, filesystem writes
 
 ---
+
+## [2026-02-06 12:30] Session 117
+
+**Branch:** main | **Git:** uncommitted (spec update)
+
+### What Happened
+- Finalized the Stackdocs v2 architecture spec — resolved ALL open questions from Session 116
+- Deep research via 4 subagents: Sprites.dev checkpoint behavior, OpenClaw memory architecture, Claude PDF capabilities, Openclaw gateway patterns
+- Worked through every architecture decision interactively with Fraser
+- Crystallized the core vision: "The agent IS the operating system" — Stackdocs v2 is a personal AI computer, not a SaaS
+- Updated spec at `.space-agents/exploration/ideas/2026-02-06-stackdocs-v2-revised-architecture/spec.md` — now comprehensive with all decisions captured
+- Updated MEMORY.md with "THE VISION" section at top so future sessions understand immediately
+
+### Decisions Made
+1. **Bridge-to-Sprite: TCP Proxy + Services API** (Option B) — WS server on Sprite defined as a Service, auto-restarts on wake, Bridge reconnects via TCP Proxy
+2. **One Sprite per STACK** (not per user) — each stack is its own isolated VM. Free tier: 1 stack. Stacks fully isolated for MVP.
+3. **Canvas UI merged from Jan 25 exploration** — React Flow, 3 window types (document, table, notes), nested canvas_update messages, subbar as taskbar
+4. **Full OpenClaw memory adoption** — soul.md (stack config), user.md (user prefs), MEMORY.md (global), daily journals, JSONL audit, heartbeat, pre-compaction flush, hybrid BM25+vector search via SQLite FTS5
+5. **API keys on Sprite** (env vars at Service start) — NOT proxied through Bridge. Simplifies pipeline from 17 steps to ~6.
+6. **Both Claude PDF + Mistral OCR** — agent decides which to use per document. Claude is simpler (one API), Mistral is cheaper ($2 vs $6.50 per 1K pages) and better for tables (96.6%). "Computer not SaaS" model.
+7. **JWT validated on WS connect only** — trust the connection, Clerk webhook for revocation. No 50s refresh timer.
+8. **Simple async lock** for MVP gateway (not full lane queue)
+9. **Base64 JSON** for file uploads over WebSocket (25MB limit)
+10. **Git pull + Service restart** for code deployment to Sprites
+11. **Full Claude Agent SDK on Sprite** — Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, subagents, MCP, hooks. Same capabilities as Claude Code.
+12. **Two-way gateway vision** — inbound (chat, files, webhooks, cron, heartbeat) + outbound (Canvas, API calls, exports, notifications)
+
+### Gotchas
+- Sprites.dev processes are KILLED on sleep, not frozen (no CRIU). Filesystem-only persistence.
+- Services auto-restart on wake has MEDIUM confidence — test during Phase 1
+- TCP connections die on every sleep/wake — Bridge MUST handle reconnection
+- 30s auto-sleep is aggressive — need keepalive pings from Bridge during active sessions
+- Cold wake time is 1-12 seconds — UI needs to handle this gracefully ("Sprite waking...")
+- Early reliability issues in Sprites.dev community (Jan/Feb 2026)
+- sftp-server mount to Openclaw was disconnected — couldn't read files directly, used web search instead
+
+### Documents Created
+- Updated: `.space-agents/exploration/ideas/2026-02-06-stackdocs-v2-revised-architecture/spec.md` (comprehensive, all sections finalized)
+- Updated: `.claude/projects/-Users-fraserbrown-stackdocs/memory/MEMORY.md` (added THE VISION section)
+
+### Next Action
+- `/plan` to create implementation tasks from the finalized spec
+- Phase 1: Bridge + Sprite scaffold (Fly.io Machine, Sprites API, TCP Proxy)
+- Need Fly.io account and Sprites.dev API token before implementation
+
+---
