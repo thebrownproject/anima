@@ -1171,3 +1171,36 @@ Stacks page → Canvas workspaces (transform)
 - Phase 1 should be Sprites.dev proof-of-concept (validate Service auto-restart on wake)
 
 ---
+
+## [2026-02-06 15:45] Session 119
+
+**Branch:** main | **Git:** uncommitted (plan.md + folder move)
+
+### What Happened
+- Ran `/exploration-plan` (Mode 1: Plan from Brainstorm) against the finalized v2 architecture spec
+- Read full 900-line spec at `.space-agents/exploration/planned/2026-02-06-stackdocs-v2-revised-architecture/spec.md`
+- Convened planning council: 3 parallel agents analyzed the spec
+  - **Task Planner**: Broke spec into 37 tasks across 5 phases with file-level specificity and risk flags
+  - **Sequencer**: Full dependency graph, critical path (17 sequential tasks), parallel opportunities, risk register, solo developer scheduling advice
+  - **Implementer**: Detailed TDD breakdowns with actual test code for Phases 1-2 (Bridge + Sprite runtime), including package lists, file trees, testing strategy
+- Synthesized council reports into consolidated plan: 28 tasks across 5 phases
+- Wrote `plan.md` at `.space-agents/exploration/planned/2026-02-06-stackdocs-v2-revised-architecture/plan.md`
+- Moved exploration folder from `ideas/` to `planned/`
+
+### Decisions Made
+1. **28 tasks (not 37)**: Consolidated small tasks into meaningful session-sized chunks
+2. **File upload moved to Phase 4**: Upload without extraction is meaningless — keep them together
+3. **Memory split into basic (Phase 2) + search (Phase 5)**: Basic = load files into prompt. Search = FTS5 index.
+4. **Real Sprites from day one**: Fraser prefers developing against real Sprites.dev rather than mock servers. Phase 0 pre-flight is critical.
+5. **Accepted sequencer's 3 reordering recommendations**: Start Canvas earlier (parallel with Phase 2), pull Status UI into Phase 3, defer Clerk webhook to Phase 5
+6. **Export in Phase 4 (not Phase 5)**: Trivial client-side code that completes the demo flow
+
+### Gotchas
+- Implementer suggested mock Sprite server for local dev — Fraser explicitly declined, wants real Sprites. This means Phase 0 pre-flight (account setup, API validation, auto-restart test) is a hard gate.
+- Council agents take 3-6 minutes each on Opus — budget for this when convening council
+
+### Next Action
+- Create Beads from plan.md (28 tasks as tracked issues with dependencies)
+- Then Phase 0: Fly.io + Sprites.dev account setup and API validation
+
+---
