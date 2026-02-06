@@ -22,22 +22,38 @@ The build is sequenced in 5 phases plus a mandatory pre-flight. Phases 2 (Sprite
 
 ---
 
-## Phase 0: Pre-flight (Manual — No Code)
+## Tasks
 
-Must complete before writing any code. These validate Sprites.dev viability.
+### Phase 0: Pre-flight
 
-- [ ] Fly.io account setup + billing
-- [ ] Sprites.dev account + API token
-- [ ] Test Sprites APIs manually: create, exec, sleep, wake, services, TCP proxy
-- [ ] **Verify Service auto-restart on wake** (MEDIUM confidence — the spec's biggest risk)
-- [ ] Measure Sprites.dev region latency from Australia
-- [ ] If auto-restart fails: fallback is Bridge sends exec command after every wake (adds to Phase 1 reconnection task)
-
-**Gate:** All 5 checks pass. If auto-restart fails, update Phase 1 reconnection task before proceeding.
+Must complete before writing any code. Validates Sprites.dev viability.
 
 ---
 
-## Tasks
+### Task: Pre-flight validation (Fly.io + Sprites.dev)
+
+**Goal:** Validate Sprites.dev and Fly.io accounts, APIs, and critical assumptions before writing any code.
+**Files:** Create `docs/ops/preflight-results.md` (findings and measurements)
+**Depends on:** None
+
+**Steps:**
+1. Fly.io account setup + billing
+2. Sprites.dev account + API token
+3. Test Sprites APIs manually: create, exec, sleep, wake, services, TCP proxy
+4. **Verify Service auto-restart on wake** (MEDIUM confidence — the spec's biggest risk)
+5. Measure Sprites.dev region latency from Australia
+6. If auto-restart fails: document fallback (Bridge sends exec command after every wake — adds to Phase 1 reconnection task)
+7. Write up findings in `docs/ops/preflight-results.md`
+
+**Tests:**
+- [ ] `docs/ops/preflight-results.md` exists with all 5 checks documented
+- [ ] Auto-restart result explicitly confirmed or denied with evidence
+- [ ] Latency measurement from Australia recorded (target < 200ms)
+- [ ] If auto-restart failed: fallback documented and Bridge reconnection task updated
+
+**Gate:** All checks pass. If auto-restart fails, update Bridge reconnection task before proceeding.
+
+---
 
 ### Phase 1: Infrastructure Scaffold
 
@@ -59,6 +75,13 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 5. Python dataclasses in `sprite/src/protocol.py` matching the same schema
 6. Include message validation helpers (type guard functions)
 
+**Tests:**
+- [ ] `tsc --noEmit` passes for `bridge/src/protocol.ts` and `frontend/types/ws-protocol.ts`
+- [ ] `python -c "from src.protocol import *"` succeeds in `sprite/`
+- [ ] Type guard functions return `true` for valid messages, `false` for malformed
+- [ ] Every message type includes `id` (UUID) and `timestamp` fields
+- [ ] TypeScript and Python definitions cover identical message types
+
 ---
 
 ### Task: Create Bridge project scaffold and WS server
@@ -77,6 +100,14 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 7. Store connection mapping: `Map<connectionId, { userId, stackId, spriteName }>`
 8. Create Dockerfile and `fly.toml` for deployment (256MB RAM, shared CPU)
 
+**Tests:**
+- [ ] `npm test` passes in `bridge/`
+- [ ] WS client connects to `/ws/{stack_id}` and receives upgrade
+- [ ] Invalid JWT → connection closed with code 4001
+- [ ] Valid JWT → connection stored in map with correct userId/stackId
+- [ ] Unauthorized stack_id (wrong user) → connection closed with code 4003
+- [ ] `docker build` succeeds for Bridge Dockerfile
+
 ---
 
 ### Task: Create Sprites API client and provisioning
@@ -92,6 +123,13 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 4. Start Python WS service with API keys as env vars (`ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`)
 5. Handle provisioning failures: mark as `failed`, allow retry on next connect
 6. Handle already-active sprites: just connect
+
+**Tests:**
+- [ ] Unit tests for API client methods pass (mocked HTTP responses)
+- [ ] Provisioning flow: `pending` → `provisioning` → `active` updates Supabase correctly
+- [ ] Provisioning failure: status set to `failed`, retry on next connect works
+- [ ] Already-active sprite: skips provisioning, connects directly
+- [ ] API keys injected as env vars at Service start (verified in service config)
 
 ---
 
@@ -110,6 +148,14 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 6. Save as golden checkpoint
 7. Document the exact procedure in `docs/ops/golden-checkpoint.md`
 8. Test: clone checkpoint, verify packages and dirs exist
+9. **Code deployment strategy:** Document how `sprite/` source code reaches running Sprites. Sprites.dev doesn't use Docker — code is deployed via git pull or file sync. Define the update mechanism (e.g., git clone into checkpoint, or rsync on service start) and document in golden-checkpoint.md.
+
+**Tests:**
+- [ ] Clone checkpoint → `python -c "import websockets, aiosqlite, anthropic, mistralai, httpx"` succeeds
+- [ ] `/workspace/` dirs exist: `documents/`, `ocr/`, `artifacts/`, `memory/`, `transcripts/`
+- [ ] `/workspace/agent.db` has correct schema (all tables from spec)
+- [ ] Memory templates exist: `soul.md`, `user.md`, `MEMORY.md`
+- [ ] `docs/ops/golden-checkpoint.md` documents full procedure + code deployment strategy
 
 ---
 
@@ -127,6 +173,13 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 5. Stub all handlers to log and echo acknowledgment
 6. Wire server to gateway: incoming messages → `gateway.route(message)`
 
+**Tests:**
+- [ ] `python -m pytest sprite/tests/` passes
+- [ ] WS client connects to `ws://localhost:8765` successfully
+- [ ] Sending each message type (`mission`, `file_upload`, `canvas_interaction`, `heartbeat`, `system`) returns echo acknowledgment
+- [ ] Unknown message type logs warning and does not crash
+- [ ] Gateway routes `mission` and `heartbeat` through async lock (verified by concurrent test)
+
 ---
 
 ### Task: Bridge TCP Proxy and message forwarding
@@ -141,6 +194,13 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 3. Forward Sprite messages → browser
 4. Handle connection lifecycle: open, close, error
 5. Track active Sprite connections per stack
+
+**Tests:**
+- [ ] Message sent from browser WS arrives at Sprite WS (integration test with real Sprite)
+- [ ] Message sent from Sprite WS arrives at browser WS
+- [ ] `request_id` injected on forwarded messages when present
+- [ ] Connection tracking correctly maps stack_id → active Sprite connection
+- [ ] Connection close on either side propagates to the other
 
 ---
 
@@ -161,6 +221,14 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 8. Implement keepalive: ping Sprite every 15s during active browser sessions, stop on disconnect
 9. Handle race conditions: multiple wake attempts, messages during reconnect
 
+**Tests:**
+- [ ] Simulated connection drop → `sprite_waking` system message sent to browser
+- [ ] After wake → `sprite_ready` system message sent to browser
+- [ ] Buffered messages (up to 50, within 60s TTL) replayed after reconnect
+- [ ] Keepalive pings sent every 15s while browser connected (verified by timer mock)
+- [ ] Keepalive stops when browser disconnects
+- [ ] Concurrent wake attempts coalesce (no duplicate wake calls)
+
 ---
 
 ### Task: End-to-end smoke test and deployment
@@ -178,6 +246,13 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 6. Test from browser against production Bridge
 7. Fix any issues discovered during integration
 
+**Tests:**
+- [ ] Test script passes: connect → auth → send mission → receive echo response
+- [ ] Round-trip latency < 500ms (excluding Sprite wake time)
+- [ ] Sleep/wake cycle: wait 35s → reconnect → Sprite wakes → echo works
+- [ ] Bridge accessible at `wss://ws.stackdocs.io` (DNS resolves, TLS works)
+- [ ] Browser-based test against production Bridge succeeds
+
 ---
 
 ### Task: Supabase schema migration for v2
@@ -191,6 +266,13 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 2. Keep all existing v1 tables (don't drop — data is there, just unused)
 3. Update SCHEMA.md to document v2 platform tables (users + stacks)
 4. Test that Clerk auth + existing frontend still work (v1 and v2 coexist)
+
+**Tests:**
+- [ ] `sprite_name` and `sprite_status` columns exist on `stacks` table
+- [ ] `sprite_status` defaults to `'pending'` for new rows
+- [ ] All v1 tables still exist (not dropped)
+- [ ] Existing frontend loads without errors (v1 and v2 coexist)
+- [ ] `SCHEMA.md` updated with v2 platform tables documentation
 
 ---
 
@@ -216,6 +298,14 @@ Adapt existing v1 agent code to run on Sprites with SQLite + WebSocket output.
 4. Provide `query()`, `execute()`, `fetchone()`, `fetchall()` async methods
 5. Connection pooling (single connection for MVP, serialize writes)
 
+**Tests:**
+- [ ] `python -m pytest sprite/tests/test_database.py` passes
+- [ ] Schema creates all tables on init: `documents`, `ocr_results`, `extractions`, `memory_fts`
+- [ ] `PRAGMA journal_mode` returns `wal`
+- [ ] CRUD operations work: insert, select, update, delete for each table
+- [ ] Concurrent reads don't block (WAL mode verified)
+- [ ] Database file created at expected path (`/workspace/agent.db` or test equivalent)
+
 ---
 
 ### Task: Port tool factories from Supabase to SQLite
@@ -231,6 +321,14 @@ Adapt existing v1 agent code to run on Sprites with SQLite + WebSocket output.
 4. Port tools: `read_ocr`, `read_extraction`, `save_extraction`, `set_field`, `delete_field`, `complete`
 5. Preserve `create_tools(extraction_id, document_id, user_id, db)` factory signature (change `db` type)
 6. Port OCR service: `sprite/src/services/ocr.py` — Mistral OCR with env var API key, cache to `/workspace/ocr/`
+
+**Tests:**
+- [ ] Each tool (`read_ocr`, `read_extraction`, `save_extraction`, `set_field`, `delete_field`, `complete`) has unit test with SQLite
+- [ ] `create_tools(extraction_id, document_id, user_id, db)` returns all tools with correct signatures
+- [ ] Tools read/write SQLite correctly (verified by querying DB after tool call)
+- [ ] `save_extraction` writes JSON to `extracted_fields` column
+- [ ] OCR service caches text to `/workspace/ocr/{doc_id}.md` (file exists after call)
+- [ ] Factory closure scoping: tools only access their scoped extraction_id/document_id
 
 ---
 
@@ -248,6 +346,16 @@ Adapt existing v1 agent code to run on Sprites with SQLite + WebSocket output.
 5. Wire into `SpriteGateway.handle_mission()`: load memory → build system prompt → invoke agent → stream events
 6. Serialize missions with async lock (one at a time)
 
+**Tests:**
+- [ ] Agent invocation streams `agent_event` messages over WS (mock WS captures text, tool, complete events)
+- [ ] Event type mapping: SDK events → correct `event_type` values (`text`, `tool`, `complete`, `error`)
+- [ ] `mission_lock` prevents concurrent missions (second mission waits until first completes)
+- [ ] Session resume: `ClaudeAgentOptions(resume=session_id)` restores previous conversation
+- [ ] Extraction tools registered and callable by agent via MCP server
+- [ ] Error in agent → `agent_event` with `event_type: 'error'` sent to browser
+
+**Note:** Pre-compaction memory flush requires the raw `anthropic` SDK — `claude-agent-sdk` does not expose compaction controls. This is explicitly post-MVP. Do not attempt to build flush in this task.
+
 ---
 
 ### Task: Canvas tools for agent
@@ -264,13 +372,20 @@ Adapt existing v1 agent code to run on Sprites with SQLite + WebSocket output.
 5. Register as Claude Agent SDK tools alongside extraction tools
 6. Window types: `table` (columns + rows), `document` (doc_id), `notes` (markdown content)
 
+**Tests:**
+- [ ] `create_window("table", "Test", {columns, rows})` sends `canvas_update` with `command: 'create_window'` over WS
+- [ ] `update_window(window_id, new_data)` sends `canvas_update` with `command: 'update_window'`
+- [ ] `close_window(window_id)` sends `canvas_update` with `command: 'close_window'`
+- [ ] All three tools registered alongside extraction tools in agent's tool list
+- [ ] Message payloads match protocol schema (window_id, window_type, title, data fields present)
+
 ---
 
 ### Task: Basic memory system (file loading + journals)
 
 **Goal:** Memory files load into agent system prompt at session start. Daily journals capture activity.
 **Files:** Create `sprite/src/memory/` directory: `init.py`, `loader.py`, `journal.py`, `transcript.py`
-**Depends on:** Create Sprite Python WebSocket server
+**Depends on:** Agent runtime with WebSocket output
 
 **Steps:**
 1. `init.py`: On first boot, create memory templates: `soul.md`, `user.md`, `MEMORY.md` in `/workspace/memory/`
@@ -278,6 +393,14 @@ Adapt existing v1 agent code to run on Sprites with SQLite + WebSocket output.
 3. `journal.py`: After each mission, append summary to `/workspace/memory/YYYY-MM-DD.md`
 4. `transcript.py`: Log every tool call + agent response to `/workspace/transcripts/YYYY-MM-DDTHH-MM-SS.jsonl`
 5. Create agent tools: `write_memory(file, content)`, `update_soul(content)`, `update_user_prefs(content)` in `sprite/src/agents/shared/memory_tools.py`
+
+**Tests:**
+- [ ] First boot creates `soul.md`, `user.md`, `MEMORY.md` in `/workspace/memory/` if missing
+- [ ] Second boot skips creation (files already exist, not overwritten)
+- [ ] Loader returns structured string containing content from all 5 sources (soul + user + MEMORY + today + yesterday)
+- [ ] Journal appends to `/workspace/memory/YYYY-MM-DD.md` (correct date, append not overwrite)
+- [ ] Transcript logs to `/workspace/transcripts/YYYY-MM-DDTHH-MM-SS.jsonl` with valid JSON lines
+- [ ] Memory tools (`write_memory`, `update_soul`, `update_user_prefs`) write to correct files
 
 ---
 
@@ -306,6 +429,14 @@ The visual output surface. React Flow infinite canvas with agent-controlled wind
 6. Listen for `system` messages to update connection status
 7. Integrate with Clerk `useAuth()` for JWT
 
+**Tests:**
+- [ ] `websocket.ts` connects to WS URL and sends auth message as first frame
+- [ ] Reconnects with exponential backoff (1s, 2s, 4s, max 30s) on disconnect
+- [ ] Message handlers dispatched by `type` field (register handler → send matching message → handler called)
+- [ ] Zustand store `connectionStatus` updates on system messages (`sprite_waking` → `sprite_ready` etc.)
+- [ ] `sendMessage()` serializes and sends over WS connection
+- [ ] `npm run build` passes with no TypeScript errors in new files
+
 ---
 
 ### Task: React Flow canvas and base window component
@@ -322,18 +453,53 @@ The visual output surface. React Flow infinite canvas with agent-controlled wind
 5. Register as custom node type in React Flow
 6. Accept `window_type` prop to render different child content
 
+**Tests:**
+- [ ] `StackCanvas` renders without crash (smoke test)
+- [ ] Pan, zoom, and grid background visible in rendered output
+- [ ] `CanvasWindow` renders with title bar (title text, close button)
+- [ ] Window is draggable (React Flow node drag)
+- [ ] Window is resizable (resize handle works)
+- [ ] `window_type` prop accepted — different children rendered per type
+- [ ] `npm run build` passes with no TypeScript errors
+
 ---
 
-### Task: Canvas window types (table, document, notes)
+### Task: Table window component
 
-**Goal:** Three specialized window components that render inside the base CanvasWindow.
-**Files:** Create `frontend/components/canvas/windows/table-window.tsx`, `document-window.tsx`, `notes-window.tsx`
+**Goal:** Critical-path window type for displaying extraction results on Canvas.
+**Files:** Create `frontend/components/canvas/windows/table-window.tsx`
 **Depends on:** React Flow canvas and base window component
 
 **Steps:**
-1. `table-window.tsx`: TanStack Table (already in project) inside canvas window. Columns and rows as props. Editable cells that send `canvas_interaction` messages. Reuse patterns from `stacks/stack-table-view.tsx`.
-2. `document-window.tsx`: PDF preview via `react-pdf` (already in project) or image via `<img>`. Page navigation for multi-page PDFs. Receives document data as props.
-3. `notes-window.tsx`: Markdown display using `react-markdown` (already in project). Agent writes content, user views. Simple and lightweight.
+1. `table-window.tsx`: TanStack Table (already in project) inside canvas window. Columns and rows as props.
+2. Editable cells that send `canvas_interaction` messages.
+3. Reuse patterns from `stacks/stack-table-view.tsx`.
+
+**Tests:**
+- [ ] Renders columns and rows from props (column headers visible, row data in cells)
+- [ ] Cell edit triggers `canvas_interaction` message with correct `window_id` and `action: 'edit_cell'`
+- [ ] Empty table (no rows) renders gracefully without crash
+- [ ] Large dataset (100+ rows) renders without noticeable lag
+- [ ] `npm run build` passes with no TypeScript errors
+
+---
+
+### Task: Document and notes window components
+
+**Goal:** Supporting window types for PDF preview and markdown notes on Canvas.
+**Files:** Create `frontend/components/canvas/windows/document-window.tsx`, `notes-window.tsx`
+**Depends on:** React Flow canvas and base window component
+
+**Steps:**
+1. `document-window.tsx`: PDF preview via `react-pdf` (already in project) or image via `<img>`. Page navigation for multi-page PDFs. Receives document data as props.
+2. `notes-window.tsx`: Markdown display using `react-markdown` (already in project). Agent writes content, user views. Simple and lightweight.
+
+**Tests:**
+- [ ] `document-window.tsx` renders a PDF page (given test PDF data or mock)
+- [ ] Document window shows page navigation for multi-page PDFs
+- [ ] `notes-window.tsx` renders markdown string (headings, lists, bold render correctly)
+- [ ] Both components accept props and render inside `CanvasWindow` wrapper
+- [ ] `npm run build` passes with no TypeScript errors
 
 ---
 
@@ -350,6 +516,14 @@ The visual output surface. React Flow infinite canvas with agent-controlled wind
 4. Subscribe to `canvas_update` WebSocket messages → `create_window` calls `addWindow()`, `update_window` calls `updateWindow()`, `close_window` calls `removeWindow()`
 5. User interactions (close, resize, move) update store locally + send `canvas_interaction` messages
 
+**Tests:**
+- [ ] `addWindow()` adds window to store, `removeWindow()` removes it, `updateWindow()` updates data
+- [ ] Store persists to localStorage (reload → windows restored from storage)
+- [ ] `canvas_update` WS message with `create_window` → `addWindow()` called, window appears in store
+- [ ] `canvas_update` WS message with `update_window` → window data updated in store
+- [ ] `canvas_update` WS message with `close_window` → window removed from store
+- [ ] User close/resize/move → `canvas_interaction` message sent over WS
+
 ---
 
 ### Task: Subbar, chat bar, and status indicator
@@ -363,6 +537,15 @@ The visual output surface. React Flow infinite canvas with agent-controlled wind
 2. Chat bar: Text input + send button at bottom of Canvas. Sends `mission` messages over WebSocket. File upload button (paperclip icon) for alternative to drag-and-drop. Adapt patterns from existing `agent-container.tsx`.
 3. Connection status: "Connecting...", "Sprite waking..." (spinner), "Connected" (green dot), "Disconnected" (red dot). Read from WS store `connectionStatus`. Display in header or Canvas top-right.
 4. Agent event rendering: Display `agent_event` messages in chat panel — streaming text, tool indicators, errors. Reuse existing agent card/content components.
+
+**Tests:**
+- [ ] Subbar renders one tab per open window (matches canvas store state)
+- [ ] Click tab → canvas pans to focus on that window
+- [ ] X on tab → window closes (removed from store)
+- [ ] Chat bar sends `mission` message on submit (message captured by mock WS)
+- [ ] Connection status shows correct indicator: green dot (connected), red dot (disconnected), spinner (sprite_waking)
+- [ ] Agent events render in chat panel (text streams, tool calls shown, errors displayed)
+- [ ] `npm run build` passes with no TypeScript errors
 
 ---
 
@@ -379,6 +562,14 @@ The visual output surface. React Flow infinite canvas with agent-controlled wind
 4. Canvas takes full viewport minus header/subbar/chat
 5. Disconnect WS when navigating away from stack page
 6. Preserve existing stack list page (unchanged)
+
+**Tests:**
+- [ ] Stack detail page renders `StackCanvas` (not the old tabs UI)
+- [ ] WS connection established on page load (connection status shows connecting → connected)
+- [ ] WS disconnected on navigate away (verified by store status)
+- [ ] Canvas fills viewport minus header/subbar/chat (no overflow, no scroll)
+- [ ] Stack list page (`/stacks`) unchanged and still functional
+- [ ] `npm run build` passes with no TypeScript errors
 
 ---
 
@@ -405,6 +596,15 @@ Wire everything together into the MVP demo flow.
 5. Sprite: Send `status` message back to browser
 6. Sprite: Trigger OCR as background asyncio task
 
+**Tests:**
+- [ ] Drag file onto Canvas → `file_upload` message sent over WS (captured by mock)
+- [ ] Paperclip button click → file picker opens, selected file sent as `file_upload`
+- [ ] Files > 25MB rejected on frontend with error message
+- [ ] Sprite receives upload → file written to `/workspace/documents/{uuid}_{filename}`
+- [ ] SQLite `documents` row created with `status: 'processing'`
+- [ ] `status` message sent back to browser with `status: 'processing'`
+- [ ] Unsupported file types rejected (only PDF, PNG, JPG, JPEG accepted)
+
 ---
 
 ### Task: OCR and extraction agent integration
@@ -421,6 +621,15 @@ Wire everything together into the MVP demo flow.
 5. Update SQLite: extraction record with fields, document status to `completed`
 6. Update daily journal with extraction summary
 
+**Tests:**
+- [ ] OCR produces cached text at `/workspace/ocr/{doc_id}.md` (file exists, non-empty)
+- [ ] Document window created on Canvas after OCR completes (canvas_update message sent)
+- [ ] Extraction agent runs and creates table window with extracted fields
+- [ ] SQLite `extractions` row created with `extracted_fields` JSON
+- [ ] Document `status` updated to `completed` in SQLite
+- [ ] Daily journal updated with extraction summary line
+- [ ] Both Mistral OCR and Claude native PDF paths work (tested separately)
+
 ---
 
 ### Task: Correction flow and Canvas state awareness
@@ -436,19 +645,33 @@ Wire everything together into the MVP demo flow.
 4. Agent calls `set_field` to update SQLite + `update_window` to refresh table on Canvas
 5. Agent updates `soul.md` if correction reveals a pattern (prompt engineering)
 
+**Tests:**
+- [ ] Mission message includes serialized Canvas state (open windows, active table data)
+- [ ] Chat "change vendor to Acme Corp" → `set_field` updates SQLite extraction record
+- [ ] `update_window` message sent → table window refreshes on Canvas with corrected data
+- [ ] After 3+ corrections on same field pattern → `soul.md` updated with learned rule
+- [ ] Canvas state serialization includes window_id, type, title, and data for each open window
+
 ---
 
 ### Task: CSV and JSON export from table windows
 
 **Goal:** Download extraction data as CSV or JSON directly from Canvas table windows.
 **Files:** Modify `frontend/components/canvas/windows/table-window.tsx`
-**Depends on:** Canvas window types (table, document, notes)
+**Depends on:** Table window component
 
 **Steps:**
 1. Add "Export" dropdown in table window header: CSV, JSON options
 2. CSV: Serialize table data (headers as first row, values as subsequent rows), trigger browser download
 3. JSON: Serialize as array of objects, trigger browser download
 4. No server round-trip — data is already in Canvas store
+
+**Tests:**
+- [ ] Export dropdown visible in table window header with CSV and JSON options
+- [ ] CSV download contains headers as first row, values as subsequent rows
+- [ ] JSON download contains array of objects (keys = column names)
+- [ ] Downloaded file has correct filename (e.g., `{table_title}.csv`)
+- [ ] No network request made during export (client-side only, verified by network mock)
 
 ---
 
@@ -470,6 +693,13 @@ Complete the memory system and polish the MVP demo.
 3. Create agent tool: `search_memories(query)` → returns relevant past context
 4. BM25 only for MVP (skip vector embeddings — add post-MVP)
 
+**Tests:**
+- [ ] `memory_fts` table populated on startup (row count > 0 after indexing existing memory files)
+- [ ] `search_memory("invoice")` returns relevant chunks ranked by BM25 score
+- [ ] Agent tool `search_memories(query)` is callable and returns formatted results
+- [ ] Re-indexes after memory writes (write to journal → new content searchable)
+- [ ] Empty memory files → graceful handling (no crash, empty results)
+
 ---
 
 ### Task: Session persistence and reconnection verification
@@ -483,6 +713,13 @@ Complete the memory system and polish the MVP demo.
 2. Verify: Canvas loads from localStorage, agent loads memory, SQLite has all data
 3. Frontend: On reconnect, load Canvas state from localStorage + request Sprite state sync if needed
 4. Fix any gaps discovered during testing
+
+**Tests:**
+- [ ] Full cycle passes: upload → extract → close browser → wait 35s → reopen → Canvas loads
+- [ ] Canvas state restored from localStorage (same windows, positions, data)
+- [ ] Agent memory intact: `soul.md`, journals, MEMORY.md all present on Sprite after wake
+- [ ] SQLite data intact: documents, extractions, OCR results all queryable after wake
+- [ ] No data loss or corruption after sleep/wake cycle
 
 ---
 
@@ -498,21 +735,31 @@ Complete the memory system and polish the MVP demo.
 3. Clerk webhook for session revocation (deferred from Phase 1): Bridge receives webhook, force-disconnects revoked sessions
 4. Write demo script: login → Sprite wakes → upload 3 invoices → "extract all vendor data" → correct a field → close/reopen → CSV export
 
+**Tests:**
+- [ ] Loading states visible: skeleton canvas (Sprite waking), shimmer rows (extraction in-progress), typing dots (agent thinking)
+- [ ] Upload failure → error message + retry button shown
+- [ ] WS disconnect mid-session → error indicator + automatic reconnection attempt
+- [ ] Agent error → error shown in chat + retry option
+- [ ] Clerk webhook → Bridge force-disconnects revoked session
+- [ ] `docs/demo/mvp-demo-script.md` exists with complete demo flow
+- [ ] Full demo flow completes end-to-end without manual intervention (except user chat inputs)
+
 ---
 
 ## Sequence
 
 ```
-Phase 0: Pre-flight (manual)
+Phase 0: Pre-flight (1 task)
+  Pre-flight validation
   ↓ gate: all checks pass
 Phase 1: Infrastructure (sequential, ~8 tasks)
   Protocol → Bridge → Sprites API → Golden checkpoint → Sprite WS → TCP Proxy → Reconnection → Smoke test
   Supabase migration (parallel, anytime)
   ↓ gate: echo test passes end-to-end
-Phase 2: Sprite Runtime (sequential, ~6 tasks)     ← PARALLEL
+Phase 2: Sprite Runtime (sequential, ~5 tasks)     ← PARALLEL
   SQLite → Tool factories → Agent runtime → Canvas tools → Memory
-Phase 3: Canvas UI (sequential, ~7 tasks)           ← PARALLEL
-  WS manager → React Flow → Windows → Store → Subbar/Chat → Page rewrite
+Phase 3: Canvas UI (sequential, ~8 tasks)           ← PARALLEL
+  WS manager → React Flow → Table window → Doc/Notes windows → Store → Subbar/Chat → Page rewrite
   ↓ gate: mission message reaches agent, response streams to chat
 Phase 4: Upload + Extraction (~4 tasks)
   Upload → OCR + Extraction → Corrections → Export
@@ -523,6 +770,8 @@ Phase 5: Memory + Polish (~3 tasks)
 **Critical path:** Protocol → Bridge → Sprites API → Golden checkpoint → Sprite WS → TCP Proxy → SQLite → Tool factories → Agent runtime → Canvas WS integration → Upload → Extraction → Demo
 
 **Parallel opportunity:** Phase 3 Canvas UI runs fully independent of Phase 2 Sprite runtime until integration. Saves ~1 week.
+
+**De-risked:** Table window split from document/notes windows — table is critical path (extraction results), document/notes can follow independently.
 
 ---
 
@@ -555,10 +804,10 @@ Phase 5: Memory + Polish (~3 tasks)
 
 ## Task Count
 
-- **Phase 0:** Manual checklist (no Beads)
+- **Phase 0:** 1 task (pre-flight validation)
 - **Phase 1:** 8 tasks (infrastructure scaffold)
-- **Phase 2:** 6 tasks (Sprite runtime)
-- **Phase 3:** 7 tasks (Canvas UI)
+- **Phase 2:** 5 tasks (Sprite runtime)
+- **Phase 3:** 8 tasks (Canvas UI — table split from doc/notes)
 - **Phase 4:** 4 tasks (upload + extraction)
 - **Phase 5:** 3 tasks (memory + polish)
-- **Total:** 28 tasks
+- **Total:** 29 tasks

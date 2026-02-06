@@ -1204,3 +1204,32 @@ Stacks page → Canvas workspaces (transform)
 - Then Phase 0: Fly.io + Sprites.dev account setup and API validation
 
 ---
+
+## [2026-02-06 17:30] Session 120
+
+**Branch:** main | **Git:** uncommitted (CLAUDE.md + plan folder moves)
+
+### What Happened
+- Reviewed the v2 implementation plan (`plan.md`) against the architecture spec (`spec.md`)
+- Identified 5 issues with the plan and applied all 5 fixes:
+  1. Phase 0 pre-flight promoted from manual checklist to a tracked Bead task with steps and output file
+  2. Basic memory system dependency fixed: now depends on Agent runtime (not just Sprite WS server) since memory tools need agent runtime to register
+  3. Post-MVP compaction note added to Agent runtime task to prevent scope creep
+  4. Code deployment strategy added as step 9 in golden checkpoint task (how does sprite/ code reach running Sprites?)
+  5. Window types split: table-window (critical path for extraction results) separated from document/notes-window (can follow independently)
+- Added TDD `**Tests:**` sections to all 29 tasks — each task now has verifiable acceptance criteria for the builder agent
+- Created full Beads structure: 1 epic + 6 features + 29 tasks = 36 issues with 24 dependency links
+- Moved plan folder from `exploration/planned/` to `mission/staged/m7b-stackdocs-v2-sovereign-agent-platform/`
+- Updated root `CLAUDE.md` from v1 to v2: new architecture diagram, three-codebase structure (frontend/bridge/sprite), Sprite/Bridge/Canvas patterns, trimmed Supabase to platform-only
+
+### Decisions Made
+1. **29 tasks (not 28)**: Phase 0 pre-flight added as tracked task, window types split added one more
+2. **Phase 2 reduced to 5 tasks**: Memory system dependency moved to after Agent runtime
+3. **Phase 3 grew to 8 tasks**: Table window split from document/notes for critical path de-risking
+4. **TDD on every task**: Builder agent can verify each task against its Tests checklist
+
+### Next Action
+- Phase 0: Pre-flight validation — Fly.io account + Sprites.dev account + API testing
+- Can also start in parallel: Define WebSocket message protocol + React Flow canvas (both unblocked)
+
+---
