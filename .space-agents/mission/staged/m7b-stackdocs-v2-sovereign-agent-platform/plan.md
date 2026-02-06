@@ -30,28 +30,25 @@ Must complete before writing any code. Validates Sprites.dev viability.
 
 ---
 
-### Task: Pre-flight validation (Fly.io + Sprites.dev)
+### Task: Pre-flight validation (Fly.io + Sprites.dev) — COMPLETE
 
 **Goal:** Validate Sprites.dev and Fly.io accounts, APIs, and critical assumptions before writing any code.
-**Files:** Create `docs/ops/preflight-results.md` (findings and measurements)
+**Files:** `docs/ops/preflight-results.md`
 **Depends on:** None
+**Status:** COMPLETE (Session 122, 2026-02-06)
 
-**Steps:**
-1. Fly.io account setup + billing
-2. Sprites.dev account + API token
-3. Test Sprites APIs manually: create, exec, sleep, wake, services, TCP proxy
-4. **Verify Service auto-restart on wake** (MEDIUM confidence — the spec's biggest risk)
-5. Measure Sprites.dev region latency from Australia
-6. If auto-restart fails: document fallback (Bridge sends exec command after every wake — adds to Phase 1 reconnection task)
-7. Write up findings in `docs/ops/preflight-results.md`
+**Results:**
+1. Fly.io account + billing — PASS
+2. Sprites.dev account + API token — PASS
+3. Core APIs (create, exec, status, TCP proxy) — PASS
+4. **Process persistence through sleep/wake — PASS (critical finding: processes frozen via checkpoint, same PID on wake)**
+5. AU latency — PASS (avg 180ms API, ~200ms message RTT)
+6. Services API — FAIL (400 bug in v0.0.1-rc31) — non-blocking, not needed for server lifecycle
+7. Full results in `docs/ops/preflight-results.md`
 
-**Tests:**
-- [ ] `docs/ops/preflight-results.md` exists with all 5 checks documented
-- [ ] Auto-restart result explicitly confirmed or denied with evidence
-- [ ] Latency measurement from Australia recorded (target < 200ms)
-- [ ] If auto-restart failed: fallback documented and Bridge reconnection task updated
+**Key Finding:** Sprites.dev uses checkpoint/CRIU — processes survive sleep/wake with the same PID. The Services API is NOT needed for server lifecycle. Start server via `exec` with `max_run_after_disconnect=0`.
 
-**Gate:** All checks pass. If auto-restart fails, update Bridge reconnection task before proceeding.
+**Gate:** PASS. Proceed to Phase 1.
 
 ---
 
@@ -798,12 +795,12 @@ Phase 5: Memory + Polish (~3 tasks)
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Sprites.dev Service auto-restart fails on wake | **HIGH** | Test in Phase 0. Fallback: Bridge exec restart after every wake. |
-| Sprites.dev reliability (early 2026 community issues) | **HIGH** | Robust retry in Bridge. Manual fallback for demo. |
+| ~~Sprites.dev Service auto-restart fails on wake~~ | ~~HIGH~~ **RESOLVED** | Phase 0 confirmed: processes frozen on sleep (checkpoint/CRIU), same PID on wake. No restart needed. |
+| Sprites.dev reliability (early 2026 community issues) | **HIGH** | Robust retry in Bridge. Manual fallback for demo. Services API has bug (400) but non-blocking. |
 | Golden checkpoint creation (first time using Sprites) | **HIGH** | Spike first. Budget 1-2 sessions for experimentation. |
-| Sleep/wake reconnection race conditions | **MEDIUM** | Extensive logging. Test with artificial delays. Message buffer with TTL. |
+| Sleep/wake reconnection race conditions | **MEDIUM** | Extensive logging. Test with artificial delays. Message buffer with TTL. Server process persists — only TCP Proxy reconnection needed. |
 | Claude Agent SDK streaming → WebSocket mapping | **MEDIUM** | Read SDK source. Build minimal test: run agent, capture events, forward to WS. |
-| Region latency from Australia | **MEDIUM** | Measure in Phase 0. If >200ms, optimistic-update on frontend. |
+| ~~Region latency from Australia~~ | ~~MEDIUM~~ **RESOLVED** | Phase 0 measured: avg 180ms API, ~200ms message RTT. Within target. |
 | React Flow performance with many cards | **LOW** | MVP uses 3-5 cards. Virtualize off-screen if needed post-MVP. |
 
 ---

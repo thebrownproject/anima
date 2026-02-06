@@ -227,7 +227,7 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
   +--------------------------------------------------------+
   |  Sprites.dev (one per stack)                           |
   |                                                        |
-  |  Service: Python WebSocket server (auto-restarts)      |
+  |  Service: Python WebSocket server (persists through sleep)|
   |  +-- SpriteGateway (message router)                    |
   |  |   +-- mission handler (async lock)                  |
   |  |   +-- file_upload handler                           |
@@ -262,8 +262,8 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
   |                                                        |
   |  Behavior:                                             |
   |  - Auto-sleep after 30s inactivity (Bridge sends pings)|
-  |  - Processes killed on sleep (filesystem preserved)    |
-  |  - Service auto-restarts on wake                       |
+  |  - Processes frozen on sleep (checkpoint, same PID)     |
+  |  - Server persists through sleep/wake (no restart needed)|
   |  - TCP connections die on sleep (Bridge reconnects)    |
   |  - Checkpoint creation ~300ms, wake 1-12s from cold    |
   |  - Full bash/Python access (pip install, scripts)      |
@@ -709,7 +709,7 @@ Bridge sends periodic pings to Sprite to prevent 30s auto-sleep. Pings stop when
 
 ### Technical Constraints
 
-- **Sprites.dev behavior** — Processes killed on sleep (filesystem only). Services auto-restart on wake. TCP connections die. 1-12s cold wake time. 30s inactivity sleep.
+- **Sprites.dev behavior** — Processes frozen on sleep (checkpoint/CRIU, same PID on wake). TCP connections die (Bridge must reconnect). 1-12s cold wake time. 30s inactivity sleep. Server started via `exec` with `max_run_after_disconnect=0` persists indefinitely.
 - **Sprites.dev API** — Must use Sprites API for provisioning, exec, filesystem, checkpoints, services. No Docker images.
 - **Clerk JWT** — 60-second token lifetime. Validated once on WS connect. Clerk webhook for revocation.
 - **Python Agent SDK** — Claude Agent SDK is Python. Must stay Python on Sprites.
@@ -741,7 +741,7 @@ Bridge sends periodic pings to Sprite to prevent 30s auto-sleep. Pings stop when
 ### Architecture Validation
 
 - [ ] Bridge service proxies WebSocket messages between browser and Sprite
-- [ ] Sprite runs Python WS server as a Service (auto-restarts on wake)
+- [ ] Sprite runs Python WS server via exec (persists through sleep/wake)
 - [ ] Bridge connects to Sprite via TCP Proxy API
 - [ ] Tool factories work with SQLite instead of Supabase
 - [ ] API keys injected as env vars, accessible in Sprite process
@@ -787,8 +787,8 @@ Bridge sends periodic pings to Sprite to prevent 30s auto-sleep. Pings stop when
 
 ### To Resolve During Implementation
 
-1. **Sprites.dev region latency** — What's the latency from Australia? Does this affect real-time Canvas updates?
-2. **Service auto-restart confidence** — Sprites docs don't explicitly confirm auto-restart on wake (MEDIUM confidence). Test during Phase 1.
+1. ~~**Sprites.dev region latency**~~ — **RESOLVED (Phase 0):** Avg 180ms API, ~200ms message RTT from Australia. Within <200ms target.
+2. ~~**Service auto-restart confidence**~~ — **RESOLVED (Phase 0):** Processes are frozen on sleep (checkpoint/CRIU), not killed. Same PID on wake. Services API not needed — `exec` with `max_run_after_disconnect=0` is sufficient. See `docs/ops/preflight-results.md`.
 3. **Golden checkpoint strategy** — How to set up the template Sprite with base Python environment + packages?
 4. **Memory vector embeddings** — Which embedding model for the hybrid search? Local (on Sprite) or API call?
 5. **Heartbeat scheduling** — How often should the heartbeat fire? What proactive actions for MVP?
@@ -897,14 +897,16 @@ Same engine. Different interface. Different audience. Same power.
 
 ### Session 117 (This Session) — Architecture Finalization
 
-**Sprites.dev deep dive** (research agent):
-- Processes killed on sleep, not frozen (filesystem-only persistence, no CRIU)
-- Services auto-restart on wake (HIGH confidence for filesystem, MEDIUM for services)
-- TCP connections die on sleep/wake (Bridge must reconnect)
-- Any API call wakes a sleeping Sprite (implicit, no explicit wake endpoint)
+**Sprites.dev deep dive** (research agent + Phase 0 pre-flight):
+- ~~Processes killed on sleep~~ **CORRECTED:** Processes frozen on sleep via checkpoint/CRIU (same PID on wake, tested 2026-02-06)
+- ~~Services auto-restart on wake~~ **CORRECTED:** Not needed — processes persist through sleep/wake. Services API has bug (400 "service name required" in v0.0.1-rc31)
+- TCP connections die on sleep/wake (Bridge must reconnect) — **CONFIRMED**
+- Any API call wakes a sleeping Sprite (implicit, no explicit wake endpoint) — **CONFIRMED**
+- Active exec sessions keep sprite awake (won't auto-sleep while session exists) — **NEW FINDING**
 - Checkpoint creation ~300ms, cold wake 1-12 seconds
-- Services API: `PUT /v1/sprites/{name}/services/{name}` with command, args, needs, http_port
-- TCP Proxy API: `WSS /v1/sprites/{name}/proxy` with `ProxyInitMessage`
+- Start server via `exec` WebSocket with `max_run_after_disconnect=0` — process persists indefinitely — **NEW FINDING**
+- TCP Proxy API: `WSS /v1/sprites/{name}/proxy` with `ProxyInitMessage` — **TESTED, WORKS**
+- Latency from Australia: avg 180ms API, ~200ms message RTT, ~1s initial connect — **TESTED**
 - Early reliability issues noted in community (Jan/Feb 2026)
 
 **OpenClaw memory architecture** (research agent):

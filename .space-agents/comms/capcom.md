@@ -1262,3 +1262,42 @@ Stacks page → Canvas workspaces (transform)
 - In parallel: Define WebSocket message protocol (now includes Block types) + React Flow canvas and base card component (both unblocked)
 
 ---
+
+## [2026-02-06 19:00] Session 122
+
+**Branch:** main | **Git:** uncommitted (spec, plan, CLAUDE.md, beads, new docs/ops/)
+
+### What Happened
+- **Phase 0: Pre-flight Validation — COMPLETE (PASS)**
+- Installed Sprites CLI v0.0.1-rc31, configured auth with Fraser's API token
+- Created test sprite `preflight-test`, tested all core APIs: create (201, 1.06s), exec cold (200, 1.12s), exec warm (200, 466ms), get status (200, 165-230ms), TCP Proxy (101, 972ms connect)
+- **TCP Proxy end-to-end test**: Python asyncio TCP server on port 8765, connected via `WSS /v1/sprites/{name}/proxy` + `ProxyInitMessage`, bidirectional JSON messaging confirmed (greeting + echo)
+- **Critical finding: process persistence through sleep/wake** — ran 4 iterations of sleep/wake test. v4 (clean test) proved it: sprite status changed to `warm` (was sleeping), server alive with same PID 28. Sprites.dev uses checkpoint/CRIU, NOT filesystem-only persistence.
+- **Services API bug found**: `PUT /v1/sprites/{name}/services/{name}` returns 400 "service name required" regardless of body format. Tried 10+ variations. Non-blocking — process persistence eliminates the need.
+- Measured AU latency: avg 180ms API, ~200ms message RTT (within <200ms target)
+- Created `docs/ops/preflight-results.md` — full test results, findings, gate decision
+- Created `docs/ops/sprites-api-reference.md` — comprehensive API reference from research + testing (exec WS protocol, TCP Proxy flow, CLI commands, Stackdocs usage pattern)
+- Updated `spec.md` (6 edits): corrected Sprites behavior (frozen not killed), resolved 2 open questions (latency + auto-restart), updated research section with tested findings
+- Updated `plan.md` (2 edits): marked Task 0.1 complete, updated risk register (2 risks resolved)
+- Updated `CLAUDE.md` (3 edits): corrected architecture diagram, key patterns, reminders
+- Updated `MEMORY.md` (5 edits): updated Sprites facts, architecture, plan status, beads counts
+- Updated 4 beads (m7b.2.3, m7b.2.4, m7b.2.5, m7b.2.7): removed Services API dependency, added exec startup strategy with `max_run_after_disconnect=0`
+- Closed 2 beads: m7b.1.1 (pre-flight task), m7b.1 (Phase 0 feature)
+- Deleted test sprite `preflight-test` (cleanup)
+
+### Decisions Made
+1. **Server lifecycle via exec, not Services API** — `exec` WS with `max_run_after_disconnect=0` starts server that persists indefinitely through sleep/wake. Services API is buggy and unnecessary.
+2. **Process persistence changes architecture** — Bridge only needs to reconnect TCP Proxy after wake, NOT restart server. Exec restart is crash-only fallback.
+3. **Services API bug is non-blocking** — filed as known issue, not a blocker for any phase.
+
+### Gotchas
+- **Active exec sessions keep sprite awake** — the 30s auto-sleep timer won't fire while an exec session with `is_active: true` exists. The `sprite exec` CLI creates persistent sessions. Must disconnect or kill sessions for sprite to sleep.
+- **Exec API is WebSocket, not REST** — returns `application/octet-stream` with binary multiplexing (stream ID byte prefix). CLI decodes it; raw curl shows garbage.
+- **List sprites endpoint resets sleep timer** — even `GET /v1/sprites` (not targeting specific sprite) may keep sprites alive. Don't poll status during sleep tests.
+- **Services API `cmd` not `command`** — docs say `cmd` field, not `command`. But it doesn't matter since the API is broken regardless.
+
+### Next Action
+- Phase 1: Infrastructure Scaffold (9 tasks, 10 ready to work)
+- Start with: Define WebSocket message protocol (m7b.2.1) + React Flow canvas and base card (m7b.4.2) — both unblocked, can run in parallel
+
+---

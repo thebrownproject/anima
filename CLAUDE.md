@@ -87,7 +87,7 @@ This project uses the **Space-Agents workflow** for planning and implementing fe
   +--------------------------------------------------------+
   |  Sprites.dev (one VM per stack)                        |
   |                                                        |
-  |  Python WebSocket server (auto-restarts on wake)       |
+  |  Python WebSocket server (persists through sleep/wake)  |
   |  +-- SpriteGateway (message router)                    |
   |  +-- Agent Runtime (Claude Agent SDK — full access)    |
   |  |   +-- Extraction tools, Canvas tools, Memory tools  |
@@ -241,7 +241,7 @@ v1 tables (`documents`, `extractions`, `ocr_results`, etc.) still exist but are 
 
 **Memory system:** `soul.md` (stack identity), `user.md` (user prefs), `MEMORY.md` (global context), daily journals. Loaded into system prompt at session start.
 
-**Sprites.dev behavior:** Processes killed on sleep (filesystem persists). Services auto-restart on wake. TCP connections die on sleep — Bridge must reconnect. 30s auto-sleep, 1-12s cold wake.
+**Sprites.dev behavior:** Processes frozen on sleep (checkpoint/CRIU, same PID on wake). TCP connections die on sleep — Bridge must reconnect. 30s auto-sleep, 1-12s cold wake. Start server via `exec` with `max_run_after_disconnect=0` — persists indefinitely through sleep/wake.
 
 ---
 
@@ -263,6 +263,6 @@ v1 tables (`documents`, `extractions`, `ocr_results`, etc.) still exist but are 
 2. **Protocol types are shared** — changes to message types must update TS and Python
 3. **Supabase is platform-only in v2** — user data lives on Sprite SQLite + filesystem
 4. **OCR is cached on Sprite** — `/workspace/ocr/{doc_id}.md` persists across sessions
-5. **Sprites sleep after 30s** — Bridge keepalive prevents this during active sessions
+5. **Sprites sleep after 30s** — Bridge keepalive prevents this during active sessions. Processes survive sleep (checkpoint), only TCP connections die.
 6. **Pre-compaction flush is post-MVP** — claude-agent-sdk doesn't expose compaction controls
 7. **Ask before adding** — No extra features without explicit request
