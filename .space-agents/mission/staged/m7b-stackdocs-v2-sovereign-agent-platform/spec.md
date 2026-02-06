@@ -54,8 +54,8 @@ Every stack gets its own **Sprite** (VM) that runs:
 
 The user talks to the agent. The agent controls both the **chat** (text responses) and the **Canvas** (visual WIMP interface — windows, icons, menus, pointer). The user asks questions, the agent pulls up the relevant information:
 
-- "Show me last month's invoices" → Agent queries SQLite, opens table window on Canvas
-- "Extract data from these" → Agent reads documents, populates extraction table live
+- "Show me last month's invoices" → Agent queries SQLite, streams summary cards onto Canvas
+- "Extract data from these" → Agent reads documents, streams extraction cards with tables live
 - "That vendor is wrong" → Agent corrects, updates table, remembers for next time
 - "Export to Xero" → Agent calls Xero API, pushes structured data
 
@@ -74,7 +74,7 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
 - Cron jobs — scheduled reports, daily summaries (post-MVP)
 
 **Outbound (agent acts on the world):**
-- Canvas updates — create/update windows with results (MVP)
+- Canvas updates — create/update cards with composable blocks (MVP)
 - Text responses — conversational chat (MVP)
 - File exports — CSV, JSON, PDF generation (MVP)
 - External API calls — Xero, Google Sheets, email (post-MVP)
@@ -109,12 +109,14 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
 ### Canvas UI (Decided)
 
 - [x] React Flow (@xyflow/react) for infinite canvas with pan/zoom/grid
-- [x] Window types: Document, Table, Notes (MVP)
-- [x] Agent creates/updates/closes windows via WebSocket canvas_update messages
+- [x] **Composable card system** — agent streams cards onto canvas, each composed from a block catalog (A2UI-inspired, custom protocol)
+- [x] MVP block catalog (data-focused): `heading`, `stat`, `key-value`, `table`, `badge`, `progress`, `text`, `separator`
+- [x] Agent creates/updates/closes cards via WebSocket `canvas_update` messages with block arrays
 - [x] Two-way Canvas awareness — agent receives Canvas state at session start + user interactions (close, edit, resize)
-- [x] Subbar as window manager (tabs for each window)
+- [x] Subbar as card manager (tabs for each card)
 - [x] Zustand + localStorage for Canvas state persistence
-- [x] Nested message format: `{ type: 'canvas_update', payload: { command, ... } }`
+- [x] Extensible by design — add new block types (buttons, forms, charts, document viewer) without protocol changes
+- [x] Nested message format: `{ type: 'canvas_update', payload: { command, card_id, blocks, ... } }`
 
 ### Memory System (Decided — Full OpenClaw-inspired adoption)
 
@@ -130,8 +132,8 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
 ### MVP Demo (Decided)
 
 - [ ] Login -> Sprite wakes, Canvas loads (persistence demo)
-- [ ] Upload 3 invoices -> documents stream to Canvas as windows
-- [ ] "Extract all vendor data" -> table window populates live (real-time demo)
+- [ ] Upload 3 invoices -> documents stream to Canvas as cards
+- [ ] "Extract all vendor data" -> extraction cards stream with tables + stats (real-time demo)
 - [ ] Correct a field through chat -> table updates in real-time
 - [ ] Close browser, reopen -> everything persists (Sprite memory demo)
 - [ ] Export as CSV -> download structured data
@@ -238,7 +240,7 @@ The gateway isn't just "user types, agent responds." It's a two-way I/O bus:
   |  |   +-- Built-in: Read, Write, Edit, Bash, Glob, Grep |
   |  |   +-- Built-in: WebSearch, WebFetch                 |
   |  |   +-- Built-in: Subagents, MCP servers, Hooks       |
-  |  |   +-- Custom: Canvas tools (create/update window)   |
+  |  |   +-- Custom: Canvas tools (create/update/close card) |
   |  |   +-- Custom: Extraction tools (read_ocr, save)     |
   |  |   +-- Custom: Memory tools (read/write memory)      |
   |  |   +-- Both Claude PDF + Mistral OCR available       |
@@ -388,11 +390,12 @@ interface FileUploadMessage {
   }
 }
 
-// Canvas interaction (user edited a cell, moved a window)
+// Canvas interaction (user edited a cell, moved a card)
 interface CanvasInteraction {
   type: 'canvas_interaction'
   payload: {
-    window_id: string
+    card_id: string
+    block_id?: string          // Which block the interaction targets
     action: 'edit_cell' | 'resize' | 'move' | 'close'
     data: any
   }
@@ -416,18 +419,32 @@ interface AgentEvent {
   }
 }
 
-// Canvas commands (nested under canvas_update)
+// Canvas commands — composable card system (A2UI-inspired)
+// Agent composes cards from a block catalog; frontend renders with shadcn
 interface CanvasUpdate {
   type: 'canvas_update'
   payload: {
-    command: 'create_window' | 'update_window' | 'close_window'
-    window_id: string
-    window_type?: 'table' | 'document' | 'notes'
+    command: 'create_card' | 'update_card' | 'close_card'
+    card_id: string
     title?: string
-    data?: any  // columns/rows for table, content for notes, doc_id for document
+    blocks?: Block[]         // Array of composable blocks (create/update)
     mission_id?: string
   }
 }
+
+// Block types — each maps to a shadcn component
+type Block =
+  | { id: string; type: 'heading'; text: string; subtitle?: string }
+  | { id: string; type: 'stat'; value: string; label: string; trend?: string }
+  | { id: string; type: 'key-value'; pairs: { label: string; value: string }[] }
+  | { id: string; type: 'table'; columns: string[]; rows: Record<string, any>[] }
+  | { id: string; type: 'badge'; text: string; variant: 'default' | 'success' | 'warning' | 'destructive' }
+  | { id: string; type: 'progress'; value: number; label?: string }
+  | { id: string; type: 'text'; content: string }  // markdown supported
+  | { id: string; type: 'separator' }
+
+// Incremental updates: send only changed blocks (matched by id)
+// Full card rebuild: send complete blocks array
 
 // Document status updates
 interface StatusUpdate {
@@ -546,42 +563,78 @@ Adapted from OpenClaw for intelligent document processing:
    a. Claude native: Read PDF directly in extraction prompt
    b. Mistral OCR: Call Mistral API, cache text to /workspace/ocr/
 9. Sprite: Update SQLite (status: 'ocr_complete')
-10. Sprite -> Bridge -> Browser: { type: 'canvas_update', payload: { command: 'create_window', window_type: 'document' } }
+10. Sprite -> Bridge -> Browser: { type: 'canvas_update', payload: { command: 'create_card', card_id, blocks: [{ type: 'heading' }, { type: 'badge', text: 'Processing' }] } }
 11. Sprite agent: Run extraction (Claude Agent SDK)
 12. Sprite: Write extraction to SQLite
-13. Sprite -> Bridge -> Browser: { type: 'canvas_update', payload: { command: 'create_window', window_type: 'table', data: {...} } }
+13. Sprite -> Bridge -> Browser: { type: 'canvas_update', payload: { command: 'create_card', card_id, blocks: [{ type: 'stat', value: '$4,250' }, { type: 'table', columns: [...], rows: [...] }] } }
 14. Sprite: Update daily journal with extraction summary
 15. Sprite: Update soul.md if new patterns detected
 ```
 
-### Canvas UI Architecture
+### Canvas UI Architecture — Composable Card System
+
+The Canvas uses a **composable card system** inspired by A2UI (Google's agent-driven interface project). Instead of fixed window types, the agent composes cards from a **block catalog** — each block maps to a shadcn component. This gives the agent flexible control over what it renders while keeping the protocol simple and extensible.
+
+**Why this approach:**
+- Agent can compose any card layout from a small set of primitives (heading, stat, table, etc.)
+- Adding new block types is incremental — one new shadcn mapping, no protocol changes
+- The block format (flat list with IDs) is easy for LLMs to generate and update incrementally
+- We control both sides of the wire, so no need for the multi-agent safety model A2UI provides
 
 ```
 frontend/components/canvas/
 +-- stack-canvas.tsx          # React Flow wrapper (pan/zoom/grid/snap)
-+-- canvas-window.tsx         # Base window component (title bar, resize, close)
-+-- windows/
-|   +-- document-window.tsx   # PDF/image preview (react-pdf)
-|   +-- table-window.tsx      # Data grid (TanStack Table)
-|   +-- notes-window.tsx      # Markdown editor
++-- canvas-card.tsx           # Base card component (title bar, resize, close)
++-- card-renderer.tsx         # Maps block array → shadcn components
++-- blocks/
+|   +-- heading-block.tsx     # Card Header
+|   +-- stat-block.tsx        # Big number + label
+|   +-- key-value-block.tsx   # Label: value pairs (grid layout)
+|   +-- table-block.tsx       # TanStack Table (columns + rows)
+|   +-- badge-block.tsx       # Status badge (shadcn Badge)
+|   +-- progress-block.tsx    # Progress bar (shadcn Progress)
+|   +-- text-block.tsx        # Markdown / paragraph text
+|   +-- separator-block.tsx   # Visual divider (shadcn Separator)
 +-- stores/
-    +-- canvas-store.ts       # Zustand store for window state + localStorage
+    +-- canvas-store.ts       # Zustand store for card state + localStorage
 
 frontend/app/(app)/stacks/[id]/
 +-- page.tsx                  # StackCanvas replaces StackDetailClient tabs
-+-- @subbar/page.tsx          # Window tabs (taskbar) instead of tab navigation
++-- @subbar/page.tsx          # Card tabs (taskbar) instead of tab navigation
 
 frontend/lib/
 +-- websocket.ts              # WebSocket connection manager
-+-- canvas-protocol.ts        # Message type definitions
++-- canvas-protocol.ts        # Message type definitions + Block types
 ```
 
-**Window management:**
-- Agent creates windows via `canvas_update` messages
-- User owns position/size (drag, resize)
-- Agent owns content (data, title)
-- Subbar shows tabs: click to focus, X to close, + to add manually
+**Card management:**
+- Agent creates cards via `canvas_update` messages with block arrays
+- User owns position/size (drag, resize on React Flow canvas)
+- Agent owns content (blocks, title)
+- Blocks rendered top-to-bottom inside the card by `card-renderer.tsx`
+- Incremental updates: agent sends only changed blocks (matched by `id`)
+- Subbar shows tabs: click to focus card, X to close, + to add manually
 - Layout persists in localStorage (Supabase later for cross-device)
+
+**MVP block catalog:**
+
+| Block Type | shadcn Component | Example Use |
+|------------|-----------------|-------------|
+| `heading` | Card Header | Invoice title, section headers |
+| `stat` | Custom (large text + muted label) | "$4,250 Total", "3 Documents" |
+| `key-value` | Grid / Description list | Vendor: Bunnings, Date: 15/01 |
+| `table` | TanStack Table | Extraction results, line items |
+| `badge` | Badge | "Extracted", "Processing", "Failed" |
+| `progress` | Progress | Upload progress, extraction progress |
+| `text` | Prose / markdown renderer | Summaries, explanations, notes |
+| `separator` | Separator | Divider between card sections |
+
+**Post-MVP block types** (add incrementally):
+- `button` — Export, correct, approve actions
+- `image` — Document thumbnails, avatars
+- `chart` — Simple visualizations (bar, line)
+- `form-field` — Inline correction inputs
+- `document` — Embedded PDF viewer (react-pdf)
 
 ### Bridge Reconnection Flow
 
@@ -632,7 +685,7 @@ Bridge sends periodic pings to Sprite to prevent 30s auto-sleep. Pings stop when
 | AgentEvent interface | `frontend/lib/agent-api.ts` | Preserved, transport changes to WebSocket |
 | humanizeToolName() | `frontend/lib/agent-api.ts` | Preserved |
 | Zustand agent store | `frontend/components/agent/stores/` | Extended with Canvas state |
-| Resizable panels | `frontend/components/preview-panel/` | Adapted for Canvas window nodes |
+| Resizable panels | `frontend/components/preview-panel/` | Adapted for Canvas card nodes |
 | TanStack Table | `frontend/components/documents/` | Reused for extraction tables in Canvas |
 | Clerk auth | `frontend/proxy.ts` | Preserved, Bridge validates JWT |
 | Upload flow | `frontend/components/agent/flows/` | Adapted for WebSocket file upload |
@@ -699,15 +752,16 @@ Bridge sends periodic pings to Sprite to prevent 30s auto-sleep. Pings stop when
 - [ ] Bridge handles sleep/wake reconnection gracefully
 - [ ] Keepalive pings prevent sleep during active sessions
 
-### Canvas UI
+### Canvas UI — Composable Card System
 
 - [ ] Open a stack -> React Flow canvas renders (not tabs)
-- [ ] Document windows display PDF/image preview
-- [ ] Table windows display extracted data (TanStack Table)
-- [ ] Windows can be dragged, resized, closed
-- [ ] Subbar shows tabs for each window
+- [ ] Agent streams composable cards onto canvas via WebSocket `canvas_update` messages
+- [ ] Cards render block arrays: heading, stat, key-value, table, badge, progress, text, separator
+- [ ] Cards can be dragged, resized, closed on React Flow canvas
+- [ ] Agent can incrementally update individual blocks within a card (by block ID)
+- [ ] Subbar shows tabs for each card
 - [ ] Layout persists in localStorage
-- [ ] Agent can create/update/close windows via WebSocket messages
+- [ ] Block catalog is extensible — new block types added without protocol changes
 
 ### Memory System
 
@@ -799,7 +853,7 @@ The agent runs on its own persistent VM. This is the key differentiator over eve
 The agent has TWO ways to communicate with the user:
 
 1. **Chat (text)** — Conversational responses, explanations, questions. "I found 3 invoices from Bunnings. The total is $4,250. Should I add them to the expenses table?"
-2. **Canvas (visual)** — Windows the agent creates and controls: data tables, document previews, notes, charts. The agent decides what to show based on what the user needs.
+2. **Canvas (visual)** — Composable cards the agent streams and controls: data tables, stats, key-value pairs, progress indicators, and more. The agent decides what to show and how to compose each card based on what the user needs.
 
 Both are always available. The agent chooses the right mix. A simple answer is text. A data result is a Canvas table. A comparison is both — text explanation + visual table.
 
@@ -871,10 +925,11 @@ Same engine. Different interface. Different audience. Same power.
 ### Canvas UI (from Session 113, Jan 25-26)
 
 - React Flow (@xyflow/react) confirmed for infinite canvas
-- Window types: Document (react-pdf), Table (TanStack Table), Notes (markdown editor)
-- Agent tools: create_window, update_window, close_window
-- Subbar as window manager (taskbar pattern)
-- Component structure in `frontend/components/canvas/`
+- **Updated Session 121**: Composable card system replaces fixed window types (A2UI-inspired, custom protocol)
+- MVP block catalog: heading, stat, key-value, table, badge, progress, text, separator
+- Agent tools: create_card, update_card, close_card (with block arrays)
+- Subbar as card manager (taskbar pattern)
+- Component structure: `card-renderer.tsx` + individual `blocks/*.tsx` components
 
 ### Session 118 — Architecture Review
 

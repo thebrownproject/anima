@@ -1233,3 +1233,32 @@ Stacks page → Canvas workspaces (transform)
 - Can also start in parallel: Define WebSocket message protocol + React Flow canvas (both unblocked)
 
 ---
+
+## [2026-02-06 18:15] Session 121
+
+**Branch:** main | **Git:** uncommitted (spec.md + plan.md + beads)
+
+### What Happened
+- **Brainstorm: Composable Card System (A2UI-inspired)** — Fraser found Google's A2UI project (agent-driven declarative UI) and asked if it could be the missing link for the Canvas
+- Evaluated A2UI against Stackdocs v2 spec. Conclusion: right concept (declarative agent-driven UI), wrong dependency (v0.8, multi-agent mesh focus, solves problems we don't have)
+- Decided on **Option C: A2UI-inspired, custom protocol** — composable cards with a block catalog
+- Designed MVP block catalog (8 data-focused types): `heading`, `stat`, `key-value`, `table`, `badge`, `progress`, `text`, `separator`
+- Each block maps to a shadcn component, agent composes cards from blocks, frontend renders via `card-renderer.tsx`
+- **Updated spec.md** — Replaced fixed window types (table/document/notes) with composable card system throughout: Canvas UI requirements, WebSocket protocol (`CanvasUpdate` now uses `create_card`/`update_card`/`close_card` with `Block[]` array), Canvas UI Architecture section (complete rewrite with block catalog table), data flow, success criteria
+- **Updated plan.md** — Revised all affected tasks: protocol task adds Block types, canvas tools use card commands, Phase 3 tasks renamed (React Flow → base card component, Table window → MVP block components), doc/notes task deferred (notes covered by text-block, PDF viewer post-MVP), all Phase 4 tasks updated window→card refs. Total: 29→28 active tasks.
+- **Updated 13 beads** — m7b.2.1 (protocol), m7b.3.4 (canvas tools), m7b.4-m7b.4.8 (all Phase 3), m7b.5.1-m7b.5.3 (all Phase 4). Closed m7b.4.4 as deferred. Verified all beads match plan.md via subagent audit.
+- **Researched AG-UI protocol** (CopilotKit) — event-based agent↔frontend protocol with 16+ event types, state sync via JSON Patch. Concluded: our custom protocol maps 1:1 to AG-UI concepts, keep custom for MVP, migrate later if needed.
+- **Researched CopilotKit Generative UI** — three types: static, declarative, open-ended. Our block catalog = declarative. Open-ended (agent generates arbitrary UI) is additive post-MVP extension, not a rewrite.
+
+### Decisions Made
+1. **Composable card system over fixed window types** — agent composes cards from block catalog instead of selecting from 3 hardcoded window types (table/document/notes)
+2. **Custom protocol over A2UI** — take the declarative catalog concept but no external dependency on v0.8 spec
+3. **Custom protocol over AG-UI** — simpler for MVP (6 message types vs 16+ events), concepts map 1:1 for future migration
+4. **Doc/notes window task deferred** — notes covered by text-block, PDF viewer post-MVP
+5. **Open-ended generative UI is post-MVP** — architecture supports adding it (html/react block type) without protocol changes
+
+### Next Action
+- Phase 0: Pre-flight validation (Fly.io + Sprites.dev) — the mandatory gate
+- In parallel: Define WebSocket message protocol (now includes Block types) + React Flow canvas and base card component (both unblocked)
+
+---

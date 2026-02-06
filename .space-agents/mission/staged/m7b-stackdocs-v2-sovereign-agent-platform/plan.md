@@ -12,7 +12,7 @@ Three new infrastructure components replace the current FastAPI + Supabase archi
 
 1. **Fly.io Bridge** (Node.js) — Lightweight WebSocket proxy between browser and Sprites
 2. **Sprites.dev VMs** (Python) — Per-stack persistent microVMs running Claude Agent SDK
-3. **Canvas UI** (React Flow) — Visual window manager replacing tab-based stack views
+3. **Canvas UI** (React Flow) — Composable card system replacing tab-based stack views (A2UI-inspired, custom block catalog)
 
 The build is sequenced in 5 phases plus a mandatory pre-flight. Phases 2 (Sprite runtime) and 3 (Canvas UI) can run in parallel — the biggest time-saving opportunity.
 
@@ -70,16 +70,21 @@ Everything depends on messages flowing Browser → Bridge → Sprite → Bridge 
 **Steps:**
 1. Define all message interfaces from spec: WebSocketMessage (base), MissionMessage, FileUploadMessage, CanvasInteraction, AuthConnect, AgentEvent, CanvasUpdate, StatusUpdate, SystemMessage
 2. Include mandatory `id` (UUID), `timestamp`, optional `request_id` on every message
-3. TypeScript types in `bridge/src/protocol.ts` (source of truth)
-4. Copy types to `frontend/types/ws-protocol.ts`
-5. Python dataclasses in `sprite/src/protocol.py` matching the same schema
-6. Include message validation helpers (type guard functions)
+3. Define `Block` union type (8 MVP types): `heading`, `stat`, `key-value`, `table`, `badge`, `progress`, `text`, `separator` — each block has mandatory `id` and `type`
+4. `CanvasUpdate` uses card commands: `create_card`, `update_card`, `close_card` with `card_id` and `blocks: Block[]`
+5. `CanvasInteraction` uses `card_id` + optional `block_id` for targeted interactions
+6. TypeScript types in `bridge/src/protocol.ts` (source of truth)
+7. Copy types to `frontend/types/ws-protocol.ts`
+8. Python dataclasses in `sprite/src/protocol.py` matching the same schema
+9. Include message validation helpers (type guard functions)
 
 **Tests:**
 - [ ] `tsc --noEmit` passes for `bridge/src/protocol.ts` and `frontend/types/ws-protocol.ts`
 - [ ] `python -c "from src.protocol import *"` succeeds in `sprite/`
 - [ ] Type guard functions return `true` for valid messages, `false` for malformed
 - [ ] Every message type includes `id` (UUID) and `timestamp` fields
+- [ ] `Block` union covers all 8 MVP types with correct props
+- [ ] `CanvasUpdate` uses `create_card`/`update_card`/`close_card` commands with `blocks` array
 - [ ] TypeScript and Python definitions cover identical message types
 
 ---
@@ -360,24 +365,25 @@ Adapt existing v1 agent code to run on Sprites with SQLite + WebSocket output.
 
 ### Task: Canvas tools for agent
 
-**Goal:** Agent can create/update/close windows on the user's Canvas via custom tools.
+**Goal:** Agent can create/update/close cards on the user's Canvas via custom tools, composing from the block catalog.
 **Files:** Create `sprite/src/agents/shared/canvas_tools.py`
 **Depends on:** Agent runtime with WebSocket output
 
 **Steps:**
 1. Create tool factory: `create_canvas_tools(ws_send_fn)` — scoped with WebSocket send function
-2. `create_window(window_type, title, data)` → sends `canvas_update` message with `command: 'create_window'`
-3. `update_window(window_id, data)` → sends `canvas_update` with `command: 'update_window'`
-4. `close_window(window_id)` → sends `canvas_update` with `command: 'close_window'`
+2. `create_card(title, blocks)` → sends `canvas_update` message with `command: 'create_card'` and block array
+3. `update_card(card_id, blocks)` → sends `canvas_update` with `command: 'update_card'` and changed blocks (matched by block `id`)
+4. `close_card(card_id)` → sends `canvas_update` with `command: 'close_card'`
 5. Register as Claude Agent SDK tools alongside extraction tools
-6. Window types: `table` (columns + rows), `document` (doc_id), `notes` (markdown content)
+6. Agent composes cards from MVP block types: `heading`, `stat`, `key-value`, `table`, `badge`, `progress`, `text`, `separator`
 
 **Tests:**
-- [ ] `create_window("table", "Test", {columns, rows})` sends `canvas_update` with `command: 'create_window'` over WS
-- [ ] `update_window(window_id, new_data)` sends `canvas_update` with `command: 'update_window'`
-- [ ] `close_window(window_id)` sends `canvas_update` with `command: 'close_window'`
+- [ ] `create_card("Test", [heading_block, table_block])` sends `canvas_update` with `command: 'create_card'` and blocks array over WS
+- [ ] `update_card(card_id, [updated_block])` sends `canvas_update` with `command: 'update_card'` and changed blocks
+- [ ] `close_card(card_id)` sends `canvas_update` with `command: 'close_card'`
 - [ ] All three tools registered alongside extraction tools in agent's tool list
-- [ ] Message payloads match protocol schema (window_id, window_type, title, data fields present)
+- [ ] Message payloads match protocol schema (card_id, title, blocks fields present)
+- [ ] Blocks validated: each has `id` and `type` matching MVP catalog
 
 ---
 
@@ -404,9 +410,9 @@ Adapt existing v1 agent code to run on Sprites with SQLite + WebSocket output.
 
 ---
 
-### Phase 3: Canvas UI
+### Phase 3: Canvas UI — Composable Card System
 
-The visual output surface. React Flow infinite canvas with agent-controlled windows.
+The visual output surface. React Flow infinite canvas where the agent streams composable cards built from a block catalog (A2UI-inspired, custom protocol).
 
 **Can start after:** Phase 1 protocol types are defined.
 **Runs in parallel with:** Phase 2 (Sprite runtime).
@@ -439,109 +445,108 @@ The visual output surface. React Flow infinite canvas with agent-controlled wind
 
 ---
 
-### Task: React Flow canvas and base window component
+### Task: React Flow canvas and base card component
 
-**Goal:** Infinite canvas with pan/zoom/grid that renders draggable, resizable window nodes.
-**Files:** Create `frontend/components/canvas/stack-canvas.tsx`, create `frontend/components/canvas/canvas-window.tsx`
+**Goal:** Infinite canvas with pan/zoom/grid that renders draggable, resizable card nodes with a block renderer.
+**Files:** Create `frontend/components/canvas/stack-canvas.tsx`, create `frontend/components/canvas/canvas-card.tsx`, create `frontend/components/canvas/card-renderer.tsx`
 **Depends on:** None (can use mock data)
 
 **Steps:**
 1. Install `@xyflow/react`
 2. `stack-canvas.tsx`: React Flow wrapper with pan, zoom, grid background, snap-to-grid
-3. `canvas-window.tsx`: Custom React Flow node — title bar (drag handle, title text, close button), resizable body
-4. Use shadcn/ui Card for styling consistency
-5. Register as custom node type in React Flow
-6. Accept `window_type` prop to render different child content
+3. `canvas-card.tsx`: Custom React Flow node — title bar (drag handle, title text, close button), resizable body, renders blocks via card-renderer
+4. `card-renderer.tsx`: Takes a `blocks: Block[]` array, renders each block top-to-bottom using the appropriate block component. Unknown block types render a fallback.
+5. Use shadcn/ui Card for card container styling consistency
+6. Register as custom node type in React Flow
 
 **Tests:**
 - [ ] `StackCanvas` renders without crash (smoke test)
 - [ ] Pan, zoom, and grid background visible in rendered output
-- [ ] `CanvasWindow` renders with title bar (title text, close button)
-- [ ] Window is draggable (React Flow node drag)
-- [ ] Window is resizable (resize handle works)
-- [ ] `window_type` prop accepted — different children rendered per type
+- [ ] `CanvasCard` renders with title bar (title text, close button)
+- [ ] Card is draggable (React Flow node drag)
+- [ ] Card is resizable (resize handle works)
+- [ ] `CardRenderer` renders blocks array top-to-bottom (order preserved)
+- [ ] Unknown block type renders graceful fallback (not crash)
 - [ ] `npm run build` passes with no TypeScript errors
 
 ---
 
-### Task: Table window component
+### Task: MVP block components
 
-**Goal:** Critical-path window type for displaying extraction results on Canvas.
-**Files:** Create `frontend/components/canvas/windows/table-window.tsx`
-**Depends on:** React Flow canvas and base window component
+**Goal:** Build the 8 data-focused block components that compose into cards on the Canvas.
+**Files:** Create `frontend/components/canvas/blocks/` directory: `heading-block.tsx`, `stat-block.tsx`, `key-value-block.tsx`, `table-block.tsx`, `badge-block.tsx`, `progress-block.tsx`, `text-block.tsx`, `separator-block.tsx`
+**Depends on:** React Flow canvas and base card component
 
 **Steps:**
-1. `table-window.tsx`: TanStack Table (already in project) inside canvas window. Columns and rows as props.
-2. Editable cells that send `canvas_interaction` messages.
-3. Reuse patterns from `stacks/stack-table-view.tsx`.
+1. `heading-block.tsx`: Title text + optional subtitle. Uses Card Header pattern.
+2. `stat-block.tsx`: Large value + muted label + optional trend. Custom layout.
+3. `key-value-block.tsx`: Grid of label:value pairs. Clean two-column layout.
+4. `table-block.tsx`: TanStack Table with columns + rows props. Editable cells send `canvas_interaction` with `card_id` + `block_id`. Reuse patterns from `stacks/stack-table-view.tsx`.
+5. `badge-block.tsx`: shadcn Badge with variant (default, success, warning, destructive).
+6. `progress-block.tsx`: shadcn Progress bar with value + optional label.
+7. `text-block.tsx`: Markdown rendering via `react-markdown` (already in project).
+8. `separator-block.tsx`: shadcn Separator.
 
 **Tests:**
-- [ ] Renders columns and rows from props (column headers visible, row data in cells)
-- [ ] Cell edit triggers `canvas_interaction` message with correct `window_id` and `action: 'edit_cell'`
-- [ ] Empty table (no rows) renders gracefully without crash
-- [ ] Large dataset (100+ rows) renders without noticeable lag
+- [ ] Each of 8 block components renders without crash (smoke tests)
+- [ ] `table-block` renders columns and rows from props (headers visible, data in cells)
+- [ ] `table-block` cell edit triggers `canvas_interaction` with correct `card_id`, `block_id`, and `action: 'edit_cell'`
+- [ ] `stat-block` displays value prominently with muted label
+- [ ] `key-value-block` renders label:value pairs in grid layout
+- [ ] `badge-block` renders correct variant styling (success = green, destructive = red, etc.)
+- [ ] `text-block` renders markdown (headings, bold, lists)
+- [ ] Empty/missing props handled gracefully (no crashes)
 - [ ] `npm run build` passes with no TypeScript errors
 
 ---
 
-### Task: Document and notes window components
+### Task: Document and notes window components — DEFERRED
 
-**Goal:** Supporting window types for PDF preview and markdown notes on Canvas.
-**Files:** Create `frontend/components/canvas/windows/document-window.tsx`, `notes-window.tsx`
-**Depends on:** React Flow canvas and base window component
+**Status:** Deferred. Notes functionality covered by `text-block` (markdown). PDF viewer deferred to post-MVP — will be added as a `document` block type later.
 
-**Steps:**
-1. `document-window.tsx`: PDF preview via `react-pdf` (already in project) or image via `<img>`. Page navigation for multi-page PDFs. Receives document data as props.
-2. `notes-window.tsx`: Markdown display using `react-markdown` (already in project). Agent writes content, user views. Simple and lightweight.
-
-**Tests:**
-- [ ] `document-window.tsx` renders a PDF page (given test PDF data or mock)
-- [ ] Document window shows page navigation for multi-page PDFs
-- [ ] `notes-window.tsx` renders markdown string (headings, lists, bold render correctly)
-- [ ] Both components accept props and render inside `CanvasWindow` wrapper
-- [ ] `npm run build` passes with no TypeScript errors
+**Original goal:** PDF preview and markdown notes as window types. Replaced by composable card system with block catalog. The `text` block handles markdown/notes. PDF viewer is a specialized block type for post-MVP.
 
 ---
 
 ### Task: Canvas Zustand store with WS integration
 
-**Goal:** Centralized state for all canvas windows with localStorage persistence and WebSocket message handling.
+**Goal:** Centralized state for all canvas cards with localStorage persistence and WebSocket message handling.
 **Files:** Create `frontend/lib/stores/canvas-store.ts`
-**Depends on:** React Flow canvas and base window component, WebSocket connection manager and store
+**Depends on:** React Flow canvas and base card component, WebSocket connection manager and store
 
 **Steps:**
-1. Zustand store: `windows` Map (window_id → { type, title, data, position, size }), `activeWindowId`
-2. Actions: `addWindow()`, `updateWindow()`, `removeWindow()`, `updatePosition()`, `updateSize()`
+1. Zustand store: `cards` Map (card_id → { title, blocks: Block[], position, size }), `activeCardId`
+2. Actions: `addCard()`, `updateCard()`, `removeCard()`, `updateBlocks()`, `updatePosition()`, `updateSize()`
 3. Persist to localStorage via Zustand persist middleware
-4. Subscribe to `canvas_update` WebSocket messages → `create_window` calls `addWindow()`, `update_window` calls `updateWindow()`, `close_window` calls `removeWindow()`
-5. User interactions (close, resize, move) update store locally + send `canvas_interaction` messages
+4. Subscribe to `canvas_update` WebSocket messages → `create_card` calls `addCard()`, `update_card` calls `updateCard()` (merge changed blocks by ID), `close_card` calls `removeCard()`
+5. User interactions (close, resize, move) update store locally + send `canvas_interaction` messages with `card_id` and optional `block_id`
 
 **Tests:**
-- [ ] `addWindow()` adds window to store, `removeWindow()` removes it, `updateWindow()` updates data
-- [ ] Store persists to localStorage (reload → windows restored from storage)
-- [ ] `canvas_update` WS message with `create_window` → `addWindow()` called, window appears in store
-- [ ] `canvas_update` WS message with `update_window` → window data updated in store
-- [ ] `canvas_update` WS message with `close_window` → window removed from store
-- [ ] User close/resize/move → `canvas_interaction` message sent over WS
+- [ ] `addCard()` adds card to store, `removeCard()` removes it, `updateCard()` updates blocks
+- [ ] Store persists to localStorage (reload → cards restored from storage)
+- [ ] `canvas_update` WS message with `create_card` → `addCard()` called, card appears in store
+- [ ] `canvas_update` WS message with `update_card` → card blocks updated in store (matched by block ID)
+- [ ] `canvas_update` WS message with `close_card` → card removed from store
+- [ ] User close/resize/move → `canvas_interaction` message sent over WS with `card_id`
 
 ---
 
 ### Task: Subbar, chat bar, and status indicator
 
-**Goal:** Window manager taskbar, chat input for missions, and connection status display.
+**Goal:** Card manager taskbar, chat input for missions, and connection status display.
 **Files:** Modify `frontend/app/(app)/stacks/[id]/@subbar/page.tsx`, create `frontend/components/canvas/chat-bar.tsx`, create `frontend/components/canvas/connection-status.tsx`
 **Depends on:** Canvas Zustand store with WS integration
 
 **Steps:**
-1. Subbar: Replace current tab navigation with dynamic window tabs from canvas store. Click to focus/pan, X to close. Window type icon + title.
+1. Subbar: Replace current tab navigation with dynamic card tabs from canvas store. Click to focus/pan, X to close. Card title as tab label.
 2. Chat bar: Text input + send button at bottom of Canvas. Sends `mission` messages over WebSocket. File upload button (paperclip icon) for alternative to drag-and-drop. Adapt patterns from existing `agent-container.tsx`.
 3. Connection status: "Connecting...", "Sprite waking..." (spinner), "Connected" (green dot), "Disconnected" (red dot). Read from WS store `connectionStatus`. Display in header or Canvas top-right.
 4. Agent event rendering: Display `agent_event` messages in chat panel — streaming text, tool indicators, errors. Reuse existing agent card/content components.
 
 **Tests:**
-- [ ] Subbar renders one tab per open window (matches canvas store state)
-- [ ] Click tab → canvas pans to focus on that window
-- [ ] X on tab → window closes (removed from store)
+- [ ] Subbar renders one tab per open card (matches canvas store state)
+- [ ] Click tab → canvas pans to focus on that card
+- [ ] X on tab → card closes (removed from store)
 - [ ] Chat bar sends `mission` message on submit (message captured by mock WS)
 - [ ] Connection status shows correct indicator: green dot (connected), red dot (disconnected), spinner (sprite_waking)
 - [ ] Agent events render in chat panel (text streams, tool calls shown, errors displayed)
@@ -558,7 +563,7 @@ The visual output surface. React Flow infinite canvas with agent-controlled wind
 **Steps:**
 1. Replace `StackDetailClient` tabs UI with `StackCanvas` component
 2. Initialize WS connection when stack page loads (via WS store)
-3. Chat bar at bottom, subbar shows window tabs
+3. Chat bar at bottom, subbar shows card tabs
 4. Canvas takes full viewport minus header/subbar/chat
 5. Disconnect WS when navigating away from stack page
 6. Preserve existing stack list page (unchanged)
@@ -589,7 +594,7 @@ Wire everything together into the MVP demo flow.
 **Depends on:** Canvas Zustand store with WS integration, SpriteGateway (from Phase 2)
 
 **Steps:**
-1. Frontend: Enable drag-and-drop on Canvas. Read file as base64, send `file_upload` message. Show optimistic "processing" document window.
+1. Frontend: Enable drag-and-drop on Canvas. Read file as base64, send `file_upload` message. Show optimistic "processing" card with badge block.
 2. Frontend: Upload button (paperclip) in chat bar as alternative. Support PDF, PNG, JPG, JPEG. 25MB max.
 3. Sprite: `handle_upload()` decodes base64, writes to `/workspace/documents/{uuid}_{filename}`
 4. Sprite: Create `documents` row in SQLite with `status: 'processing'`
@@ -609,22 +614,22 @@ Wire everything together into the MVP demo flow.
 
 ### Task: OCR and extraction agent integration
 
-**Goal:** Uploaded documents get OCR'd and extracted, with results streaming to Canvas as table windows.
+**Goal:** Uploaded documents get OCR'd and extracted, with results streaming to Canvas as cards with table blocks.
 **Files:** Modify `sprite/src/services/ocr.py`, modify `sprite/src/handlers/upload.py`, wire `sprite/src/agents/extraction_agent/`
 **Depends on:** File upload pipeline, Agent runtime with WebSocket output
 
 **Steps:**
 1. OCR: Mistral OCR API call (env var key) → cache text to `/workspace/ocr/{doc_id}.md`. Also support Claude native PDF (pass base64 directly in extraction prompt). Agent decides which method per document.
-2. After OCR: Send `canvas_update` to create document window on Canvas
+2. After OCR: Send `canvas_update` to create processing card on Canvas (heading + badge block)
 3. Run extraction agent: pass OCR text, agent calls tools to extract structured data
-4. Agent calls `create_window` tool → table window appears on Canvas with extracted fields
+4. Agent calls `create_card` tool → extraction card appears on Canvas with stat + table blocks showing extracted fields
 5. Update SQLite: extraction record with fields, document status to `completed`
 6. Update daily journal with extraction summary
 
 **Tests:**
 - [ ] OCR produces cached text at `/workspace/ocr/{doc_id}.md` (file exists, non-empty)
-- [ ] Document window created on Canvas after OCR completes (canvas_update message sent)
-- [ ] Extraction agent runs and creates table window with extracted fields
+- [ ] Processing card created on Canvas after OCR completes (canvas_update message sent)
+- [ ] Extraction agent runs and creates extraction card with table block showing extracted fields
 - [ ] SQLite `extractions` row created with `extracted_fields` JSON
 - [ ] Document `status` updated to `completed` in SQLite
 - [ ] Daily journal updated with extraction summary line
@@ -639,35 +644,35 @@ Wire everything together into the MVP demo flow.
 **Depends on:** OCR and extraction agent integration
 
 **Steps:**
-1. Canvas state injection: When mission is sent, include current Canvas state (open windows, active table data) in context
+1. Canvas state injection: When mission is sent, include current Canvas state (open cards, active table block data) in context
 2. Frontend serializes Canvas state from store, sends as part of mission or at session start
 3. Agent receives corrections via chat: "the vendor should be Acme Corp"
-4. Agent calls `set_field` to update SQLite + `update_window` to refresh table on Canvas
+4. Agent calls `set_field` to update SQLite + `update_card` to refresh table block on Canvas
 5. Agent updates `soul.md` if correction reveals a pattern (prompt engineering)
 
 **Tests:**
-- [ ] Mission message includes serialized Canvas state (open windows, active table data)
+- [ ] Mission message includes serialized Canvas state (open cards, active table block data)
 - [ ] Chat "change vendor to Acme Corp" → `set_field` updates SQLite extraction record
-- [ ] `update_window` message sent → table window refreshes on Canvas with corrected data
+- [ ] `update_card` message sent → table block refreshes on Canvas with corrected data
 - [ ] After 3+ corrections on same field pattern → `soul.md` updated with learned rule
-- [ ] Canvas state serialization includes window_id, type, title, and data for each open window
+- [ ] Canvas state serialization includes card_id, title, and blocks for each open card
 
 ---
 
-### Task: CSV and JSON export from table windows
+### Task: CSV and JSON export from table blocks
 
-**Goal:** Download extraction data as CSV or JSON directly from Canvas table windows.
-**Files:** Modify `frontend/components/canvas/windows/table-window.tsx`
-**Depends on:** Table window component
+**Goal:** Download extraction data as CSV or JSON directly from Canvas cards containing table blocks.
+**Files:** Modify `frontend/components/canvas/blocks/table-block.tsx` or `frontend/components/canvas/canvas-card.tsx`
+**Depends on:** MVP block components
 
 **Steps:**
-1. Add "Export" dropdown in table window header: CSV, JSON options
+1. Add "Export" dropdown in card header (when card contains a table block): CSV, JSON options
 2. CSV: Serialize table data (headers as first row, values as subsequent rows), trigger browser download
 3. JSON: Serialize as array of objects, trigger browser download
 4. No server round-trip — data is already in Canvas store
 
 **Tests:**
-- [ ] Export dropdown visible in table window header with CSV and JSON options
+- [ ] Export dropdown visible in card header (when table block present) with CSV and JSON options
 - [ ] CSV download contains headers as first row, values as subsequent rows
 - [ ] JSON download contains array of objects (keys = column names)
 - [ ] Downloaded file has correct filename (e.g., `{table_title}.csv`)
@@ -711,12 +716,12 @@ Complete the memory system and polish the MVP demo.
 **Steps:**
 1. Test full cycle: upload docs, extract data, close browser, wait for Sprite sleep (35s), reopen browser
 2. Verify: Canvas loads from localStorage, agent loads memory, SQLite has all data
-3. Frontend: On reconnect, load Canvas state from localStorage + request Sprite state sync if needed
+3. Frontend: On reconnect, load Canvas card state from localStorage + request Sprite state sync if needed
 4. Fix any gaps discovered during testing
 
 **Tests:**
 - [ ] Full cycle passes: upload → extract → close browser → wait 35s → reopen → Canvas loads
-- [ ] Canvas state restored from localStorage (same windows, positions, data)
+- [ ] Canvas state restored from localStorage (same cards, positions, blocks)
 - [ ] Agent memory intact: `soul.md`, journals, MEMORY.md all present on Sprite after wake
 - [ ] SQLite data intact: documents, extractions, OCR results all queryable after wake
 - [ ] No data loss or corruption after sleep/wake cycle
@@ -758,8 +763,9 @@ Phase 1: Infrastructure (sequential, ~8 tasks)
   ↓ gate: echo test passes end-to-end
 Phase 2: Sprite Runtime (sequential, ~5 tasks)     ← PARALLEL
   SQLite → Tool factories → Agent runtime → Canvas tools → Memory
-Phase 3: Canvas UI (sequential, ~8 tasks)           ← PARALLEL
-  WS manager → React Flow → Table window → Doc/Notes windows → Store → Subbar/Chat → Page rewrite
+Phase 3: Canvas UI (sequential, ~7 tasks)           ← PARALLEL
+  WS manager → React Flow + Card renderer → MVP block components → Store → Subbar/Chat → Page rewrite
+  (Doc/Notes windows deferred — notes covered by text-block, PDF viewer post-MVP)
   ↓ gate: mission message reaches agent, response streams to chat
 Phase 4: Upload + Extraction (~4 tasks)
   Upload → OCR + Extraction → Corrections → Export
@@ -771,18 +777,18 @@ Phase 5: Memory + Polish (~3 tasks)
 
 **Parallel opportunity:** Phase 3 Canvas UI runs fully independent of Phase 2 Sprite runtime until integration. Saves ~1 week.
 
-**De-risked:** Table window split from document/notes windows — table is critical path (extraction results), document/notes can follow independently.
+**De-risked:** Block components are independent and composable — if one block type has issues, others still work. Doc/notes window deferred — MVP relies on composable blocks (text-block covers notes, PDF viewer is post-MVP).
 
 ---
 
 ## Success Criteria
 
 - [ ] Login → Sprite wakes → Canvas loads with persisted state
-- [ ] Upload 3 invoices → documents appear as Canvas windows
-- [ ] Chat "extract vendor data" → table window populates live with streaming
-- [ ] Chat correction → table updates in real-time
+- [ ] Upload 3 invoices → documents appear as Canvas cards (heading + badge blocks)
+- [ ] Chat "extract vendor data" → extraction cards stream with stat + table blocks
+- [ ] Chat correction → card table block updates in real-time
 - [ ] Close browser → reopen → everything persists (Sprite memory demo)
-- [ ] Export CSV from table window → download file
+- [ ] Export CSV from card table block → download file
 - [ ] soul.md contains learned extraction patterns after multiple corrections
 - [ ] Daily journal captures session activity
 
@@ -798,7 +804,7 @@ Phase 5: Memory + Polish (~3 tasks)
 | Sleep/wake reconnection race conditions | **MEDIUM** | Extensive logging. Test with artificial delays. Message buffer with TTL. |
 | Claude Agent SDK streaming → WebSocket mapping | **MEDIUM** | Read SDK source. Build minimal test: run agent, capture events, forward to WS. |
 | Region latency from Australia | **MEDIUM** | Measure in Phase 0. If >200ms, optimistic-update on frontend. |
-| React Flow performance with many windows | **LOW** | MVP uses 3-5 windows. Virtualize off-screen if needed post-MVP. |
+| React Flow performance with many cards | **LOW** | MVP uses 3-5 cards. Virtualize off-screen if needed post-MVP. |
 
 ---
 
@@ -807,7 +813,7 @@ Phase 5: Memory + Polish (~3 tasks)
 - **Phase 0:** 1 task (pre-flight validation)
 - **Phase 1:** 8 tasks (infrastructure scaffold)
 - **Phase 2:** 5 tasks (Sprite runtime)
-- **Phase 3:** 8 tasks (Canvas UI — table split from doc/notes)
+- **Phase 3:** 7 tasks (Canvas UI — composable card system, doc/notes deferred)
 - **Phase 4:** 4 tasks (upload + extraction)
 - **Phase 5:** 3 tasks (memory + polish)
-- **Total:** 29 tasks
+- **Total:** 28 tasks (1 deferred: doc/notes windows replaced by block system)
