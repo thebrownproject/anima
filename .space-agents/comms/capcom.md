@@ -1654,3 +1654,45 @@ Stacks page → Canvas workspaces (transform)
 - Phase 2 (Sprite tools) and Phase 3 (Canvas UI) can run in parallel.
 
 ---
+
+## [2026-02-08 11:30] Session 132
+
+**Branch:** main | **Git:** uncommitted (HOUSTON fixes after Builder commits)
+
+### What Happened
+- **Executed m7b.3.4 (Canvas tools) + m7b.3.5 (Memory system) via orchestrated mode** — Pathfinder/Builder/Inspector cycle for each task. Phase 2: Sprite Runtime is now **CLOSED** (6/6 tasks).
+
+- **m7b.3.4 Canvas tools**: Builder created `sprite/src/agents/shared/canvas_tools.py` (3 tools: create_card, update_card, close_card) with 14 tests. Inspector flagged DRY violation (block validation duplicated in create/update). HOUSTON extracted `_validate_and_build_blocks()` helper, reducing 405→390 lines.
+
+- **m7b.3.5 Memory system**: Builder created `sprite/src/memory/` (loader.py, journal.py, transcript.py, __init__.py) + `memory_tools.py` (3 tools: write_memory, update_soul, update_user_prefs). Inspector flagged: tests in wrong directory (`sprite/` root instead of `sprite/tests/`), DRY violation (update_soul/update_user_prefs duplicated write logic), and missing tests. HOUSTON fixes:
+  1. Moved test files to `sprite/tests/`
+  2. Extracted `_write_file()` shared helper (172→101 lines, 41% reduction)
+  3. Rewrote `test_memory_tools.py` to use proper pytest fixtures instead of `sys.modules` mock that poisoned canvas_tools tests
+  4. Fixed `runtime.py:142` transcript null bug (`self._transcript.session_id` crash when transcript is None during resume)
+  5. Updated `test_runtime.py` to patch `load_memory()` instead of removed `SOUL_MD_PATH`
+
+- **Live E2E verification on Sprite VM (sd-e2e-test)**:
+  - Deployed 13 source files via `deployCode()`, killed old server, restarted
+  - Agent confirmed all 6 MCP tools visible: `mcp__sprite__create_card`, `update_card`, `close_card`, `write_memory`, `update_soul`, `update_user_prefs`
+  - Full invoice extraction scenario: agent created table card with 4 block types, updated stat, wrote all 3 memory files, closed card — all 6 tools succeeded
+  - Verified memory files persisted on Sprite filesystem via `sprite exec cat`
+
+- **56/56 sprite tests pass** (excluding 9 pre-existing test_server.py failures from handle_connection signature mismatch)
+
+### Decisions Made
+1. **DRY over brevity** — extracted shared helpers in both canvas_tools and memory_tools rather than shipping duplicated code
+2. **No sys.modules mocking** — rewrote memory tools tests to use pytest fixtures + real SDK (was poisoning other test modules in same process)
+3. **Transcript null safety** — added `if self._transcript:` guard before accessing session_id on resume path
+
+### Gotchas
+- Builder placed test files in `sprite/` root instead of `sprite/tests/` — caught by Inspector
+- `sys.modules['claude_agent_sdk'] = MagicMock()` at module level in test_memory_tools.py permanently replaced the SDK for ALL tests in the pytest session, breaking canvas_tools tests that depend on `SdkMcpTool.handler` attribute
+- Old server process survived Sprite sleep/wake (checkpoint persistence) — had to `pkill` before restart to pick up new code
+- Agent passes blocks as stringified JSON (not list) — the `_parse_json_param()` guard is essential
+
+### Next Action
+- Phase 3 (Canvas UI — m7b.4, 7 tasks) and Phase 4 (Upload + Extraction — m7b.5, 3 tasks) are both unblocked
+- Canvas UI is the visual half of what we just built — users will see the cards the agent creates
+- Start with m7b.4.1 (WebSocket connection manager) as it's the foundation for all Canvas work
+
+---

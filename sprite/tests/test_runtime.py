@@ -264,29 +264,27 @@ async def test_error_during_streaming_sends_error(runtime, sent):
 
 # -- Test: soul.md loading ---------------------------------------------------
 
-async def test_loads_soul_md_as_system_prompt(runtime, sent, tmp_path):
-    """When soul.md exists, its content is used as system prompt."""
-    soul_content = "You are an invoice extraction agent."
+async def test_loads_memory_as_system_prompt(runtime, sent):
+    """When memory files exist, loader output is prepended to system prompt."""
+    memory_content = "# Soul\nYou are an invoice extraction agent."
     captured_options = {}
     messages = [MockResultMessage()]
 
-    soul_file = tmp_path / "soul.md"
-    soul_file.write_text(soul_content)
-
     with _mock_sdk(messages, capture_options=captured_options), \
-         patch("src.runtime.SOUL_MD_PATH", str(soul_file)):
+         patch("src.runtime.load_memory", return_value=memory_content):
         await runtime.run_mission("Extract", request_id="req-soul")
 
-    assert captured_options.get("system_prompt") == soul_content
+    expected = f"{memory_content}\n\n---\n\n{DEFAULT_SYSTEM_PROMPT}"
+    assert captured_options.get("system_prompt") == expected
 
 
-async def test_fallback_prompt_when_no_soul_md(runtime, sent):
-    """When soul.md doesn't exist, uses DEFAULT_SYSTEM_PROMPT."""
+async def test_fallback_prompt_when_no_memory(runtime, sent):
+    """When no memory files exist, uses DEFAULT_SYSTEM_PROMPT alone."""
     captured_options = {}
     messages = [MockResultMessage()]
 
     with _mock_sdk(messages, capture_options=captured_options), \
-         patch("src.runtime.SOUL_MD_PATH", "/nonexistent/soul.md"):
+         patch("src.runtime.load_memory", return_value=""):
         await runtime.run_mission("Extract", request_id="req-fallback")
 
     assert captured_options.get("system_prompt") == DEFAULT_SYSTEM_PROMPT

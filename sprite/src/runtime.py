@@ -139,7 +139,8 @@ class AgentRuntime:
 
         elif isinstance(message, ResultMessage):
             self.last_session_id = message.session_id
-            self._transcript.session_id = message.session_id if self._transcript else None
+            if self._transcript:
+                self._transcript.session_id = message.session_id
 
             meta = AgentEventMeta(session_id=message.session_id)
             content = json.dumps({
