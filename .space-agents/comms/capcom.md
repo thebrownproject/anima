@@ -1343,3 +1343,49 @@ Stacks page → Canvas workspaces (transform)
 - m7b.2.9 (Supabase migration) also unblocked and independent
 
 ---
+
+## [2026-02-07 12:30] Session 124
+
+**Branch:** main | **Git:** uncommitted (sprite/ new files, bridge commits)
+
+### What Happened
+- **Phase 1: Infrastructure Scaffold (m7b.2) — 5/9 tasks complete** (was 2/9 at start)
+- Orchestrated mission mode: Scout → Worker → Inspector cycle for each task
+
+**Task m7b.2.3: Sprites API client and provisioning — COMPLETE**
+- Created `bridge/src/sprites-client.ts` (150 lines) — REST API client wrapping Sprites.dev (create, get, delete, checkpoints, exec URL builder, proxy URL builder). Native fetch, singleton config pattern.
+- Created `bridge/src/provisioning.ts` (143 lines) — Lazy provisioning flow: `pending` → `provisioning` → `active` in Supabase. Failure → `failed`, retry on next connect. API keys injected as env vars via exec URL.
+- 29 new tests (14 + 15), all passing. Inspector PASS 6/6.
+
+**Task m7b.2.5: Sprite Python WebSocket server — COMPLETE**
+- Created `sprite/src/server.py` (60 lines) — asyncio WebSocket server on port 8765 using `websockets` library. Graceful shutdown on SIGTERM/SIGINT.
+- Created `sprite/src/gateway.py` (113 lines) — `SpriteGateway` with match/case routing. Mission + heartbeat share async lock (serial). File upload, canvas, auth, system run concurrently. Stub handlers: log + echo ack.
+- Created `sprite/requirements.txt`, `sprite/pyproject.toml` (pytest-asyncio auto mode)
+- Python venv at `sprite/.venv/` — user caught a bare `pip install` and stopped the agent. Fixed.
+- 11 tests passing. Inspector PASS 5/5.
+
+**Task m7b.2.6: Bridge TCP Proxy and message forwarding — COMPLETE**
+- Created `bridge/src/sprite-connection.ts` (123 lines) — `SpriteConnection` class managing TCP Proxy WebSocket to Sprite. Handles ProxyInitMessage handshake, state machine (connecting→connected→closed), send/close/callbacks.
+- Created `bridge/src/proxy.ts` (85 lines) — Connection tracking per stack_id, `forwardToSprite()`, `broadcastToBrowsers()`, `disconnectSprite()`.
+- Modified `bridge/src/index.ts` — Wired up Sprite connection after auth, message forwarding, disconnect on last browser close.
+- Created `bridge/src/connection-store.ts` (79 lines) — Extracted browser connection store to break circular dependency between index.ts ↔ proxy.ts (Inspector recommendation, fixed same session).
+- 10 new proxy tests, 65 total bridge tests passing. Inspector PASS 4/5 (request_id pass-through works implicitly).
+
+### Decisions Made
+1. **Venv for sprite/ development** — Never bare `pip install`. Always `python3 -m venv .venv` first.
+2. **m7b.2.5 closed before m7b.2.4** — Golden checkpoint blocks deployment but not code writing. Closed with `--force`.
+3. **Circular dep fix** — Extracted `connection-store.ts` from `index.ts` so `proxy.ts` doesn't import from `index.ts`.
+4. **request_id handling** — Raw messages forwarded as-is, preserving any existing `request_id`. No active injection needed.
+
+### Gotchas
+- Worker agents will try bare `pip install` on macOS. Must explicitly instruct them to use venv.
+- `pytest-asyncio` 1.3.0 defaults to strict mode — needs `asyncio_mode = "auto"` in pyproject.toml.
+- Pyright can't resolve `websockets` imports when package is only in venv — expected, not a real error.
+
+### Next Action
+- Continue Phase 1: **m7b.2.7** (sleep/wake reconnection + keepalive) is now unblocked
+- **m7b.2.4** (golden checkpoint) needs live Sprites.dev interaction
+- **m7b.2.9** (Supabase migration) is independent
+- **ag6** (protocol/Bridge bloat review) still open
+
+---
