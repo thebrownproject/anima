@@ -1389,3 +1389,53 @@ Stacks page → Canvas workspaces (transform)
 - **ag6** (protocol/Bridge bloat review) still open
 
 ---
+
+## [2026-02-07 18:30] Session 125
+
+**Branch:** main | **Git:** clean (pushed)
+
+### What Happened
+- **Task m7b.2.4 (golden checkpoint) — IN PROGRESS, ~80% done**
+- Created `stackdocs-golden` sprite on Sprites.dev via REST API
+- Installed packages into `/workspace/.venv/` (websockets, aiosqlite, anthropic, mistralai, httpx, claude-code-sdk)
+- Deployed `sprite/src/` code (server.py, gateway.py, protocol.py) via tar pipe
+- Initialized SQLite database at `/workspace/agent.db` with full schema (documents, ocr_results, extractions, memory_fts)
+- Created memory templates (soul.md, user.md, MEMORY.md) in `/workspace/memory/`
+- Added `/workspace/VERSION` file (value: 1), saved checkpoint v2
+- **Discovered cross-sprite checkpoint cloning NOT possible** — checkpoints scoped per-sprite
+- Pivoted from "clone golden checkpoint" to "bootstrap + lazy update on wake" strategy
+- Created `bridge/src/bootstrap.ts` (~140 lines) — bootstraps fresh sprites with full env
+- Created `bridge/src/updater.ts` (~90 lines) — reads VERSION via FS API, deploys updates if outdated
+- Created `bridge/src/sprite-exec.ts` (~35 lines) — shared CLI exec helper (DRY extraction)
+- Added `readFile()` / `writeFile()` to `bridge/src/sprites-client.ts` (FS API wrappers)
+- Updated `bridge/src/provisioning.ts` — removed checkpoint TODO, calls `bootstrapSprite()`, removed dead `ProvisionConfig.goldenCheckpointId`, updated `DEFAULT_SERVER_CMD` to venv path
+- Fixed `bridge/src/reconnect.ts:113` — Python path was `['python', '-m', 'src.server']`, now uses venv path
+- Sent review subagent — caught 5 issues, all resolved same session
+- **75/75 bridge tests passing**
+
+### Decisions Made
+1. **Global install OK on Sprite VMs** — isolated single-purpose VMs, but we use venv anyway for clean update management
+2. **Bootstrap over checkpoint cloning** — Sprites.dev doesn't support cross-sprite restore. Bootstrap takes ~30-60s per new sprite.
+3. **Lazy update on wake** — Bridge reads `/workspace/VERSION` when connecting. If behind `CURRENT_VERSION`, deploys new code + deps. Only active sprites get updated.
+4. **Separate code from data** — `/workspace/src/` and `.venv/` are deployable, user data never touched by updates.
+5. **Keep checkpoint functions in sprites-client** — still useful for per-sprite state management.
+
+### Gotchas
+- `sprite exec` CLI commands kept getting interrupted in Cursor — unclear cause. FS write API works as alternative.
+- `SPRITES_TOKEN` not in shell env — must inline token each session.
+- `python3 -m venv` needs `sudo apt-get install python3.13-venv` on Sprite Ubuntu 25.04.
+- macOS tar creates `._` metadata files — clean up after extract.
+- Sprites.dev checkpoint POST API returns 405 — use CLI `sprite checkpoint create` instead.
+
+### In Progress
+- `test-clone` sprite exists on Sprites.dev (blank) — ready for bootstrap test
+- Tasks 3 (test bootstrap) and 4 (document procedure) remain for m7b.2.4
+- `updater.ts` built but not wired into connection flow yet
+
+### Next Action
+- Continue redundant code review (Fraser requested)
+- Test bootstrap on `test-clone` sprite
+- Document provisioning procedure in `docs/ops/golden-checkpoint.md`
+- Close m7b.2.4, then tackle m7b.2.8 (E2E smoke test)
+
+---
