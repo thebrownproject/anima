@@ -125,7 +125,7 @@ describe('reconnect', () => {
     }
     expect(bufferMessage('stack-1', 'overflow')).toBe(false)
 
-    resolveWake(spriteRunning as any)
+    resolveWake()
     await promise.catch(() => {})
   })
 
