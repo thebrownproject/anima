@@ -1536,3 +1536,44 @@ Stacks page → Canvas workspaces (transform)
 - Debug the two comms issues in stackdocs-kfn. Start from inside the Sprite: verify SDK can call Anthropic via proxy (test ANTHROPIC_BASE_URL + proxy token auth chain). Then fix TCP proxy message forwarding.
 
 ---
+
+## [2026-02-08 08:30] Session 129
+
+**Branch:** main | **Git:** uncommitted changes
+
+### What Happened
+- **stackdocs-kfn (P0 bug) — THREE root causes found and fixed:**
+
+  1. **Bridge proxy auth mismatch (FIXED, DEPLOYED)**: `api-proxy.ts:64-75` only checked `Authorization: Bearer` header for proxy token, but Anthropic SDK sends `x-api-key`. Added dual-header check. Also `x-api-key` was in `STRIPPED_HEADERS` — validation now runs before stripping. 2 new tests added to `api-proxy.test.ts`.
+
+  2. **Server protocol mismatch (FIXED)**: Local `sprite/src/server.py` used `websockets.asyncio.server.serve` (WebSocket protocol), but the Sprite had a TCP server using `asyncio.start_server`. The TCP server is correct because the Sprites.dev TCP proxy creates raw TCP connections. Updated local code to match Sprite's TCP server.
+
+  3. **TCP proxy binary frames (FIXED, DEPLOYED)**: Sprites.dev TCP proxy only forwards **binary** WebSocket frames, not text frames. Our `sprite-connection.ts` sent text frames via `ws.send(string)` — proxy silently dropped them. Fixed to `ws.send(Buffer.from(data + '\n', 'utf-8'))`. Confirmed via official `@fly/sprites` SDK source which does the same. Also handles incoming binary frames with newline splitting.
+
+- **Agent runtime VERIFIED WORKING from inside Sprite**: Raw TCP test sent mission "What is 2+2?", received `[agent_event:text] 4` and `[agent_event:complete]` with session_id and cost. Full chain: mission → gateway → AgentRuntime → ClaudeSDKClient → Bridge proxy → Anthropic API → response back.
+
+- **TCP proxy forwarding VERIFIED**: After binary frame fix, e2e test showed `[event] ECHO: {...mission...}` coming back through the proxy. Data flows both directions. Clean e2e run still needed (echo server was on port 8765 instead of real server).
+
+- **SPRITES_PROXY_TOKEN regenerated** as UUID `590e3170-...`, saved to `bridge/.env` (gitignored) and Fly.io secrets. Old token lost (was only in Fly.io secrets with no local copy).
+
+- **Bridge redeployed** twice to Fly.io with auth fix and binary frame fix.
+
+### Decisions Made
+1. **Keep TCP server, not WebSocket** — TCP proxy creates raw TCP connections, so TCP server is the correct match. Local `server.py` updated to match.
+2. **Keep Bridge architecture, not public URL** — Researched Sprites.dev public URLs. `"public"` auth exposes Bash-enabled agent to internet. `"sprite"` auth requires org-level master token in requests. Bridge remains the security boundary.
+3. **Binary frames for TCP proxy** — Per Sprites.dev docs: "After the JSON handshake completes, the connection becomes a raw TCP relay. Binary data is forwarded directly."
+
+### Gotchas
+1. **Sprites.dev TCP proxy only forwards binary WS frames** — text frames silently dropped after init handshake. The official `@fly/sprites` SDK sets `ws.binaryType = 'arraybuffer'` and sends Buffer data.
+2. **Port 8765 stale processes** — Old server/echo processes survive Sprite sleep/wake via CRIU. Must `fuser -k 8765/tcp` before starting fresh.
+3. **`source .env` doesn't export** — Use `export $(cat .env | xargs)` instead.
+4. **Exec sessions keep Sprite awake** — Background exec from local machine keeps sprite from sleeping.
+5. **IPv6 on Sprite** — `websockets.connect("ws://localhost:8765")` tries IPv6 first, fails. Use `127.0.0.1` or TCP directly.
+
+### In Progress
+- **stackdocs-kfn**: All three root causes fixed and deployed. Needs one clean e2e test run (kill echo server, start real server, send mission through TCP proxy, verify agent_event responses). Mechanically ready — just needs the clean run.
+
+### Next Action
+- Run clean e2e test: kill processes on Sprite, start real server with env vars, send mission through TCP proxy, verify full agent response. Then close stackdocs-kfn and unblock m7b.3.4/m7b.3.5.
+
+---

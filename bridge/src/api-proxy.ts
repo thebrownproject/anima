@@ -61,10 +61,12 @@ export async function handleApiProxy(
     return
   }
 
-  // Validate proxy token
+  // Validate proxy token — accept via x-api-key (Anthropic SDK) or Authorization: Bearer (Mistral SDK)
   const proxyToken = process.env.SPRITES_PROXY_TOKEN
+  const xApiKey = req.headers['x-api-key'] as string | undefined
   const authHeader = req.headers['authorization']
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const token = xApiKey ?? bearerToken
 
   if (!proxyToken || !token || token !== proxyToken) {
     res.writeHead(401, { 'Content-Type': 'application/json' })

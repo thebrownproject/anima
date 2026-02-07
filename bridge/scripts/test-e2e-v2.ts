@@ -7,15 +7,16 @@ import WebSocket from 'ws'
 
 const SPRITE = process.argv[2] || 'sd-e2e-test'
 const TOKEN = process.env.SPRITES_TOKEN || ''
+const PROXY_TOKEN = process.env.SPRITES_PROXY_TOKEN || ''
 configureSpritesClient({ token: TOKEN })
 
 async function startServer(): Promise<WebSocket> {
   console.log('[1] Starting server...')
   const url = buildExecUrl(SPRITE, ['bash', '-c', 'cd /workspace && /workspace/.venv/bin/python3 -m src.server 2>&1'], {
     ANTHROPIC_BASE_URL: 'https://ws.stackdocs.io/v1/proxy/anthropic',
-    ANTHROPIC_API_KEY: 'SPRITES_PROXY_TOKEN_HERE',
+    ANTHROPIC_API_KEY: PROXY_TOKEN,
     MISTRAL_BASE_URL: 'https://ws.stackdocs.io/v1/proxy/mistral',
-    MISTRAL_API_KEY: 'SPRITES_PROXY_TOKEN_HERE',
+    MISTRAL_API_KEY: PROXY_TOKEN,
   })
   const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${TOKEN}` } })
 
@@ -86,8 +87,8 @@ async function main() {
     timestamp: Date.now(),
     payload: { text: 'What is 2 + 2? Reply with just the number.' },
   })
-  console.log(`[3] Sending mission: ${msg}\n`)
-  proxyWs.send(msg)
+  console.log(`[3] Sending mission (binary frame)\n`)
+  proxyWs.send(Buffer.from(msg + '\n', 'utf-8'))
 
   // Listen for events from proxy (agent responses)
   proxyWs.on('message', (d: Buffer) => {

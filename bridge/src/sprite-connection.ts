@@ -45,7 +45,7 @@ export class SpriteConnection {
       let initDone = false
 
       this.ws.on('open', () => {
-        // Send ProxyInitMessage to target Sprite's WS server port
+        // Send ProxyInitMessage as text (JSON handshake)
         this.ws!.send(JSON.stringify({
           host: 'localhost',
           port: this.opts.targetPort ?? 8765,
@@ -53,12 +53,11 @@ export class SpriteConnection {
       })
 
       this.ws.on('message', (raw) => {
-        const data = raw.toString()
-
-        // First message is the init response
+        // Init response comes as text JSON
         if (!initDone) {
           initDone = true
           clearTimeout(initTimer)
+          const data = raw.toString()
 
           try {
             const resp = JSON.parse(data)
@@ -76,8 +75,14 @@ export class SpriteConnection {
           return
         }
 
-        // After init, forward all messages to the callback
-        this.opts.onMessage(data)
+        // After init, proxy sends binary frames — decode to string lines
+        const text = Buffer.isBuffer(raw) ? raw.toString('utf-8') : raw.toString()
+        // Sprite sends newline-delimited JSON — may contain multiple lines
+        for (const line of text.split('\n')) {
+          if (line.trim()) {
+            this.opts.onMessage(line)
+          }
+        }
       })
 
       this.ws.on('error', (err) => {
@@ -103,12 +108,13 @@ export class SpriteConnection {
     })
   }
 
-  /** Send a message to the Sprite. */
+  /** Send a message to the Sprite via TCP proxy as binary (newline-delimited). */
   send(data: string): boolean {
     if (this._state !== 'connected' || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return false
     }
-    this.ws.send(data)
+    // TCP proxy only forwards binary frames — send as Buffer
+    this.ws.send(Buffer.from(data + '\n', 'utf-8'))
     return true
   }
 

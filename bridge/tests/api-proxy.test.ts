@@ -79,6 +79,37 @@ describe('authentication', () => {
     })
     expect(res.status).toBe(401)
   })
+
+  it('accepts x-api-key header (Anthropic SDK auth)', async () => {
+    // Anthropic SDK sends api key via x-api-key, not Authorization: Bearer.
+    // If proxy auth passes, request reaches upstream Anthropic (which rejects
+    // our fake test key). We verify by checking the error body — our proxy
+    // returns {"error":"Invalid or missing proxy token"}, upstream returns
+    // a different format.
+    const res = await fetch(`${baseUrl}/v1/proxy/anthropic/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': 'test-proxy-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model: 'claude-3' }),
+    })
+    const body = await res.json()
+    // Should NOT be our proxy's auth rejection
+    expect(body.error).not.toBe('Invalid or missing proxy token')
+  })
+
+  it('returns 401 for wrong x-api-key', async () => {
+    const res = await fetch(`${baseUrl}/v1/proxy/anthropic/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': 'wrong-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model: 'claude-3' }),
+    })
+    expect(res.status).toBe(401)
+  })
 })
 
 // -- Route Tests --

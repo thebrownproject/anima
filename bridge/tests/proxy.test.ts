@@ -164,7 +164,7 @@ describe('SpriteConnection', () => {
     expect(sent).toBe(true)
 
     const received = await msgPromise
-    expect(received).toBe(testMsg)
+    expect(received).toBe(testMsg + '\n')
 
     conn.close()
     vi.restoreAllMocks()
@@ -265,7 +265,7 @@ describe('proxy module', () => {
     expect(sent).toBe(true)
 
     const received = await msgPromise
-    expect(received).toBe(testMsg)
+    expect(received).toBe(testMsg + '\n')
   })
 
   it('returns false when forwarding to non-existent stack', () => {
