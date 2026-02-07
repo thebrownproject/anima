@@ -23,6 +23,11 @@ import {
   isWebSocketMessage,
   type SystemMessage,
 } from './protocol.js'
+import {
+  ensureSpriteConnection,
+  forwardToSprite,
+  disconnectSprite,
+} from './proxy.js'
 
 // =============================================================================
 // Types
@@ -135,8 +140,13 @@ function handleConnection(ws: WebSocket, stackId: string): void {
   })
 
   ws.on('close', () => {
+    const conn = connections.get(connectionId)
     removePending(connectionId)
     removeConnection(connectionId)
+    // Disconnect Sprite if this was the last browser for the stack
+    if (conn && getConnectionsByStack(conn.stackId).length === 0) {
+      disconnectSprite(conn.stackId)
+    }
   })
 
   // Handle incoming messages
@@ -196,19 +206,34 @@ function handleConnection(ws: WebSocket, stackId: string): void {
       console.log(
         `[${connectionId}] Authenticated: user=${result.userId} stack=${result.stackId} sprite=${result.spriteName ?? 'none'}`,
       )
+
+      // Establish Sprite connection if a sprite is assigned
+      if (result.spriteName) {
+        const token = process.env.SPRITES_TOKEN
+        if (token) {
+          try {
+            await ensureSpriteConnection(result.stackId, result.spriteName, token)
+            ws.send(createSystemMessage('sprite_ready', `Sprite ${result.spriteName} connected`, parsed.id))
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Sprite connection failed'
+            console.error(`[${connectionId}] Sprite connection failed:`, msg)
+            ws.send(createSystemMessage('error', `Sprite connection failed: ${msg}`, parsed.id))
+          }
+        }
+      }
       return
     }
 
-    // Authenticated connection — forward messages to Sprite (added in task 2.6)
-    // For now, acknowledge receipt
+    // Authenticated connection — forward messages to Sprite
     const conn = connections.get(connectionId)
     if (!conn) {
       sendError(ws, 'Connection not found')
       return
     }
 
-    // TODO (task 2.6): Forward message to Sprite via TCP Proxy
-    console.log(`[${connectionId}] Message from user=${conn.userId}: type=${parsed.type}`)
+    if (!forwardToSprite(conn.stackId, raw)) {
+      sendError(ws, 'Sprite not connected', parsed.request_id ?? parsed.id)
+    }
   })
 }
 
