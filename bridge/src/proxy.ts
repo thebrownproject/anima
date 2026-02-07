@@ -3,6 +3,7 @@ import { SpriteConnection } from './sprite-connection.js'
 import { getConnectionsByStack } from './connection-store.js'
 import { handleDisconnect, isReconnecting, bufferMessage, cleanupReconnectState } from './reconnect.js'
 import { startKeepalive, stopKeepalive } from './keepalive.js'
+import { checkAndUpdate } from './updater.js'
 
 /** Active Sprite connections keyed by stack ID. */
 const spriteConnections = new Map<string, SpriteConnection>()
@@ -74,6 +75,13 @@ export async function ensureSpriteConnection(
   if (existing) {
     existing.close()
     spriteConnections.delete(stackId)
+  }
+
+  // Best-effort lazy update — don't block connection on failure
+  try {
+    await checkAndUpdate(spriteName)
+  } catch (err) {
+    console.warn(`[proxy] Update check failed for ${spriteName}, proceeding:`, err)
   }
 
   const conn = await createAndRegister(stackId, spriteName, token)
