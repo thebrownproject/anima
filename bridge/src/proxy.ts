@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws'
 import { SpriteConnection } from './sprite-connection.js'
-import { getConnectionsByStack } from './index.js'
+import { getConnectionsByStack } from './connection-store.js'
 
 /** Active Sprite connections keyed by stack ID. */
 const spriteConnections = new Map<string, SpriteConnection>()
