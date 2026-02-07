@@ -23,7 +23,16 @@ export const CURRENT_VERSION = 2
 /** Deploy sprite/src/ Python files to /workspace/src/ on the sprite. */
 export async function deployCode(spriteName: string): Promise<void> {
   const srcDir = join(import.meta.dirname, '..', '..', 'sprite', 'src')
-  const files = ['__init__.py', 'server.py', 'gateway.py', 'protocol.py', 'database.py', 'runtime.py']
+  const files = [
+    '__init__.py',
+    'server.py',
+    'gateway.py',
+    'protocol.py',
+    'database.py',
+    'runtime.py',
+    'agents/shared/__init__.py',
+    'agents/shared/canvas_tools.py',
+  ]
 
   for (const file of files) {
     const content = await fsRead(join(srcDir, file), 'utf-8')
@@ -131,6 +140,7 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
     'sudo chown sprite:sprite /workspace',
     '&& mkdir -p /workspace/documents /workspace/ocr /workspace/artifacts',
     '/workspace/memory /workspace/transcripts /workspace/src',
+    '/workspace/src/agents /workspace/src/agents/shared',
   ].join(' '))
   console.log(`[bootstrap] Directories created`)
 

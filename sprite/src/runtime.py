@@ -14,10 +14,12 @@ from claude_agent_sdk import (
     TextBlock,
     ToolUseBlock,
     ResultMessage,
+    create_sdk_mcp_server,
 )
 
 from .protocol import AgentEvent, AgentEventPayload, AgentEventMeta, to_json
 from .database import Database
+from .agents.shared.canvas_tools import create_canvas_tools
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +63,17 @@ class AgentRuntime:
     ) -> None:
         """Run a new agent mission, streaming events to the browser."""
         system_prompt = _load_system_prompt()
+
+        # Create canvas tools and register via MCP server
+        canvas_tools = create_canvas_tools(self._send)
+        sprite_server = create_sdk_mcp_server(name="sprite", tools=canvas_tools)
+
         options = ClaudeAgentOptions(
             system_prompt=system_prompt,
             max_turns=MAX_TURNS,
             permission_mode="bypassPermissions",
             cwd="/workspace",
+            mcp_servers={"sprite": sprite_server},
         )
         await self._invoke(text, options, request_id)
 
