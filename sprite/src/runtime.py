@@ -20,12 +20,16 @@ from claude_agent_sdk import (
 from .protocol import AgentEvent, AgentEventPayload, AgentEventMeta, to_json
 from .database import Database
 from .agents.shared.canvas_tools import create_canvas_tools
+from .agents.shared.memory_tools import create_memory_tools
+from .memory.loader import load as load_memory
+from .memory.journal import append_journal
+from .memory.transcript import TranscriptLogger
+from .memory import ensure_templates
 
 logger = logging.getLogger(__name__)
 
 SendFn = Callable[[str], Awaitable[None]]
 
-SOUL_MD_PATH = "/workspace/memory/soul.md"
 MAX_TURNS = 15
 
 DEFAULT_SYSTEM_PROMPT = (
@@ -34,14 +38,6 @@ DEFAULT_SYSTEM_PROMPT = (
     "Help the user extract, organize, and analyze documents in their workspace. "
     "Files are stored in /workspace/documents/ and OCR text in /workspace/ocr/."
 )
-
-
-def _load_system_prompt() -> str:
-    """Read soul.md if it exists, otherwise return default prompt."""
-    try:
-        return Path(SOUL_MD_PATH).read_text()
-    except FileNotFoundError:
-        return DEFAULT_SYSTEM_PROMPT
 
 
 class AgentRuntime:
@@ -54,6 +50,10 @@ class AgentRuntime:
         self._send = send_fn
         self._db = db
         self.last_session_id: str | None = None
+        self._transcript: TranscriptLogger | None = None
+
+        # Ensure memory templates exist on first boot
+        ensure_templates()
 
     async def run_mission(
         self,
@@ -62,11 +62,23 @@ class AgentRuntime:
         attachments: list[str] | None = None,
     ) -> None:
         """Run a new agent mission, streaming events to the browser."""
-        system_prompt = _load_system_prompt()
+        # Load memory context and combine with base prompt
+        memory_context = load_memory()
+        system_prompt = (
+            f"{memory_context}\n\n---\n\n{DEFAULT_SYSTEM_PROMPT}"
+            if memory_context
+            else DEFAULT_SYSTEM_PROMPT
+        )
 
-        # Create canvas tools and register via MCP server
+        # Create canvas + memory tools and register via single MCP server
         canvas_tools = create_canvas_tools(self._send)
-        sprite_server = create_sdk_mcp_server(name="sprite", tools=canvas_tools)
+        memory_tools = create_memory_tools()
+        sprite_server = create_sdk_mcp_server(
+            name="sprite", tools=canvas_tools + memory_tools
+        )
+
+        # Initialize transcript logger for this session
+        self._transcript = TranscriptLogger()
 
         options = ClaudeAgentOptions(
             system_prompt=system_prompt,
@@ -112,19 +124,43 @@ class AgentRuntime:
             for block in message.content:
                 if isinstance(block, TextBlock):
                     await self._send_event("text", block.text, request_id)
+                    # Log text to transcript
+                    if self._transcript:
+                        await self._transcript.log("text", {"content": block.text})
                 elif isinstance(block, ToolUseBlock):
                     content = json.dumps({"tool": block.name, "input": block.input})
                     await self._send_event("tool", content, request_id)
+                    # Log tool use to transcript
+                    if self._transcript:
+                        await self._transcript.log(
+                            "tool_use", {"tool": block.name, "input": block.input}
+                        )
                 # ThinkingBlock and other types silently skipped
 
         elif isinstance(message, ResultMessage):
             self.last_session_id = message.session_id
+            self._transcript.session_id = message.session_id if self._transcript else None
+
             meta = AgentEventMeta(session_id=message.session_id)
             content = json.dumps({
                 "session_id": message.session_id,
                 "cost_usd": message.total_cost_usd,
             })
             await self._send_event("complete", content, request_id, meta=meta)
+
+            # Append to daily journal after mission completes
+            summary = f"Session {message.session_id} completed (cost: ${message.total_cost_usd:.4f})"
+            await append_journal(summary)
+
+            # Log completion to transcript
+            if self._transcript:
+                await self._transcript.log(
+                    "complete",
+                    {
+                        "session_id": message.session_id,
+                        "cost_usd": message.total_cost_usd,
+                    },
+                )
 
     async def _send_event(
         self,

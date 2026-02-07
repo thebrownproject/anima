@@ -32,6 +32,11 @@ export async function deployCode(spriteName: string): Promise<void> {
     'runtime.py',
     'agents/shared/__init__.py',
     'agents/shared/canvas_tools.py',
+    'agents/shared/memory_tools.py',
+    'memory/__init__.py',
+    'memory/loader.py',
+    'memory/journal.py',
+    'memory/transcript.py',
   ]
 
   for (const file of files) {
@@ -140,7 +145,7 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
     'sudo chown sprite:sprite /workspace',
     '&& mkdir -p /workspace/documents /workspace/ocr /workspace/artifacts',
     '/workspace/memory /workspace/transcripts /workspace/src',
-    '/workspace/src/agents /workspace/src/agents/shared',
+    '/workspace/src/agents /workspace/src/agents/shared /workspace/src/memory',
   ].join(' '))
   console.log(`[bootstrap] Directories created`)
 
