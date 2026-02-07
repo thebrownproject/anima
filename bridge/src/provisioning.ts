@@ -29,11 +29,10 @@ export interface ProvisionResult {
 
 const DEFAULT_SERVER_CMD = ['/workspace/.venv/bin/python3', '/workspace/src/server.py']
 
+// API keys are NOT injected as env vars — prompt injection risk (see m7b.3.6).
+// Phase 2 will add an API proxy route on Bridge instead.
 function getEnvVarsForSprite(): Record<string, string> {
-  const vars: Record<string, string> = {}
-  if (process.env.ANTHROPIC_API_KEY) vars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-  if (process.env.MISTRAL_API_KEY) vars.MISTRAL_API_KEY = process.env.MISTRAL_API_KEY
-  return vars
+  return {}
 }
 
 // -- Supabase Helpers --

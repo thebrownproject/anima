@@ -40,8 +40,6 @@ beforeEach(() => {
 
   process.env.SUPABASE_URL = 'https://test.supabase.co'
   process.env.SUPABASE_SERVICE_KEY = 'test-key'
-  process.env.ANTHROPIC_API_KEY = 'sk-ant-test'
-  process.env.MISTRAL_API_KEY = 'mk-test'
 
   // Supabase mock chain: from('stacks').update({}).eq('id', stackId)
   mockFrom.mockReturnValue({ update: mockUpdate })
@@ -58,8 +56,6 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.SUPABASE_URL
   delete process.env.SUPABASE_SERVICE_KEY
-  delete process.env.ANTHROPIC_API_KEY
-  delete process.env.MISTRAL_API_KEY
 })
 
 // -- generateSpriteName --
@@ -188,7 +184,7 @@ describe('ensureSpriteProvisioned', () => {
 // -- buildServerExecUrl --
 
 describe('buildServerExecUrl', () => {
-  it('delegates to buildExecUrl with venv python and API keys as env vars', () => {
+  it('delegates to buildExecUrl with venv python and empty env vars (no API key injection)', () => {
     vi.mocked(buildExecUrl).mockReturnValue('wss://exec-url')
 
     const url = buildServerExecUrl('my-sprite')
@@ -196,7 +192,7 @@ describe('buildServerExecUrl', () => {
     expect(buildExecUrl).toHaveBeenCalledWith(
       'my-sprite',
       ['/workspace/.venv/bin/python3', '/workspace/src/server.py'],
-      { ANTHROPIC_API_KEY: 'sk-ant-test', MISTRAL_API_KEY: 'mk-test' },
+      {},
     )
     expect(url).toBe('wss://exec-url')
   })
