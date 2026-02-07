@@ -1,9 +1,9 @@
 # Database Schema
 
-**Product:** Stackdocs MVP - Document Data Extractor
-**Version:** 1.2
-**Last Updated:** 2026-01-13
-**Database:** Supabase PostgreSQL
+**Product:** Stackdocs — Personal AI Computer for Document Intelligence
+**Version:** 2.0
+**Last Updated:** 2026-02-07
+**Database:** Supabase PostgreSQL (platform) + Sprite SQLite (per-stack)
 
 ---
 
@@ -19,7 +19,82 @@
 
 ---
 
-## Tables
+## v2 Architecture Note
+
+In v2, data ownership splits across two databases:
+
+- **Supabase PostgreSQL (platform):** User accounts, stack metadata, Sprite VM mapping. Shared across all stacks. Accessed by Bridge for auth and routing.
+- **Sprite SQLite (per-stack):** Documents, OCR results, extractions, memory. Lives on the Sprite VM filesystem. Accessed only by the stack's agent runtime.
+
+All v1 tables remain in Supabase (not dropped). New stacks use Sprite-local SQLite for document data. The `stacks` table gains `sprite_name` and `sprite_status` columns to map stacks to their Sprite VMs.
+
+---
+
+## v2 Platform Tables (Supabase)
+
+The Bridge service uses these two tables for auth and Sprite routing.
+
+### `users`
+
+User profiles. Clerk user IDs (TEXT primary key).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | Clerk user ID (`user_xxx`) |
+| `email` | TEXT NOT NULL | |
+| `documents_processed_this_month` | INTEGER | v1 usage tracking |
+| `usage_reset_date` | DATE | v1 usage tracking |
+| `subscription_tier` | VARCHAR(20) | `'free'` default |
+| `documents_limit` | INTEGER | `5` default |
+| `created_at` | TIMESTAMPTZ | |
+
+### `stacks`
+
+Stack metadata with Sprite VM mapping. One stack = one Sprite VM.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `user_id` | TEXT NOT NULL | Clerk user ID (FK to users) |
+| `name` | VARCHAR(255) NOT NULL | |
+| `description` | TEXT | |
+| `status` | VARCHAR(20) | `'active'` / `'archived'` |
+| `sprite_name` | TEXT | Sprites.dev VM identifier, NULL until provisioned |
+| `sprite_status` | TEXT | `'pending'` default — see lifecycle below |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**`sprite_status` lifecycle:**
+
+```
+pending → provisioning → active → suspended
+```
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Default. No Sprite VM exists yet. |
+| `provisioning` | Bridge is creating the Sprite from golden checkpoint. |
+| `active` | Sprite VM exists and is mapped. May be sleeping (Sprites auto-sleep after 30s). |
+| `suspended` | Sprite deactivated (e.g. subscription lapsed). |
+
+### Sprite SQLite (per-stack, on-VM)
+
+Each Sprite VM has its own SQLite database at `/workspace/data/stackdocs.db`:
+
+| Table | Purpose |
+|-------|---------|
+| `documents` | Uploaded file metadata (files on Sprite filesystem) |
+| `ocr_results` | OCR text metadata (text cached at `/workspace/ocr/`) |
+| `extractions` | AI-extracted structured data (JSON fields) |
+| `memory_fts` | FTS5 virtual table for memory search |
+
+Schema for Sprite SQLite tables is defined in `sprite/src/database.py`.
+
+---
+
+## v1 Tables (Supabase — Legacy)
+
+All v1 tables remain in Supabase. They are not dropped but are no longer written to for new v2 stacks.
 
 **Core Tables:**
 1. **`users`** - User profiles with integrated usage tracking
@@ -462,6 +537,7 @@ Migration files are in `backend/migrations/`:
 | 008_add_html_tables.sql | Add html_tables column for OCR 3 |
 | 009_clerk_supabase_integration.sql | UUID→TEXT for user_id, Clerk RLS policies |
 | 010_document_metadata.sql | Add display_name, tags, summary, updated_at columns; convert all timestamps to TIMESTAMPTZ |
+| 011_add_sprite_columns.sql | Add sprite_name, sprite_status columns to stacks for v2 Sprite VM mapping |
 
 ---
 
@@ -486,4 +562,6 @@ users
 |----------|---------|
 | `ARCHITECTURE.md` | System design |
 | `PRD.md` | Product requirements |
-| `ROADMAP.md` | Feature priorities |
+| `bridge/src/auth.ts` | Bridge auth — queries stacks for sprite_name/sprite_status |
+| `bridge/src/sprites-client.ts` | Sprites.dev API client |
+| `sprite/src/database.py` | Sprite SQLite schema definition |
