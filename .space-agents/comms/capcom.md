@@ -1617,3 +1617,40 @@ Stacks page → Canvas workspaces (transform)
   - soul.md is currently a placeholder template — agent should fill it in as it learns.
 
 ---
+
+## [2026-02-08 10:00] Session 131
+
+**Branch:** main | **Git:** uncommitted (spec + bead updates)
+
+### What Happened
+- **Brainstormed Canvas tools (m7b.3.4) + Memory system (m7b.3.5)** — full design session covering both Sprite-side tool sets and the Canvas UI interaction model.
+
+- **A2UI reference adopted**: User shared A2UI (a2ui.org) as interaction model inspiration. Cards as composable, draggable units on a free-form canvas. Led to refined Canvas UX: free-form drag (not grid-locked), snap-to-grid alignment, cards pop in complete (no streaming MVP).
+
+- **Library research (3 background agents)**:
+  1. Canvas library comparison: React Flow confirmed — only lib providing free-form + resize + snap + pan/zoom + grid out of the box. react-grid-layout (grid-only), @dnd-kit (no resize), react-rnd (unmaintained) all rejected.
+  2. Codebase audit: Confirmed runtime.py has zero custom tools, bootstrap.ts deploys only 6 flat files, protocol.py already has complete CanvasUpdate types.
+  3. SDK research: `@tool` + `create_sdk_mcp_server()` is the ONLY way to register custom tools. Proven v1 pattern.
+
+- **Spec written**: `.space-agents/exploration/ideas/2026-02-08-canvas-tools-and-memory-system/spec.md`
+
+- **Beads updated (5 issues)**: m7b.3.4, m7b.3.5, m7b.4, m7b.4.2, m7b.4.5 — all refined with SDK integration details, spec references, and brainstorm decisions.
+
+### Decisions Made
+1. **Closure injection** — `create_canvas_tools(send_fn)` factory. Same v1 pattern.
+2. **Single MCP server "sprite"** — canvas + memory tools bundled. Tools: `mcp__sprite__create_card`, etc.
+3. **Omit `allowed_tools` for MVP** — agent gets all built-in + custom tools.
+4. **React Flow stays** — only lib with all 6 requirements (free-form, resize, snap, pan/zoom, grid, infinite canvas).
+5. **Free-form canvas** — arbitrary pixel positions, snap-to-grid alignment.
+6. **Fixed bottom chat bar** — not card-on-canvas or side panel.
+7. **Cards pop in complete** — no streaming MVP.
+8. **Browser-only layout persistence** — Zustand + localStorage.
+9. **Both user and agent manage cards** — close, resize, drag, create.
+10. **8 MVP block types** — heading, stat, key-value, table, badge, progress, text, separator.
+11. **3 card types** — table, document, notes.
+
+### Next Action
+- `/plan` or `/mission` to start building m7b.3.4 + m7b.3.5. Both Beads are task-level and well-scoped.
+- Phase 2 (Sprite tools) and Phase 3 (Canvas UI) can run in parallel.
+
+---
