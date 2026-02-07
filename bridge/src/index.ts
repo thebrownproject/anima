@@ -18,6 +18,7 @@ import {
   isAuthError,
   type AuthResult,
 } from './auth.js'
+import { handleApiProxy } from './api-proxy.js'
 import {
   isAuthConnect,
   isWebSocketMessage,
@@ -206,6 +207,12 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
       pending: getPendingCount(),
       uptime: process.uptime(),
     }))
+    return
+  }
+
+  // API proxy for Sprites (Anthropic, Mistral)
+  if (req.url?.startsWith('/v1/proxy/')) {
+    handleApiProxy(req, res)
     return
   }
 

@@ -29,10 +29,18 @@ export interface ProvisionResult {
 
 const DEFAULT_SERVER_CMD = ['/workspace/.venv/bin/python3', '/workspace/src/server.py']
 
-// API keys are NOT injected as env vars — prompt injection risk (see m7b.3.6).
-// Phase 2 will add an API proxy route on Bridge instead.
+// API keys proxied through Bridge — Sprites never hold master keys (m7b.3.6).
+// Sprites use ANTHROPIC_BASE_URL / MISTRAL_BASE_URL pointing to Bridge proxy,
+// with SPRITES_PROXY_TOKEN as the "api key" (validated by Bridge, replaced with real key).
 function getEnvVarsForSprite(): Record<string, string> {
-  return {}
+  const token = process.env.SPRITES_PROXY_TOKEN ?? ''
+  const bridgeUrl = process.env.BRIDGE_PUBLIC_URL ?? 'https://ws.stackdocs.io'
+  return {
+    ANTHROPIC_BASE_URL: `${bridgeUrl}/v1/proxy/anthropic`,
+    ANTHROPIC_API_KEY: token,
+    MISTRAL_BASE_URL: `${bridgeUrl}/v1/proxy/mistral`,
+    MISTRAL_API_KEY: token,
+  }
 }
 
 // -- Supabase Helpers --
