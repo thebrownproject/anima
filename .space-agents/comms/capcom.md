@@ -1577,3 +1577,43 @@ Stacks page → Canvas workspaces (transform)
 - Run clean e2e test: kill processes on Sprite, start real server with env vars, send mission through TCP proxy, verify full agent response. Then close stackdocs-kfn and unblock m7b.3.4/m7b.3.5.
 
 ---
+
+## [2026-02-08 09:00] Session 130
+
+**Branch:** main | **Git:** clean
+
+### What Happened
+- **stackdocs-kfn (P0 bug) VERIFIED AND CLOSED**: Ran clean e2e test — killed stale echo server on Sprite, started real server, sent mission "What is 2+2?" through TCP proxy. Agent returned "4" with session_id and cost ($0.02). Full chain confirmed: Browser → Bridge → TCP Proxy → Sprite TCP server → Gateway → AgentRuntime → Claude SDK → Bridge API Proxy → Anthropic API → response back.
+
+- **Warm performance tested**: Second query ("Capital of Australia?") returned "Canberra" in ~4.5s, cost $0.01. Faster than cold (~6s) — SDK CLI was warmed.
+
+- **Tool use tested — discovered two more issues**:
+  1. `/workspace/` owned by `ubuntu` (Sprites.dev default) but server runs as `sprite` — agent couldn't create files. Fixed: `bootstrap.ts` now runs `sudo chown sprite:sprite /workspace` at start and `sudo chown -R sprite:sprite /workspace` at end.
+  2. Claude Agent SDK's Bash tool requires interactive approval by default — headless agent was looping, burning ~$0.08-0.30 per failed attempt. Fixed: `runtime.py` now sets `permission_mode="bypassPermissions"` and `cwd="/workspace"`.
+
+- **Tool use verified**: After fixes, agent successfully created `/workspace/stacks/` folder in ~11s, cost $0.025. Two-turn mission (think → Bash mkdir+ls → confirm).
+
+- **Performance benchmarks established**:
+  - Simple Q&A: ~4.5s, $0.01
+  - Tool use (2-turn): ~11s, $0.025
+  - Multi-turn failure (6 tool calls): ~60s, $0.08
+
+- **Utility scripts added**: `bridge/scripts/warm-test.ts` (timing test), `bridge/scripts/deploy-code.ts` (quick code deploy to Sprite).
+
+### Decisions Made
+1. **`bypassPermissions` for headless agent** — no interactive user on Sprite to approve tool use. This is secure because Sprites are isolated VMs, one per stack, not shared.
+2. **`chown -R` in bootstrap** — FS API writes as `ubuntu`, exec runs as `sprite`. Fix ownership after all writes.
+
+### Gotchas
+1. **Permission loop is expensive** — agent without `bypassPermissions` loops trying `sudo` variants, burning $0.08+ per failed mission. Always set this for headless agents.
+2. **`test-sprite-e2e.ts` has two bugs**: uses ISO timestamp (should be numeric `Date.now()`), sends text WS frames (should be binary `Buffer.from`). Use `test-e2e-v2.ts` instead.
+3. **`Decompression error: ZlibError`** in SDK stderr is non-fatal, can ignore.
+4. **Stale processes on Sprite** survive sleep/wake. Always kill before starting fresh: `pkill -f "src.server"`.
+
+### Next Action
+- **Brainstorm m7b.3.4 (Canvas tools) and m7b.3.5 (Memory system)** — design decisions needed:
+  - m7b.3.4: How to register canvas tools with Claude Agent SDK? Custom tools via `tools` param? MCP server? Need to figure out how tools send WS messages through the send_fn.
+  - m7b.3.5: Bootstrap already creates memory templates (overlap with step 1). `runtime.py` already loads soul.md (overlap with loader). Transcript logger may be over-engineering for MVP. Needs scoping.
+  - soul.md is currently a placeholder template — agent should fill it in as it learns.
+
+---
