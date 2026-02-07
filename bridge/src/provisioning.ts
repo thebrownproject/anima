@@ -27,7 +27,7 @@ export interface ProvisionResult {
 
 // -- Config --
 
-const DEFAULT_SERVER_CMD = ['/workspace/.venv/bin/python3', '/workspace/src/server.py']
+const DEFAULT_SERVER_CMD = ['bash', '-c', 'cd /workspace && /workspace/.venv/bin/python3 -m src.server']
 
 // API keys proxied through Bridge — Sprites never hold master keys (m7b.3.6).
 // Sprites use ANTHROPIC_BASE_URL / MISTRAL_BASE_URL pointing to Bridge proxy,

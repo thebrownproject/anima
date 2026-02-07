@@ -193,7 +193,7 @@ describe('buildServerExecUrl', () => {
 
     expect(buildExecUrl).toHaveBeenCalledWith(
       'my-sprite',
-      ['/workspace/.venv/bin/python3', '/workspace/src/server.py'],
+      ['bash', '-c', 'cd /workspace && /workspace/.venv/bin/python3 -m src.server'],
       {
         ANTHROPIC_BASE_URL: 'https://ws.stackdocs.io/v1/proxy/anthropic',
         ANTHROPIC_API_KEY: 'proxy-tok',

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from pathlib import Path
@@ -46,14 +45,12 @@ def _load_system_prompt() -> str:
 class AgentRuntime:
     """Invokes Claude Agent SDK and streams AgentEvent messages via send_fn.
 
-    Missions are serialized through an asyncio.Lock to prevent concurrent
-    agent invocations on the same Sprite.
+    Mission serialization is handled by the gateway's mission_lock.
     """
 
     def __init__(self, send_fn: SendFn, db: Database) -> None:
         self._send = send_fn
         self._db = db
-        self._lock = asyncio.Lock()
         self.last_session_id: str | None = None
 
     async def run_mission(
@@ -68,8 +65,7 @@ class AgentRuntime:
             system_prompt=system_prompt,
             max_turns=MAX_TURNS,
         )
-        async with self._lock:
-            await self._invoke(text, options, request_id)
+        await self._invoke(text, options, request_id)
 
     async def resume_mission(
         self,
@@ -82,8 +78,7 @@ class AgentRuntime:
             resume=session_id,
             max_turns=MAX_TURNS,
         )
-        async with self._lock:
-            await self._invoke(text, options, request_id)
+        await self._invoke(text, options, request_id)
 
     async def _invoke(
         self,

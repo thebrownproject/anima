@@ -1478,3 +1478,61 @@ Stacks page → Canvas workspaces (transform)
 - Start m7b.3.3 (Agent runtime with WebSocket output) — the core of the Sprite agent. Wire Claude Agent SDK with Bash/Read/Write tools, connect to WebSocket for I/O.
 
 ---
+
+## [2026-02-08 00:30] Session 128
+
+**Branch:** main | **Git:** uncommitted changes
+
+### What Happened
+- **m7b.3.6 (API key proxy) — COMPLETE**
+  - Pathfinder: deep security analysis of v1 vs v2 threat model (prompt injection with full Bash access)
+  - Design decisions confirmed with Fraser: (A) shared SPRITES_PROXY_TOKEN, proxy both Anthropic + Mistral, defer rate limiting
+  - Builder created `bridge/src/api-proxy.ts` (130 lines) — HTTP reverse proxy with streaming SSE support
+  - Modified `bridge/src/index.ts` (+7 lines route), `bridge/src/provisioning.ts` (env vars for Sprites)
+  - 10 tests in `bridge/tests/api-proxy.test.ts`, all passing
+  - Inspector: 10/10 requirements pass, quality pass
+  - Key insight: Sprites set `ANTHROPIC_BASE_URL` to Bridge proxy, `ANTHROPIC_API_KEY` to proxy token. Real keys only on Bridge.
+
+- **m7b.3.3 (Agent runtime with WebSocket output) — CODE COMPLETE, TESTING BLOCKED**
+  - Pathfinder: explored Claude Agent SDK, v1 reference code, existing Sprite code
+  - Builder created `sprite/src/runtime.py` (141 lines) — AgentRuntime wrapping ClaudeSDKClient
+  - Event mapping: TextBlock→text, ToolUseBlock→tool, ResultMessage→complete, Exception→error
+  - Session resume via `ClaudeAgentOptions(resume=session_id)`
+  - 12 tests in `sprite/tests/test_runtime.py`, all passing
+  - Inspector: 9/9 pass, quality pass. Fixed double-locking (gateway+runtime), removed dead test code
+  - Modified gateway.py (wired runtime), server.py (Database lifecycle), bootstrap.ts (deploy list, VERSION bump)
+  - **Key discovery**: claude-agent-sdk bundles the claude CLI binary — no npm/Node.js needed on Sprites!
+
+- **Bridge redeployed** to Fly.io with api-proxy + bootstrap changes
+  - Set Fly.io secrets: SPRITES_PROXY_TOKEN, ANTHROPIC_API_KEY, MISTRAL_API_KEY
+  - Proxy endpoint verified: `curl https://ws.stackdocs.io/v1/proxy/anthropic/v1/messages` → 401 (correct)
+
+- **E2E testing — partially working, blocked on comms**
+  - Created `sd-e2e-test` Sprite, fully bootstrapped (VERSION=2, all packages)
+  - Server starts, listens on port 8765, Database connects
+  - TCP proxy connects: `{"status":"connected","target":"10.0.0.1:8765"}`
+  - From INSIDE Sprite: gateway receives mission, SDK launches bundled claude binary
+  - **BUT**: no agent_event messages stream back within 60s timeout
+  - Created P0 bug `stackdocs-kfn` blocking m7b.3.3, m7b.3.4, m7b.3.5
+
+### Decisions Made
+1. **Shared SPRITES_PROXY_TOKEN** for MVP. Per-sprite tokens deferred.
+2. **Proxy both Anthropic + Mistral** in one pass — 90% shared code.
+3. **Rate limiting deferred** to post-MVP. Abuse vector (agent curling proxy) acceptable.
+4. **No MCP servers for extraction tools** — confirmed m7b.3.2 close decision. Agent uses built-in Bash/Read/Write.
+5. **Server command changed** to `bash -c 'cd /workspace && python3 -m src.server'` — relative imports require module-style execution.
+
+### Gotchas
+1. **Timestamp must be numeric**: `is_websocket_message()` validates `timestamp` as `int|float` (Unix epoch ms). ISO strings fail silently → "Invalid message structure" warning.
+2. **Port 8765 survives Sprite sleep/wake**: Old server processes persist via CRIU checkpoint. Must `kill` before restart.
+3. **TCP proxy init has two responses**: `{type:"port_opened"}` then `{status:"connected"}`. Bridge sprite-connection.ts only checks the second.
+4. **claude-agent-sdk bundles the CLI**: No npm install needed. Binary at `_bundled/claude` in the pip package.
+5. **Sprites.dev exec messages**: stdout comes as plain text lines, not JSON-wrapped `{type:"stdout",data:"..."}` — exec WS message parsing must handle both.
+
+### In Progress
+- **stackdocs-kfn** (P0): Sprite↔Bridge WebSocket communication through TCP proxy not working end-to-end. Two issues: (1) TCP proxy WS frame forwarding unclear, (2) Agent SDK launches but no events stream back even from inside Sprite.
+
+### Next Action
+- Debug the two comms issues in stackdocs-kfn. Start from inside the Sprite: verify SDK can call Anthropic via proxy (test ANTHROPIC_BASE_URL + proxy token auth chain). Then fix TCP proxy message forwarding.
+
+---

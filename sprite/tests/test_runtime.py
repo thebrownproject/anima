@@ -375,14 +375,6 @@ class _MockClientError:
         yield
 
 
-def _apply_type_patches():
-    """Stack of patches for SDK type references used in isinstance checks."""
-    from contextlib import ExitStack
-    stack = ExitStack()
-    for target, replacement in _SDK_TYPE_PATCHES.items():
-        stack.enter_context(patch(target, replacement))
-    return stack
-
 
 def _mock_sdk(messages, capture_options=None):
     """Patch ClaudeSDKClient + SDK types to return predefined messages."""
