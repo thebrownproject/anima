@@ -64,6 +64,8 @@ class AgentRuntime:
         options = ClaudeAgentOptions(
             system_prompt=system_prompt,
             max_turns=MAX_TURNS,
+            permission_mode="bypassPermissions",
+            cwd="/workspace",
         )
         await self._invoke(text, options, request_id)
 

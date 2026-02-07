@@ -126,9 +126,10 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   console.log(`[bootstrap] Starting bootstrap for ${spriteName}`)
   const start = Date.now()
 
-  // 1. Create directories
+  // 1. Create directories and fix ownership (FS API writes as ubuntu, server runs as sprite)
   await spriteExec(spriteName, [
-    'mkdir -p /workspace/documents /workspace/ocr /workspace/artifacts',
+    'sudo chown sprite:sprite /workspace',
+    '&& mkdir -p /workspace/documents /workspace/ocr /workspace/artifacts',
     '/workspace/memory /workspace/transcripts /workspace/src',
   ].join(' '))
   console.log(`[bootstrap] Directories created`)
@@ -163,6 +164,10 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
 
   // 7. Write VERSION file
   await writeFile(spriteName, '/workspace/VERSION', String(CURRENT_VERSION))
+
+  // 8. Fix ownership — FS API writes as ubuntu, but server runs as sprite
+  await spriteExec(spriteName, 'sudo chown -R sprite:sprite /workspace')
+  console.log(`[bootstrap] Ownership fixed (sprite:sprite)`)
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(1)
   console.log(`[bootstrap] Bootstrap complete for ${spriteName} in ${elapsed}s`)
