@@ -16,14 +16,14 @@ import { spriteExec } from './sprite-exec.js'
 
 // Current version — bump this when code or deps change.
 // The updater checks this against the sprite's /workspace/VERSION file.
-export const CURRENT_VERSION = 1
+export const CURRENT_VERSION = 2
 
 // -- Source code deployment --
 
 /** Deploy sprite/src/ Python files to /workspace/src/ on the sprite. */
 export async function deployCode(spriteName: string): Promise<void> {
   const srcDir = join(import.meta.dirname, '..', '..', 'sprite', 'src')
-  const files = ['__init__.py', 'server.py', 'gateway.py', 'protocol.py']
+  const files = ['__init__.py', 'server.py', 'gateway.py', 'protocol.py', 'database.py', 'runtime.py']
 
   for (const file of files) {
     const content = await fsRead(join(srcDir, file), 'utf-8')

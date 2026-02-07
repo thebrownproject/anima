@@ -10,6 +10,7 @@ import websockets
 from websockets.asyncio.server import serve, ServerConnection
 
 from .gateway import SpriteGateway
+from .database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +18,12 @@ HOST = "0.0.0.0"
 PORT = 8765
 
 
-async def handle_connection(ws: ServerConnection) -> None:
+async def handle_connection(ws: ServerConnection, db: Database | None = None) -> None:
     """Handle a single WebSocket connection from the Bridge."""
     remote = ws.remote_address
     logger.info("Connection opened: %s", remote)
 
-    gateway = SpriteGateway(send_fn=ws.send)
+    gateway = SpriteGateway(send_fn=ws.send, db=db)
 
     try:
         async for raw in ws:
@@ -45,10 +46,12 @@ async def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, lambda: stop.set_result(None))
 
-    async with serve(handle_connection, HOST, PORT) as server:
-        logger.info("Sprite server listening on ws://%s:%d", HOST, PORT)
-        await stop
-        logger.info("Shutting down...")
+    async with Database() as db:
+        handler = lambda ws: handle_connection(ws, db=db)
+        async with serve(handler, HOST, PORT) as server:
+            logger.info("Sprite server listening on ws://%s:%d", HOST, PORT)
+            await stop
+            logger.info("Shutting down...")
 
 
 if __name__ == "__main__":

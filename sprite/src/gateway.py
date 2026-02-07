@@ -8,6 +8,8 @@ import logging
 from typing import Any, Callable, Awaitable
 
 from .protocol import SystemMessage, SystemPayload, to_json, is_websocket_message
+from .runtime import AgentRuntime
+from .database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +28,10 @@ class SpriteGateway:
     All other types run concurrently.
     """
 
-    def __init__(self, send_fn: SendFn) -> None:
+    def __init__(self, send_fn: SendFn, db: Database | None = None) -> None:
         self.send = send_fn
         self.mission_lock = asyncio.Lock()
+        self.runtime = AgentRuntime(send_fn=send_fn, db=db) if db else None
 
     async def route(self, raw: str) -> None:
         """Parse a raw WS message and dispatch to the correct handler."""
@@ -71,8 +74,17 @@ class SpriteGateway:
     # -- Stub handlers (log + ack) -------------------------------------------
 
     async def _handle_mission(self, msg: dict[str, Any], req_id: str | None) -> None:
-        logger.info("Mission received: %.80s", msg.get("payload", {}).get("text", ""))
+        payload = msg.get("payload", {})
+        text = payload.get("text", "")
+        logger.info("Mission received: %.80s", text)
         await self._send_ack("mission_received", req_id)
+
+        if not self.runtime:
+            await self._send_error("Agent runtime not initialized")
+            return
+
+        attachments = payload.get("attachments")
+        await self.runtime.run_mission(text, request_id=req_id, attachments=attachments)
 
     async def _handle_file_upload(self, msg: dict[str, Any], req_id: str | None) -> None:
         logger.info("File upload: %s", msg.get("payload", {}).get("filename", "?"))
