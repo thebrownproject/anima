@@ -1,6 +1,8 @@
 import { WebSocket } from 'ws'
 import { SpriteConnection } from './sprite-connection.js'
 import { getConnectionsByStack } from './connection-store.js'
+import { handleDisconnect, isReconnecting, bufferMessage, cleanupReconnectState } from './reconnect.js'
+import { startKeepalive, stopKeepalive } from './keepalive.js'
 
 /** Active Sprite connections keyed by stack ID. */
 const spriteConnections = new Map<string, SpriteConnection>()
@@ -11,6 +13,39 @@ export function getSpriteConnection(stackId: string): SpriteConnection | undefin
 
 export function getSpriteConnectionCount(): number {
   return spriteConnections.size
+}
+
+/**
+ * Create a SpriteConnection, register it, and wire up reconnection on close.
+ * Extracted so reconnect.ts can call the same logic for re-establishment.
+ */
+async function createAndRegister(stackId: string, spriteName: string, token: string): Promise<SpriteConnection> {
+  const conn = new SpriteConnection({
+    spriteName,
+    token,
+    onMessage: (data) => broadcastToBrowsers(stackId, data),
+    onClose: (_code, _reason) => {
+      spriteConnections.delete(stackId)
+      // Only attempt reconnection if browsers are still connected
+      if (getConnectionsByStack(stackId).length > 0) {
+        handleDisconnect(stackId, {
+          spriteName,
+          token,
+          createConnection: (sn, tk) => createAndRegister(stackId, sn, tk),
+          sendToSprite: (data) => forwardToSprite(stackId, data),
+        }).catch((err) => {
+          console.error(`[reconnect:${stackId}] Unhandled error:`, err)
+        })
+      }
+    },
+    onError: (err) => {
+      console.error(`[sprite:${spriteName}] TCP Proxy error:`, err.message)
+    },
+  })
+
+  await conn.connect()
+  spriteConnections.set(stackId, conn)
+  return conn
 }
 
 /** For testing — clear all tracked connections. */
@@ -41,25 +76,16 @@ export async function ensureSpriteConnection(
     spriteConnections.delete(stackId)
   }
 
-  const conn = new SpriteConnection({
-    spriteName,
-    token,
-    onMessage: (data) => broadcastToBrowsers(stackId, data),
-    onClose: (_code, _reason) => {
-      spriteConnections.delete(stackId)
-    },
-    onError: (err) => {
-      console.error(`[sprite:${spriteName}] TCP Proxy error:`, err.message)
-    },
-  })
-
-  await conn.connect()
-  spriteConnections.set(stackId, conn)
+  const conn = await createAndRegister(stackId, spriteName, token)
+  startKeepalive(stackId)
   return conn
 }
 
-/** Forward a browser message to the Sprite for this stack. */
+/** Forward a browser message to the Sprite for this stack. Buffers during reconnect. */
 export function forwardToSprite(stackId: string, message: string): boolean {
+  if (isReconnecting(stackId)) {
+    return bufferMessage(stackId, message)
+  }
   const conn = spriteConnections.get(stackId)
   if (!conn || conn.state !== 'connected') return false
   return conn.send(message)
@@ -77,6 +103,8 @@ function broadcastToBrowsers(stackId: string, data: string): void {
 
 /** Disconnect the Sprite connection for a stack (e.g., when last browser disconnects). */
 export function disconnectSprite(stackId: string): void {
+  stopKeepalive(stackId)
+  cleanupReconnectState(stackId)
   const conn = spriteConnections.get(stackId)
   if (conn) {
     conn.close()
