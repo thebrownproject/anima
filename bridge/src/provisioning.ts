@@ -2,8 +2,8 @@
  * Lazy Sprite Provisioning.
  *
  * When a user connects and their stack has sprite_status='pending',
- * provisions a new Sprite from a golden checkpoint, starts the
- * Python WS server, and updates the Supabase stacks row.
+ * provisions a new Sprite via bootstrap (installs packages, deploys
+ * code, creates DB and memory), then updates the Supabase stacks row.
  *
  * Status transitions: pending -> provisioning -> active
  * On failure: -> failed (retried on next connect)
@@ -15,6 +15,7 @@ import {
   getSprite,
   buildExecUrl,
 } from './sprites-client.js'
+import { bootstrapSprite } from './bootstrap.js'
 
 // -- Types --
 
@@ -24,14 +25,9 @@ export interface ProvisionResult {
   error?: string
 }
 
-export interface ProvisionConfig {
-  goldenCheckpointId?: string
-  serverCommand?: string[]
-}
-
 // -- Config --
 
-const DEFAULT_SERVER_CMD = ['python3', '/workspace/src/server.py']
+const DEFAULT_SERVER_CMD = ['/workspace/.venv/bin/python3', '/workspace/src/server.py']
 
 function getEnvVarsForSprite(): Record<string, string> {
   const vars: Record<string, string> = {}
@@ -73,7 +69,6 @@ export function generateSpriteName(stackId: string): string {
  */
 export async function provisionSprite(
   stackId: string,
-  config?: ProvisionConfig,
 ): Promise<ProvisionResult> {
   const spriteName = generateSpriteName(stackId)
 
@@ -81,12 +76,9 @@ export async function provisionSprite(
     // Mark as provisioning
     await updateSpriteStatus(stackId, 'provisioning', spriteName)
 
-    // Create the Sprite
+    // Create the Sprite and bootstrap it with packages, code, DB, and memory
     await createSprite(spriteName)
-
-    // TODO: Restore from golden checkpoint once task 2.4 creates one
-    // const checkpointId = config?.goldenCheckpointId ?? getGoldenCheckpointId()
-    // if (checkpointId) await restoreCheckpoint(spriteName, checkpointId)
+    await bootstrapSprite(spriteName)
 
     // Mark as active
     await updateSpriteStatus(stackId, 'active')
@@ -115,7 +107,6 @@ export async function ensureSpriteProvisioned(
   stackId: string,
   currentStatus: string,
   currentSpriteName: string | null,
-  config?: ProvisionConfig,
 ): Promise<ProvisionResult> {
   // Already active — verify the Sprite exists
   if (currentStatus === 'active' && currentSpriteName) {
@@ -129,15 +120,14 @@ export async function ensureSpriteProvisioned(
   }
 
   // Pending or failed — provision fresh
-  return provisionSprite(stackId, config)
+  return provisionSprite(stackId)
 }
 
 /**
  * Build the exec URL for starting the Sprite's Python WS server.
  * Exposed so index.ts can open the WS connection after provisioning.
  */
-export function buildServerExecUrl(spriteName: string, config?: ProvisionConfig): string {
-  const cmd = config?.serverCommand ?? DEFAULT_SERVER_CMD
+export function buildServerExecUrl(spriteName: string): string {
   const envVars = getEnvVarsForSprite()
-  return buildExecUrl(spriteName, cmd, envVars)
+  return buildExecUrl(spriteName, DEFAULT_SERVER_CMD, envVars)
 }

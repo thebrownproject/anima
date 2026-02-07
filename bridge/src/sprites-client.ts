@@ -141,6 +141,33 @@ export function buildExecUrl(
   return url.toString()
 }
 
+// -- Filesystem --
+
+export async function readFile(spriteName: string, path: string): Promise<string> {
+  const url = `${baseUrl()}/v1/sprites/${spriteName}/fs/read?path=${encodeURIComponent(path)}`
+  const res = await fetch(url, { headers: headers() })
+  if (!res.ok) {
+    const text = await res.text().catch(() => 'unknown error')
+    throw new Error(`FS read ${path} failed (${res.status}): ${text}`)
+  }
+  return res.text()
+}
+
+export async function writeFile(spriteName: string, path: string, content: string): Promise<void> {
+  const url = `${baseUrl()}/v1/sprites/${spriteName}/fs/write?path=${encodeURIComponent(path)}`
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { ...headers(), 'Content-Type': 'application/octet-stream' },
+    body: content,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => 'unknown error')
+    throw new Error(`FS write ${path} failed (${res.status}): ${text}`)
+  }
+}
+
+// -- URL Builders --
+
 /**
  * Build the TCP Proxy WebSocket URL for connecting to a Sprite's internal port.
  */

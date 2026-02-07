@@ -7,6 +7,11 @@ vi.mock('../src/sprites-client.js', () => ({
   buildExecUrl: vi.fn(),
 }))
 
+// Mock bootstrap
+vi.mock('../src/bootstrap.js', () => ({
+  bootstrapSprite: vi.fn(),
+}))
+
 // Mock @supabase/supabase-js
 const mockUpdate = vi.fn()
 const mockUpdateEq = vi.fn()
@@ -134,8 +139,8 @@ describe('provisionSprite', () => {
     expect(result.spriteStatus).toBe('failed')
   })
 
-  it('accepts custom config without error', async () => {
-    const result = await provisionSprite('stack_1', { serverCommand: ['node', 'server.js'] })
+  it('calls bootstrapSprite after creating sprite', async () => {
+    const result = await provisionSprite('stack_1')
 
     expect(result.spriteStatus).toBe('active')
   })
@@ -183,28 +188,16 @@ describe('ensureSpriteProvisioned', () => {
 // -- buildServerExecUrl --
 
 describe('buildServerExecUrl', () => {
-  it('delegates to buildExecUrl with default command and API keys as env vars', () => {
+  it('delegates to buildExecUrl with venv python and API keys as env vars', () => {
     vi.mocked(buildExecUrl).mockReturnValue('wss://exec-url')
 
     const url = buildServerExecUrl('my-sprite')
 
     expect(buildExecUrl).toHaveBeenCalledWith(
       'my-sprite',
-      ['python3', '/workspace/src/server.py'],
+      ['/workspace/.venv/bin/python3', '/workspace/src/server.py'],
       { ANTHROPIC_API_KEY: 'sk-ant-test', MISTRAL_API_KEY: 'mk-test' },
     )
     expect(url).toBe('wss://exec-url')
-  })
-
-  it('uses custom command when provided', () => {
-    vi.mocked(buildExecUrl).mockReturnValue('wss://exec-url')
-
-    buildServerExecUrl('my-sprite', { serverCommand: ['node', 'app.js'] })
-
-    expect(buildExecUrl).toHaveBeenCalledWith(
-      'my-sprite',
-      ['node', 'app.js'],
-      expect.any(Object),
-    )
   })
 })
