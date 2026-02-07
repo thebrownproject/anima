@@ -283,10 +283,14 @@ describe('proxy module', () => {
   })
 })
 
+// Mock updater module before proxy imports it
+vi.mock('../src/updater.js', () => ({
+  checkAndUpdate: vi.fn().mockResolvedValue(false),
+}))
+
 describe('proxy updater integration', () => {
   let proxyModule: typeof import('../src/proxy.js')
-  let updaterModule: typeof import('../src/updater.js')
-  let checkAndUpdateSpy: ReturnType<typeof vi.spyOn>
+  let checkAndUpdateMock: ReturnType<typeof vi.fn>
 
   beforeAll(async () => {
     mockSpritePort = 19878
@@ -301,8 +305,10 @@ describe('proxy updater integration', () => {
     vi.spyOn(await import('../src/sprites-client.js'), 'buildProxyUrl')
       .mockReturnValue(`ws://localhost:${mockSpritePort}`)
 
-    updaterModule = await import('../src/updater.js')
-    checkAndUpdateSpy = vi.spyOn(updaterModule, 'checkAndUpdate').mockResolvedValue(false)
+    const { checkAndUpdate } = await import('../src/updater.js')
+    checkAndUpdateMock = vi.mocked(checkAndUpdate)
+    checkAndUpdateMock.mockClear()
+    checkAndUpdateMock.mockResolvedValue(false)
 
     proxyModule = await import('../src/proxy.js')
   })
@@ -314,30 +320,30 @@ describe('proxy updater integration', () => {
 
   it('calls checkAndUpdate when establishing new connection', async () => {
     await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    expect(checkAndUpdateSpy).toHaveBeenCalledWith('sprite-a')
+    expect(checkAndUpdateMock).toHaveBeenCalledWith('sprite-a')
     expect(proxyModule.getSpriteConnection('stack-1')?.state).toBe('connected')
   })
 
   it('proceeds normally when update was applied', async () => {
-    checkAndUpdateSpy.mockResolvedValue(true)
+    checkAndUpdateMock.mockResolvedValue(true)
     await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    expect(checkAndUpdateSpy).toHaveBeenCalledWith('sprite-a')
+    expect(checkAndUpdateMock).toHaveBeenCalledWith('sprite-a')
     expect(proxyModule.getSpriteConnection('stack-1')?.state).toBe('connected')
   })
 
   it('proceeds when checkAndUpdate throws', async () => {
-    checkAndUpdateSpy.mockRejectedValue(new Error('FS API unreachable'))
+    checkAndUpdateMock.mockRejectedValue(new Error('FS API unreachable'))
     await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    expect(checkAndUpdateSpy).toHaveBeenCalledWith('sprite-a')
+    expect(checkAndUpdateMock).toHaveBeenCalledWith('sprite-a')
     expect(proxyModule.getSpriteConnection('stack-1')?.state).toBe('connected')
   })
 
   it('skips checkAndUpdate when reusing existing connection', async () => {
     await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    expect(checkAndUpdateSpy).toHaveBeenCalledTimes(1)
+    expect(checkAndUpdateMock).toHaveBeenCalledTimes(1)
 
     await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
     // Still 1 — reused existing, no second update check
-    expect(checkAndUpdateSpy).toHaveBeenCalledTimes(1)
+    expect(checkAndUpdateMock).toHaveBeenCalledTimes(1)
   })
 })

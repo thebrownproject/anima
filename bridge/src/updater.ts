@@ -12,11 +12,9 @@
  *   4. Restart the Python server if it's running
  */
 
-import { readFile as fsRead } from 'node:fs/promises'
-import { join } from 'node:path'
 import { readFile, writeFile } from './sprites-client.js'
 import { spriteExec } from './sprite-exec.js'
-import { CURRENT_VERSION } from './bootstrap.js'
+import { CURRENT_VERSION, deployCode } from './bootstrap.js'
 
 /** Read the current version from a sprite. Returns 0 if VERSION file is missing. */
 async function getSpriteVersion(spriteName: string): Promise<number> {
@@ -25,17 +23,6 @@ async function getSpriteVersion(spriteName: string): Promise<number> {
     return parseInt(content.trim(), 10) || 0
   } catch {
     return 0
-  }
-}
-
-/** Deploy updated source code files to the sprite. */
-async function deployCode(spriteName: string): Promise<void> {
-  const srcDir = join(import.meta.dirname, '..', '..', 'sprite', 'src')
-  const files = ['__init__.py', 'server.py', 'gateway.py', 'protocol.py']
-
-  for (const file of files) {
-    const content = await fsRead(join(srcDir, file), 'utf-8')
-    await writeFile(spriteName, `/workspace/src/${file}`, content)
   }
 }
 

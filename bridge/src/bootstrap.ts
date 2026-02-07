@@ -21,7 +21,7 @@ export const CURRENT_VERSION = 1
 // -- Source code deployment --
 
 /** Deploy sprite/src/ Python files to /workspace/src/ on the sprite. */
-async function deployCode(spriteName: string): Promise<void> {
+export async function deployCode(spriteName: string): Promise<void> {
   const srcDir = join(import.meta.dirname, '..', '..', 'sprite', 'src')
   const files = ['__init__.py', 'server.py', 'gateway.py', 'protocol.py']
 
