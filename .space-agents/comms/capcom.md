@@ -1439,3 +1439,42 @@ Stacks page → Canvas workspaces (transform)
 - Close m7b.2.4, then tackle m7b.2.8 (E2E smoke test)
 
 ---
+
+## [2026-02-07 23:45] Session 126
+
+**Branch:** main | **Git:** clean (pushed)
+
+### What Happened
+- **m7b.3.1 (SQLite database layer) — COMPLETE**
+  - Pathfinder explored codebase, confirmed `bridge/src/bootstrap.ts` lines 47-94 as schema DDL source of truth
+  - Builder created `sprite/src/database.py` (97 lines) — async Database class wrapping aiosqlite
+  - WAL mode, foreign keys, dict row factory, async context manager
+  - Schema DDL copied verbatim from bootstrap.ts — Inspector verified character-for-character match
+  - Builder created `sprite/tests/test_database.py` (225 lines) — 18 tests, all passing
+  - Inspector pass: 6/6 requirements met, quality pass, no bloat
+  - Fixed minor cosmetic issue (duplicate value in SQL IN clause)
+  - Created `sprite/.venv/` for local test execution
+
+- **m7b.3.2 (Port tool factories) — CLOSED AS OBSOLETE**
+  - Brainstorming session with Fraser fundamentally rethought the approach
+  - v1 tool factories existed because agent was sandboxed (no Bash, no filesystem)
+  - v2 agent runs on a VM with full Bash/Read/Write — just like Claude Code
+  - No need for `create_tools()`, `save_extraction`, `set_field`, etc.
+  - Agent will query SQLite via `sqlite3` CLI, read/write files directly
+  - Custom tools only where they add real value: OCR (external API), Canvas (WS messages)
+  - Extraction logic absorbed by: m7b.3.3 (runtime), m7b.3.4 (canvas tools), m7b.3.5 (soul.md)
+  - OCR tool deferred to Phase 4 (upload + extraction)
+
+- **m7b.3.6 (API key proxy) — SKIPPED** for this session, still in_progress
+
+### Decisions Made
+1. **Agent = Claude Code on a VM.** The Sprite agent uses Bash, Read, Write as primary tools — no tool factories. Custom tools only for OCR (external API) and Canvas (WS messages to browser). This is the "personal AI computer" vision realized.
+2. **One agent, not two.** v1 had extraction_agent + stack_agent. v2 has one persistent agent per stack that handles everything: chat, extraction, corrections, memory.
+3. **soul.md = CLAUDE.md equivalent.** The agent's system prompt tells it about the schema, file locations, how to do extractions. Replaces v1's `prompts.py`.
+4. **OCR as a hook, not a tool (maybe).** Fraser suggested OCR could auto-run on upload as a hook, storing text on the VM for the agent. To be explored in Phase 4.
+5. **No background agents.** Previous session had issues with CC spawning two background agents. All orchestrated mode work done in foreground only.
+
+### Next Action
+- Start m7b.3.3 (Agent runtime with WebSocket output) — the core of the Sprite agent. Wire Claude Agent SDK with Bash/Read/Write tools, connect to WebSocket for I/O.
+
+---

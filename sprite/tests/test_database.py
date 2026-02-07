@@ -28,7 +28,7 @@ async def db(tmp_path):
 async def test_schema_creates_all_tables(db):
     """All four tables exist after connect: documents, ocr_results, extractions, memory_fts."""
     rows = await db.fetchall(
-        "SELECT name FROM sqlite_master WHERE type IN ('table', 'table') "
+        "SELECT name FROM sqlite_master WHERE type IN ('table') "
         "AND name NOT LIKE 'sqlite_%'"
     )
     table_names = {r["name"] for r in rows}

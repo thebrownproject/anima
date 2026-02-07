@@ -52,7 +52,7 @@ This project uses the **Space-Agents workflow** for planning and implementing fe
 | `docs/specs/PRD.md` | Product requirements |
 | `.space-agents/comms/capcom.md` | Session history (grep for context, don't read in full) |
 | `docs/CLAUDE.md` | Planning index, workflow details |
-| Beads | Issue tracking - `bd list`, `bd show`, `bd ready` |
+| Beads | Issue tracking - `bd list`, `bd show`, `bd ready`. UI: `bdui start --open` |
 
 ---
 
@@ -254,6 +254,18 @@ v1 tables (`documents`, `extractions`, `ocr_results`, etc.) still exist but are 
 **DRY:** Reuse tool factory pattern, shared protocol types, common Canvas window logic.
 
 **Understand before solving:** Always examine the existing structure before proposing workarounds.
+
+---
+
+## Frontend Testing
+
+**Tool:** `agent-browser` (v0.9.1, installed globally) — Vercel's AI-agent-optimised browser CLI. Uses Playwright under the hood with 93% less context than Playwright MCP.
+
+**Use agent-browser for ALL frontend testing** — E2E flows, Canvas UI verification, auth flows, visual checks. It saves snapshots/screenshots to disk (not into LLM context), making it token-efficient for agent-driven testing.
+
+```bash
+agent-browser             # CLI entry point (globally installed)
+```
 
 ---
 
