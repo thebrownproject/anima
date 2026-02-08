@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { StackCanvas, autoPlace, type CanvasCardNode } from '@/components/canvas/stack-canvas'
+import { GridLayoutSpike } from '@/components/canvas/grid-layout-spike'
 
 interface ChatMessage {
   role: 'user' | 'agent' | 'system'
@@ -57,6 +58,7 @@ export default function TestChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [cards, setCards] = useState<CanvasCardNode[]>([])
+  const [canvasView, setCanvasView] = useState<'reactflow' | 'grid'>('grid')
   const managerRef = useRef<WebSocketManager | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -259,6 +261,24 @@ export default function TestChatPage() {
               Disconnect
             </Button>
           )}
+          <div className="flex items-center gap-1 rounded-md border p-0.5">
+            <Button
+              variant={canvasView === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setCanvasView('grid')}
+            >
+              Grid Spike
+            </Button>
+            <Button
+              variant={canvasView === 'reactflow' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setCanvasView('reactflow')}
+            >
+              React Flow
+            </Button>
+          </div>
           {cards.length > 0 && (
             <Badge variant="secondary" className="font-mono text-xs">
               {cards.length} card{cards.length !== 1 ? 's' : ''}
@@ -332,7 +352,9 @@ export default function TestChatPage() {
 
         {/* Canvas panel */}
         <div className="flex-1 bg-background">
-          {cards.length === 0 ? (
+          {canvasView === 'grid' ? (
+            <GridLayoutSpike />
+          ) : cards.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-sm text-muted-foreground">
                 Canvas — cards will appear here when the agent creates them
