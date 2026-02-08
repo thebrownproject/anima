@@ -53,6 +53,11 @@ class AgentRuntime:
         # Ensure memory templates exist on first boot
         ensure_templates()
 
+    async def _indirect_send(self, data: str) -> None:
+        """Delegate to the current send_fn. Canvas tools capture this method
+        instead of the raw send_fn so they survive TCP reconnections."""
+        await self._send(data)
+
     def update_send_fn(self, send_fn: SendFn) -> None:
         """Point the runtime at a new connection's send function.
 
@@ -88,7 +93,9 @@ class AgentRuntime:
         system_prompt = load_memory()
 
         # Create canvas + memory tools and register via single MCP server
-        canvas_tools = create_canvas_tools(self._send)
+        # Use indirect send so canvas tools always use the CURRENT send_fn
+        # (self._send gets replaced on TCP reconnect via update_send_fn)
+        canvas_tools = create_canvas_tools(self._indirect_send)
         memory_tools = create_memory_tools()
         sprite_server = create_sdk_mcp_server(
             name="sprite", tools=canvas_tools + memory_tools
@@ -169,7 +176,7 @@ class AgentRuntime:
         # soul.md + user.md + journals = the system prompt
         system_prompt = load_memory()
 
-        canvas_tools = create_canvas_tools(self._send)
+        canvas_tools = create_canvas_tools(self._indirect_send)
         memory_tools = create_memory_tools()
         sprite_server = create_sdk_mcp_server(
             name="sprite", tools=canvas_tools + memory_tools
@@ -203,7 +210,7 @@ class AgentRuntime:
 
         Kept for tests. Production multi-turn uses handle_message().
         """
-        canvas_tools = create_canvas_tools(self._send)
+        canvas_tools = create_canvas_tools(self._indirect_send)
         memory_tools = create_memory_tools()
         sprite_server = create_sdk_mcp_server(
             name="sprite", tools=canvas_tools + memory_tools

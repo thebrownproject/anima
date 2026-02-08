@@ -1851,3 +1851,38 @@ Stacks page → Canvas workspaces (transform)
 - **m7b.4.11**: Debug and fix canvas_update messages through Bridge — outbound messages (Sprite → Bridge → browser) are broken. Likely issue in send_fn chain or Bridge TCP Proxy forwarding. This blocks Canvas from working end-to-end.
 
 ---
+
+## [2026-02-08 21:00] Session 138
+
+**Branch:** main | **Git:** uncommitted (fix applied)
+
+### What Happened
+- **Fixed stale closure bug in canvas_update send chain** — Root cause found and fixed for m7b.4.11. Canvas tools (`sprite/src/agents/shared/canvas_tools.py:267`) captured `send_fn` by value at tool creation time via `create_canvas_tools(self._send)`. After TCP reconnect (Sprite sleep/wake), `update_send_fn()` updated `self._send` on the runtime but canvas tools still held the OLD function pointing to a dead StreamWriter. Text responses worked because `_send_event()` (runtime.py:291) calls `self._send` directly (always current).
+
+- **Fix:** Added `_indirect_send()` method on `AgentRuntime` (`sprite/src/runtime.py:56-59`) that delegates to `self._send` at call time. Changed all 3 `create_canvas_tools()` call sites to use `self._indirect_send` instead of `self._send`. Bound method reference survives reconnections because `self` is stable — only `self._send` changes.
+
+- **Test added:** `test_indirect_send_survives_send_fn_swap` in `sprite/tests/test_runtime.py` — verifies that after `update_send_fn()`, `_indirect_send` routes to the new function, not the old one.
+
+- **Fixed stale test imports** — `test_runtime.py` referenced removed `DEFAULT_SYSTEM_PROMPT` constant (replaced by memory system). Updated 2 tests to match current `load_memory()` behavior.
+
+- **End-to-end verified:** Deployed fix to `sd-e2e-test` Sprite, ran `test-canvas.ts` — canvas_update message received successfully: `command: create_card`, `card_id`, `title: "Test Card"`, 2 blocks. Full chain working: Agent → canvas_tools → _indirect_send → TCP writer → Bridge → browser.
+
+- **Frontend tested by user** — Cards now flow through to the browser. However they render on the old React Flow canvas, not the new react-grid-layout from session 137. The grid spike is static (hardcoded mock cards, not wired to WebSocket messages).
+
+- **Created stackdocs-m7b.4.2.1** — "Wire grid layout to canvas_update messages (replace React Flow)". Detailed bead with gap analysis: grid-layout-spike needs to accept `cards` prop, use `CardRenderer` for blocks, replace React Flow in test-chat page.
+
+### Decisions Made
+1. **`_indirect_send` over lambda wrapper** — Used a bound method (`self._indirect_send`) rather than a lambda (`lambda data: self._send(data)`) because bound methods are cleaner, testable, and the method signature matches `SendFn` type.
+2. **Fix all 3 call sites** — `_start_session`, `run_mission`, and `resume_mission` all updated to use `_indirect_send` even though `run_mission`/`resume_mission` create fresh clients (defense in depth).
+
+### Gotchas
+- Python closure captures the function OBJECT, not the attribute reference. `create_canvas_tools(self._send)` freezes the function — reassigning `self._send` later has no effect on the closure. This is a subtle Python scoping trap.
+- `sprite exec` kill commands return exit code 137 (SIGKILL) — expected, not an error.
+- `pgrep -f "python.*src.server"` can match the grep command itself — always verify with `ps aux` if pgrep shows unexpected PIDs.
+- `test-e2e-v2.ts` always tries to start the server — if already running, second run fails with "address in use". Need a proxy-only test script (created `test-canvas.ts`).
+- `test_memory_tools.py` has 6 pre-existing errors (references removed `SOUL_MD` constant) — unrelated to this fix.
+
+### Next Action
+- **m7b.4.2.1**: Wire grid layout to canvas_update messages — replace static spike with production component that renders real cards from WebSocket. Key files: grid-layout-spike.tsx, test-chat/page.tsx, card-renderer.tsx.
+
+---

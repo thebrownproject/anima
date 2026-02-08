@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.runtime import AgentRuntime, DEFAULT_SYSTEM_PROMPT
+from src.runtime import AgentRuntime
 
 
 # -- Mock SDK types matching claude_agent_sdk interface ----------------------
@@ -267,7 +267,7 @@ async def test_error_during_streaming_sends_error(runtime, sent):
 # -- Test: soul.md loading ---------------------------------------------------
 
 async def test_loads_memory_as_system_prompt(runtime, sent):
-    """When memory files exist, loader output is prepended to system prompt."""
+    """When memory files exist, loader output becomes the system prompt."""
     memory_content = "# Soul\nYou are an invoice extraction agent."
     captured_options = {}
     messages = [MockResultMessage()]
@@ -276,12 +276,11 @@ async def test_loads_memory_as_system_prompt(runtime, sent):
          patch("src.runtime.load_memory", return_value=memory_content):
         await runtime.run_mission("Extract", request_id="req-soul")
 
-    expected = f"{memory_content}\n\n---\n\n{DEFAULT_SYSTEM_PROMPT}"
-    assert captured_options.get("system_prompt") == expected
+    assert captured_options.get("system_prompt") == memory_content
 
 
 async def test_fallback_prompt_when_no_memory(runtime, sent):
-    """When no memory files exist, uses DEFAULT_SYSTEM_PROMPT alone."""
+    """When no memory files exist, system prompt is empty string."""
     captured_options = {}
     messages = [MockResultMessage()]
 
@@ -289,7 +288,7 @@ async def test_fallback_prompt_when_no_memory(runtime, sent):
          patch("src.runtime.load_memory", return_value=""):
         await runtime.run_mission("Extract", request_id="req-fallback")
 
-    assert captured_options.get("system_prompt") == DEFAULT_SYSTEM_PROMPT
+    assert captured_options.get("system_prompt") == ""
 
 
 # -- Test: session_id stored for resume --------------------------------------
@@ -324,6 +323,34 @@ async def test_resume_registers_mcp_tools(runtime, sent):
     assert captured_options.get("permission_mode") == "bypassPermissions"
     assert captured_options.get("mcp_servers") is not None
     assert "sprite" in captured_options["mcp_servers"]
+
+
+async def test_indirect_send_survives_send_fn_swap(send_fn, mock_db):
+    """After update_send_fn, _indirect_send uses the NEW send_fn, not the old one."""
+    old_sent: list[str] = []
+    new_sent: list[str] = []
+
+    async def old_send(data: str) -> None:
+        old_sent.append(data)
+
+    async def new_send(data: str) -> None:
+        new_sent.append(data)
+
+    with patch("src.runtime.ensure_templates"):
+        rt = AgentRuntime(send_fn=old_send, db=mock_db)
+
+    # _indirect_send should use old_send initially
+    await rt._indirect_send("msg1")
+    assert old_sent == ["msg1"]
+    assert new_sent == []
+
+    # Swap send_fn (simulates TCP reconnect)
+    rt.update_send_fn(new_send)
+
+    # _indirect_send should now use new_send
+    await rt._indirect_send("msg2")
+    assert old_sent == ["msg1"]  # old unchanged
+    assert new_sent == ["msg2"]  # new receives it
 
 
 async def test_resume_fallback_on_error(runtime, sent):
