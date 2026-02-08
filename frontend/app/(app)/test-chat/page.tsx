@@ -2,14 +2,12 @@
 
 import { useAuth } from '@clerk/nextjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { applyNodeChanges, type OnNodesChange } from '@xyflow/react'
 import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
 import type { SpriteToBrowserMessage, CanvasUpdate } from '@/types/ws-protocol'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { StackCanvas, autoPlace, type CanvasCardNode } from '@/components/canvas/stack-canvas'
-import { GridLayoutSpike } from '@/components/canvas/grid-layout-spike'
+import { GridLayoutSpike, type GridCard } from '@/components/canvas/grid-layout-spike'
 
 interface ChatMessage {
   role: 'user' | 'agent' | 'system'
@@ -26,27 +24,15 @@ const STATUS_COLORS: Record<ConnectionStatus, string> = {
   error: 'bg-red-500',
 }
 
-const DEFAULT_CARD_SIZE = { width: 320, height: 240 }
-
-function canvasUpdateToNode(
+function canvasUpdateToCard(
   update: CanvasUpdate,
-  existingNodes: CanvasCardNode[],
-): CanvasCardNode {
-  const existing = existingNodes.find((n) => n.id === update.payload.card_id)
-  const position = existing?.position ?? autoPlace(existingNodes)
-
+  existingCards: GridCard[],
+): GridCard {
+  const existing = existingCards.find((c) => c.id === update.payload.card_id)
   return {
     id: update.payload.card_id,
-    type: 'canvasCard' as const,
-    position,
-    style: {
-      width: existing?.style?.width ?? DEFAULT_CARD_SIZE.width,
-      height: existing?.style?.height ?? DEFAULT_CARD_SIZE.height,
-    },
-    data: {
-      title: update.payload.title ?? existing?.data?.title ?? 'Untitled',
-      blocks: update.payload.blocks ?? existing?.data?.blocks ?? [],
-    },
+    title: update.payload.title ?? existing?.title ?? 'Untitled',
+    blocks: update.payload.blocks ?? existing?.blocks ?? [],
   }
 }
 
@@ -57,8 +43,7 @@ export default function TestChatPage() {
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
-  const [cards, setCards] = useState<CanvasCardNode[]>([])
-  const [canvasView, setCanvasView] = useState<'reactflow' | 'grid'>('grid')
+  const [cards, setCards] = useState<GridCard[]>([])
   const managerRef = useRef<WebSocketManager | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -75,15 +60,15 @@ export default function TestChatPage() {
         const exists = prev.find((n) => n.id === card_id)
         if (exists) {
           return prev.map((n) =>
-            n.id === card_id ? canvasUpdateToNode(message, prev) : n,
+            n.id === card_id ? canvasUpdateToCard(message, prev) : n,
           )
         }
-        return [...prev, canvasUpdateToNode(message, prev)]
+        return [...prev, canvasUpdateToCard(message, prev)]
       })
     } else if (command === 'update_card') {
       setCards((prev) =>
         prev.map((n) =>
-          n.id === card_id ? canvasUpdateToNode(message, prev) : n,
+          n.id === card_id ? canvasUpdateToCard(message, prev) : n,
         ),
       )
     } else if (command === 'close_card') {
@@ -206,13 +191,6 @@ export default function TestChatPage() {
     }
   }, [input])
 
-  const handleNodesChange: OnNodesChange<CanvasCardNode> = useCallback(
-    (changes) => {
-      setCards((prev) => applyNodeChanges(changes, prev))
-    },
-    [],
-  )
-
   const handleCardClose = useCallback((cardId: string) => {
     setCards((prev) => prev.filter((n) => n.id !== cardId))
   }, [])
@@ -260,29 +238,6 @@ export default function TestChatPage() {
             >
               Disconnect
             </Button>
-          )}
-          <div className="flex items-center gap-1 rounded-md border p-0.5">
-            <Button
-              variant={canvasView === 'grid' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={() => setCanvasView('grid')}
-            >
-              Grid Spike
-            </Button>
-            <Button
-              variant={canvasView === 'reactflow' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={() => setCanvasView('reactflow')}
-            >
-              React Flow
-            </Button>
-          </div>
-          {cards.length > 0 && (
-            <Badge variant="secondary" className="font-mono text-xs">
-              {cards.length} card{cards.length !== 1 ? 's' : ''}
-            </Badge>
           )}
         </div>
       </div>
@@ -352,21 +307,7 @@ export default function TestChatPage() {
 
         {/* Canvas panel */}
         <div className="flex-1 bg-background">
-          {canvasView === 'grid' ? (
-            <GridLayoutSpike />
-          ) : cards.length === 0 ? (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                Canvas — cards will appear here when the agent creates them
-              </p>
-            </div>
-          ) : (
-            <StackCanvas
-              cards={cards}
-              onNodesChange={handleNodesChange}
-              onCardClose={handleCardClose}
-            />
-          )}
+          <GridLayoutSpike cards={cards} onCardClose={handleCardClose} />
         </div>
       </div>
     </div>

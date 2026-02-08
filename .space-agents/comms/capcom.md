@@ -1886,3 +1886,30 @@ Stacks page → Canvas workspaces (transform)
 - **m7b.4.2.1**: Wire grid layout to canvas_update messages — replace static spike with production component that renders real cards from WebSocket. Key files: grid-layout-spike.tsx, test-chat/page.tsx, card-renderer.tsx.
 
 ---
+
+## [2026-02-08 23:15] Session 139
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+- **Completed m7b.4.2.1** — Wired grid-layout-spike to real canvas_update WebSocket messages.
+
+- **grid-layout-spike.tsx** (168 lines): Added `GridCard` interface (`id`, `title`, `blocks`) and `GridLayoutSpikeProps` (`cards`, `onCardClose`). New `autoPlaceGrid()` finds next available grid slot. `useEffect` syncs cards to layout items — preserves drag/resize positions for existing cards via `layoutRef`, auto-places new ones. Renders card content through `CardRenderer`. Empty state when no cards.
+
+- **test-chat/page.tsx** (316 lines): Replaced React Flow `CanvasCardNode` with flat `GridCard`. New `canvasUpdateToCard()` replaces `canvasUpdateToNode()`. Removed all React Flow imports (`applyNodeChanges`, `OnNodesChange`, `StackCanvas`, `autoPlace`). Removed view toggle — grid is the only canvas. `GridLayoutSpike` receives `cards` and `onCardClose` directly.
+
+- **Fixed infinite render loop** — `handleLayoutChange` was calling `setLayouts()`, creating a ping-pong with the `useEffect` that also sets layouts. Root cause: two competing state setters. Fix: `handleLayoutChange` now only updates `layoutRef` (tracks user drag/resize positions), while `useEffect` is the sole owner of `setLayouts`. Also removed `breakpoint` from useEffect deps.
+
+### Decisions Made
+1. **Evolved spike in place** rather than new production component — user preference to iterate on spike file.
+2. **Flat `GridCard` type** instead of React Flow's `Node<CanvasCardData>` — no position/style/type overhead.
+3. **`layoutRef` + single `setLayouts` owner** — ref tracks user drag positions, useEffect is sole state setter, handleLayoutChange only updates ref. Prevents render loops.
+
+### Gotchas
+- **react-grid-layout v2 `onLayoutChange` fires on every render** when `layouts` prop changes. If `handleLayoutChange` also sets `layouts`, you get an infinite loop. Only ONE thing should call `setLayouts`.
+- **`Layout` type is readonly** in react-grid-layout v2 — need `[...current]` spread to assign to mutable `LayoutItem[]`.
+
+### Next Action
+- Pick up next Phase 3 task (m7b.4.5 Canvas Zustand store, m7b.4.6 Subbar, m7b.4.3 MVP blocks, m7b.4.9 Agent prompt).
+
+---
