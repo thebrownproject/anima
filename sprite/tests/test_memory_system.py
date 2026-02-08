@@ -38,31 +38,32 @@ from src.memory.transcript import TranscriptLogger
 
 
 async def test_templates():
-    """Test 1: First boot creates templates."""
+    """Test 1: First boot creates agent-writable templates (not soul.md)."""
     print("Test 1: Template creation on first boot...")
 
     ensure_templates()
 
-    assert memory_module.SOUL_MD.exists(), "soul.md should exist after ensure_templates()"
+    # soul.md is deploy-managed, NOT created by ensure_templates()
+    assert not memory_module.SOUL_MD.exists(), "soul.md should NOT be created by ensure_templates()"
     assert memory_module.USER_MD.exists(), "user.md should exist after ensure_templates()"
     assert memory_module.MEMORY_MD.exists(), "MEMORY.md should exist after ensure_templates()"
 
-    print("✓ Templates created successfully")
+    print("✓ Templates created successfully (soul.md excluded)")
 
 
 async def test_templates_not_overwritten():
-    """Test 2: Second boot doesn't overwrite existing templates."""
+    """Test 2: Second boot doesn't overwrite existing agent-writable templates."""
     print("\nTest 2: Templates not overwritten on second boot...")
 
-    # Modify soul.md
+    # Modify user.md
     custom_content = "# Custom Content\n\nThis should not be overwritten."
-    memory_module.SOUL_MD.write_text(custom_content)
+    memory_module.USER_MD.write_text(custom_content)
 
     # Run ensure_templates again
     ensure_templates()
 
     # Verify content unchanged
-    assert memory_module.SOUL_MD.read_text() == custom_content, "soul.md was overwritten"
+    assert memory_module.USER_MD.read_text() == custom_content, "user.md was overwritten"
 
     print("✓ Templates preserved on second boot")
 
@@ -71,7 +72,7 @@ async def test_loader():
     """Test 3: Loader returns structured prompt with all 5 sources."""
     print("\nTest 3: Loader assembles system prompt from all sources...")
 
-    # Write test content to each file
+    # Write test content to each file (soul.md simulates deploy)
     memory_module.SOUL_MD.write_text("# Soul\nTest soul content")
     memory_module.USER_MD.write_text("# User\nTest user content")
     memory_module.MEMORY_MD.write_text("# Memory\nTest memory content")

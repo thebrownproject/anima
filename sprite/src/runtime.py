@@ -31,12 +31,6 @@ SendFn = Callable[[str], Awaitable[None]]
 
 MAX_TURNS = 15
 
-DEFAULT_SYSTEM_PROMPT = (
-    "You are a document intelligence agent running on a personal AI computer. "
-    "You have full access to Bash, Read, Write, Edit, Grep, Glob, and WebSearch tools. "
-    "Help the user extract, organize, and analyze documents in their workspace. "
-    "Files are stored in /workspace/documents/ and OCR text in /workspace/ocr/."
-)
 
 
 class AgentRuntime:
@@ -90,13 +84,8 @@ class AgentRuntime:
         attachments: list[str] | None = None,
     ) -> None:
         """Start a new SDK session — first message on this connection."""
-        # Load memory context and combine with base prompt
-        memory_context = load_memory()
-        system_prompt = (
-            f"{memory_context}\n\n---\n\n{DEFAULT_SYSTEM_PROMPT}"
-            if memory_context
-            else DEFAULT_SYSTEM_PROMPT
-        )
+        # soul.md + user.md + journals = the system prompt
+        system_prompt = load_memory()
 
         # Create canvas + memory tools and register via single MCP server
         canvas_tools = create_canvas_tools(self._send)
@@ -177,12 +166,8 @@ class AgentRuntime:
         Used by tests and as fallback. For production multi-turn,
         use handle_message() which keeps the client alive.
         """
-        memory_context = load_memory()
-        system_prompt = (
-            f"{memory_context}\n\n---\n\n{DEFAULT_SYSTEM_PROMPT}"
-            if memory_context
-            else DEFAULT_SYSTEM_PROMPT
-        )
+        # soul.md + user.md + journals = the system prompt
+        system_prompt = load_memory()
 
         canvas_tools = create_canvas_tools(self._send)
         memory_tools = create_memory_tools()

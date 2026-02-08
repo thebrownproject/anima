@@ -22,8 +22,10 @@ export const CURRENT_VERSION = 2
 
 /** Deploy sprite/src/ Python files to /workspace/src/ on the sprite. */
 export async function deployCode(spriteName: string): Promise<void> {
-  const srcDir = join(import.meta.dirname, '..', '..', 'sprite', 'src')
-  const files = [
+  const spriteDir = join(import.meta.dirname, '..', '..', 'sprite')
+
+  // Source code → /workspace/src/
+  const srcFiles = [
     '__init__.py',
     'server.py',
     'gateway.py',
@@ -39,12 +41,16 @@ export async function deployCode(spriteName: string): Promise<void> {
     'memory/transcript.py',
   ]
 
-  for (const file of files) {
-    const content = await fsRead(join(srcDir, file), 'utf-8')
+  for (const file of srcFiles) {
+    const content = await fsRead(join(spriteDir, 'src', file), 'utf-8')
     await writeFile(spriteName, `/workspace/src/${file}`, content)
   }
 
-  console.log(`[bootstrap] Deployed ${files.length} source files`)
+  // soul.md → /workspace/memory/soul.md (developer-controlled, always overwritten)
+  const soulContent = await fsRead(join(spriteDir, 'memory', 'soul.md'), 'utf-8')
+  await writeFile(spriteName, '/workspace/memory/soul.md', soulContent)
+
+  console.log(`[bootstrap] Deployed ${srcFiles.length} source files + soul.md`)
 }
 
 /** Deploy requirements.txt to /workspace/ on the sprite. */

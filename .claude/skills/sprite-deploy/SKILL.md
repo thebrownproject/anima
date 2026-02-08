@@ -5,7 +5,7 @@ description: Deploy Sprite code and restart the server process on a Sprites.dev 
 
 # Sprite Deploy
 
-Deploy updated Python code to a Sprite VM and restart the server.
+Deploy updated Python code + soul.md to a Sprite VM and restart the server.
 
 ## Prerequisites
 
@@ -23,28 +23,43 @@ Run sequentially from `bridge/` directory. Replace `<SPRITE>` with the sprite na
 cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) && npx tsx scripts/deploy-code.ts <SPRITE>
 ```
 
-Expect: `[bootstrap] Deployed 13 source files` + `Done`
+Expect: `[bootstrap] Deployed 13 source files + soul.md` + `Done`
 
 If 401 auth error: env vars didn't load. Verify `bridge/.env` exists with `SPRITES_TOKEN`.
 
 ### 2. Fix ownership
 
-FS API writes as `ubuntu`, server runs as `sprite`:
+FS API writes as `ubuntu`, server runs as `sprite`. Fix BOTH `/workspace/src` and `/workspace/memory`:
 
 ```bash
-sprite exec -s <SPRITE> -- bash -c 'sudo chown -R sprite:sprite /workspace/src && echo "ownership fixed"'
+sprite exec -s <SPRITE> -- bash -c 'sudo chown -R sprite:sprite /workspace/src /workspace/memory && echo "ownership fixed"'
 ```
 
 ### 3. Kill existing server
 
+**IMPORTANT: Server processes are stubborn on Sprites.** pkill often fails silently or the process respawns. Always verify with a separate pgrep command after killing.
+
+**Step 3a: Kill and wait**
 ```bash
-sprite exec -s <SPRITE> -- bash -c 'pkill -f "python.*src.server" 2>/dev/null; sleep 1; pgrep -f "python.*src.server" || echo "server stopped"'
+sprite exec -s <SPRITE> -- bash -c 'pkill -9 -f "python.*src.server" 2>/dev/null; sleep 2; echo "kill sent"'
 ```
 
-If processes persist, force kill:
+Note: The exit code will be 137 (SIGKILL) — this is expected, not an error.
 
+**Step 3b: Verify it's actually dead**
 ```bash
-sprite exec -s <SPRITE> -- bash -c 'pkill -9 -f "python.*src.server" 2>/dev/null; sleep 1; echo "force killed"'
+sprite exec -s <SPRITE> -- bash -c 'pgrep -f "python.*src.server" || echo "server stopped"'
+```
+
+If PIDs still appear, the process respawned. Repeat 3a and 3b. On Sprites, killed processes can take a few seconds to fully terminate due to checkpoint/CRIU. Two rounds of kill + verify is normal.
+
+**Step 3c: Nuclear option (if still running)**
+```bash
+sprite exec -s <SPRITE> -- bash -c 'ps aux | grep python'
+```
+Then kill specific PIDs:
+```bash
+sprite exec -s <SPRITE> -- bash -c 'kill -9 <PID> 2>/dev/null; echo "killed <PID>"'
 ```
 
 ### 4. Start server + verify
@@ -60,7 +75,9 @@ Expect:
 - Agent response event
 - `=== Done ===`
 
-If `address already in use`: old server wasn't killed. Go back to step 3 with force kill.
+**If `address already in use`:** The first run of test-e2e-v2 may start the server but timeout on the proxy connection (race condition — server needs a moment to bind). In this case, just run the same command again. The second run will connect to the already-running server and succeed.
+
+**If proxy timeout on first run:** This is normal. The server started fine but the proxy couldn't connect in time. Run again — it will work.
 
 ### 5. Verify resume (optional)
 
@@ -73,7 +90,10 @@ cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) &&
 | Problem | Fix |
 |---------|-----|
 | 401 auth | `export $(grep -v '^#' .env \| xargs)` then retry |
-| Address in use | Force kill: `pkill -9 -f "python.*src.server"` |
+| Address in use | Server is already running. Just run test-e2e-v2 again (it connects to existing server) |
+| Proxy timeout on first run | Normal race condition. Run test-e2e-v2 again. |
+| Exit code 137/143 after kill | Expected — that's the killed process's exit code, not an error |
+| Server processes keep respawning | Kill + wait 2s + verify. Repeat up to 3 times. CRIU checkpoint system can delay termination. |
 | Server timeout | Check exec output for Python tracebacks |
 | Sprite sleeping | Any API call auto-wakes. Just run the command. |
-| Permission denied | Re-run step 2 (ownership fix) |
+| Permission denied | Re-run step 2 (ownership fix) — include `/workspace/memory` |

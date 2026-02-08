@@ -11,11 +11,11 @@ from claude_agent_sdk import tool
 logger = logging.getLogger(__name__)
 
 MEMORY_DIR = Path("/workspace/memory")
-SOUL_MD = MEMORY_DIR / "soul.md"
 USER_MD = MEMORY_DIR / "user.md"
 MEMORY_MD = MEMORY_DIR / "MEMORY.md"
 
-ALLOWED_FILES = {"soul.md", "user.md", "MEMORY.md"}
+# soul.md is developer-controlled (deployed from repo, not agent-writable)
+ALLOWED_FILES = {"user.md", "MEMORY.md"}
 
 
 async def _write_file(path: Path, label: str, content: str) -> dict:
@@ -52,7 +52,7 @@ def create_memory_tools() -> list:
 
     @tool(
         "write_memory",
-        "Write to a specific memory file (soul.md, user.md, or MEMORY.md)",
+        "Write to a specific memory file (user.md or MEMORY.md). soul.md is read-only.",
         {"file": str, "content": str},
     )
     async def write_memory(_args: dict) -> dict:
@@ -80,15 +80,6 @@ def create_memory_tools() -> list:
         return await _write_file(MEMORY_DIR / file, file, content)
 
     @tool(
-        "update_soul",
-        "Update soul.md (stack identity and extraction rules)",
-        {"content": str},
-    )
-    async def update_soul(_args: dict) -> dict:
-        """Update soul.md with new content."""
-        return await _write_file(SOUL_MD, "soul.md", _args.get("content", ""))
-
-    @tool(
         "update_user_prefs",
         "Update user.md (user preferences and learned patterns)",
         {"content": str},
@@ -97,4 +88,4 @@ def create_memory_tools() -> list:
         """Update user.md with new preferences."""
         return await _write_file(USER_MD, "user.md", _args.get("content", ""))
 
-    return [write_memory, update_soul, update_user_prefs]
+    return [write_memory, update_user_prefs]

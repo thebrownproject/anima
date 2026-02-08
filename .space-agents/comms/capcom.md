@@ -1772,3 +1772,48 @@ Stacks page → Canvas workspaces (transform)
 - Continue Phase 3 Canvas UI (m7b.4.2)
 
 ---
+
+## [2026-02-08 17:45] Session 136
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+- **Brainstormed Canvas UI redesign** — Identified React Flow (whiteboard metaphor) as wrong approach. User wants homescreen widget model: grid-based cards, drag to rearrange, predefined sizes, no zoom/pan. Decided on `react-grid-layout` as replacement library.
+
+- **Defined agent prompt for proactive card creation** — Agent should act as a PA placing documents on a desk (Canvas). Cards are primary output, text is short narration ("I've pulled up the invoice"). Drafted full Canvas section for soul.md with rules for when to create cards, sizes, block composition, and update behavior.
+
+- **Created soul.md as a real file** (`sprite/memory/soul.md`) — Previously was a Python string template in `__init__.py`. Now a proper markdown file in the repo, deployed to `/workspace/memory/soul.md` on each deploy. Developer-controlled (not agent-writable).
+
+- **Removed `update_soul` tool** from memory_tools.py — soul.md is our firmware, agent can't modify it. Agent still has `write_memory` (user.md, MEMORY.md) and `update_user_prefs`.
+
+- **Removed `DEFAULT_SYSTEM_PROMPT`** from runtime.py — soul.md IS the system prompt now. Memory loader reads soul.md first, then user.md, journals. No fallback prompt.
+
+- **Updated deploy pipeline** (`bridge/src/bootstrap.ts`) — `deployCode()` now deploys soul.md → `/workspace/memory/soul.md` alongside source files. Ownership fix includes `/workspace/memory`.
+
+- **Updated sprite-deploy skill** with Sprites.dev server restart gotchas — exit codes 137/143 are expected, processes are stubborn (need kill+verify loop), proxy timeout on first run is normal race condition.
+
+- **Deployed to sd-e2e-test Sprite** — Server running, e2e test passes. Soul.md confirmed deployed.
+
+- **Updated Phase 3 beads** — Feature title changed to "Grid Layout + Agent Prompt". m7b.4.2 rewritten for react-grid-layout. m7b.4.5/4.6/4.7 updated. Created m7b.4.9 (agent prompt + tool API + protocol), m7b.4.10 (React 19 compat spike), m7b.4.11 (Bridge path testing + canvas_update bug).
+
+- **Architecture review** identified: React 19 compat risk, auto-height not native in react-grid-layout (needs ResizeObserver), protocol file coupling between tasks, 9 canvas_tools tests will break with card_type→size change.
+
+- **Discovered canvas_update bug** — Agent tries to create cards through Bridge but send_fn fails with WebSocket error. Inbound missions work, outbound canvas_updates don't reach browser. This is the critical bug blocking Canvas from working in production.
+
+### Decisions Made
+1. **react-grid-layout replaces React Flow** — Homescreen widget metaphor, not whiteboard. 4 predefined sizes: small(1col)/medium(2col)/large(2col+)/full(3col).
+2. **soul.md is developer-controlled** — Deployed from repo, overwritten on deploy. Agent cannot modify it. `update_soul` tool removed.
+3. **soul.md IS the system prompt** — No DEFAULT_SYSTEM_PROMPT fallback. Memory loader chain: soul.md → user.md → MEMORY.md → journals.
+4. **`card_type` replaced by `size`** in tool API — Cards defined by blocks, not type labels. Size is a layout hint for the frontend grid.
+5. **Test through Bridge, not direct TCP Proxy** — Production path must be tested. Direct scripts useful for debugging only.
+
+### Gotchas
+- Sprite server processes are stubborn to kill — checkpoint/CRIU delays termination, need kill+verify loop
+- test-e2e-v2 first run often times out (race condition) — run again and it works
+- react-grid-layout doesn't support auto-height natively — needs ResizeObserver workaround
+- React 19 compat with react-grid-layout is untested — spike needed before committing
+
+### Next Action
+- **m7b.4.11**: Debug and fix canvas_update messages through Bridge — this blocks Canvas from working in production. Then run React 19 spike (m7b.4.10).
+
+---
