@@ -42,7 +42,16 @@ class SpriteGateway:
             await self._send_error("Unparseable message")
             return
 
-        if not isinstance(parsed, dict) or not is_websocket_message(parsed):
+        if not isinstance(parsed, dict):
+            logger.warning("Invalid message structure")
+            await self._send_error("Invalid message structure")
+            return
+
+        # Silently handle keepalive pings (no id field, just type+timestamp)
+        if parsed.get("type") == "ping":
+            return
+
+        if not is_websocket_message(parsed):
             logger.warning("Invalid message structure")
             await self._send_error("Invalid message structure")
             return
