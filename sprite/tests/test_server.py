@@ -11,7 +11,7 @@ import pytest
 from websockets.asyncio.client import connect
 from websockets.asyncio.server import serve
 
-from src.server import handle_connection
+from src.runtime import AgentRuntime
 from src.gateway import SpriteGateway
 
 
@@ -30,7 +30,22 @@ def _msg(msg_type: str, payload: dict | None = None, **extra) -> str:
 @pytest.fixture
 async def server():
     """Start a WS server on a free port, yield the port, then shut down."""
-    async with serve(handle_connection, "127.0.0.1", 0) as srv:
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_runtime = MagicMock(spec=AgentRuntime)
+    mock_runtime.handle_message = AsyncMock()
+    mock_runtime.update_send_fn = MagicMock()
+
+    async def ws_handler(ws):
+        """Adapt WebSocket connection to TCP-style handle_connection."""
+        gw = SpriteGateway(
+            send_fn=lambda data: ws.send(data),
+            runtime=mock_runtime,
+        )
+        async for raw in ws:
+            await gw.route(raw)
+
+    async with serve(ws_handler, "127.0.0.1", 0) as srv:
         port = srv.sockets[0].getsockname()[1]
         yield port
 

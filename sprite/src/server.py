@@ -1,4 +1,10 @@
-"""Sprite TCP server -- listens on port 8765 for Bridge connections via TCP Proxy."""
+"""Sprite TCP server -- listens on port 8765 for Bridge connections via TCP Proxy.
+
+The AgentRuntime is scoped to the server, NOT the connection. This means:
+- Conversation context survives TCP reconnections (sleep/wake, page reload)
+- When a new connection arrives, we update the runtime's send_fn
+- The SDK client stays alive across reconnections
+"""
 
 from __future__ import annotations
 
@@ -7,6 +13,7 @@ import logging
 import signal
 
 from .gateway import SpriteGateway
+from .runtime import AgentRuntime
 from .database import Database
 
 logger = logging.getLogger(__name__)
@@ -18,9 +25,14 @@ PORT = 8765
 async def handle_connection(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
-    db: Database | None = None,
+    db: Database,
+    runtime: AgentRuntime,
 ) -> None:
-    """Handle a single TCP connection from the Bridge (via Sprites TCP Proxy)."""
+    """Handle a single TCP connection from the Bridge (via Sprites TCP Proxy).
+
+    Reuses the server-scoped AgentRuntime so conversation context persists
+    across reconnections.
+    """
     remote = writer.get_extra_info("peername")
     logger.info("Connection opened: %s", remote)
 
@@ -28,7 +40,10 @@ async def handle_connection(
         writer.write((data + "\n").encode())
         await writer.drain()
 
-    gateway = SpriteGateway(send_fn=send_fn, db=db)
+    # Point the runtime at the new connection's send_fn
+    runtime.update_send_fn(send_fn)
+
+    gateway = SpriteGateway(send_fn=send_fn, db=db, runtime=runtime)
 
     try:
         while True:
@@ -56,12 +71,21 @@ async def main() -> None:
         loop.add_signal_handler(sig, lambda: stop.set_result(None))
 
     async with Database() as db:
-        handler = lambda r, w: handle_connection(r, w, db=db)
+        # Runtime scoped to server — survives TCP reconnections
+        runtime = AgentRuntime(send_fn=_noop_send, db=db)
+
+        handler = lambda r, w: handle_connection(r, w, db=db, runtime=runtime)
         server = await asyncio.start_server(handler, HOST, PORT)
         logger.info("Sprite server listening on tcp://%s:%d", HOST, PORT)
         await stop
         server.close()
+        await runtime.cleanup()
         logger.info("Shutting down...")
+
+
+async def _noop_send(data: str) -> None:
+    """Placeholder send_fn until first connection arrives."""
+    logger.warning("No active connection — dropping message")
 
 
 if __name__ == "__main__":

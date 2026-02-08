@@ -28,10 +28,16 @@ class SpriteGateway:
     All other types run concurrently.
     """
 
-    def __init__(self, send_fn: SendFn, db: Database | None = None) -> None:
+    def __init__(
+        self,
+        send_fn: SendFn,
+        db: Database | None = None,
+        runtime: AgentRuntime | None = None,
+    ) -> None:
         self.send = send_fn
         self.mission_lock = asyncio.Lock()
-        self.runtime = AgentRuntime(send_fn=send_fn, db=db) if db else None
+        # Use provided runtime (server-scoped) or create one (tests)
+        self.runtime = runtime or (AgentRuntime(send_fn=send_fn, db=db) if db else None)
 
     async def route(self, raw: str) -> None:
         """Parse a raw WS message and dispatch to the correct handler."""

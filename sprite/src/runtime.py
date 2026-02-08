@@ -59,6 +59,15 @@ class AgentRuntime:
         # Ensure memory templates exist on first boot
         ensure_templates()
 
+    def update_send_fn(self, send_fn: SendFn) -> None:
+        """Point the runtime at a new connection's send function.
+
+        Called when a new TCP connection arrives (reconnect after sleep/wake).
+        The SDK client and conversation context are preserved.
+        """
+        self._send = send_fn
+        logger.info("Runtime send_fn updated (new connection)")
+
     async def handle_message(
         self,
         text: str,

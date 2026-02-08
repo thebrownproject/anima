@@ -175,7 +175,20 @@ def create_canvas_tools(send_fn: SendFn) -> list:
 
     @tool(
         "create_card",
-        "Create a new card on the user's Canvas with composable blocks",
+        "Create a new card on the user's Canvas with composable blocks.\n\n"
+        "Parameters:\n"
+        "- title (str): Card title displayed in the title bar.\n"
+        "- card_type (str): One of 'table', 'document', or 'notes'.\n"
+        "- blocks (list[dict]): Array of block objects. Each block needs a 'type' field "
+        "(do NOT include 'id' — it is auto-generated). Valid block types:\n"
+        "  - heading: {type: 'heading', text: str, subtitle?: str}\n"
+        "  - stat: {type: 'stat', value: str, label: str, trend?: str}\n"
+        "  - key-value: {type: 'key-value', pairs: [{label: str, value: str}]}\n"
+        "  - table: {type: 'table', columns: [str], rows: [{col_name: value}]}\n"
+        "  - badge: {type: 'badge', text: str, variant: 'default'|'success'|'warning'|'destructive'}\n"
+        "  - progress: {type: 'progress', value: int (0-100), label?: str}\n"
+        "  - text: {type: 'text', content: str}  NOTE: field is 'content', NOT 'text'\n"
+        "  - separator: {type: 'separator'}  NOTE: type is 'separator', NOT 'divider'\n",
         {
             "title": str,
             "card_type": str,
@@ -273,7 +286,12 @@ def create_canvas_tools(send_fn: SendFn) -> list:
 
     @tool(
         "update_card",
-        "Update specific blocks on an existing card (matched by block ID)",
+        "Update specific blocks on an existing card (matched by block ID).\n\n"
+        "Parameters:\n"
+        "- card_id (str): The ID of the card to update (returned by create_card).\n"
+        "- blocks (list[dict]): Replacement blocks. Same format as create_card blocks.\n"
+        "  Valid types: heading, stat, key-value, table, badge, progress, text, separator.\n"
+        "  See create_card for full schema of each block type.\n",
         {
             "card_id": str,
             "blocks": list,
