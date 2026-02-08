@@ -1817,3 +1817,37 @@ Stacks page → Canvas workspaces (transform)
 - **m7b.4.11**: Debug and fix canvas_update messages through Bridge — this blocks Canvas from working in production. Then run React 19 spike (m7b.4.10).
 
 ---
+
+## [2026-02-08 19:20] Session 137
+
+**Branch:** main | **Git:** clean
+
+### What Happened
+- **Completed m7b.4.10: React 19 + react-grid-layout compatibility spike** — Builder agent installed react-grid-layout v2.2.2, created `frontend/components/canvas/grid-layout-spike.tsx` (245 lines) with 4 mock cards, verified build passes with React 19.2.3. Inspector confirmed 6/6 success criteria pass.
+
+- **v2 API differences documented** — react-grid-layout v2 uses `Responsive` + `useContainerWidth()` hook (NOT `ResponsiveGridLayout`/`WidthProvider` from v1). `dragConfig={{ handle: '.drag-handle' }}` replaces `draggableHandle` prop. `rowHeight` goes directly on `<Responsive>` (not in `gridConfig`). Ships own TS types — do NOT install `@types/react-grid-layout`.
+
+- **UX refinements through interactive testing:**
+  - Drag/resize: cards fade to 40% opacity during interaction, dashed border placeholder shows snap target
+  - `user-select: none` during resize to prevent text highlighting
+  - `noOverlapCompactor` (via `getCompactor(null, false, true)`) for free card placement without overlapping — cards can be placed anywhere on grid with gaps, not anchored to top
+  - `ROW_HEIGHT=150` for iPhone-widget-style height increments (1x=150px, 2x=320px, 3x=490px)
+  - `MARGIN=[20,20]` for spacing between cards
+
+- **Confirmed architecture understanding** — no local Sprite server involved. Full chain: browser (localhost:3000) → Bridge (wss://ws.stackdocs.io on Fly.io) → TCP Proxy → Sprite (sd-e2e-test on Sprites.dev). `/sprite-deploy` uploads code and starts server on remote Sprite only.
+
+### Decisions Made
+1. **`getCompactor(null, false, true)`** for free placement without overlap — `noCompactor` allows overlap, `verticalCompactor` forces cards to top. This combo gives iPhone homescreen feel.
+2. **ROW_HEIGHT=150** with 20px margin — gives clear 1x/2x/3x height tiers like iOS widgets.
+3. **Drag/resize visual feedback** — semi-transparent card + dashed placeholder. Better than invisible (loses content) or default (free follow feels imprecise).
+
+### Gotchas
+- `compactType` is v1 API — v2 uses `compactor` prop with Compactor objects
+- `noOverlapCompactor` not exported from main package — use `getCompactor(null, false, true)` instead
+- CSS `!important` on `transform` doesn't beat inline styles set by react-grid-layout — use `visibility: hidden` or `opacity` instead
+- react-grid-layout applies position via inline `style` attribute during drag/resize — class-based CSS overrides don't work for transform
+
+### Next Action
+- **m7b.4.11**: Debug and fix canvas_update messages through Bridge — outbound messages (Sprite → Bridge → browser) are broken. Likely issue in send_fn chain or Bridge TCP Proxy forwarding. This blocks Canvas from working end-to-end.
+
+---
