@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Responsive,
   useContainerWidth,
+  getCompactor,
   type Layout,
   type LayoutItem,
   type ResponsiveLayouts,
@@ -14,7 +15,8 @@ import { Badge } from '@/components/ui/badge'
 
 const BREAKPOINTS = { lg: 1200, md: 768, sm: 0 }
 const COLS = { lg: 3, md: 2, sm: 1 }
-const ROW_HEIGHT = 40
+const ROW_HEIGHT = 150
+const MARGIN: [number, number] = [20, 20]
 
 const INITIAL_LAYOUTS: ResponsiveLayouts = {
   lg: [
@@ -133,8 +135,12 @@ export function GridLayoutSpike() {
         </Badge>
       </div>
 
-      {/* Grid container */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
+      {/* Grid container — dragging element hidden, placeholder styled as card
+          so cards visually snap between grid positions instead of following cursor */}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto p-4 [&_.react-draggable-dragging]:!opacity-40 [&_.react-grid-item.resizing]:!opacity-40 [&_.react-grid-item.resizing]:!select-none [&_.react-grid-placeholder]:!rounded-xl [&_.react-grid-placeholder]:!border-2 [&_.react-grid-placeholder]:!border-dashed [&_.react-grid-placeholder]:!border-primary/30 [&_.react-grid-placeholder]:!bg-transparent [&_.react-grid-placeholder]:!opacity-100"
+      >
         {mounted && (
           <Responsive
             width={width}
@@ -142,6 +148,8 @@ export function GridLayoutSpike() {
             cols={COLS}
             layouts={layouts}
             rowHeight={ROW_HEIGHT}
+            compactor={getCompactor(null, false, true)}
+            margin={MARGIN}
             dragConfig={{ handle: '.drag-handle' }}
             onLayoutChange={handleLayoutChange}
             onBreakpointChange={(bp: string) => setBreakpoint(bp)}
