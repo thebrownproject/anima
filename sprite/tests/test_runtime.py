@@ -91,7 +91,8 @@ def mock_db():
 
 @pytest.fixture
 def runtime(send_fn, mock_db):
-    return AgentRuntime(send_fn=send_fn, db=mock_db)
+    with patch("src.runtime.ensure_templates"):
+        return AgentRuntime(send_fn=send_fn, db=mock_db)
 
 
 # -- Test: Agent invocation streams agent_event messages ---------------------
@@ -194,7 +195,8 @@ async def test_mission_lock_serialization(send_fn, mock_db):
         yield MockResultMessage(session_id="sess-slow")
         timestamps.append(("end", asyncio.get_event_loop().time()))
 
-    runtime = AgentRuntime(send_fn=send_fn, db=mock_db)
+    with patch("src.runtime.ensure_templates"):
+        runtime = AgentRuntime(send_fn=send_fn, db=mock_db)
 
     with _mock_sdk_generator(slow_messages):
         await asyncio.gather(
@@ -301,6 +303,73 @@ async def test_session_id_stored_after_mission(runtime, sent):
     assert runtime.last_session_id == "sess-stored"
 
 
+# -- Test: Resume registers MCP tools ---------------------------------------
+
+async def test_resume_registers_mcp_tools(runtime, sent):
+    """resume_mission re-registers canvas + memory MCP tools."""
+    messages = [
+        MockAssistantMessage(content=[MockTextBlock(text="Resumed ok")]),
+        MockResultMessage(session_id="sess-resumed-2"),
+    ]
+    captured_options = {}
+
+    with _mock_sdk(messages, capture_options=captured_options):
+        await runtime.resume_mission(
+            text="Follow up question",
+            session_id="sess-original-2",
+            request_id="req-resume-tools",
+        )
+
+    assert captured_options.get("resume") == "sess-original-2"
+    assert captured_options.get("permission_mode") == "bypassPermissions"
+    assert captured_options.get("mcp_servers") is not None
+    assert "sprite" in captured_options["mcp_servers"]
+
+
+async def test_resume_fallback_on_error(runtime, sent):
+    """When resume fails, falls back to a fresh run_mission."""
+    # Track which calls happen: first call raises, second succeeds
+    call_count = {"n": 0}
+    fallback_messages = [
+        MockAssistantMessage(content=[MockTextBlock(text="Fresh start")]),
+        MockResultMessage(session_id="sess-fresh"),
+    ]
+
+    def factory(options=None):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            # First call (resume) — raise error
+            return _MockClientError(RuntimeError("Session expired"))
+        # Second call (fallback to run_mission) — succeed
+        return _MockClient(fallback_messages)
+
+    from contextlib import ExitStack
+    stack = ExitStack()
+    stack.enter_context(patch("src.runtime.ClaudeSDKClient", side_effect=factory))
+    _apply_common_patches(stack)
+    # Fallback calls run_mission which needs load_memory
+    stack.enter_context(patch("src.runtime.load_memory", return_value=""))
+
+    with stack:
+        runtime.last_session_id = "sess-expired"
+        await runtime.resume_mission(
+            text="Continue please",
+            session_id="sess-expired",
+            request_id="req-fallback",
+        )
+
+    # Should have fallen back: last_session_id cleared then set to new session
+    assert runtime.last_session_id == "sess-fresh"
+    assert call_count["n"] == 2
+
+    # Should have text + complete events from the fallback mission
+    text_events = _events_by_type(sent, "text")
+    complete_events = _events_by_type(sent, "complete")
+    assert len(text_events) == 1
+    assert text_events[0]["payload"]["content"] == "Fresh start"
+    assert len(complete_events) == 1
+
+
 # -- Mock infrastructure -----------------------------------------------------
 # We patch both ClaudeSDKClient and the SDK type classes so isinstance checks
 # in runtime._handle_message match our mock dataclasses.
@@ -374,6 +443,19 @@ class _MockClientError:
 
 
 
+def _apply_common_patches(stack):
+    """Apply SDK type patches and filesystem patches to an ExitStack."""
+    for target, replacement in _SDK_TYPE_PATCHES.items():
+        stack.enter_context(patch(target, replacement))
+    # Mock filesystem-dependent code (TranscriptLogger writes to /workspace)
+    mock_transcript = MagicMock()
+    mock_transcript.return_value.log = MagicMock(side_effect=lambda *a, **kw: asyncio.sleep(0))
+    mock_transcript.return_value.session_id = None
+    stack.enter_context(patch("src.runtime.TranscriptLogger", mock_transcript))
+    async def _noop_journal(*a): pass
+    stack.enter_context(patch("src.runtime.append_journal", side_effect=_noop_journal))
+
+
 def _mock_sdk(messages, capture_options=None):
     """Patch ClaudeSDKClient + SDK types to return predefined messages."""
     from contextlib import ExitStack
@@ -384,13 +466,14 @@ def _mock_sdk(messages, capture_options=None):
                 "system_prompt": getattr(options, "system_prompt", None),
                 "resume": getattr(options, "resume", None),
                 "max_turns": getattr(options, "max_turns", None),
+                "permission_mode": getattr(options, "permission_mode", None),
+                "mcp_servers": getattr(options, "mcp_servers", None),
             })
         return _MockClient(messages)
 
     stack = ExitStack()
     stack.enter_context(patch("src.runtime.ClaudeSDKClient", side_effect=factory))
-    for target, replacement in _SDK_TYPE_PATCHES.items():
-        stack.enter_context(patch(target, replacement))
+    _apply_common_patches(stack)
     return stack
 
 
@@ -403,8 +486,7 @@ def _mock_sdk_generator(gen_factory):
 
     stack = ExitStack()
     stack.enter_context(patch("src.runtime.ClaudeSDKClient", side_effect=factory))
-    for target, replacement in _SDK_TYPE_PATCHES.items():
-        stack.enter_context(patch(target, replacement))
+    _apply_common_patches(stack)
     return stack
 
 
@@ -417,6 +499,5 @@ def _mock_sdk_error(error):
 
     stack = ExitStack()
     stack.enter_context(patch("src.runtime.ClaudeSDKClient", side_effect=factory))
-    for target, replacement in _SDK_TYPE_PATCHES.items():
-        stack.enter_context(patch(target, replacement))
+    _apply_common_patches(stack)
     return stack

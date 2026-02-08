@@ -93,7 +93,7 @@ class SpriteGateway:
             return
 
         attachments = payload.get("attachments")
-        await self.runtime.run_mission(text, request_id=req_id, attachments=attachments)
+        await self.runtime.handle_message(text, request_id=req_id, attachments=attachments)
 
     async def _handle_file_upload(self, msg: dict[str, Any], req_id: str | None) -> None:
         logger.info("File upload: %s", msg.get("payload", {}).get("filename", "?"))

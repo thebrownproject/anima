@@ -141,6 +141,52 @@ async def test_mission_lock_serialization():
     assert second_start >= first_end, "Second mission started before first ended"
 
 
+async def test_gateway_calls_handle_message():
+    """Gateway delegates all missions to runtime.handle_message()."""
+    sent: list[str] = []
+
+    async def mock_send(msg: str) -> None:
+        sent.append(msg)
+
+    gw = SpriteGateway(send_fn=mock_send)
+
+    from unittest.mock import AsyncMock, MagicMock
+    mock_runtime = MagicMock()
+    mock_runtime.handle_message = AsyncMock()
+    gw.runtime = mock_runtime
+
+    msg = _msg("mission", {"text": "hello agent"})
+    await gw.route(msg)
+
+    mock_runtime.handle_message.assert_awaited_once()
+    call_args = mock_runtime.handle_message.call_args
+    assert call_args[0][0] == "hello agent"
+
+
+async def test_gateway_handle_message_called_for_each_mission():
+    """Each mission calls handle_message — runtime decides new vs continue."""
+    sent: list[str] = []
+
+    async def mock_send(msg: str) -> None:
+        sent.append(msg)
+
+    gw = SpriteGateway(send_fn=mock_send)
+
+    from unittest.mock import AsyncMock, MagicMock
+    mock_runtime = MagicMock()
+    mock_runtime.handle_message = AsyncMock()
+    gw.runtime = mock_runtime
+
+    msg1 = _msg("mission", {"text": "first message"})
+    msg2 = _msg("mission", {"text": "follow up"})
+
+    # Must route sequentially (mission_lock)
+    await gw.route(msg1)
+    await gw.route(msg2)
+
+    assert mock_runtime.handle_message.await_count == 2
+
+
 async def test_heartbeat_shares_mission_lock():
     """Heartbeat and mission share the same lock -- they serialize."""
     events: list[tuple[str, str, float]] = []

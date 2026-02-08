@@ -1696,3 +1696,79 @@ Stacks page → Canvas workspaces (transform)
 - Start with m7b.4.1 (WebSocket connection manager) as it's the foundation for all Canvas work
 
 ---
+
+## [2026-02-08 13:00] Session 133
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+- **Created `frontend/lib/websocket.ts`** — WebSocket connection manager class with Clerk JWT auth, exponential backoff reconnection (1s→2s→4s→max 30s), typed message dispatch by type, `send()` with auto-generated id/timestamp. Uses `crypto.randomUUID()` (no uuid dependency needed).
+
+- **Created `frontend/app/(app)/test-chat/page.tsx`** — Quick test page at `/test-chat` for E2E verification. Chat box with Stack ID input, connection status indicator, message display (user/agent/system), auto-scroll. Uses shadcn/ui components.
+
+- **Applied Supabase migration** — Added `sprite_name` (TEXT) and `sprite_status` (TEXT DEFAULT 'pending') columns to `stacks` table via MCP. Task m7b.2.9 was marked closed previously but migration was never actually run. Set `sd-e2e-test` sprite on "Invoice Processing" stack.
+
+- **Fixed Clerk JWT mismatch** — Bridge on Fly.io had different CLERK_SECRET_KEY than frontend `.env.local`. Re-set via `flyctl secrets set`.
+
+- **Fixed keepalive ping error** — Bridge sends `{type: 'ping', timestamp}` every 15s to Sprite, but Sprite's `gateway.py` rejected it (missing `id` field) → sent error back → frontend bricked. Two fixes:
+  1. `sprite/src/gateway.py:50-52` — silently ignore `type: ping` messages before validation
+  2. `frontend/lib/websocket.ts:183-187` — non-fatal system errors don't brick status when already connected
+
+- **Fixed Sprite server restart** — Killed old server, restarted with venv + ANTHROPIC_API_KEY. Key not persisted in .env on Sprite (security — m7b.3.6).
+
+- **Researched OpenClaw memory architecture** — Created `docs/research/openclaw-memory-architecture.md` with full analysis of two-tier memory (curated markdown + raw JSONL), pre-compaction flush, context window guard, flush triggers, session lifecycle. Key insight: "context window = RAM, disk = source of truth, compaction = GC."
+
+- **Created bead m7b.6.4** — Multi-turn conversation via SDK session resume + local transcript. Full architecture spec with hybrid approach: SDK resume for within-session continuity, pre-compaction flush for between-session memory, layered memory files for cold starts (~2,200 tokens).
+
+- **Created bead stackdocs-2d5** — Bug: canvas tool descriptions too vague, agent wastes 8-9 retries guessing block types. Traced full 10-attempt sequence showing agent trying header→heading, divider→separator, text.text→text.content.
+
+### Decisions Made
+1. **Hybrid memory architecture** — SDK session resume for live multi-turn + pre-compaction flush + curated markdown files for cold starts. Not session-scoped (agent needs to always understand user). Research in `docs/research/openclaw-memory-architecture.md`.
+2. **websocket.ts location** — `frontend/lib/websocket.ts` (infrastructure) not `frontend/components/agent/stores/` (component-specific). Task spec said `lib/` and it makes sense — this is system-level.
+3. **No uuid dependency** — Used `crypto.randomUUID()` instead of adding `uuid` package.
+4. **Frontend error resilience** — Non-fatal system errors (like Sprite rejecting keepalive pings) don't transition to error state when already connected.
+
+### Gotchas
+- m7b.2.9 (Supabase schema migration) was closed but never actually run — columns didn't exist on live DB
+- Sprite server restart loses ANTHROPIC_API_KEY (not in .env file, was in process env only). "Not logged in" error until re-set.
+- Bridge CLERK_SECRET_KEY didn't match frontend — caused "Invalid or expired JWT" on first connect
+- Bridge keepalive pings have no `id` field → Sprite gateway rejects them as invalid → sends error back to browser every 15s
+- Canvas tool descriptions too vague → agent guesses block types from training data (Slack/Notion blocks) → 8-9 failed retries per card creation (~$0.20 wasted)
+
+### Next Action
+- Fix canvas tool descriptions (stackdocs-2d5) — quick P1 win
+- Implement SDK session resume for multi-turn (m7b.6.4) — critical for user experience
+- Continue Phase 3 Canvas UI (m7b.4.1 websocket.ts done, m7b.4.2 React Flow next)
+
+---
+
+## [2026-02-08 15:00] Session 134
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+- **Implemented persistent SDK client for multi-turn conversation** — Core issue: runtime.py was creating a new ClaudeSDKClient per message and using resume=session_id for follow-up turns. SDK resume returns only a ResultMessage with no text (confirmed in logs). Correct pattern: keep ONE ClaudeSDKClient alive and call query()+receive_response() per turn on the same instance.
+
+- **Refactored sprite/src/runtime.py** — New handle_message() is single entry point. First message creates client via _start_session(), subsequent messages reuse it via _continue_session(). Client cleanup on disconnect via cleanup(). Legacy run_mission()/resume_mission() preserved for test compat. Key: self._client persists across turns.
+
+- **Updated sprite/src/gateway.py** — Simplified: _handle_mission() calls runtime.handle_message() for all missions. No more resume/new-session branching.
+
+- **Updated tests** — 18 tests pass. Added test_resume_registers_mcp_tools, test_resume_fallback_on_error, fixed ensure_templates mock, added _apply_common_patches() helper.
+
+- **Deployed and verified on sd-e2e-test sprite** — Multi-turn confirmed working across multiple test chat windows.
+
+### Decisions Made
+1. **Persistent client over resume** — SDK resume=session_id doesn't work with ClaudeSDKClient (returns empty ResultMessage). Persistent client per SDK docs works.
+2. **Legacy methods preserved** — run_mission()/resume_mission() kept for tests. Production uses handle_message().
+
+### Gotchas
+- SDK resume parameter returns only ResultMessage with no agent text — broken or very short TTL
+- ensure_templates() and TranscriptLogger try to mkdir /workspace — must mock in local tests
+- sprite exec CLI doesn't support max_run_after_disconnect — use WS exec API for persistent processes
+
+### Next Action
+- Wire runtime.cleanup() to server disconnect handler
+- Close bead m7b.6.4
+- Continue Phase 3 Canvas UI (m7b.4.2)
+
+---
