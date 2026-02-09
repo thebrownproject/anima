@@ -1913,3 +1913,46 @@ Stacks page → Canvas workspaces (transform)
 - Pick up next Phase 3 task (m7b.4.5 Canvas Zustand store, m7b.4.6 Subbar, m7b.4.3 MVP blocks, m7b.4.9 Agent prompt).
 
 ---
+
+## [2026-02-09 18:30] Session 140
+
+**Branch:** main | **Git:** uncommitted (spec file only)
+
+### What Happened
+- **Full rethink of the memory system spec** (`exploration/ideas/2026-02-08-memory-system-redesign/spec.md`). Brainstorm session exploring three memory approaches: our custom tools (v1 spec), Anthropic's native memory tool, and claude-mem's hook-driven capture.
+
+- **Research findings:** Anthropic's native `memory_20250818` tool is NOT available in the Claude Agent SDK (only in base `anthropic` SDK). GitHub Issue #552 open, no response. Using it would mean losing the full Agent SDK toolset (Bash, Read, Write, subagents, etc.). Ruled out.
+
+- **claude-mem analysis:** Studied architecture of github.com/thedotmack/claude-mem (25k+ stars). Key patterns: PostToolUse hooks capture every tool call automatically, background worker processes via AI, SQLite + FTS5 for storage, progressive disclosure for retrieval. System captures — agent doesn't need to cooperate.
+
+- **New architecture decided:** Two-process model per Sprite VM:
+  1. **Main Agent** (Haiku/Sonnet) — talks to user, uses tools, creates canvas cards. Has ZERO memory tools. Doesn't manage memory at all.
+  2. **Workspace Daemon** (TypeScript/Bun, forked from claude-mem) — background process that watches all observations via PostToolUse + UserPromptSubmit hooks, processes each in real-time via Haiku API calls, extracts learnings to SQLite, updates user.md, syncs canvas→files, queues complex decisions for agent.
+
+- **Key insight from Fraser:** "I don't trust the agent to follow memory rules, especially dropping to Haiku 4.5." This drove the entire redesign — remove ALL memory responsibility from the agent, offload to system-level capture + background daemon.
+
+- **Daemon stays in TypeScript/Bun** (not Python). claude-mem is already TypeScript — fork and adapt instead of rewriting. The boundary is clean: Python hooks write observations to SQLite, TypeScript daemon reads from SQLite. No shared code.
+
+### Decisions Made
+1. **Agent has zero memory tools** — all memory offloaded to daemon. Agent is a pure worker.
+2. **Hook-driven capture** — PostToolUse + UserPromptSubmit hooks capture everything automatically. No agent cooperation needed.
+3. **Real-time processing** — daemon processes each observation immediately via Haiku (~$0.0001/observation, ~$0.002/session).
+4. **Process everything** — all tool calls sent to Haiku, let it decide what's notable. No pre-filtering.
+5. **Daemon is a full workspace daemon** — not just memory. Also handles file sync (canvas→workspace), folder organization, and proactive maintenance.
+6. **Silent vs queued split** — daemon does factual work silently (learnings, user.md, file sync), queues judgment calls for agent (rule changes, duplicate detection).
+7. **Agent knows about daemon** — soul.md describes the daemon's existence and role. They're collaborators.
+8. **MEMORY.md and journals replaced by SQLite** — learnings table replaces MEMORY.md sections, sessions table replaces journal files.
+9. **Session injection** — soul.md + user.md + last 48h learnings + pending actions loaded at session start.
+10. **TypeScript daemon** — fork claude-mem instead of rewriting in Python. Bun installed during bootstrap.
+
+### Gotchas
+- Anthropic native memory tool only works with base SDK, NOT Agent SDK. Don't go down this path until Issue #552 is resolved.
+- claude-mem uses `bun:sqlite` natively — fast and no extra deps. Good match for daemon.
+- The daemon needs an Anthropic API key for Haiku calls. Current architecture avoids injecting keys into Sprites (m7b.3.6). This is Open Question 2 in the spec — needs resolving before implementation.
+
+### Next Action
+- Resolve API key question for daemon (affects Bridge architecture).
+- When ready: `/plan` to create implementation tasks from the updated spec.
+- Fork claude-mem repo and study the worker processing code in detail before planning.
+
+---
