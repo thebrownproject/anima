@@ -1956,3 +1956,33 @@ Stacks page → Canvas workspaces (transform)
 - Fork claude-mem repo and study the worker processing code in detail before planning.
 
 ---
+
+## [2026-02-09 20:45] Session 141
+
+**Branch:** main | **Git:** uncommitted (spec update only)
+
+### What Happened
+- **Finalized memory system spec** (`exploration/ideas/2026-02-08-memory-system-redesign/spec.md`). Brainstorm continuation from session 140. Walked through all 6 open questions and resolved each with Fraser.
+
+- **Resolved all open questions:**
+  1. **Inter-agent comms** → One-way `pending_actions` table only (daemon→agent). Keep simple.
+  2. **API key for daemon** → Already solved. Bridge API proxy (m7b.3.6) already deployed at `ws.stackdocs.io/v1/proxy/anthropic`. Daemon inherits `ANTHROPIC_BASE_URL` env var. No new infrastructure needed. Explore agent confirmed implementation details in `bridge/src/api-proxy.ts` (130 lines, 10 tests).
+  3. **Observation context window** → Sliding window of 10 recent observations per Haiku call (~5k tokens, ~$0.0003/call).
+  4. **Canvas-file sync** → Deferred to post-MVP. Daemon focuses purely on memory capture. Agent can write files on user request.
+  5. **Proactive maintenance** → No extra code. Haiku processing prompt naturally detects operational patterns (unprocessed documents, etc.) and queues as pending_actions.
+  6. **Failure handling** → Exponential backoff + 6h staleness cutoff. Implementation detail, not architectural.
+
+- **Scope trimmed significantly.** Removed canvas-file sync, workspace maintenance, folder organization from daemon MVP. Daemon now has exactly 4 responsibilities: capture observations, extract learnings, update user.md, queue pending actions.
+
+- **Spec status changed** from "Needs discussion" → "Ready for planning". Added Resolved Decisions table, cleaned up architecture diagrams, removed deferred items from requirements.
+
+### Decisions Made
+1. **Daemon scope is memory-only for MVP.** No canvas sync, no workspace maintenance, no file organization. Pure memory capture + intelligence extraction.
+2. **Bridge API proxy resolves the API key question.** No new infrastructure. Daemon uses `@anthropic-ai/sdk` which respects `ANTHROPIC_BASE_URL` env var pointing at Bridge proxy.
+3. **Haiku detects operational patterns naturally.** No rule-based alerting code. Processing prompt includes ACTIONS category — Haiku flags things like "document uploaded but never processed" organically.
+
+### Next Action
+- `/plan` to create implementation tasks from the finalized spec.
+- Fork claude-mem repo and study worker processing code before planning.
+
+---

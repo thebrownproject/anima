@@ -1,7 +1,7 @@
 # Exploration: Memory System Redesign — Workspace Daemon + Hook-Driven Capture
 
-**Date:** 2026-02-09 (revised from 2026-02-08)
-**Status:** Needs discussion (inter-agent comms mechanism tabled)
+**Date:** 2026-02-09 (finalized, session 141)
+**Status:** Ready for planning
 
 ---
 
@@ -12,8 +12,6 @@ The Sprite agent's memory system relies on the agent voluntarily saving its own 
 **Agents don't reliably follow memory instructions.** The main agent (potentially Haiku 4.5) cannot be trusted to consistently call memory tools, especially as context grows longer and instruction-following degrades. The original spec (v1) proposed 6 custom memory tools and soul.md guidance teaching the agent when to save. In practice, smaller models ignore these instructions under load.
 
 **Information loss on compaction.** The Claude Agent SDK compacts conversation context when it grows too large. Without a mechanism to persist learnings before compaction, everything the agent learned during the session is lost. The original spec proposed a PreCompact hook, but this is unverified with the persistent `ClaudeSDKClient` and still relies on the agent cooperating with the save instruction.
-
-**No workspace consistency.** The agent creates canvas cards showing extraction results, but the underlying workspace files may not reflect the same state. If the agent updates a canvas card but doesn't update the corresponding markdown file, the workspace drifts. There is no background process to maintain consistency.
 
 **Native memory tool is unavailable.** Anthropic's `memory_20250818` tool (announced 2025) is only available through the base `anthropic` Python SDK, not the Claude Agent SDK (`claude-agent-sdk`). GitHub Issue #552 is open with no response. Adopting it would mean losing the Agent SDK's full toolset (Bash, Read, Write, Glob, Grep, WebSearch, subagents, MCP, hooks).
 
@@ -30,7 +28,7 @@ The Sprite agent's memory system relies on the agent voluntarily saving its own 
 
 The main agent has zero memory tools. It talks to the user, creates canvas cards, extracts data from documents — nothing else. It doesn't know how to save memory and doesn't need to.
 
-A second agent — the **Workspace Daemon** — runs as a background process on the same Sprite VM. It watches everything the main agent does via SDK hooks (PostToolUse, UserPromptSubmit), processes observations in real-time using Haiku, and maintains both memory and workspace consistency.
+A second process — the **Workspace Daemon** — runs as a background TypeScript/Bun process on the same Sprite VM. It watches everything the main agent does via SDK hooks (PostToolUse, UserPromptSubmit), processes observations in real-time using Haiku, and persists structured learnings to SQLite.
 
 The design principle is: **the system captures automatically (hooks), the daemon provides intelligence (Haiku processing), and the main agent is a pure worker (zero memory overhead).**
 
@@ -46,14 +44,12 @@ This inverts both the OpenClaw and claude-mem models:
 - [ ] PostToolUse hook captures every tool call (name, input, output) to SQLite observations table
 - [ ] UserPromptSubmit hook captures every user message to SQLite observations table
 - [ ] Workspace Daemon runs as a background TypeScript/Bun process on the Sprite VM (forked from claude-mem)
-- [ ] Daemon processes every observation in real-time via Haiku 4.5 API calls
+- [ ] Daemon processes every observation in real-time via Haiku 4.5 API calls (sliding window of 10 recent observations for context)
 - [ ] Daemon extracts structured learnings (facts, patterns, corrections, preferences) → SQLite learnings table
 - [ ] Daemon detects user preference changes and writes updates to user.md
-- [ ] Daemon syncs canvas card state to corresponding workspace files
-- [ ] Daemon maintains workspace consistency (file ↔ canvas, folder organization)
-- [ ] Daemon performs simple factual sync silently (file writes, user.md, learnings)
-- [ ] Daemon queues complex judgment calls for the main agent (e.g., "update extraction rules?")
-- [ ] Session start loads soul.md + user.md + last 48h of learnings into system prompt
+- [ ] Daemon queues complex judgment calls for the main agent as pending_actions (e.g., "update extraction rules?")
+- [ ] Daemon naturally detects operational patterns from observation stream (e.g., unprocessed documents) and queues as pending_actions
+- [ ] Session start loads soul.md + user.md + last 48h of learnings + pending actions into system prompt
 - [ ] Main agent has ZERO memory tools — all memory management removed
 - [ ] Main agent's soul.md describes the daemon's existence and role
 - [ ] soul.md template includes Autonomy Rules and Tool Guidance sections
@@ -71,8 +67,9 @@ This inverts both the OpenClaw and claude-mem models:
 - Not implementing heartbeat / periodic reflection — post-MVP
 - Not implementing inactivity flush timer — daemon captures continuously, no flush needed
 - Not implementing vector embeddings / ChromaDB — SQLite FTS5 is sufficient for MVP
-- Not implementing the daemon's canvas access — daemon writes files only, canvas is main agent's domain
-- Not implementing inter-agent communication mechanism beyond simple queue — tabled during brainstorm
+- Not implementing canvas-to-file sync — deferred to post-MVP (daemon focuses on memory capture only)
+- Not implementing workspace maintenance / folder organization — daemon detects patterns naturally via Haiku, no explicit rules
+- Not implementing bidirectional agent↔daemon communication — one-way pending_actions queue only (daemon→agent)
 - Not implementing memory file rotation/archiving — learnings in SQLite, manageable via queries
 - Not changing the memory loader pattern (loader.py) — extend it to query SQLite learnings
 
@@ -95,10 +92,10 @@ Sprite VM (/workspace/)
 ├── Workspace Daemon Process (TypeScript/Bun, forked from claude-mem)
 │   ├── Watches SQLite observations table for new entries
 │   ├── Processes each observation via Haiku 4.5 API call (@anthropic-ai/sdk)
+│   ├── Includes sliding window of 10 recent observations for context
 │   ├── Writes learnings to SQLite learnings table
 │   ├── Updates user.md when preferences detected
-│   ├── Syncs canvas state → workspace files
-│   ├── Queues complex decisions for main agent
+│   ├── Queues complex decisions as pending_actions for main agent
 │   └── Runs continuously while Sprite is awake
 │
 ├── SQLite Database (/workspace/data/memory.db)
@@ -112,9 +109,12 @@ Sprite VM (/workspace/)
     │   ├── soul.md        — READ-ONLY, deploy-managed (identity + rules)
     │   └── user.md        — DAEMON-MANAGED (user preferences)
     ├── /workspace/documents/  — user uploads
-    ├── /workspace/ocr/        — OCR text cache
-    └── /workspace/projects/   — organized workspace (daemon-maintained)
+    └── /workspace/ocr/        — OCR text cache
 ```
+
+### API Access
+
+The daemon calls Haiku via the **existing Bridge API proxy** (m7b.3.6, already deployed). Sprites have `ANTHROPIC_BASE_URL` set to `https://ws.stackdocs.io/v1/proxy/anthropic` with a shared `SPRITES_PROXY_TOKEN`. The daemon uses `@anthropic-ai/sdk` which respects this env var — no new infrastructure needed. Real API keys stay on Bridge only.
 
 ### Hook Capture (PostToolUse + UserPromptSubmit)
 
@@ -144,7 +144,7 @@ async def capture_user_message(message, session_id):
 
 ### Daemon Processing (Real-Time, TypeScript)
 
-The daemon (forked from claude-mem's worker service) polls the observations table for new entries. For each observation, it calls Haiku with a sliding window of recent context:
+The daemon (forked from claude-mem's worker service) polls the observations table for new entries. For each observation, it calls Haiku with a sliding window of the 10 most recent observations:
 
 ```typescript
 // Pseudocode — daemon processing loop (TypeScript/Bun)
@@ -153,7 +153,7 @@ async function processObservation(observation: Observation, recentContext: Obser
   const prompt = `You are a memory extraction agent. Analyze this interaction
     and extract any valuable learnings.
 
-    Recent conversation context:
+    Recent conversation context (last 10 events):
     ${formatContext(recentContext)}
 
     Current observation:
@@ -163,7 +163,7 @@ async function processObservation(observation: Observation, recentContext: Obser
     - FACTS: Important information learned (names, numbers, rules)
     - PATTERNS: Corrections or repeated behaviors (user always wants X)
     - PREFERENCES: User preferences for how things should be done
-    - ACTIONS: Things that need follow-up or workspace sync
+    - ACTIONS: Things that need follow-up (e.g., document uploaded but never processed)
 
     If nothing notable, respond with NONE.`;
 
@@ -183,9 +183,9 @@ async function processObservation(observation: Observation, recentContext: Obser
     await updateUserMd(learnings);
   }
 
-  // If workspace sync needed, perform it
+  // If action needed, queue for main agent
   if (learnings.some(l => l.type === "action")) {
-    await syncWorkspace(learnings);
+    await queuePendingAction(learnings);
   }
 }
 ```
@@ -199,11 +199,8 @@ async function processObservation(observation: Observation, recentContext: Obser
 |--------|------------------------|-----------------------|
 | Extract learning → SQLite | Yes | — |
 | Update user.md with preference | Yes | — |
-| Sync canvas card → workspace file | Yes | — |
-| Create missing folder structure | Yes | — |
 | "Document X never processed" | — | Yes |
 | "10 corrections suggest rule change" | — | Yes |
-| "Workspace has duplicate projects" | — | Yes |
 | "Extraction rules may need updating" | — | Yes |
 
 ### Session Start — Context Injection
@@ -263,7 +260,6 @@ You have a background process called the Workspace Daemon that runs alongside
 you. It watches everything you do and handles:
 - Extracting learnings from your work (facts, patterns, corrections)
 - Keeping user preferences up to date (user.md)
-- Syncing your canvas output to workspace files
 - Flagging things that need your attention
 
 You don't need to manage memory — the daemon handles it automatically.
@@ -354,10 +350,9 @@ Session Start:
 During Session:
   User sends message → UserPromptSubmit hook → observation to SQLite
   Agent calls tool → PostToolUse hook → observation to SQLite
-  Daemon picks up observation → calls Haiku → extracts learnings
+  Daemon picks up observation → calls Haiku (with 10-event context window) → extracts learnings
   Daemon detects preference → updates user.md silently
-  Daemon detects sync needed → writes workspace file silently
-  Daemon detects complex issue → queues pending_action for agent
+  Daemon detects operational issue → queues pending_action for agent
   (All happens in background, main agent unaware)
 
 Session End (Stop hook):
@@ -374,7 +369,7 @@ Next Session:
 
 ```
 ┌──────────────────────────────────────┐
-│ systemd / supervisor (process mgr)   │
+│ Sprite VM process management         │
 ├──────────────────────────────────────┤
 │                                      │
 │  ┌─────────────────────────────┐     │
@@ -385,15 +380,15 @@ Next Session:
 │  │ - UserPromptSubmit hook─┤   │     │
 │  └─────────────────────────┼───┘     │
 │                            │         │
-│                   SQLite DB│         │
+│                   SQLite DB│(WAL)    │
 │                   (shared) │         │
 │                            │         │
 │  ┌─────────────────────────┼───┐     │
 │  │ Workspace Daemon (TS/Bun) │  │     │
 │  │ - Forked from claude-mem  │  │     │
 │  │ - Polls observations ◄──┘  │     │
-│  │ - Haiku API calls          │     │
-│  │ - File I/O (user.md, sync) │     │
+│  │ - Haiku API via Bridge proxy│     │
+│  │ - File I/O (user.md)       │     │
 │  │ - Pending action queue     │     │
 │  └────────────────────────────┘     │
 │                                      │
@@ -405,15 +400,16 @@ Next Session:
 ## Constraints
 
 - **Claude Agent SDK hooks** — PostToolUse and UserPromptSubmit hooks are confirmed available in the SDK. Must verify exact hook signatures and data passed to handlers.
-- **Haiku API key on Sprite** — The daemon needs an Anthropic API key to call Haiku. Current architecture proxies API keys through Bridge (security — m7b.3.6). Daemon may need its own key or a proxy endpoint.
-- **SQLite concurrent access** — Main agent (hooks writing observations) and daemon (reading observations, writing learnings) access the same DB. SQLite handles this with WAL mode, but must enable it explicitly.
+- **Bridge API proxy** — Daemon calls Haiku via existing Bridge proxy at `ANTHROPIC_BASE_URL`. Uses `@anthropic-ai/sdk` which respects this env var. Real API keys stay on Bridge only (m7b.3.6).
+- **SQLite concurrent access** — Main agent (hooks writing observations) and daemon (reading observations, writing learnings) access the same DB. SQLite handles this with WAL mode, must enable explicitly.
 - **Bun runtime on Sprite** — Daemon runs on Bun (TypeScript). Must install Bun during Sprite bootstrap (`curl -fsSL https://bun.sh/install | bash`). Bun handles SQLite natively via `bun:sqlite`.
 - **Sprite sleep/wake** — Daemon process must survive checkpoint/CRIU sleep (same as main agent server). Start via `exec` with `max_run_after_disconnect=0`.
 - **Existing test infrastructure** — `sprite/tests/test_memory_system.py` (5 tests) and `test_memory_tools.py` (6 tests) must be adapted. Memory tools tests will largely be deleted (no more agent memory tools). Loader tests need updating for SQLite learnings.
-- **Bootstrap sequence** — Daemon must start after SQLite DB is initialized. New Sprites need schema migration on first boot.
+- **Bootstrap sequence** — Daemon must start after SQLite DB is initialized. Bootstrap must install Bun, deploy daemon code, and ensure schema includes memory tables.
 - **soul.md template** — Python string constant `SOUL_TEMPLATE` in `memory/__init__.py`. Update in place.
 - **MEMORY.md file** — Replaced by SQLite learnings table. `ensure_templates()` no longer creates MEMORY.md. Loader no longer reads it.
-- **Journals directory** — Replaced by SQLite sessions + learnings. `journal.py` module can be removed or repurposed for daemon summaries.
+- **Journals directory** — Replaced by SQLite sessions + learnings. `journal.py` module can be removed or repurposed.
+- **Failure recovery** — If daemon crashes or Haiku API is unavailable, unprocessed observations queue in SQLite. Daemon resumes on restart with exponential backoff. Stale observations (>6h) skipped on recovery.
 
 ---
 
@@ -422,10 +418,9 @@ Next Session:
 - [ ] PostToolUse hook fires on every tool call and writes observation to SQLite
 - [ ] UserPromptSubmit hook fires on every user message and writes observation to SQLite
 - [ ] Daemon process starts as a background task on the Sprite and runs continuously
-- [ ] Daemon processes observations in real-time via Haiku API calls
+- [ ] Daemon processes observations in real-time via Haiku API calls (10-event sliding window)
 - [ ] Daemon extracts facts, patterns, corrections, and preferences from observations
 - [ ] Daemon updates user.md when user preferences are detected
-- [ ] Daemon syncs canvas card updates to corresponding workspace files
 - [ ] Daemon queues complex decisions as pending_actions for main agent
 - [ ] Session start injects soul.md + user.md + last 48h learnings + pending actions
 - [ ] Main agent has no memory tools — `create_memory_tools()` removed or returns empty list
@@ -439,19 +434,16 @@ Next Session:
 
 ---
 
-## Open Questions
+## Resolved Decisions (from brainstorm sessions 140-141)
 
-1. **Inter-agent communication mechanism** — How do the main agent and daemon communicate beyond the pending_actions queue? Options discussed: filesystem inbox (markdown files), SQLite message queue, or both. **Tabled during brainstorm — implement simple pending_actions table first, revisit if needed.**
-
-2. **API key for daemon** — Current architecture avoids injecting API keys into Sprites (prompt injection risk, m7b.3.6). The daemon needs to call Haiku. Options: (a) proxy through Bridge, (b) separate restricted API key for daemon only, (c) inject key since daemon is server-side code, not agent-accessible. Needs security review.
-
-3. **Daemon observation context window** — To detect corrections and preferences, the daemon needs context beyond a single observation. How many recent observations should be included in each Haiku call? Proposed: sliding window of last 5-10 events. Needs tuning.
-
-4. **Canvas ↔ file sync mapping** — How does the daemon know which workspace file corresponds to a canvas card? Options: (a) convention-based (card title → file path), (b) explicit mapping table in SQLite, (c) daemon infers from context. Needs design.
-
-5. **Proactive maintenance scope** — The daemon should flag orphaned documents and maintain folder structure, but the exact rules need definition. What triggers a "document never processed" alert? How aggressively should the daemon organize files? Needs use-case examples.
-
-6. **Daemon failure handling** — What happens if the daemon crashes or Haiku API is down? Observations queue up in SQLite. Daemon should resume processing on restart. But how long can the backlog grow? Should there be a max observation age before they're skipped?
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| 1 | Inter-agent comms | One-way `pending_actions` table only (daemon→agent) | Keep simple. Add bidirectional later if needed. Agent has no memory tools by design. |
+| 2 | API key for daemon | Uses existing Bridge API proxy (m7b.3.6) | Already deployed. Sprites have `ANTHROPIC_BASE_URL` pointing to Bridge. Daemon inherits env vars. No new infrastructure. |
+| 3 | Observation context window | Sliding window of 10 recent observations per Haiku call | ~5k tokens context. Good balance of pattern detection vs cost. Real-time, one observation at a time. |
+| 4 | Canvas-file sync | Deferred to post-MVP | Daemon focuses on memory capture. Agent can write files on request. Sync adds format conversion complexity. |
+| 5 | Proactive maintenance | No extra code — Haiku naturally detects patterns | Processing prompt includes ACTIONS category. Haiku flags operational issues (e.g., unprocessed docs) as pending_actions. |
+| 6 | Failure handling | Exponential backoff + staleness cutoff | Observations queue in SQLite if daemon/API down. Resume on restart. Skip observations older than 6h. |
 
 ---
 
@@ -470,11 +462,11 @@ Python (Agent SDK)              SQLite              TypeScript (Daemon)
 PostToolUse hook ──writes──►  observations  ──reads──► claude-mem worker
 UserPromptSubmit ──writes──►  table          ──writes──► learnings table
                                   │                ──writes──► user.md
-loader.py ◄──────reads──────  learnings       ──writes──► workspace files
+loader.py ◄──────reads──────  learnings
                               pending_actions
 ```
 
-**What to keep from claude-mem (already written):**
+**What to keep from claude-mem:**
 - Worker processing loop (polling, batching, error handling)
 - SQLite schema design (sessions, observations tables — adapt for our learnings table)
 - FTS5 search setup (virtual table configuration, query patterns)
@@ -487,7 +479,6 @@ loader.py ◄──────reads──────  learnings       ──wr
 - Output tables: add `learnings` and `pending_actions` tables (claude-mem only has observations + summaries)
 - Storage path: `~/.claude-mem/` → `/workspace/data/memory.db`
 - AI model: claude-mem uses Agent SDK for processing → we use direct Haiku API calls via `@anthropic-ai/sdk`
-- Add workspace sync logic (canvas → files) — new capability not in claude-mem
 - Add pending actions queue for main agent — new capability not in claude-mem
 - Remove `save_memory` MCP tool — agent gets no memory tools
 
@@ -506,10 +497,9 @@ loader.py ◄──────reads──────  learnings       ──wr
 
 ## Next Steps
 
-1. Resolve API key question (Open Question 2) — this may affect Bridge architecture
-2. Fork claude-mem repo, study the hook capture and worker processing code in detail
-3. `/plan` to create implementation tasks from this spec
-4. Build daemon as a standalone Python process first, test observation processing in isolation
-5. Integrate hooks with existing runtime.py
-6. Update loader.py to query SQLite learnings instead of MEMORY.md
-7. Deploy to test Sprite and validate end-to-end: user chat → hook capture → daemon processing → learnings injection
+1. `/plan` to create implementation tasks from this spec
+2. Fork claude-mem repo and study the worker processing code in detail
+3. Build daemon as a standalone TypeScript process first, test observation processing in isolation
+4. Integrate hooks with existing runtime.py
+5. Update loader.py to query SQLite learnings instead of MEMORY.md
+6. Deploy to test Sprite and validate end-to-end: user chat → hook capture → daemon processing → learnings injection
