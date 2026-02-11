@@ -1,10 +1,12 @@
 # Exploration: Stackdocs OS — Spatial Glass Desktop with Generative Apps
 
-**Date:** 2026-02-11 (updated)
+**Date:** 2026-02-11 (updated session 144)
 **Status:** Ready for planning
 **Supersedes:** Original "Liquid Glass UI Reskin" spec (2026-02-09), "Spatial Glass Desktop" spec (2026-02-09)
 **Related:** Canvas Tools + Memory System spec (2026-02-08), v2 Architecture spec
-**Prototype:** Built in Google AI Studio during sessions 142-143 (iterated extensively)
+**Prototype:** `docs/reference/spatial-glass-prototype/` (Google AI Studio, sessions 142-143)
+**Glass library:** [Ein UI](https://ui.eindev.ir/) — shadcn-compatible liquid glass components
+**Agent references:** `docs/reference/nanobot/`, `docs/reference/claude-mem/` (gitignored, local only)
 
 ---
 
@@ -313,17 +315,54 @@ STATE: TYPING (user activated text input)
 └────────────────────────────────────────────────────┘
 ```
 
+### Animation System
+
+Three layers — no single animation library dominates. Each tool for what it's best at.
+
+**Layer 1: CSS transitions** (most effects) — zero overhead, GPU-accelerated
+**Layer 2: Tailwind `animate-in`** (enter animations) — already works via `tw-animate-css`
+**Layer 3: `motion` `AnimatePresence`** (exit animations) — already installed (v12), solves unmount
+
+| Effect | Technique | Details |
+|--------|-----------|---------|
+| **Card mount** | CSS transition | `opacity 0→1`, `scale 0.95→1`, 400ms, `cubic-bezier(0.2, 0.8, 0.2, 1)` with 100ms stagger delay |
+| **Card close** | `motion` AnimatePresence | `opacity 1→0`, `scale 1→0.95`, 300ms — proper unmount animation (prototype uses setTimeout hack) |
+| **Card drag** | CSS class swap | `scale(1.02)` + `shadow(0 30px 60px rgba(0,0,0,0.2))`, transitions disabled during drag |
+| **Grip handle** | CSS hover | `opacity 0→0.5` on card header hover |
+| **Dropdown menu** | Tailwind animate-in | `fade-in slide-in-from-top-2` |
+| **In-window chat** | Tailwind animate-in | `slide-in-from-bottom-4 duration-300` |
+| **Chat chip/input swap** | CSS transition | Cross-fade with opposing Y-translate: chips slide down, input slides up (300ms) |
+| **Chat bar hide** | CSS transition | `translateY(150%) opacity(0)` when sidebar opens (500ms) |
+| **Chip hover** | CSS transform | `scale(1.05)` hover, `scale(0.95)` active |
+| **Chat expand glow** | CSS shadow | `box-shadow(0 0 15px rgba(59,130,246,0.5))` on hover |
+| **AI sync status** | Tailwind animate-in | Spinning loader → emerald "Synced" with `fade-in zoom-in`, auto-dismiss 1.5s |
+| **Locked card** | CSS filter | `grayscale(50%) opacity(80%)` on content area |
+| **Generative terminal** | setTimeout sequence | 5 log lines at 500→3500ms, each `fade-in slide-in-from-left-2`. CRT scanline overlay via CSS keyframe (`animate-scan`). Content fades in after 800ms pause with `fade-in duration-700`. |
+| **Documents panel (left)** | CSS transition | `translateX(-110%) opacity(0)` ↔ `translateX(0) opacity(1)`, 500ms. Fixed position, no overlay. |
+| **Chat sidebar (right)** | CSS transition | `translateX(110%) opacity(0)` ↔ `translateX(0) opacity(1)`, 500ms. Fixed position, no overlay. |
+| **Chat bar ↔ sidebar handoff** | CSS transition | Chat bar slides down (`translateY(150%)`) as sidebar slides in from right. Coordinated 500ms. |
+
+**Easing:** `cubic-bezier(0.2, 0.8, 0.2, 1)` as the standard curve (slow-out, Apple-esque). Use for all card and panel transitions. Tailwind `ease-out` for micro-interactions.
+
+**Custom keyframe needed:** `animate-scan` for CRT scanline effect in GenerativeCard.
+
+**Panel pattern:** Fixed-position divs with CSS transitions (not shadcn Sheet). No overlay — canvas stays fully visible and interactive. A `usePanel` hook handles Escape-to-close and click-outside-to-dismiss (~20 lines). Desktop OS behavior, not dialog behavior.
+
+---
+
 ### Technology Choices
 
 | Decision | Choice | Why |
 |----------|--------|-----|
+| Glass component library | **Ein UI** (`@einui/*` via shadcn CLI) | Shadcn-compatible liquid glass components. Cards, buttons, inputs, dialogs, dock, command palette — all pre-built. Tailwind v4, Radix primitives, TypeScript. Saves weeks vs hand-rolling glass styles. |
+| Canvas engine | Custom CSS transforms + pointer events (ported from prototype) | ~170 lines, full visual control, no library fighting glass styling. React Flow removed — it solves graph editors, not desktop windows. |
 | Card positioning | `position: absolute` + pointer events | Simpler than React Flow. No node-edge graph needed. |
-| Drag library | `@dnd-kit` or raw pointer events | Lightweight. |
-| Glass effects | Native CSS `backdrop-filter` | GPU-accelerated, all modern browsers |
+| Drag | Raw pointer events (prototype pattern) | `e.movementX / scale` for zoom-aware dragging. No library needed for MVP. |
+| Glass effects | Ein UI components + native CSS `backdrop-filter` | Ein UI handles component-level glass. Custom `backdrop-filter` for canvas/wallpaper layer. |
 | Wallpaper | CSS `background-image` on fixed div | No JS needed |
 | Card state | Zustand store + localStorage | Persist across reloads |
 | Generative apps | Sandboxed iframes | Security isolation for agent-generated code |
-| Dropdown menus | Custom glass components | shadcn dropdowns are too opaque |
+| Agent spatial awareness | `canvas_interaction` messages with card positions | Agent receives layout state — knows what's open, where cards are, can place new cards intelligently |
 
 ### File Structure (new/modified)
 
@@ -446,6 +485,10 @@ frontend/
 | React Flow | Removed | Overkill. CSS transforms for pan/zoom, absolute positioning for cards. |
 | Documents panel | Fixed left-anchored panel (not floating card) | File browser needs to stay accessible. Anchored panel doesn't block canvas interaction. |
 | VM model | **One Sprite per USER** (not per workspace) | Agent has full context across all workspaces. Simpler routing. One computer metaphor. |
+| Glass library | **Ein UI** (`ui.eindev.ir`) | Shadcn-compatible, Tailwind v4, Radix primitives. Pre-built glass cards, buttons, inputs, dock, command palette. |
+| Canvas engine | Custom CSS transform (ported from prototype) | 170 lines, full control. Prototype proves it works — slick pan/zoom with pointer events. |
+| Agent spatial awareness | Card positions sent via WebSocket | Agent sees layout, places cards intelligently ("I'll put this to the right of your table"). |
+| v1 frontend | Archived in `archive/v1-frontend` branch + `.worktrees/v1-frontend/` | Frozen reference, runnable. New work on `main`. |
 
 ---
 
@@ -464,11 +507,23 @@ Document extraction is the **wedge**. The generative desktop is the **platform**
 
 ---
 
+## Reference Materials
+
+All in `docs/reference/` (gitignored — local only, not committed):
+
+| Reference | What | Key files to study |
+|-----------|------|-------------------|
+| `spatial-glass-prototype/` | Google AI Studio prototype (React/TS) | `App.tsx`, `components/Desktop/DesktopCanvas.tsx`, `components/Glass/GlassSurface.tsx`, `components/Layout/ChatBar.tsx` |
+| `nanobot/` | Python agent framework (3.5k lines, MIT) | `nanobot/agent/loop.py`, `nanobot/agent/memory.py`, `nanobot/agent/skills.py` |
+| `claude-mem/` | Claude memory system with OpenClaw patterns | `src/`, `openclaw/`, `docs/` |
+
+---
+
 ## Next Steps
 
-1. `/plan` to create implementation tasks — this supersedes current Phase 3 beads (m7b.4.x)
-2. Source 4-5 default wallpaper images (bright abstract gradients, aqua, nature)
-3. Evaluate whether existing m7b.4.x beads can be updated or need replacing
-4. Design the `card_interaction` and `app_create` message types for generative apps
-5. Build a static prototype first (no WebSocket) to validate the glass feel before wiring up the agent
-6. Continue iterating on the Google AI Studio prototype for visual reference
+1. `/plan` to create Phase A implementation tasks (glass desktop shell)
+2. Install Ein UI glass components into `frontend/`
+3. Port prototype canvas (DesktopCanvas.tsx) to Next.js
+4. Build iteratively — "build and play" approach, not exhaustive planning
+5. Source 4-5 default wallpaper images (bright abstract gradients, aqua, nature)
+6. Evaluate whether existing m7b.4.x beads can be updated or need replacing

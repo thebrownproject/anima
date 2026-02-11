@@ -88,3 +88,6 @@ backend/spikes/test_*
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# Reference codebases (cloned locally, not committed)
+docs/reference/

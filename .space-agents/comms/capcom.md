@@ -2035,3 +2035,44 @@ Stacks page → Canvas workspaces (transform)
 - Note: `exploration/ideas/2026-02-08-memory-system-redesign/` has a plan.md — should reconcile to `planned/`
 
 ---
+
+## [2026-02-11 22:30] Session 140
+
+**Branch:** main | **Git:** uncommitted (.gitignore, spec.md)
+
+### What Happened
+Pre-build prep session for the v2 glass desktop UI rebuild.
+
+1. **Archived v1 frontend** — created `archive/v1-frontend` branch at `1d303f8`, set up git worktree at `.worktrees/v1-frontend/` with deps installed. Frozen reference for the rebuild.
+
+2. **Organized reference materials** — created `docs/reference/` (gitignored) containing:
+   - `spatial-glass-prototype/` — Google AI Studio React/TS spatial desktop prototype (sessions 142-143)
+   - `nanobot/` — HKUDS/nanobot Python agent framework (3.5k lines, MIT, 16.6k stars). Memory, skills, cron/heartbeat. Potential Sprite runtime patterns.
+   - `claude-mem/` — thedotmack/claude-mem Claude memory system with OpenClaw patterns.
+
+3. **Brainstormed glass desktop shell** — explored prototype code and current frontend via research agent. Key decisions:
+   - **Ein UI** (`ui.eindev.ir`) as glass component library — shadcn-compatible, Tailwind v4, pre-built liquid glass components
+   - **Custom CSS canvas** (port prototype's 170-line approach) over React Flow — desktop OS doesn't need graph editor features, full visual control for glass
+   - **Agent spatial awareness** — card positions sent via `canvas_interaction` WebSocket messages so agent places cards intelligently
+   - **Glass desktop shell** as first build target tomorrow (wallpaper, topbar, canvas, chat bar)
+
+4. **Updated spec** at `.space-agents/exploration/ideas/2026-02-09-liquid-glass-ui-reskin/spec.md`:
+   - Added Animation System section (full inventory from prototype: card mount/close/drag, generative terminal, chat bar swap, etc.)
+   - Added Ein UI, custom canvas, agent spatial awareness to Technology Choices and Decisions
+   - Added Reference Materials section pointing to `docs/reference/`
+   - Updated Next Steps for "build and play" approach
+
+5. **Product/startup discussion** — confirmed Stackdocs as a product, not a portfolio piece. Key insight: "it's a PC" is the moat. Agent can `pip install`, connect to Xero, run cron jobs. Haiku for MVP main agent (unit economics). Wedge = extraction for SMBs, platform = generative desktop.
+
+### Decisions Made
+- Ein UI for glass components (not hand-rolling GlassSurface)
+- Custom CSS transform canvas (drop React Flow)
+- `motion` AnimatePresence for exit animations (replaces prototype's setTimeout hack)
+- Reference repos gitignored (not committed — 131k lines of external code)
+- Haiku as main agent model for MVP (cost: ~$0.005-0.01/session vs ~$0.08 with Sonnet)
+
+### Next Action
+- Tomorrow: build glass desktop shell with Ein UI. Install Ein UI → port Wallpaper + TopBar → port DesktopCanvas → port ChatBar → wire to WebSocket.
+- `/plan` to create Phase A implementation tasks from the updated spec.
+
+---
