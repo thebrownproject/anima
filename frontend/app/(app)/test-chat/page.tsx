@@ -35,7 +35,7 @@ const WALLPAPERS = [
 function GlassPill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-4 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl ${className}`}
+      className={`flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl ${className}`}
     >
       {children}
     </div>
@@ -46,49 +46,54 @@ function GlassPill({ children, className = '' }: { children: React.ReactNode; cl
 
 function TopBar() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-start justify-between px-4 pt-4">
-      {/* Left pill — App Drawer */}
-      <GlassPill className="pointer-events-auto">
-        <GlassButton variant="ghost" size="icon" className="size-9 rounded-xl">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-4 pt-4">
+      {/* Left — App circles */}
+      <div className="pointer-events-auto flex items-center gap-2">
+        <GlassButton variant="ghost" size="icon" className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl">
           <Icons.FileText className="size-5 text-white/80" />
         </GlassButton>
-        <GlassButton variant="ghost" size="icon" className="size-9 rounded-xl">
+        <GlassButton variant="ghost" size="icon" className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl">
           <Icons.LayoutGrid className="size-5 text-white/80" />
         </GlassButton>
-        <GlassButton variant="ghost" size="icon" className="size-9 rounded-xl">
+        <GlassButton variant="ghost" size="icon" className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl">
           <Icons.SlidersHorizontal className="size-5 text-white/80" />
         </GlassButton>
-      </GlassPill>
+      </div>
 
-      {/* Center pill — Workspace Tabs */}
-      <GlassPill className="pointer-events-auto px-2">
-        <GlassTabs defaultValue="q4">
-          <GlassTabsList className="h-10 border-0 bg-transparent p-0 shadow-none backdrop-blur-none">
-            <GlassTabsTrigger value="q4" className="gap-2 rounded-xl px-4 text-sm">
-              <span className="size-2 rounded-full bg-red-400" />
-              Q4 Invoices
-            </GlassTabsTrigger>
-            <GlassTabsTrigger value="tax" className="gap-2 rounded-xl px-4 text-sm">
-              <span className="size-2 rounded-full bg-emerald-400" />
-              Tax Returns
-            </GlassTabsTrigger>
-          </GlassTabsList>
-        </GlassTabs>
-        <GlassButton variant="ghost" size="icon" className="size-8 rounded-lg">
-          <Icons.Plus className="size-4 text-white/60" />
+      {/* Center — Back button + Workspace Tabs pill + Add button */}
+      <div className="pointer-events-auto flex items-center gap-2">
+        <GlassButton variant="ghost" size="icon" className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl">
+          <Icons.ChevronLeft className="size-5 text-white/80" />
         </GlassButton>
-      </GlassPill>
+        <GlassPill className="px-2">
+          <GlassTabs defaultValue="q4">
+            <GlassTabsList className="h-8 border-0 bg-transparent p-0 shadow-none backdrop-blur-none">
+              <GlassTabsTrigger value="q4" className="gap-2 rounded-xl px-4 text-sm">
+                <span className="size-2 rounded-full bg-red-400" />
+                Q4 Invoices
+              </GlassTabsTrigger>
+              <GlassTabsTrigger value="tax" className="gap-2 rounded-xl px-4 text-sm">
+                <span className="size-2 rounded-full bg-emerald-400" />
+                Tax Returns
+              </GlassTabsTrigger>
+            </GlassTabsList>
+          </GlassTabs>
+        </GlassPill>
+        <GlassButton variant="ghost" size="icon" className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl">
+          <Icons.Plus className="size-5 text-white/80" />
+        </GlassButton>
+      </div>
 
       {/* Right pill — System Tray */}
       <GlassPill className="pointer-events-auto">
         <span className="px-2 text-xs font-medium text-white/70">87%</span>
-        <GlassButton variant="ghost" size="icon" className="size-9 rounded-xl">
+        <GlassButton variant="ghost" size="icon" className="size-8 rounded-xl">
           <Icons.Search className="size-5 text-white/80" />
         </GlassButton>
-        <GlassButton variant="ghost" size="icon" className="size-9 rounded-xl">
+        <GlassButton variant="ghost" size="icon" className="size-8 rounded-xl">
           <Icons.Bell className="size-5 text-white/80" />
         </GlassButton>
-        <GlassButton variant="ghost" size="icon" className="size-9 rounded-xl">
+        <GlassButton variant="ghost" size="icon" className="size-8 rounded-xl">
           <Icons.User className="size-5 text-white/80" />
         </GlassButton>
       </GlassPill>
@@ -112,10 +117,10 @@ function ChatBar({
   const [chatInput, setChatInput] = useState('')
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4">
       <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl">
         {/* Paperclip */}
-        <GlassButton variant="ghost" size="icon" className="size-9 shrink-0 rounded-full">
+        <GlassButton variant="ghost" size="icon" className="size-8 shrink-0 rounded-full">
           <Icons.Paperclip className="size-5 text-white/70" />
         </GlassButton>
 
@@ -152,7 +157,7 @@ function ChatBar({
         >
           <Icons.Keyboard className={`size-5 ${chatMode === 'typing' ? 'text-white' : 'text-white/70'}`} />
         </GlassButton>
-        <GlassButton variant="ghost" size="icon" className="size-9 shrink-0 rounded-full">
+        <GlassButton variant="ghost" size="icon" className="size-8 shrink-0 rounded-full">
           <Icons.Microphone className="size-5 text-white/70" />
         </GlassButton>
         <GlassButton
@@ -172,7 +177,7 @@ function ChatBar({
 
 function WallpaperPicker({ wallpaper, onChange }: { wallpaper: number; onChange: (i: number) => void }) {
   return (
-    <div className="pointer-events-none fixed bottom-16 right-4 z-10 flex items-center gap-1.5">
+    <div className="pointer-events-none absolute bottom-16 right-4 z-10 flex items-center gap-1.5">
       {WALLPAPERS.map((wp, i) => (
         <button
           key={wp.name}
@@ -401,7 +406,7 @@ export default function TestChatPage() {
 
       {/* Assistant Panel (right side — spec Mode 2) */}
       {showChat && (
-        <div className="fixed right-4 top-20 bottom-20 z-20 flex w-96 flex-col rounded-2xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-transform duration-500">
+        <div className="absolute right-4 top-20 bottom-20 z-20 flex w-96 flex-col rounded-2xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-transform duration-500">
           {/* Panel header */}
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <div className="flex items-center gap-2">
@@ -514,7 +519,7 @@ export default function TestChatPage() {
       <WallpaperPicker wallpaper={wallpaper} onChange={setWallpaper} />
 
       {/* Canvas position indicator */}
-      <div className="pointer-events-none fixed bottom-5 right-4 z-10 text-right font-mono text-xs text-white/40">
+      <div className="pointer-events-none absolute bottom-5 right-4 z-10 text-right font-mono text-xs text-white/40">
         <div>POS: 0, 0</div>
         <div>ZM: 100%</div>
       </div>

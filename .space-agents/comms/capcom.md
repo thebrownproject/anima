@@ -2169,3 +2169,32 @@ Pre-planning session: reviewed all open beads, evaluated UI architecture decisio
 - Then `/plan` to create Phase A implementation tasks from the glass desktop spec
 
 ---
+
+## [2026-02-12 10:30] Session 146
+
+**Branch:** main | **Git:** uncommitted (UI iteration on test-chat page)
+
+### What Happened
+Iterative UI refinement session on the desktop chrome prototype at `frontend/app/(app)/test-chat/page.tsx`.
+
+1. **Positioning fix** — Changed all overlay components (TopBar, ChatBar, Assistant Panel, WallpaperPicker, position indicator) from `fixed` to `absolute` positioning so they're scoped to the canvas container rather than the viewport.
+
+2. **Icon sizing fix** — Discovered `[&_svg]:size-4` in `frontend/components/ui/glass-button.tsx` was forcing all child SVGs to 16px regardless of class overrides. Removed the forced `size-4` so icon size classes actually work. Icons settled at `size-5` (20px) after iteration.
+
+3. **Top bar height tuning** — Reduced GlassPill padding from `py-2` to `py-1`, icon buttons to `size-8` (32px). Adjusted `GlassTabsTrigger` padding from `py-2` to `py-1.5` in `frontend/components/ui/glass-tabs.tsx`.
+
+4. **Center tabs redesign** — Separated the `+` (add tab) and `<` (back) buttons from the center tabs pill into standalone round glass buttons flanking the pill. Both `size-10` to match pill height.
+
+5. **Left pill → separate app circles** — Discussed whether app icons should be grouped in a pill or separate circles. Decided separate circles are better for user-created apps (scalability, individual identity, dock metaphor). Converted left pill to three individual `size-10` round glass buttons.
+
+### Decisions Made
+- Removed `[&_svg]:size-4` forced override from GlassButton — icons now respect their own size classes
+- App icons as separate circles (not grouped pill) — better for user-created apps
+- `<` back and `+` add as standalone round buttons flanking tabs pill
+- Tab trigger padding `py-1.5` for compact height
+
+### Next Action
+- Continue desktop chrome iteration — refine spacing, consider app circle hover states and badges
+- Begin planning Phase A implementation tasks from glass desktop spec
+
+---

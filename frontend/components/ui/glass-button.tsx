@@ -12,7 +12,7 @@ const glassButtonVariants = cva(
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
     "disabled:pointer-events-none disabled:opacity-50",
     "hover:scale-105 active:scale-95",
-    "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0",
   ),
   {
     variants: {
