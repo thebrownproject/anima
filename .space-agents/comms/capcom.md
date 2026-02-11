@@ -1986,3 +1986,52 @@ Stacks page → Canvas workspaces (transform)
 - Fork claude-mem repo and study worker processing code before planning.
 
 ---
+
+## [2026-02-11 20:50] Sessions 142-143
+
+**Branch:** main | **Git:** uncommitted (spec + exploration files)
+
+### What Happened
+- **Major brainstorm: Liquid Glass UI evolved into full OS concept.** Two sessions (142 on Feb 10, 143 on Feb 11) iterated heavily on the Stackdocs v2 frontend design using Google AI Studio Build mode as a rapid prototyping tool.
+
+- **Session 142 — Glass Desktop prototype:**
+  - Researched Google AI Studio Build mode (how it works, best prompting strategies, React output format)
+  - Crafted and iterated ~8 prompts to build an interactive glass desktop prototype
+  - Evolved sidebar from vertical left rail → floating dock → horizontal top dock (three separate glass pills)
+  - Evolved wallpaper from dark/muted → bright/vibrant (aqua blue, Apple Liquid Glass style)
+  - Evolved chat bar from stacked elements → unified single-line pill with chips/input toggle
+  - Decided: chat output as separate floating canvas card, not attached to chat bar
+  - Decided: generative apps in sandboxed iframes — agent builds custom tools on demand
+  - Decided: users can save generated apps to dock
+  - Wrote comprehensive spec: `.space-agents/exploration/ideas/2026-02-09-liquid-glass-ui-reskin/spec.md`
+
+- **Session 143 — OS concept refinement:**
+  - Fraser iterated further in AI Studio between sessions — screenshots show significant evolution
+  - Top left pill → app drawer (documents, apps, settings icons opening left-anchored panels)
+  - Top center pill → workspace tabs (browser tab model, not dock icons)
+  - Top right pill → system tray (zoom %, search, notifications, user avatar)
+  - Canvas → infinite canvas with pan (click-drag), zoom (scroll wheel), right-click context menu
+  - Chat → dual mode: bottom bar (default, clean) OR right panel (full chat history with timestamps)
+  - Documents → fixed left-anchored panel with file tree, search, storage indicator
+  - Card "..." menu: "Ask AI to edit...", "Lock Window", "Pin to View"
+  - Right-click canvas: Environment (wallpaper picker), View (zoom controls, Clean Up By Name)
+
+### Decisions Made
+1. **One Sprite VM per USER, not per workspace.** Workspaces are virtual canvases within the same agent/VM. Agent has full context across all workspaces. Changes Bridge routing (user_id → sprite, not stack_id → sprite) and Supabase schema.
+2. **Generative apps via sandboxed iframes.** Agent generates HTML/CSS/JS, rendered in `sandbox="allow-scripts"` iframes. Users save favorites to dock/app drawer.
+3. **Browser tab model for workspaces.** Not dock icons. Tabs with status dots, reorderable, agent can create/manage.
+4. **Infinite canvas.** Pan/zoom/right-click context menu. POS + ZM indicators in corner. Not fixed viewport.
+5. **Dual-mode chat.** Bottom bar (default) OR right assistant panel. User switches between them.
+6. **"The user talks, the agent renders."** Canvas is the agent's display. User interaction is chat-first. Canvas interactions feed back to agent. Interface sophistication doesn't raise barrier to entry.
+7. **Document extraction is the wedge, generative desktop is the platform.** Phasing: glass feel → extraction → generative apps → notifications/automations.
+
+### Gotchas
+- Google AI Studio glass rendering tends toward opaque — need to explicitly push for more transparency in every prompt
+- `backdrop-filter` with many glass surfaces + infinite canvas pan/zoom = potential GPU performance concern
+- The spec is comprehensive but the implementation gap between AI Studio prototype and production is significant
+
+### Next Action
+- `/plan` to create implementation tasks from the updated spec (supersedes current Phase 3 m7b.4.x beads)
+- Note: `exploration/ideas/2026-02-08-memory-system-redesign/` has a plan.md — should reconcile to `planned/`
+
+---
