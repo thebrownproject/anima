@@ -364,49 +364,142 @@ Three layers — no single animation library dominates. Each tool for what it's 
 | Generative apps | Sandboxed iframes | Security isolation for agent-generated code |
 | Agent spatial awareness | `canvas_interaction` messages with card positions | Agent receives layout state — knows what's open, where cards are, can place new cards intelligently |
 
-### File Structure (new/modified)
+### Integration Strategy: Parallel Route Group
+
+The desktop is built as a **new `(desktop)/` route group** alongside the existing `(app)/` route group. Both share the root `app/layout.tsx` (Clerk, ThemeProvider, fonts). The v1 routes stay untouched during development, then get deleted in a cleanup PR after the desktop is verified.
+
+**Why not modify `(app)/`?** The existing layout is deeply coupled to the v1 shell — `SidebarProvider`, `SidebarInset`, parallel route slots (`@header`, `@subbar`), six nested context providers, `AgentContainer`. Conditionally rendering two completely different shells in one layout is worse than having two layouts.
+
+**WebSocket state:** Lifted from the working `test-chat/page.tsx` pattern into a `WebSocketProvider` context that wraps the desktop page. Dispatches `canvas_update` → desktop-store, `agent_event` → chat-store. Components consume via `useWebSocket()` hook.
+
+**Component reuse:**
+
+| Existing Component | Action | Reason |
+|-------------------|--------|--------|
+| `lib/websocket.ts` | KEEP as-is | Transport layer, UI-agnostic |
+| `types/ws-protocol.ts` | KEEP as-is | Protocol types unchanged |
+| `canvas/card-renderer.tsx` | KEEP + restyle | Block catalog (8 types), glass styling instead of `bg-card` |
+| `app/layout.tsx` (root) | KEEP as-is | Clerk, ThemeProvider, fonts — shared by both route groups |
+| `app/(app)/*` | UNTOUCHED until cleanup | v1 routes stay working during development |
+| `canvas/stack-canvas.tsx` | REPLACE → `desktop-viewport.tsx` | React Flow → custom CSS transforms |
+| `canvas/canvas-card.tsx` | REPLACE → `desktop-card.tsx` | React Flow node → pointer event dragging |
+| `canvas/grid-layout-spike.tsx` | REPLACE → infinite canvas | react-grid-layout not needed |
+| `components/agent/*` | NOT USED by desktop | v1 flow system, deleted in cleanup PR |
+
+**Cleanup PR (after desktop verified):** Delete `app/(app)/`, `components/agent/`, `components/layout/`, React Flow canvas components, and npm dependencies `@xyflow/react`, `react-grid-layout`, `react-resizable-panels`.
+
+### File Structure (Draft — may evolve during build)
 
 ```
 frontend/
 ├── app/
-│   ├── globals.css                    # MODIFIED: glass tokens, wallpaper layer
-│   └── (app)/stacks/[stackId]/
-│       └── page.tsx                   # MODIFIED: full desktop layout
+│   ├── layout.tsx                        # UNCHANGED: root (Clerk, ThemeProvider, fonts)
+│   ├── globals.css                       # MODIFIED: add glass tokens, animate-scan keyframe
+│   ├── (app)/                            # UNCHANGED: v1 routes (deleted in cleanup PR)
+│   │   ├── layout.tsx                    #   v1 sidebar + parallel routes
+│   │   ├── documents/                    #   v1 document pages
+│   │   ├── stacks/                       #   v1 stack pages
+│   │   └── test-chat/                    #   kept as debugging tool
+│   └── (desktop)/                        # NEW: glass desktop route group
+│       ├── layout.tsx                    #   minimal — no sidebar, no header, no parallel routes
+│       └── stacks/[id]/
+│           └── page.tsx                  #   desktop page composing all desktop components
 ├── components/
-│   ├── desktop/                       # NEW: OS desktop components
-│   │   ├── desktop-viewport.tsx       # Full-viewport canvas container
-│   │   ├── desktop-card.tsx           # Glass card with drag/resize/close
-│   │   ├── app-card.tsx              # Generative app card (iframe wrapper)
-│   │   ├── card-renderer.tsx          # Block catalog → React components
-│   │   ├── auto-placer.ts            # Card placement algorithm
-│   │   └── documents-panel.tsx        # File browser panel
-│   ├── top-bar/                       # NEW: top bar components
-│   │   ├── top-bar.tsx               # Container for three pills
-│   │   ├── user-pill.tsx             # Avatar + dropdown menu
-│   │   ├── dock-pill.tsx             # Apps + workspaces dock
-│   │   ├── system-pill.tsx           # Notifications + settings dropdown
-│   │   └── glass-dropdown.tsx        # Shared glass dropdown component
-│   ├── chat-bar/                      # NEW: floating chat bar
-│   │   ├── chat-bar.tsx              # Single-line input/chips bar
-│   │   └── chat-card.tsx             # Floating chat output card
-│   ├── wallpaper/                     # NEW: wallpaper system
-│   │   ├── wallpaper-layer.tsx       # Background renderer
-│   │   └── wallpaper-picker.tsx      # Settings UI for wallpaper selection
-│   └── ui/                           # MODIFIED: glass restyling
-│       └── ...                       # shadcn components with glass variants
-├── lib/stores/
-│   ├── desktop-store.ts              # NEW: card positions, sizes, open/closed
-│   ├── dock-store.ts                 # NEW: dock apps, workspaces, active state
-│   ├── wallpaper-store.ts            # NEW: wallpaper selection + localStorage
-│   └── chat-store.ts                 # NEW: chat history, chips state
+│   ├── desktop/                          # NEW: OS desktop components
+│   │   ├── ws-provider.tsx               # WebSocket context provider (lifted from test-chat)
+│   │   ├── desktop-viewport.tsx          # Infinite canvas (CSS transforms, pan/zoom)
+│   │   ├── desktop-card.tsx              # Glass card (drag, close, title bar, menu)
+│   │   ├── app-card.tsx                  # Generative app card (iframe wrapper)
+│   │   ├── auto-placer.ts               # Card placement algorithm
+│   │   └── documents-panel.tsx           # Left-anchored file browser panel
+│   ├── top-bar/                          # NEW: top bar components
+│   │   ├── top-bar.tsx                   # Container for three pills
+│   │   ├── app-drawer-pill.tsx           # Left pill (app icons → open panels)
+│   │   ├── workspace-tabs-pill.tsx       # Center pill (browser-tab workspace switcher)
+│   │   └── system-tray-pill.tsx          # Right pill (zoom %, search, notifications, avatar)
+│   ├── chat-bar/                         # NEW: chat components
+│   │   ├── chat-bar.tsx                  # Bottom pill (chips/input toggle)
+│   │   └── chat-panel.tsx                # Right-side full chat panel (mode 2)
+│   ├── wallpaper/                        # NEW: wallpaper system
+│   │   ├── wallpaper-layer.tsx           # Full-bleed background renderer
+│   │   └── wallpaper-picker.tsx          # Selection UI (context menu)
+│   ├── canvas/                           # EXISTING: keep card-renderer, delete rest in cleanup
+│   │   └── card-renderer.tsx             # RESTYLE: block catalog with glass aesthetic
+│   └── ui/                               # EXISTING: shadcn + Ein UI glass components
+│       └── ...
+├── lib/
+│   ├── websocket.ts                      # UNCHANGED: WebSocketManager class
+│   ├── hooks/
+│   │   └── use-panel.ts                  # NEW: Escape-to-close, click-outside-to-dismiss
+│   └── stores/
+│       ├── desktop-store.ts              # NEW: cards, view state, active workspace
+│       ├── chat-store.ts                 # NEW: messages, chips, mode (bar/panel)
+│       └── wallpaper-store.ts            # NEW: wallpaper URL + localStorage persist
+├── types/
+│   └── ws-protocol.ts                    # UNCHANGED: protocol types
+├── components.json                       # MODIFIED: add Ein UI registry
 └── public/
-    └── wallpapers/                    # NEW: default wallpaper images
+    └── wallpapers/                       # NEW: default wallpaper images
         ├── aqua-blue.webp
         ├── aurora.webp
         ├── midnight.webp
         ├── dusk.webp
         └── slate.webp
 ```
+
+### Store Data Models
+
+```typescript
+// desktop-store.ts
+interface DesktopStore {
+  cards: Map<string, DesktopCard>      // card positions, sizes, z-indices
+  view: { x: number; y: number; scale: number }
+  activeWorkspace: string
+  // Zustand + localStorage persist
+}
+
+// chat-store.ts
+interface ChatStore {
+  messages: ChatMessage[]
+  chips: SuggestionChip[]
+  mode: 'bar' | 'panel'
+  isTyping: boolean
+  // Ephemeral — NOT persisted
+}
+
+// wallpaper-store.ts
+interface WallpaperStore {
+  url: string
+  // Zustand + localStorage persist
+}
+```
+
+### Build Order (Phase A)
+
+```
+ 1. Glass tokens in globals.css + Ein UI registry in components.json
+ 2. Install Ein UI glass components via shadcn CLI
+ 3. Create (desktop)/ route group with minimal layout
+ 4. Wallpaper layer + wallpaper store
+ 5. Desktop viewport (port prototype's CSS transform canvas)
+ 6. Desktop card (glass card, drag, close — port from prototype)
+ 7. WebSocket provider (lift from test-chat)
+ 8. Desktop store + chat store
+ 9. Wire canvas_update → desktop-store
+10. Chat bar (bottom pill with chips/input toggle)
+11. Top bar (three pills: app drawer, workspace tabs, system tray)
+12. Chat panel (right-side mode 2)
+13. Documents panel (left-anchored file browser)
+14. Restyle card-renderer.tsx blocks with glass aesthetic
+15. Source and add wallpaper images
+```
+
+### SSR Gotchas
+
+- Prototype uses `window.innerWidth` for initial card placement — **doesn't work with Next.js SSR**. Use `useEffect` + window check or default positions.
+- Don't blur the wallpaper layer itself — only glass surfaces floating over it (GPU stacking performance).
+- Pointer event capture: canvas panning vs card dragging conflict — check `e.target` to distinguish (prototype already handles this).
+- `signInFallbackRedirectUrl` in root layout currently points to `/documents` — update to default workspace route once desktop ships.
 
 ---
 
@@ -420,6 +513,8 @@ frontend/
 - **Existing block catalog** — same 8 block types for data cards. Generative apps are a separate rendering path.
 - **Tailwind v4 @theme inline** — glass tokens via CSS custom properties in existing pattern.
 - **Mobile not targeted** — desktop/laptop only. Spatial canvas doesn't translate to mobile.
+- **Parallel route groups** — `(desktop)/` is new, `(app)/` stays untouched. Both share root layout. No conditional rendering.
+- **No new npm dependencies** — `motion` v12, `zustand` v5, `tw-animate-css` already installed. Ein UI installed via shadcn registry, not npm.
 
 ---
 
@@ -489,6 +584,9 @@ frontend/
 | Canvas engine | Custom CSS transform (ported from prototype) | 170 lines, full control. Prototype proves it works — slick pan/zoom with pointer events. |
 | Agent spatial awareness | Card positions sent via WebSocket | Agent sees layout, places cards intelligently ("I'll put this to the right of your table"). |
 | v1 frontend | Archived in `archive/v1-frontend` branch + `.worktrees/v1-frontend/` | Frozen reference, runnable. New work on `main`. |
+| Route structure | New `(desktop)/` route group alongside `(app)/` | Clean separation. v1 layout has SidebarProvider + 6 providers + parallel routes — can't conditionally render two shells. Cleanup PR deletes `(app)/` after desktop verified. |
+| WebSocket state | `WebSocketProvider` context wrapping desktop page | Lifted from working `test-chat/page.tsx`. Dispatches to Zustand stores. Components consume via `useWebSocket()` hook. |
+| Panel behaviour | Fixed-position CSS transitions + `usePanel` hook | No overlay (not shadcn Sheet). Canvas stays interactive. Hook handles Escape + click-outside (~20 lines). Desktop OS pattern. |
 
 ---
 

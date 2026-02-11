@@ -2076,3 +2076,45 @@ Pre-build prep session for the v2 glass desktop UI rebuild.
 - `/plan` to create Phase A implementation tasks from the updated spec.
 
 ---
+
+## [2026-02-11 23:15] Session 141
+
+**Branch:** main | **Git:** uncommitted (spec.md update)
+
+### What Happened
+Continuation of session 140. Focused on integration architecture for the glass desktop rebuild.
+
+1. **Sent architecture exploration agent** to analyze the full frontend codebase against the glass desktop spec. Agent read every route, layout, component, store, WebSocket file, and `components.json` to determine the best integration approach.
+
+2. **Key architectural decision: parallel `(desktop)/` route group.** The existing `(app)/layout.tsx` is deeply coupled to v1 (SidebarProvider, 6 context providers, parallel route slots `@header`/`@subbar`). Rather than conditionally rendering two shells, create a new `app/(desktop)/` route group with its own minimal layout. Both share the root `app/layout.tsx` (Clerk, ThemeProvider). Old `(app)/` stays untouched until a cleanup PR after desktop is verified.
+
+3. **WebSocket state management decided:** Lift the working `test-chat/page.tsx` pattern into a `WebSocketProvider` context wrapping the desktop page. Dispatches `canvas_update` → desktop-store (Zustand), `agent_event` → chat-store (Zustand). Components consume via `useWebSocket()` hook.
+
+4. **Panel behaviour decided:** Fixed-position CSS transitions (not shadcn Sheet). No overlay — canvas stays interactive. A `usePanel` hook handles Escape-to-close and click-outside-to-dismiss. Desktop OS pattern.
+
+5. **Updated spec** at `.space-agents/exploration/ideas/2026-02-09-liquid-glass-ui-reskin/spec.md`:
+   - Added Integration Strategy section (parallel route group, WebSocket provider, component reuse table, cleanup PR plan)
+   - Updated File Structure to reflect `(desktop)/` route group, `ws-provider.tsx`, store data models
+   - Marked file structure as draft (may evolve during build)
+   - Added Build Order (15 steps for Phase A)
+   - Added SSR Gotchas (window.innerWidth, backdrop-filter stacking, pointer events)
+   - Added route structure, WebSocket state, panel behaviour to Decisions table
+   - Added parallel route groups + no new npm deps to Constraints
+
+6. **Reviewed prototype animations in detail** — documented panel slide transitions (Documents left, ChatSidebar right), chat bar ↔ sidebar handoff coordination, and `usePanel` hook pattern. All added to Animation System section.
+
+### Decisions Made
+- `(desktop)/` route group alongside `(app)/` — clean separation, v1 untouched during dev
+- `WebSocketProvider` context pattern — lifted from working test-chat, dispatches to Zustand stores
+- Fixed-position panels + `usePanel` hook — no overlay, desktop OS behavior
+- File structure marked as draft — "build and play" approach, structure may evolve
+
+### Gotchas
+- `lib/stores/` directory is EMPTY — the only existing Zustand store is `components/agent/stores/agent-store.ts` (v1 agent flows)
+- `components.json` has empty `registries: {}` — Ein UI registry needs to be added before install
+- Prototype uses `window.innerWidth` for card placement — won't work with Next.js SSR
+
+### Next Action
+- Tomorrow: `/plan` to create Phase A implementation tasks, then build glass desktop shell starting with step 1 (glass tokens + Ein UI install).
+
+---
