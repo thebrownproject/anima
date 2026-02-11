@@ -2118,3 +2118,54 @@ Continuation of session 140. Focused on integration architecture for the glass d
 - Tomorrow: `/plan` to create Phase A implementation tasks, then build glass desktop shell starting with step 1 (glass tokens + Ein UI install).
 
 ---
+
+## [2026-02-12 10:00] Session 145
+
+**Branch:** main | **Git:** uncommitted (Ein UI spike + desktop chrome)
+
+### What Happened
+Pre-planning session: reviewed all open beads, evaluated UI architecture decisions for glass desktop rebuild.
+
+1. **Reviewed all 19 open beads** — produced summary table showing which beads are obsolete vs still valid after the glass desktop spec pivot. Key finding: m7b.4.x beads assume react-grid-layout + `(app)/` route group, which the new spec replaces with custom CSS canvas + `(desktop)/` route group.
+
+2. **Canvas engine decision** — discussed react-grid-layout vs React Flow vs custom CSS transforms. Concluded:
+   - react-grid-layout: no overlap, no zoom, fixed viewport — doesn't match desktop OS vision
+   - React Flow: supports overlap/zoom but overkill for window management (graph editor baggage)
+   - Custom CSS transforms (prototype): ~170 lines, proven, full glass control, no dependencies
+   - Searched for alternatives (canvas-react, tldraw, infinite-canvas) — nothing fits better
+   - **Decision: keep custom CSS canvas from prototype**
+
+3. **Ein UI spike** — installed and tested Ein UI glass component library:
+   - Configured shadcn registry: `@einui` → `https://ui.eindev.ir/r/{name}.json` in `frontend/components.json`
+   - Installed 5 components: `glass-card`, `glass-button`, `glass-tabs`, `glass-input`, `glass-dock`
+   - All build clean with React 19 + Next.js 16 + Tailwind v4
+   - Created reference doc at `docs/reference/ein-ui.md` (48 components, theming, CSS vars, Stackdocs mapping)
+
+4. **Built desktop chrome spike** in `frontend/app/(app)/test-chat/page.tsx`:
+   - Full-screen wallpaper background with 8 gradient presets + switcher
+   - Top bar: three floating glass pills — app drawer, workspace tabs (GlassTabs), system tray
+   - Chat bar: floating bottom pill with suggestion chips / text input toggle
+   - Assistant Panel: right-side glass panel with full WS connection UI — toggled by message icon
+   - Demo glass cards: stat, table, processing cards
+   - All components use Ein UI glass styling over wallpaper backgrounds
+
+5. **Component mapping identified** for desktop build:
+   - Top bar pills: custom GlassPill + GlassButton ghost icons + GlassTabs
+   - Chat bar: GlassButton for chips + GlassInput for text mode
+   - GlassDock installed but too opinionated for top bar pills
+
+6. **Added icons** to `frontend/components/icons/index.ts`: Paperclip, Keyboard, Microphone, Message, Bell, User, Apps, LayoutGrid
+
+### Decisions Made
+- Custom CSS canvas over react-grid-layout and React Flow
+- Ein UI as glass component library (confirmed working)
+- GlassPill (custom wrapper) for top bar pills instead of GlassDock
+- Top bar pills use `rounded-full` capsule shape
+- Assistant Panel as right-side glass panel for WS chat
+- Registry URL: `https://ui.eindev.ir/r/{name}.json`
+
+### Next Action
+- Continue pre-planning tasks: Sprite-per-user Bridge changes, auto-placement algorithm, card dimensions, obsolete bead cleanup
+- Then `/plan` to create Phase A implementation tasks from the glass desktop spec
+
+---

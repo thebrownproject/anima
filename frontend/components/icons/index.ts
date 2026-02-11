@@ -95,6 +95,16 @@ export {
   // Lists
   IconList as List,
   IconListDetails as ListDetails,
+
+  // Desktop UI
+  IconPaperclip as Paperclip,
+  IconKeyboard as Keyboard,
+  IconMicrophone as Microphone,
+  IconMessage as Message,
+  IconBell as Bell,
+  IconUser as User,
+  IconApps as Apps,
+  IconLayoutGrid as LayoutGrid,
 } from "@tabler/icons-react"
 
 // Re-export the Icon type for component props
