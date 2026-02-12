@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import ALL_MEMORY_FILES
+from . import ALL_MEMORY_FILES, read_safe
 
 # Map filename stem to section header
 _SECTION_HEADERS = {
@@ -15,13 +15,6 @@ _SECTION_HEADERS = {
     "user": "## User",
     "context": "## Context",
 }
-
-
-def _read_safe(path: Path) -> str:
-    try:
-        return path.read_text().strip()
-    except FileNotFoundError:
-        return ""
 
 
 async def _load_pending_actions(memory_db) -> str:
@@ -43,7 +36,7 @@ async def load(memory_db=None) -> str:
     sections: list[str] = []
 
     for path in ALL_MEMORY_FILES:
-        content = _read_safe(path)
+        content = read_safe(path)
         if not content:
             continue
         header = _SECTION_HEADERS.get(path.stem, f"## {path.stem.title()}")

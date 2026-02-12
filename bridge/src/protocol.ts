@@ -426,23 +426,3 @@ export function isBlockArray(value: unknown): value is Block[] {
   if (!Array.isArray(value)) return false
   return value.every(isBlock)
 }
-
-// =============================================================================
-// Utility: Parse raw WebSocket data
-// =============================================================================
-
-/**
- * Parse a raw WebSocket message string into a typed ProtocolMessage.
- * Returns null if parsing fails or the message is invalid.
- */
-export function parseMessage(data: string): ProtocolMessage | null {
-  try {
-    const parsed: unknown = JSON.parse(data)
-    if (isProtocolMessage(parsed)) {
-      return parsed
-    }
-    return null
-  } catch {
-    return null
-  }
-}

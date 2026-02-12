@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { getSprite, buildExecUrl } from './sprites-client.js'
 import { SpriteConnection } from './sprite-connection.js'
 import { getConnectionsByStack } from './connection-store.js'
+import { DEFAULT_SERVER_CMD } from './provisioning.js'
 import type { SystemMessage } from './protocol.js'
 
 const MAX_BUFFER = 50
@@ -110,7 +111,7 @@ function defaultVerifyServer(conn: SpriteConnection): Promise<boolean> {
 
 /** Default: restart Python WS server via exec. */
 async function defaultRestartServer(spriteName: string, token: string): Promise<void> {
-  const url = buildExecUrl(spriteName, ['bash', '-c', 'cd /workspace && PYTHONPATH=/workspace/.os /workspace/.os/.venv/bin/python3 -m src.server'])
+  const url = buildExecUrl(spriteName, DEFAULT_SERVER_CMD)
   const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } })
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => { ws.close(); resolve() }, 3_000)

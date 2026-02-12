@@ -68,7 +68,8 @@ export async function handleApiProxy(
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
   const token = xApiKey ?? bearerToken
 
-  if (!proxyToken || !token || token !== proxyToken) {
+  const { timingSafeEqual } = await import('node:crypto')
+  if (!proxyToken || !token || Buffer.byteLength(token) !== Buffer.byteLength(proxyToken) || !timingSafeEqual(Buffer.from(token), Buffer.from(proxyToken))) {
     res.writeHead(401, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ error: 'Invalid or missing proxy token' }))
     return

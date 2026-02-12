@@ -28,8 +28,6 @@ import { resetSupabaseClient } from '../src/auth.js'
 import {
   provisionSprite,
   ensureSpriteProvisioned,
-  generateSpriteName,
-  buildServerExecUrl,
 } from '../src/provisioning.js'
 
 // -- Setup --
@@ -56,27 +54,6 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.SUPABASE_URL
   delete process.env.SUPABASE_SERVICE_KEY
-})
-
-// -- generateSpriteName --
-
-describe('generateSpriteName', () => {
-  it('generates a name with sd- prefix from stack ID', () => {
-    const name = generateSpriteName('stack_123')
-    expect(name).toMatch(/^sd-stack-123-[a-z0-9]{4}$/)
-  })
-
-  it('lowercases and strips invalid chars', () => {
-    const name = generateSpriteName('Stack.With$Specials!')
-    expect(name).toMatch(/^sd-stack-with-specials--[a-z0-9]{4}$/)
-  })
-
-  it('truncates long IDs', () => {
-    const longId = 'a'.repeat(100)
-    const name = generateSpriteName(longId)
-    // sd- (3) + 40 chars + - (1) + 4 = 48 max
-    expect(name.length).toBeLessThanOrEqual(49)
-  })
 })
 
 // -- provisionSprite --
@@ -178,46 +155,5 @@ describe('ensureSpriteProvisioned', () => {
 
     expect(createSprite).toHaveBeenCalled()
     expect(result.spriteStatus).toBe('active')
-  })
-})
-
-// -- buildServerExecUrl --
-
-describe('buildServerExecUrl', () => {
-  it('delegates to buildExecUrl with proxy env vars for Sprites', () => {
-    process.env.SPRITES_PROXY_TOKEN = 'proxy-tok'
-    process.env.BRIDGE_PUBLIC_URL = 'https://ws.stackdocs.io'
-    vi.mocked(buildExecUrl).mockReturnValue('wss://exec-url')
-
-    const url = buildServerExecUrl('my-sprite')
-
-    expect(buildExecUrl).toHaveBeenCalledWith(
-      'my-sprite',
-      ['bash', '-c', 'cd /workspace && PYTHONPATH=/workspace/.os /workspace/.os/.venv/bin/python3 -m src.server'],
-      {
-        ANTHROPIC_BASE_URL: 'https://ws.stackdocs.io/v1/proxy/anthropic',
-        ANTHROPIC_API_KEY: 'proxy-tok',
-        MISTRAL_BASE_URL: 'https://ws.stackdocs.io/v1/proxy/mistral',
-        MISTRAL_API_KEY: 'proxy-tok',
-      },
-    )
-    expect(url).toBe('wss://exec-url')
-
-    delete process.env.SPRITES_PROXY_TOKEN
-    delete process.env.BRIDGE_PUBLIC_URL
-  })
-
-  it('defaults BRIDGE_PUBLIC_URL to ws.stackdocs.io', () => {
-    process.env.SPRITES_PROXY_TOKEN = 'tok'
-    delete process.env.BRIDGE_PUBLIC_URL
-    vi.mocked(buildExecUrl).mockReturnValue('wss://exec-url')
-
-    buildServerExecUrl('my-sprite')
-
-    const envVars = vi.mocked(buildExecUrl).mock.calls[0][2] as Record<string, string>
-    expect(envVars.ANTHROPIC_BASE_URL).toBe('https://ws.stackdocs.io/v1/proxy/anthropic')
-    expect(envVars.MISTRAL_BASE_URL).toBe('https://ws.stackdocs.io/v1/proxy/mistral')
-
-    delete process.env.SPRITES_PROXY_TOKEN
   })
 })

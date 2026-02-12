@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 
 from src.runtime import AgentRuntime
+from tests.runtime_helpers import run_mission, resume_mission
 
 
 # -- Mock SDK types matching claude_agent_sdk interface ----------------------
@@ -102,7 +103,7 @@ async def test_streams_text_tool_complete_events(runtime, sent):
     ]
 
     with _mock_sdk(messages):
-        await runtime.run_mission("Extract invoices", request_id="req-1")
+        await run_mission(runtime, "Extract invoices", request_id="req-1")
 
     events = _agent_events(sent)
     assert len(events) == 4
@@ -125,7 +126,7 @@ async def test_text_block_maps_to_text_event(runtime, sent):
         MockResultMessage(),
     ]
     with _mock_sdk(messages):
-        await runtime.run_mission("Hi", request_id="req-2")
+        await run_mission(runtime, "Hi", request_id="req-2")
 
     text_events = _events_by_type(sent, "text")
     assert len(text_events) == 1
@@ -139,7 +140,7 @@ async def test_tool_use_block_maps_to_tool_event(runtime, sent):
         MockResultMessage(),
     ]
     with _mock_sdk(messages):
-        await runtime.run_mission("List files", request_id="req-3")
+        await run_mission(runtime, "List files", request_id="req-3")
 
     tool_events = _events_by_type(sent, "tool")
     assert len(tool_events) == 1
@@ -152,7 +153,7 @@ async def test_result_message_maps_to_complete_event(runtime, sent):
     """ResultMessage maps to event_type='complete' with session_id in meta."""
     messages = [MockResultMessage(session_id="sess-xyz")]
     with _mock_sdk(messages):
-        await runtime.run_mission("Do something", request_id="req-4")
+        await run_mission(runtime, "Do something", request_id="req-4")
 
     complete = _events_by_type(sent, "complete")
     assert len(complete) == 1
@@ -169,7 +170,7 @@ async def test_thinking_block_is_skipped(runtime, sent):
         MockResultMessage(),
     ]
     with _mock_sdk(messages):
-        await runtime.run_mission("Think about it", request_id="req-5")
+        await run_mission(runtime, "Think about it", request_id="req-5")
 
     events = _agent_events(sent)
     event_types = [e["payload"]["event_type"] for e in events]
@@ -195,8 +196,8 @@ async def test_mission_lock_serialization(send_fn):
 
     with _mock_sdk_generator(slow_messages):
         await asyncio.gather(
-            runtime.run_mission("first", request_id="r1"),
-            runtime.run_mission("second", request_id="r2"),
+            run_mission(runtime, "first", request_id="r1"),
+            run_mission(runtime, "second", request_id="r2"),
         )
 
     assert len(timestamps) == 4
@@ -217,7 +218,8 @@ async def test_resume_uses_session_id(runtime, sent):
     captured_options = {}
 
     with _mock_sdk(messages, capture_options=captured_options):
-        await runtime.resume_mission(
+        await resume_mission(
+            runtime,
             text="Change vendor to Acme",
             session_id="sess-original",
             request_id="req-resume",
@@ -235,7 +237,7 @@ async def test_resume_uses_session_id(runtime, sent):
 async def test_sdk_error_sends_error_event(runtime, sent):
     """Exception in SDK produces agent_event with event_type='error'."""
     with _mock_sdk_error(RuntimeError("SDK crashed")):
-        await runtime.run_mission("Fail please", request_id="req-err")
+        await run_mission(runtime, "Fail please", request_id="req-err")
 
     error_events = _events_by_type(sent, "error")
     assert len(error_events) == 1
@@ -250,7 +252,7 @@ async def test_error_during_streaming_sends_error(runtime, sent):
         raise ConnectionError("Lost connection")
 
     with _mock_sdk_generator(lambda: failing_messages()):
-        await runtime.run_mission("Start work", request_id="req-mid-err")
+        await run_mission(runtime, "Start work", request_id="req-mid-err")
 
     text_events = _events_by_type(sent, "text")
     error_events = _events_by_type(sent, "error")
@@ -272,7 +274,7 @@ async def test_loads_memory_as_system_prompt(runtime, sent):
 
     with _mock_sdk(messages, capture_options=captured_options), \
          patch("src.runtime.load_memory", side_effect=mock_load_memory):
-        await runtime.run_mission("Extract", request_id="req-soul")
+        await run_mission(runtime, "Extract", request_id="req-soul")
 
     assert captured_options.get("system_prompt") == memory_content
 
@@ -287,7 +289,7 @@ async def test_fallback_prompt_when_no_memory(runtime, sent):
 
     with _mock_sdk(messages, capture_options=captured_options), \
          patch("src.runtime.load_memory", side_effect=mock_load_memory):
-        await runtime.run_mission("Extract", request_id="req-fallback")
+        await run_mission(runtime, "Extract", request_id="req-fallback")
 
     # Empty string is falsy, so runtime doesn't pass system_prompt to SDK
     assert not captured_options.get("system_prompt")
@@ -299,7 +301,7 @@ async def test_session_id_stored_after_mission(runtime, sent):
     """After a mission completes, runtime.last_session_id is set."""
     messages = [MockResultMessage(session_id="sess-stored")]
     with _mock_sdk(messages):
-        await runtime.run_mission("Do work", request_id="req-store")
+        await run_mission(runtime, "Do work", request_id="req-store")
 
     assert runtime.last_session_id == "sess-stored"
 
@@ -315,7 +317,8 @@ async def test_resume_registers_mcp_tools(runtime, sent):
     captured_options = {}
 
     with _mock_sdk(messages, capture_options=captured_options):
-        await runtime.resume_mission(
+        await resume_mission(
+            runtime,
             text="Follow up question",
             session_id="sess-original-2",
             request_id="req-resume-tools",
@@ -383,7 +386,8 @@ async def test_resume_fallback_on_error(runtime, sent):
 
     with stack:
         runtime.last_session_id = "sess-expired"
-        await runtime.resume_mission(
+        await resume_mission(
+            runtime,
             text="Continue please",
             session_id="sess-expired",
             request_id="req-fallback",
@@ -414,7 +418,7 @@ async def test_buffer_receives_agent_response(runtime, sent):
     ]
 
     with _mock_sdk(messages):
-        await runtime.run_mission("Test buffer", request_id="req-buf")
+        await run_mission(runtime, "Test buffer", request_id="req-buf")
 
     assert runtime._buffer.agent_response == "Part 1 Part 2"
 
@@ -476,7 +480,7 @@ async def test_no_memory_tools_without_db(runtime, sent):
     messages = [MockResultMessage()]
 
     with _mock_sdk(messages, capture_options=captured_options):
-        await runtime.run_mission("Test", request_id="req-no-mem")
+        await run_mission(runtime, "Test", request_id="req-no-mem")
 
     # Verify MCP server was created (has canvas tools at minimum)
     assert captured_options.get("mcp_servers") is not None

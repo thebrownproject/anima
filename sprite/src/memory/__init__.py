@@ -18,6 +18,14 @@ ALL_MEMORY_FILES = [SOUL_MD, OS_MD, TOOLS_MD, FILES_MD, USER_MD, CONTEXT_MD]
 DAEMON_MANAGED_FILES = [TOOLS_MD, FILES_MD, USER_MD, CONTEXT_MD]
 
 
+def read_safe(path: Path) -> str:
+    """Read file content safely, returning empty string if file doesn't exist."""
+    try:
+        return path.read_text().strip()
+    except FileNotFoundError:
+        return ""
+
+
 def ensure_templates() -> None:
     """Safety net — create daemon-managed memory files if missing.
 

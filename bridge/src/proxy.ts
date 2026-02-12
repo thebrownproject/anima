@@ -12,10 +12,6 @@ export function getSpriteConnection(stackId: string): SpriteConnection | undefin
   return spriteConnections.get(stackId)
 }
 
-export function getSpriteConnectionCount(): number {
-  return spriteConnections.size
-}
-
 /**
  * Create a SpriteConnection, register it, and wire up reconnection on close.
  * Extracted so reconnect.ts can call the same logic for re-establishment.

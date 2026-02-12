@@ -26,10 +26,6 @@ export function stopKeepalive(stackId: string): void {
   }
 }
 
-export function isKeepaliveActive(stackId: string): boolean {
-  return timers.has(stackId)
-}
-
 /** For testing — reset all timers. */
 export function resetKeepalives(): void {
   for (const interval of timers.values()) {

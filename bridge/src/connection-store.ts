@@ -40,10 +40,6 @@ export function removeConnection(connectionId: string): void {
   connections.delete(connectionId)
 }
 
-export function getPending(connectionId: string): { ws: WebSocket; stackId: string; timer: ReturnType<typeof setTimeout> } | undefined {
-  return pendingAuth.get(connectionId)
-}
-
 export function setPending(connectionId: string, entry: { ws: WebSocket; stackId: string; timer: ReturnType<typeof setTimeout> }): void {
   pendingAuth.set(connectionId, entry)
 }

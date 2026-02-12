@@ -358,7 +358,7 @@ def is_websocket_message(value: Any) -> bool:
     return (
         isinstance(value.get("type"), str)
         and isinstance(value.get("id"), str)
-        and isinstance(value.get("timestamp"), (int, float))
+        and isinstance(value.get("timestamp"), int)
     )
 
 
@@ -534,6 +534,8 @@ def to_dict(message: ProtocolMessage) -> dict[str, Any]:
 
     # Convert AgentEventMeta field names from snake_case to camelCase
     # to match the TypeScript interface (extractionId, sessionId)
+    # WARNING: Always use to_json()/to_dict() for serialization, never dataclasses.asdict() —
+    # asdict() would emit snake_case field names which the frontend cannot parse.
     if message.type == "agent_event" and result["payload"].get("meta"):
         meta = result["payload"]["meta"]
         new_meta: dict[str, Any] = {}

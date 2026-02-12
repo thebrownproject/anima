@@ -27,7 +27,7 @@ export interface ProvisionResult {
 
 // -- Config --
 
-const DEFAULT_SERVER_CMD = ['bash', '-c', 'cd /workspace && PYTHONPATH=/workspace/.os /workspace/.os/.venv/bin/python3 -m src.server']
+export const DEFAULT_SERVER_CMD = ['bash', '-c', 'cd /workspace && PYTHONPATH=/workspace/.os /workspace/.os/.venv/bin/python3 -m src.server']
 
 // API keys proxied through Bridge — Sprites never hold master keys (m7b.3.6).
 // Sprites use ANTHROPIC_BASE_URL / MISTRAL_BASE_URL pointing to Bridge proxy,
@@ -64,7 +64,7 @@ async function updateSpriteStatus(
  * Generate a unique sprite name from a stack ID.
  * Sprites.dev names must be lowercase alphanumeric + hyphens.
  */
-export function generateSpriteName(stackId: string): string {
+function generateSpriteName(stackId: string): string {
   const clean = stackId.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40)
   const suffix = Date.now().toString(36).slice(-4)
   return `sd-${clean}-${suffix}`
@@ -134,7 +134,7 @@ export async function ensureSpriteProvisioned(
  * Build the exec URL for starting the Sprite's Python WS server.
  * Exposed so index.ts can open the WS connection after provisioning.
  */
-export function buildServerExecUrl(spriteName: string): string {
+function buildServerExecUrl(spriteName: string): string {
   const envVars = getEnvVarsForSprite()
   return buildExecUrl(spriteName, DEFAULT_SERVER_CMD, envVars)
 }

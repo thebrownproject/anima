@@ -234,7 +234,6 @@ describe('proxy module', () => {
 
   it('tracks stack_id to active Sprite connection', async () => {
     await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    expect(proxyModule.getSpriteConnectionCount()).toBe(1)
 
     const conn = proxyModule.getSpriteConnection('stack-1')
     expect(conn).toBeDefined()
@@ -251,7 +250,6 @@ describe('proxy module', () => {
 
     // Same object reference
     expect(second).toBe(first)
-    expect(proxyModule.getSpriteConnectionCount()).toBe(1)
   })
 
   it('forwards messages from browser to Sprite via forwardToSprite', async () => {
@@ -275,10 +273,8 @@ describe('proxy module', () => {
 
   it('cleans up on disconnectSprite', async () => {
     await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    expect(proxyModule.getSpriteConnectionCount()).toBe(1)
 
     proxyModule.disconnectSprite('stack-1')
-    expect(proxyModule.getSpriteConnectionCount()).toBe(0)
     expect(proxyModule.getSpriteConnection('stack-1')).toBeUndefined()
   })
 })

@@ -9,7 +9,6 @@ import { getSpriteConnection } from '../src/proxy.js'
 import {
   startKeepalive,
   stopKeepalive,
-  isKeepaliveActive,
   resetKeepalives,
   KEEPALIVE_INTERVAL_MS,
 } from '../src/keepalive.js'
@@ -38,7 +37,6 @@ describe('keepalive', () => {
     } as any)
 
     startKeepalive('stack-1')
-    expect(isKeepaliveActive('stack-1')).toBe(true)
 
     // Advance by 15s — should trigger one ping
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)
@@ -70,7 +68,6 @@ describe('keepalive', () => {
 
     // Stop keepalive (simulating last browser disconnect)
     stopKeepalive('stack-1')
-    expect(isKeepaliveActive('stack-1')).toBe(false)
 
     // Advance more time — no additional pings
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS * 3)
@@ -102,8 +99,7 @@ describe('keepalive', () => {
 
     // No connection, so no send call
     // (getSpriteConnection returned undefined)
-    // This just verifies no error is thrown
-    expect(isKeepaliveActive('stack-1')).toBe(true)
+    // This just verifies no error is thrown and no crash occurs
   })
 
   it('manages multiple stacks independently', () => {

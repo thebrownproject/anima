@@ -10,7 +10,7 @@ import logging
 import time
 from pathlib import Path
 
-from . import ALL_MEMORY_FILES, DAEMON_MANAGED_FILES, TOOLS_MD, FILES_MD, USER_MD, CONTEXT_MD
+from . import ALL_MEMORY_FILES, DAEMON_MANAGED_FILES, TOOLS_MD, FILES_MD, USER_MD, CONTEXT_MD, read_safe
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ MAX_TOKENS = 4096
 SYSTEM_PROMPT = (
     "You are a memory curator. Extract learnings from these observations. "
     "Extract NEW learnings only. When updating md files, output the complete file. "
-    "Stay under the line limit. Prioritize: recent corrections > active tasks > "
+    "Prioritize: recent corrections > active tasks > "
     "active preferences > key facts > historical context. "
     "Remove contradicted or completed information."
 )
@@ -43,13 +43,6 @@ _ALL_PREFIXES = (
     "NONE",
     *_MD_UPDATE_MAP.keys(),
 )
-
-
-def _read_safe(path: Path) -> str:
-    try:
-        return path.read_text().strip()
-    except FileNotFoundError:
-        return ""
 
 
 def _build_user_message(memory_state: dict[Path, str], observations: list[dict]) -> str:
@@ -176,7 +169,7 @@ class ObservationProcessor:
             return
 
         # Read current memory file state
-        memory_state = {path: _read_safe(path) for path in ALL_MEMORY_FILES}
+        memory_state = {path: read_safe(path) for path in ALL_MEMORY_FILES}
 
         user_msg = _build_user_message(memory_state, observations)
 
@@ -221,7 +214,7 @@ class ObservationProcessor:
         # Mark observations as processed
         placeholders = ",".join("?" for _ in obs_ids)
         await self._transcript.execute(
-            f"UPDATE observations SET processed = 1 WHERE id IN ({placeholders})",
+            "UPDATE observations SET processed = 1 WHERE id IN (" + placeholders + ")",
             tuple(obs_ids),
         )
 
