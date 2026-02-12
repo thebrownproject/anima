@@ -12,18 +12,19 @@ export default function DesktopPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params)
   const cards = useDesktopStore((s) => s.cards)
 
-  // Seed a demo card so there's something visible on first load
+  // Seed demo cards so there's something to play with
   useEffect(() => {
     const { cards: c, addCard } = useDesktopStore.getState()
-    if (Object.keys(c).length === 0) {
-      addCard({
-        id: 'demo-1',
-        title: 'Invoice Summary',
-        blocks: [],
-        position: { x: 100, y: 100 },
-        zIndex: 1,
-      })
-    }
+    const demos = [
+      { id: 'demo-1', title: 'Invoice Summary', position: { x: 80, y: 80 } },
+      { id: 'demo-2', title: 'Q4 Revenue Breakdown', position: { x: 420, y: 100 } },
+      { id: 'demo-3', title: 'Supplier Contacts', position: { x: 160, y: 340 } },
+      { id: 'demo-4', title: 'Expense Report', position: { x: 520, y: 360 } },
+      { id: 'demo-5', title: 'Tax Deductions', position: { x: 300, y: 580 } },
+    ]
+    demos.forEach((d, i) => {
+      if (!c[d.id]) addCard({ ...d, blocks: [], zIndex: i + 1 })
+    })
   }, [])
 
   return (

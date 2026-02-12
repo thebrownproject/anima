@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback, type ReactNode } from 'react'
+import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
@@ -17,7 +17,18 @@ const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
 
 export function DesktopCard({ card, children }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const positionRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+
+  // Local position tracked in ref during drag (no re-renders)
+  const localPos = useRef({ x: card.position.x, y: card.position.y })
+
+  // Sync from store when not dragging (external updates like canvas_update)
+  useEffect(() => {
+    if (!isDragging) {
+      localPos.current = { x: card.position.x, y: card.position.y }
+    }
+  }, [card.position.x, card.position.y, isDragging])
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -25,6 +36,10 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       useDesktopStore.getState().bringToFront(card.id)
 
       if (!cardRef.current) return
+      // Snapshot current position into local ref
+      const current = useDesktopStore.getState().cards[card.id]
+      if (current) localPos.current = { ...current.position }
+
       setIsDragging(true)
       cardRef.current.setPointerCapture(e.pointerId)
     },
@@ -35,15 +50,18 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
     (e: React.PointerEvent) => {
       if (!isDragging) return
       e.stopPropagation()
-      const { cards, moveCard, view } = useDesktopStore.getState()
-      const current = cards[card.id]
-      if (!current) return
-      moveCard(card.id, {
-        x: current.position.x + e.movementX / view.scale,
-        y: current.position.y + e.movementY / view.scale,
-      })
+
+      const { view } = useDesktopStore.getState()
+      localPos.current.x += e.movementX / view.scale
+      localPos.current.y += e.movementY / view.scale
+
+      // Direct DOM update — no React re-render
+      if (positionRef.current) {
+        positionRef.current.style.left = `${localPos.current.x}px`
+        positionRef.current.style.top = `${localPos.current.y}px`
+      }
     },
-    [isDragging, card.id],
+    [isDragging],
   )
 
   const handlePointerUp = useCallback(
@@ -52,8 +70,11 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       e.stopPropagation()
       setIsDragging(false)
       cardRef.current?.releasePointerCapture(e.pointerId)
+
+      // Sync final position to Zustand on drop
+      useDesktopStore.getState().moveCard(card.id, { ...localPos.current })
     },
-    [isDragging],
+    [isDragging, card.id],
   )
 
   const handleClose = useCallback(
@@ -66,6 +87,7 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
 
   return (
     <motion.div
+      ref={positionRef}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -87,6 +109,8 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
           cursor: isDragging ? 'grabbing' : 'grab',
           transition: isDragging ? 'none' : undefined,
           transform: isDragging ? 'scale(1.02)' : undefined,
+          userSelect: isDragging ? 'none' : undefined,
+          WebkitUserSelect: isDragging ? 'none' : undefined,
         }}
         className={cn(isDragging && 'shadow-[0_16px_48px_rgba(0,0,0,0.5)]')}
       >
