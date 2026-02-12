@@ -2447,3 +2447,52 @@ Solo mission on m7b.7 (Memory System Redesign), completing T8 and T9 with inspec
 - Deploy code to test sprite, write and run E2E hook verification test (T10). Then m7b.7 feature is complete.
 
 ---
+
+## [2026-02-12 21:10] Session 152
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+Completed two Glass Desktop UI tasks via orchestrated and solo modes.
+
+**Task m7b.4.12.6 — WebSocket provider + canvas_update wiring** (orchestrated: Pathfinder → Builder → Inspector):
+- Created `frontend/components/desktop/ws-provider.tsx` (~131 lines): React context provider wrapping `WebSocketManager` in `useRef`, auto-connects on mount, dispatches messages to Zustand stores.
+- `canvas_update` → desktop-store (`addCard` with auto-placed position, `updateCard`, `removeCard`)
+- `agent_event` → chat-store (`appendToLastAgent` for streaming, `addMessage` for tool/error/complete)
+- Created `frontend/components/desktop/auto-placer.ts` (~42 lines): pure function placing new cards in grid pattern from viewport center, SSR-safe.
+- Modified `frontend/app/(desktop)/stacks/[id]/page.tsx`: wrapped in `<WebSocketProvider>`, removed demo card seeding.
+- Inspector verified 7/7 test criteria pass. Fixed minor type issue (`Record<string, unknown>` → `Partial<Omit<DesktopCard, 'id'>>`).
+
+**Task m7b.4.12.8 — Chat bar (bottom pill)** (solo with design brainstorm):
+- Created `frontend/components/desktop/chat-bar.tsx` (~175 lines): voice-forward chat bar inspired by ChatGPT/Gemini/Claude input patterns but adapted for glass desktop OS.
+- Layout: glass rounded-3xl rectangle (500px), two states — idle (action bar with "Ask anything..." hover zone) and active (textarea + send button).
+- Idle state: `[+]` attach left, center clickable hover zone with placeholder, mic + chat-toggle right.
+- Active state: textarea appears above action bar, send button in top-right aligned with chat icon below.
+- Suggestion chips float above bar when agent sends them, disappear when typing.
+- Agent streaming glow: subtle pulsing cyan/blue/purple gradient on bar border.
+- All buttons use `GlassButton` component for consistent icon centering.
+- Installed `@einui/glass-tooltip` — glass-styled tooltips on all buttons (chat bar + top bar), 800ms delay, shared provider at page level.
+
+**Top bar tweaks:**
+- System tray icons: `rounded-xl` → `rounded-full` for proper circles.
+- Back button chevron: `-ml-0.5` nudge for visual centering.
+- Added glass tooltips to all top bar buttons (Documents, Apps, Settings, Back, New workspace, Search, Notifications, Account).
+
+### Decisions Made
+- **Two-row glass bar over single-line pill**: Brainstormed extensively with user. Reference prototype's single-line pill with chips was too crowded. Industry standard (ChatGPT, Gemini, Claude) is two-row with textarea + action bar. User wanted voice-forward but settled on "clean glass bar with text input always available."
+- **Chips float above, not inside**: User wanted bar to be lightweight. Chips are contextual (agent-sent only), not permanent UI.
+- **No placeholder text initially, then added "Ask anything..."**: Started with empty bar for Her/Jarvis aesthetic, but user agreed discoverability matters for a business tool.
+- **Send button in textarea area, not action bar**: Prevents mic/chat icons from shifting when text is entered.
+- **GlassTooltipProvider at page level**: Shared 800ms delay for both top bar and chat bar tooltips.
+
+### Gotchas
+- Empty `<button>` with `flex-1` collapses to zero height — needs explicit `h-9`.
+- Action bar padding changing between idle/active states (`py-2.5` vs `pb-3 pt-1`) caused icons to nudge up — fixed with consistent `py-2.5`.
+- Plain `<button>` with `flex items-center justify-center` didn't center icons as reliably as `GlassButton` component — switched all chat bar buttons to `GlassButton`.
+- `GlassButton` wraps in `<div className="relative inline-block">` then inner `<span>` — this structure centers icons correctly but is worth knowing about.
+- Protocol message type is `'mission'` not `'chat'` — Builder initially used wrong type.
+
+### Next Action
+Continue Glass Desktop UI: tasks 9 (restyle card-renderer for glass), 10 (chat panel), 11 (documents panel), 12 (wallpaper images). Tasks 10+11 are now unblocked by WS provider completion.
+
+---

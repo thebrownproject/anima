@@ -8,7 +8,9 @@ import { DesktopViewport } from '@/components/desktop/desktop-viewport'
 import { DesktopCard } from '@/components/desktop/desktop-card'
 import { DesktopTopBar } from '@/components/desktop/desktop-top-bar'
 import { WebSocketProvider } from '@/components/desktop/ws-provider'
+import { ChatBar } from '@/components/desktop/chat-bar'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 
 export default function DesktopPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -16,40 +18,42 @@ export default function DesktopPage({ params }: { params: Promise<{ id: string }
 
   return (
     <WebSocketProvider stackId={id}>
-      <div className="relative h-svh w-full overflow-hidden">
-        <WallpaperLayer />
+      <GlassTooltipProvider delayDuration={800}>
+        <div className="relative h-svh w-full overflow-hidden">
+          <WallpaperLayer />
 
-        {/* Top bar */}
-        <DesktopTopBar />
+          {/* Top bar */}
+          <DesktopTopBar />
 
-        {/* Canvas viewport */}
-        <DesktopViewport>
-          <AnimatePresence>
-            {Object.values(cards).map((card) => (
-              <DesktopCard key={card.id} card={card}>
-                <div className="p-4 text-sm text-white/60">
-                  Block renderer coming in task 9
-                </div>
-              </DesktopCard>
-            ))}
-          </AnimatePresence>
-        </DesktopViewport>
+          {/* Canvas viewport */}
+          <DesktopViewport>
+            <AnimatePresence>
+              {Object.values(cards).map((card) => (
+                <DesktopCard key={card.id} card={card}>
+                  <div className="p-4 text-sm text-white/60">
+                    Block renderer coming in task 9
+                  </div>
+                </DesktopCard>
+              ))}
+            </AnimatePresence>
+          </DesktopViewport>
 
-        {/* Chat bar */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20" />
+          {/* Chat bar */}
+          <ChatBar />
 
-        {/* Wallpaper picker (bottom-right, above viewport HUD) */}
-        <div className="pointer-events-none absolute bottom-12 right-4 z-10">
-          <div className="pointer-events-auto">
-            <WallpaperPicker />
+          {/* Wallpaper picker (bottom-right, above viewport HUD) */}
+          <div className="pointer-events-none absolute bottom-12 right-4 z-10">
+            <div className="pointer-events-auto">
+              <WallpaperPicker />
+            </div>
+          </div>
+
+          {/* Stack ID for debugging */}
+          <div className="pointer-events-none absolute bottom-4 left-4 z-10 font-mono text-xs text-white/30">
+            stack: {id}
           </div>
         </div>
-
-        {/* Stack ID for debugging */}
-        <div className="pointer-events-none absolute bottom-4 left-4 z-10 font-mono text-xs text-white/30">
-          stack: {id}
-        </div>
-      </div>
+      </GlassTooltipProvider>
     </WebSocketProvider>
   )
 }

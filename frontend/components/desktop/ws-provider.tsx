@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@clerk/nextjs'
 import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
 import type { SpriteToBrowserMessage, BrowserToSpriteMessage } from '@/types/ws-protocol'
-import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { useDesktopStore, type DesktopCard } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { getAutoPosition } from './auto-placer'
 
@@ -56,7 +56,7 @@ export function WebSocketProvider({ stackId, children }: { stackId: string; chil
             zIndex: store.maxZIndex + 1,
           })
         } else if (command === 'update_card') {
-          const updates: Record<string, unknown> = {}
+          const updates: Partial<Omit<DesktopCard, 'id'>> = {}
           if (title !== undefined) updates.title = title
           if (blocks !== undefined) updates.blocks = blocks
           store.updateCard(card_id, updates)
