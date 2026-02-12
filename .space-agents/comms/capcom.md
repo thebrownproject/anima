@@ -2275,3 +2275,45 @@ Started orchestrated mission on m7b.4.12 (Glass Desktop UI). Created 12 child Be
 Task 5: Desktop card component (draggable glass card with title bar, zoom-aware drag, mount/close animations). Context already added to Beads. Then tasks 6-12 to complete the glass desktop.
 
 ---
+
+## [2026-02-12 22:00] Session 146
+
+**Branch:** main | **Git:** clean
+
+### What Happened
+Orchestrated mission on m7b.4.12 (Glass Desktop UI), completed task 5 (Desktop card component) and heavily polished the viewport zoom/pan system.
+
+**Task 5 — Desktop card component** (`components/desktop/desktop-card.tsx`, 139 lines):
+- Draggable glass card with pointer capture + zoom-aware movement (`movementX / view.scale`)
+- Ref-based drag: position tracked in `localPos` ref during drag, direct DOM updates via `positionRef.current.style.left/top`. Zero React re-renders during drag. Single `moveCard()` sync on drop.
+- framer-motion mount/exit animations (scale 0.95→1, apple easing `[0.2, 0.8, 0.2, 1]`)
+- Drag visual: `scale(1.02)` + heavy shadow, `userSelect: none` to prevent text highlight
+- Title bar (h-11) + close button, content area with `stopPropagation` for future interactive content
+- Outer `motion.div` (position/animation) → wrapper div (pointer capture) → `GlassCard` (visual)
+
+**Viewport zoom overhaul** (`components/desktop/desktop-viewport.tsx`, 273 lines):
+- Iterated through 5 zoom approaches before finding the sweet spot
+- Final: fast lerp (0.5) + Excalidraw-style adaptive sensitivity (`delta/500` base + `log10` boost past 100%)
+- Ref-based rendering: `applyAnimationMode()` writes directly to DOM, no React re-renders during zoom/pan
+- Sharp text mode: CSS `zoom` property swaps in 200ms after scrolling stops, re-renders text at native resolution
+- Pan momentum: exponential decay (0.92/frame), velocity tracked via exponential moving average, 60ms pause detection cancels momentum on intentional stop
+- `translate3d` for GPU compositing layer promotion
+
+**Page update** (`app/(desktop)/stacks/[id]/page.tsx`): 5 demo cards seeded, `AnimatePresence` wrapping card iteration.
+
+### Decisions Made
+- **Fast lerp (0.5) over instant zoom**: Excalidraw applies zoom instantly (works for canvas rendering), but DOM transforms need smoothing for mouse wheel discrete notches. Lerp at 0.5 closes half the gap per frame (~66ms to settle) — feels instant on trackpad, smooth on mouse.
+- **CSS zoom swap for sharp text**: `transform: scale()` stretches bitmaps. CSS `zoom` property re-renders at target resolution. Swap between the two: animation mode during interaction, sharp mode on settle.
+- **No lerp on pan**: Pan lerp felt laggy. Pan is instant (direct DOM write) + momentum on release.
+- **Ref-based rendering everywhere**: Both viewport and card drag bypass React entirely during hot-path events. Zustand only synced on settle/drop.
+
+### Gotchas
+- `style.zoom` doesn't exist in TypeScript's `CSSStyleDeclaration` type — needs cast: `(el.style as unknown as Record<string, string>).zoom`
+- Zustand persist means demo cards only seed for missing IDs, not when store is empty (old single card persisted from previous session)
+- Excalidraw's `delta/100` sensitivity is calibrated for canvas rendering, way too aggressive for DOM transforms — `delta/500` is the right ballpark
+- Momentum needs pause detection: exponential moving average retains residual velocity even after user stops — check `performance.now() - lastMoveTime > 60ms` to zero it out
+
+### Next Action
+Task 6: WebSocket provider + canvas_update wiring. Then tasks 7-12 to complete the glass desktop UI.
+
+---
