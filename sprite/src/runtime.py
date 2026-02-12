@@ -19,7 +19,7 @@ from claude_agent_sdk import (
 
 from .protocol import AgentEvent, AgentEventPayload, AgentEventMeta, to_json
 from .agents.shared.canvas_tools import create_canvas_tools
-from .agents.shared.memory_tools import create_memory_tools
+from .tools.memory import create_memory_tools
 from .memory.loader import load as load_memory
 from .memory.journal import append_journal
 from .memory.transcript import TranscriptLogger
