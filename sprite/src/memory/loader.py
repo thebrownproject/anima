@@ -1,63 +1,57 @@
-"""Memory loader — assembles system prompt from memory files + journals."""
+"""Memory loader — assembles system prompt from 6 memory files + pending actions."""
 
-from datetime import datetime, timedelta
+from __future__ import annotations
+
 from pathlib import Path
 
-MEMORY_DIR = Path("/workspace/.os/memory")
-SOUL_MD = MEMORY_DIR / "soul.md"
-USER_MD = MEMORY_DIR / "user.md"
-MEMORY_MD = MEMORY_DIR / "MEMORY.md"
+from . import ALL_MEMORY_FILES
+
+# Map filename stem to section header
+_SECTION_HEADERS = {
+    "soul": "## Soul",
+    "os": "## System",
+    "tools": "## Tools",
+    "files": "## Files",
+    "user": "## User",
+    "context": "## Context",
+}
 
 
 def _read_safe(path: Path) -> str:
-    """Read file, return empty string if missing."""
     try:
         return path.read_text().strip()
     except FileNotFoundError:
         return ""
 
 
-def _journal_path(date_str: str) -> Path:
-    """Return path to journal for given YYYY-MM-DD date."""
-    return MEMORY_DIR / f"{date_str}.md"
+async def _load_pending_actions(memory_db) -> str:
+    rows = await memory_db.fetchall(
+        "SELECT content, priority FROM pending_actions WHERE status = 'pending' ORDER BY priority DESC"
+    )
+    if not rows:
+        return ""
+    lines = [f"- [{r['priority']}] {r['content']}" for r in rows]
+    return "\n".join(lines)
 
 
-def load() -> str:
-    """Load memory context into structured system prompt section.
+async def load(memory_db=None) -> str:
+    """Load memory context into structured system prompt.
 
-    Loads 5 sources in order:
-    1. soul.md — stack identity
-    2. user.md — user preferences
-    3. MEMORY.md — global memory
-    4. Today's journal
-    5. Yesterday's journal
-
-    Returns formatted string for inclusion in system prompt.
+    Reads 6 memory files from .os/memory/ and pending actions from memory.db.
+    Omits empty sections. Returns formatted string for system prompt injection.
     """
-    today = datetime.now().strftime("%Y-%m-%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    sections: list[str] = []
 
-    soul = _read_safe(SOUL_MD)
-    user = _read_safe(USER_MD)
-    memory = _read_safe(MEMORY_MD)
-    today_journal = _read_safe(_journal_path(today))
-    yesterday_journal = _read_safe(_journal_path(yesterday))
+    for path in ALL_MEMORY_FILES:
+        content = _read_safe(path)
+        if not content:
+            continue
+        header = _SECTION_HEADERS.get(path.stem, f"## {path.stem.title()}")
+        sections.append(f"{header}\n\n{content}")
 
-    sections = []
-
-    if soul:
-        sections.append(f"# Stack Memory: soul.md\n\n{soul}")
-
-    if user:
-        sections.append(f"# Stack Memory: user.md\n\n{user}")
-
-    if memory:
-        sections.append(f"# Stack Memory: MEMORY.md\n\n{memory}")
-
-    if yesterday_journal:
-        sections.append(f"# Stack Memory: Yesterday's Journal ({yesterday})\n\n{yesterday_journal}")
-
-    if today_journal:
-        sections.append(f"# Stack Memory: Today's Journal ({today})\n\n{today_journal}")
+    if memory_db is not None:
+        actions = await _load_pending_actions(memory_db)
+        if actions:
+            sections.append(f"## Pending Actions\n\n{actions}")
 
     return "\n\n---\n\n".join(sections) if sections else ""

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for memory system — verifies templates, path constants, ensure_templates."""
+"""Tests for memory system — templates, path constants, ensure_templates, loader, journal, transcript."""
 
 import asyncio
 import json
@@ -34,10 +34,7 @@ memory_module.DAEMON_MANAGED_FILES = [
 
 import src.memory.loader as loader_module
 
-loader_module.MEMORY_DIR = memory_module.MEMORY_DIR
-loader_module.SOUL_MD = memory_module.SOUL_MD
-loader_module.USER_MD = memory_module.USER_MD
-loader_module.MEMORY_MD = memory_module.MEMORY_DIR / "MEMORY.md"
+loader_module.ALL_MEMORY_FILES = memory_module.ALL_MEMORY_FILES
 
 import src.memory.journal as journal_module
 
@@ -198,32 +195,117 @@ async def test_ensure_templates_no_overwrite():
 
 # -- Loader + journal + transcript tests (unchanged) --
 
-async def test_loader():
-    """Loader returns structured prompt."""
-    print("Test 10: Loader assembles system prompt...")
+async def test_loader_all_sections():
+    """Loader returns all 7 sections when populated (6 files + pending actions)."""
+    print("Test 10: Loader returns all 7 sections...")
 
-    memory_module.SOUL_MD.write_text("# Soul\nTest soul content")
-    memory_module.USER_MD.write_text("# User\nTest user content")
-    loader_module.MEMORY_MD.write_text("# Memory\nTest memory content")
+    memory_module.SOUL_MD.write_text("# Soul\nAgent identity")
+    memory_module.OS_MD.write_text("# System\nSystem rules")
+    memory_module.TOOLS_MD.write_text("# Tools\nAvailable tools")
+    memory_module.FILES_MD.write_text("# Files\nFilesystem index")
+    memory_module.USER_MD.write_text("# User\nUser preferences")
+    memory_module.CONTEXT_MD.write_text("# Context\nActive context")
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    (memory_module.MEMORY_DIR / f"{today}.md").write_text("Today's activities")
-    (memory_module.MEMORY_DIR / f"{yesterday}.md").write_text("Yesterday's activities")
+    class MockMemoryDB:
+        async def fetchall(self, sql, params=()):
+            return [
+                {"content": "Review uploaded invoices", "priority": 2},
+                {"content": "Update user profile", "priority": 1},
+            ]
 
-    result = load()
+    result = await load(memory_db=MockMemoryDB())
 
-    assert "Test soul content" in result
-    assert "Test user content" in result
-    assert "Today's activities" in result
-    assert "Yesterday's activities" in result
+    assert "## Soul" in result
+    assert "## System" in result
+    assert "## Tools" in result
+    assert "## Files" in result
+    assert "## User" in result
+    assert "## Context" in result
+    assert "## Pending Actions" in result
+    assert "Agent identity" in result
+    assert "System rules" in result
+    assert "Review uploaded invoices" in result
+    assert "Update user profile" in result
+    # Verify section separator
+    assert "---" in result
 
-    print("  Loader assembled sources correctly")
+    print("  All 7 sections present with correct headers")
+
+
+async def test_loader_omits_empty_sections():
+    """Loader omits empty sections cleanly."""
+    print("Test 11: Loader omits empty sections...")
+
+    # Only write soul and user, leave others empty/missing
+    for path in memory_module.ALL_MEMORY_FILES:
+        if path.exists():
+            path.unlink()
+
+    memory_module.SOUL_MD.write_text("# Soul\nAgent identity")
+    memory_module.USER_MD.write_text("# User\nUser preferences")
+
+    result = await load(memory_db=None)
+
+    assert "## Soul" in result
+    assert "## User" in result
+    assert "## System" not in result
+    assert "## Tools" not in result
+    assert "## Files" not in result
+    assert "## Context" not in result
+    assert "## Pending Actions" not in result
+
+    print("  Empty sections omitted correctly")
+
+
+async def test_loader_reads_os_memory_paths():
+    """Loader reads from .os/memory/ paths (via ALL_MEMORY_FILES)."""
+    print("Test 12: Loader reads from .os/memory/ paths...")
+
+    # ALL_MEMORY_FILES should point into the test MEMORY_DIR
+    for path in loader_module.ALL_MEMORY_FILES:
+        assert "memory" in str(path.parent), f"Path not under memory dir: {path}"
+
+    memory_module.SOUL_MD.write_text("Path test content")
+    result = await load()
+    assert "Path test content" in result
+
+    print("  Reads from correct paths")
+
+
+async def test_loader_no_legacy_references():
+    """Loader has no references to MEMORY.md or journals."""
+    print("Test 13: No legacy MEMORY.md or journal references...")
+
+    source = Path(loader_module.__file__).read_text()
+    assert "MEMORY_MD" not in source, "Loader should not reference MEMORY_MD"
+    assert "MEMORY.md" not in source, "Loader should not reference MEMORY.md"
+    assert "journal" not in source.lower(), "Loader should not reference journals"
+    assert "datetime" not in source, "Loader should not import datetime"
+    assert "timedelta" not in source, "Loader should not import timedelta"
+
+    print("  No legacy references found")
+
+
+async def test_loader_no_db():
+    """Loader works without memory_db (pending actions skipped)."""
+    print("Test 14: Loader works without memory_db...")
+
+    memory_module.SOUL_MD.write_text("# Soul\nTest content")
+
+    result = await load(memory_db=None)
+    assert "Test content" in result
+    assert "Pending Actions" not in result
+
+    result2 = await load()
+    assert "Test content" in result2
+    assert "Pending Actions" not in result2
+
+    print("  Works without memory_db")
 
 
 async def test_journal():
     """Journal appends to correct date file."""
-    print("Test 11: Journal appends...")
+    print("Test 15: Journal appends...")
 
     today = datetime.now().strftime("%Y-%m-%d")
     journal_path = memory_module.MEMORY_DIR / f"{today}.md"
@@ -242,7 +324,7 @@ async def test_journal():
 
 async def test_transcript():
     """Transcript logs valid JSONL."""
-    print("Test 12: Transcript logs JSONL...")
+    print("Test 16: Transcript logs JSONL...")
 
     logger = TranscriptLogger(session_id="test_session_123")
     await logger.log("text", {"content": "Hello world"})
@@ -276,12 +358,16 @@ async def main():
         await test_path_constants()
         await test_ensure_templates_creates_daemon_files()
         await test_ensure_templates_no_overwrite()
-        await test_loader()
+        await test_loader_all_sections()
+        await test_loader_omits_empty_sections()
+        await test_loader_reads_os_memory_paths()
+        await test_loader_no_legacy_references()
+        await test_loader_no_db()
         await test_journal()
         await test_transcript()
 
         print("\n" + "=" * 60)
-        print("All 12 tests passed!")
+        print("All 16 tests passed!")
         print("=" * 60)
 
     finally:
