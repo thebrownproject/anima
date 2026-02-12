@@ -6,6 +6,7 @@ import { WallpaperLayer } from '@/components/wallpaper/wallpaper-layer'
 import { WallpaperPicker } from '@/components/wallpaper/wallpaper-picker'
 import { DesktopViewport } from '@/components/desktop/desktop-viewport'
 import { DesktopCard } from '@/components/desktop/desktop-card'
+import { DesktopTopBar } from '@/components/desktop/desktop-top-bar'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 
 export default function DesktopPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,7 +33,7 @@ export default function DesktopPage({ params }: { params: Promise<{ id: string }
       <WallpaperLayer />
 
       {/* Top bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30" />
+      <DesktopTopBar />
 
       {/* Canvas viewport */}
       <DesktopViewport>

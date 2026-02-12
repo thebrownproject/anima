@@ -2317,3 +2317,49 @@ Orchestrated mission on m7b.4.12 (Glass Desktop UI), completed task 5 (Desktop c
 Task 6: WebSocket provider + canvas_update wiring. Then tasks 7-12 to complete the glass desktop UI.
 
 ---
+
+## [2026-02-12 17:40] Session 149
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+Completed task m7b.4.12.7 (Top bar — three floating pills) in solo mode.
+
+**DesktopTopBar** (`components/desktop/desktop-top-bar.tsx`, ~100 lines):
+- Three-section layout: left app launchers, center workspace tabs, right system tray
+- Left: 3 loose GlassButton circles (FileText, LayoutGrid, SlidersHorizontal)
+- Center: ChevronLeft + GlassTabSwitcher + Plus button
+- Right: GlassPill with zoom %, Search, Bell, User icons
+- `pointer-events-none` container, `pointer-events-auto` on interactive elements
+- Wired to desktop store: `view.scale` for zoom display, `activeWorkspace` for tab state
+
+**GlassTabSwitcher** (`components/desktop/glass-tab-switcher.tsx`, ~145 lines):
+- Custom component inspired by Ein UI glass-tabs styling
+- Glass container (bg-white/10, backdrop-blur-xl, border-white/20) with pulsing cyan/blue/purple glow animation
+- **Sliding glass indicator**: measures active tab via DOM refs (offsetLeft/offsetWidth), animates with Apple easing (cubic-bezier 0.2,0.8,0.2,1)
+- Active tab: bg-white/20 + gradient shimmer (before: pseudo). Inactive: transparent + group-hover highlight
+- **Hover actions**: `...` button (left, absolute) opens glass Popover with Rename/Duplicate/Delete placeholder. `X` button (right, absolute) fires onClose. Both fade in via group-hover:opacity-100
+- Used `group-hover` instead of `hover` on tab button so hovering dots/X keeps tab highlighted
+
+**Glass Popover**: Glass-styled PopoverContent (bg-white/10, backdrop-blur-2xl, rounded-2xl) with sectioned menu items. Placeholder for workspace CRUD — will become shared context menu.
+
+Also installed Ein UI glass-switch component (`components/ui/glass-switch.tsx`) for reference.
+
+### Decisions Made
+- **Ditched GlassTabs for tab switcher**: Ein UI GlassTabs has a hard-coded glow motion.div and its own glass container — creates triple-layer glass when nested inside a pill. Impossible to strip via className. Built custom GlassTabSwitcher with plain buttons instead.
+- **DOM ref measurement for sliding indicator**: Percentage-based positioning (50/50 split) doesn't work with variable-width tab labels. Used `querySelector + offsetLeft/offsetWidth` to measure actual positions.
+- **`data-value` on wrapper div, not button**: Wrapper div is `position: relative` (for absolutely positioned dots/X), which makes it the offsetParent. Button's offsetLeft would be 0 relative to wrapper. Moving data-value to wrapper fixes measurement.
+- **`group-hover` over `hover`**: Dots and X buttons are siblings of the tab button, not children. Regular `hover:bg-white/5` on button disappears when mouse moves to dots/X. `group-hover` on the wrapper keeps all children highlighted.
+- **Even padding with absolute close/dots**: `px-6` symmetric padding, dots at `absolute left-0.5`, X at `absolute right-0.5` — sit inside the padding without affecting tab width.
+- **Right pill height**: Added explicit `h-10` to GlassPill for right system tray to match center tab switcher height.
+
+### Gotchas
+- Ein UI GlassTabsList renders a `<div class="relative">` wrapper with a `<motion.div>` glow sibling — can't be removed or hidden via className props on the List
+- `cn()` (tailwind-merge) needed instead of string concatenation for proper class overriding in GlassPill
+- Active tab border caused size jump — fixed with `border border-transparent` on inactive tabs (same box model, invisible border)
+- `inline-flex` containers don't always respect `h-10` the same way `flex` does — explicit `h-[40px]` was tried but `h-10` works fine
+
+### Next Action
+Continue Glass Desktop UI: tasks 6 (WebSocket provider), 8 (Chat bar), 9 (Card restyle), 10-12.
+
+---
