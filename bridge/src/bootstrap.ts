@@ -68,50 +68,71 @@ async function deployRequirements(spriteName: string): Promise<void> {
 
 const INIT_DB_SCRIPT = `
 import sqlite3
-DB_PATH = "/workspace/.os/memory/agent.db"
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS documents (
-    id TEXT PRIMARY KEY,
-    filename TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    file_size_bytes INTEGER NOT NULL,
-    mime_type TEXT NOT NULL,
-    status TEXT DEFAULT 'processing' CHECK(status IN ('processing','ocr_complete','completed','failed')),
-    display_name TEXT,
-    tags TEXT,
-    summary TEXT,
+
+# transcript.db — append-only conversation log
+t_conn = sqlite3.connect("/workspace/.os/memory/transcript.db")
+t_conn.execute("PRAGMA journal_mode=WAL")
+t_conn.execute("PRAGMA foreign_keys=ON")
+t_conn.execute("PRAGMA busy_timeout=5000")
+t_conn.executescript("""
+CREATE TABLE IF NOT EXISTS observations (
+    id INTEGER PRIMARY KEY,
+    timestamp REAL,
     session_id TEXT,
-    uploaded_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
+    sequence_num INTEGER,
+    user_message TEXT,
+    tool_calls_json TEXT,
+    agent_response TEXT,
+    processed INTEGER DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS ocr_results (
+CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
-    document_id TEXT NOT NULL UNIQUE REFERENCES documents(id),
-    ocr_file_path TEXT NOT NULL,
-    page_count INTEGER NOT NULL,
-    processing_time_ms INTEGER NOT NULL,
-    model TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
+    started_at REAL,
+    ended_at REAL,
+    message_count INTEGER,
+    observation_count INTEGER
 );
-CREATE TABLE IF NOT EXISTS extractions (
-    id TEXT PRIMARY KEY,
-    document_id TEXT NOT NULL REFERENCES documents(id),
-    extracted_fields TEXT NOT NULL,
-    confidence_scores TEXT,
-    mode TEXT NOT NULL,
-    custom_fields TEXT,
-    status TEXT DEFAULT 'completed' CHECK(status IN ('pending','in_progress','completed','failed')),
+""")
+t_conn.close()
+
+# memory.db — searchable learnings archive with FTS5
+m_conn = sqlite3.connect("/workspace/.os/memory/memory.db")
+m_conn.execute("PRAGMA journal_mode=WAL")
+m_conn.execute("PRAGMA foreign_keys=ON")
+m_conn.execute("PRAGMA busy_timeout=5000")
+m_conn.executescript("""
+CREATE TABLE IF NOT EXISTS learnings (
+    id INTEGER PRIMARY KEY,
+    created_at REAL,
     session_id TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
+    type TEXT,
+    content TEXT,
+    source_observation_id INTEGER,
+    confidence REAL
 );
-CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
-    chunk_id, content, source_file, agent_id
+CREATE TABLE IF NOT EXISTS pending_actions (
+    id INTEGER PRIMARY KEY,
+    created_at REAL,
+    content TEXT,
+    priority INTEGER,
+    status TEXT,
+    source_learning_id INTEGER
 );
-"""
-conn = sqlite3.connect(DB_PATH)
-conn.executescript(SCHEMA)
-conn.close()
+CREATE VIRTUAL TABLE IF NOT EXISTS learnings_fts USING fts5(
+    content, type, content=learnings, content_rowid=id
+);
+CREATE TRIGGER IF NOT EXISTS learnings_ai AFTER INSERT ON learnings BEGIN
+    INSERT INTO learnings_fts(rowid, content, type) VALUES (new.id, new.content, new.type);
+END;
+CREATE TRIGGER IF NOT EXISTS learnings_ad AFTER DELETE ON learnings BEGIN
+    INSERT INTO learnings_fts(learnings_fts, rowid, content, type) VALUES ('delete', old.id, old.content, old.type);
+END;
+CREATE TRIGGER IF NOT EXISTS learnings_au AFTER UPDATE ON learnings BEGIN
+    INSERT INTO learnings_fts(learnings_fts, rowid, content, type) VALUES ('delete', old.id, old.content, old.type);
+    INSERT INTO learnings_fts(learnings_fts, rowid, content, type) VALUES (new.id, new.content, new.type);
+END;
+""")
+m_conn.close()
 print("OK")
 `
 
@@ -157,7 +178,7 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   await spriteExec(spriteName,
     `/workspace/.os/.venv/bin/python3 -c '${INIT_DB_SCRIPT.replace(/'/g, "'\\''")}'`,
   )
-  console.log(`[bootstrap] SQLite database initialized`)
+  console.log(`[bootstrap] SQLite databases initialized (transcript.db + memory.db)`)
 
   // 6. Deploy daemon-managed memory templates (only on fresh bootstrap, not overwritten by updates)
   const spriteDir = join(import.meta.dirname, '..', '..', 'sprite')

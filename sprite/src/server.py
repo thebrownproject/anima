@@ -14,7 +14,6 @@ import signal
 
 from .gateway import SpriteGateway
 from .runtime import AgentRuntime
-from .database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,6 @@ PORT = 8765
 async def handle_connection(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
-    db: Database,
     runtime: AgentRuntime,
 ) -> None:
     """Handle a single TCP connection from the Bridge (via Sprites TCP Proxy).
@@ -43,7 +41,7 @@ async def handle_connection(
     # Point the runtime at the new connection's send_fn
     runtime.update_send_fn(send_fn)
 
-    gateway = SpriteGateway(send_fn=send_fn, db=db, runtime=runtime)
+    gateway = SpriteGateway(send_fn=send_fn, runtime=runtime)
 
     try:
         while True:
@@ -70,17 +68,17 @@ async def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, lambda: stop.set_result(None))
 
-    async with Database() as db:
-        # Runtime scoped to server — survives TCP reconnections
-        runtime = AgentRuntime(send_fn=_noop_send, db=db)
+    # Runtime scoped to server — survives TCP reconnections
+    # Task 8 wires in TranscriptDB/MemoryDB
+    runtime = AgentRuntime(send_fn=_noop_send)
 
-        handler = lambda r, w: handle_connection(r, w, db=db, runtime=runtime)
-        server = await asyncio.start_server(handler, HOST, PORT)
-        logger.info("Sprite server listening on tcp://%s:%d", HOST, PORT)
-        await stop
-        server.close()
-        await runtime.cleanup()
-        logger.info("Shutting down...")
+    handler = lambda r, w: handle_connection(r, w, runtime=runtime)
+    server = await asyncio.start_server(handler, HOST, PORT)
+    logger.info("Sprite server listening on tcp://%s:%d", HOST, PORT)
+    await stop
+    server.close()
+    await runtime.cleanup()
+    logger.info("Shutting down...")
 
 
 async def _noop_send(data: str) -> None:

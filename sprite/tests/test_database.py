@@ -1,296 +1,282 @@
-"""Tests for async SQLite database layer."""
+"""Tests for TranscriptDB and MemoryDB async SQLite layers."""
 
 from __future__ import annotations
 
 import asyncio
-import uuid
+import os
 
 import pytest
 
-from src.database import Database
+from src.database import TranscriptDB, MemoryDB
 
 
-DEFAULT_TABLES = {"documents", "ocr_results", "extractions", "memory_fts"}
+# -- Fixtures ----------------------------------------------------------------
+
+@pytest.fixture
+async def transcript_db(tmp_path):
+    path = str(tmp_path / "transcript.db")
+    db = TranscriptDB(db_path=path)
+    await db.connect()
+    yield db
+    await db.close()
 
 
 @pytest.fixture
-async def db(tmp_path):
-    """Yield a connected Database using a temp file, close after test."""
-    path = str(tmp_path / "test.db")
-    database = Database(db_path=path)
-    await database.connect()
-    yield database
-    await database.close()
+async def memory_db(tmp_path):
+    path = str(tmp_path / "memory.db")
+    db = MemoryDB(db_path=path)
+    await db.connect()
+    yield db
+    await db.close()
 
 
-# -- Schema creation ---------------------------------------------------------
+# -- TranscriptDB schema ----------------------------------------------------
 
-async def test_schema_creates_all_tables(db):
-    """All four tables exist after connect: documents, ocr_results, extractions, memory_fts."""
-    rows = await db.fetchall(
+async def test_transcript_tables_created(transcript_db):
+    """transcript.db has observations and sessions tables."""
+    rows = await transcript_db.fetchall(
         "SELECT name FROM sqlite_master WHERE type IN ('table') "
         "AND name NOT LIKE 'sqlite_%'"
     )
-    table_names = {r["name"] for r in rows}
-    assert DEFAULT_TABLES.issubset(table_names), f"Missing tables: {DEFAULT_TABLES - table_names}"
+    names = {r["name"] for r in rows}
+    assert {"observations", "sessions"}.issubset(names)
 
 
-async def test_memory_fts_is_fts5_virtual_table(db):
-    """memory_fts is created as an FTS5 virtual table."""
-    rows = await db.fetchall(
-        "SELECT sql FROM sqlite_master WHERE name = 'memory_fts'"
+async def test_transcript_wal_mode(transcript_db):
+    row = await transcript_db.fetchone("PRAGMA journal_mode")
+    assert row["journal_mode"] == "wal"
+
+
+async def test_transcript_busy_timeout(transcript_db):
+    row = await transcript_db.fetchone("PRAGMA busy_timeout")
+    assert row["timeout"] == 5000
+
+
+async def test_transcript_default_path():
+    db = TranscriptDB()
+    assert db.db_path == "/workspace/.os/memory/transcript.db"
+
+
+# -- TranscriptDB CRUD ------------------------------------------------------
+
+async def test_observations_insert_and_select(transcript_db):
+    await transcript_db.execute(
+        "INSERT INTO observations (timestamp, session_id, sequence_num, user_message, agent_response) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (1707700000.0, "sess-1", 1, "Hello", "Hi there"),
+    )
+    row = await transcript_db.fetchone("SELECT * FROM observations WHERE session_id = ?", ("sess-1",))
+    assert row["user_message"] == "Hello"
+    assert row["agent_response"] == "Hi there"
+    assert row["processed"] == 0  # default
+
+
+async def test_observations_tool_calls_json(transcript_db):
+    import json
+    tools = json.dumps([{"tool": "bash", "input": "ls"}])
+    await transcript_db.execute(
+        "INSERT INTO observations (timestamp, session_id, sequence_num, user_message, tool_calls_json, agent_response) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (1707700001.0, "sess-1", 2, "List files", tools, "Here are the files"),
+    )
+    row = await transcript_db.fetchone("SELECT * FROM observations WHERE sequence_num = ?", (2,))
+    assert json.loads(row["tool_calls_json"]) == [{"tool": "bash", "input": "ls"}]
+
+
+async def test_sessions_insert_and_select(transcript_db):
+    await transcript_db.execute(
+        "INSERT INTO sessions (id, started_at, ended_at, message_count, observation_count) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("sess-abc", 1707700000.0, 1707703600.0, 10, 5),
+    )
+    row = await transcript_db.fetchone("SELECT * FROM sessions WHERE id = ?", ("sess-abc",))
+    assert row["message_count"] == 10
+    assert row["observation_count"] == 5
+
+
+# -- MemoryDB schema --------------------------------------------------------
+
+async def test_memory_tables_created(memory_db):
+    """memory.db has learnings, pending_actions tables and learnings_fts virtual table."""
+    rows = await memory_db.fetchall(
+        "SELECT name FROM sqlite_master WHERE type IN ('table') "
+        "AND name NOT LIKE 'sqlite_%'"
+    )
+    names = {r["name"] for r in rows}
+    assert {"learnings", "pending_actions", "learnings_fts"}.issubset(names)
+
+
+async def test_memory_fts5_virtual_table(memory_db):
+    rows = await memory_db.fetchall(
+        "SELECT sql FROM sqlite_master WHERE name = 'learnings_fts'"
     )
     assert len(rows) == 1
     assert "fts5" in rows[0]["sql"].lower()
 
 
-async def test_schema_idempotent(tmp_path):
-    """Calling connect twice on same DB doesn't fail (IF NOT EXISTS)."""
-    path = str(tmp_path / "idempotent.db")
-    db1 = Database(db_path=path)
-    await db1.connect()
-    await db1.close()
-
-    db2 = Database(db_path=path)
-    await db2.connect()
-    rows = await db2.fetchall(
-        "SELECT name FROM sqlite_master WHERE type IN ('table') "
-        "AND name NOT LIKE 'sqlite_%'"
-    )
-    table_names = {r["name"] for r in rows}
-    assert DEFAULT_TABLES.issubset(table_names)
-    await db2.close()
-
-
-# -- WAL mode ----------------------------------------------------------------
-
-async def test_wal_mode_enabled(db):
-    """PRAGMA journal_mode returns 'wal'."""
-    row = await db.fetchone("PRAGMA journal_mode")
+async def test_memory_wal_mode(memory_db):
+    row = await memory_db.fetchone("PRAGMA journal_mode")
     assert row["journal_mode"] == "wal"
 
 
-# -- CRUD: documents ---------------------------------------------------------
-
-async def test_documents_insert_and_select(db):
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "invoice.pdf", "/workspace/uploads/invoice.pdf", 12345, "application/pdf"),
-    )
-    row = await db.fetchone("SELECT * FROM documents WHERE id = ?", (doc_id,))
-    assert row["filename"] == "invoice.pdf"
-    assert row["file_size_bytes"] == 12345
-    assert row["status"] == "processing"  # default
-    assert row["uploaded_at"] is not None
+async def test_memory_busy_timeout(memory_db):
+    row = await memory_db.fetchone("PRAGMA busy_timeout")
+    assert row["timeout"] == 5000
 
 
-async def test_documents_update(db):
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "old.pdf", "/workspace/uploads/old.pdf", 100, "application/pdf"),
-    )
-    await db.execute(
-        "UPDATE documents SET display_name = ?, status = ? WHERE id = ?",
-        ("Renamed", "completed", doc_id),
-    )
-    row = await db.fetchone("SELECT * FROM documents WHERE id = ?", (doc_id,))
-    assert row["display_name"] == "Renamed"
-    assert row["status"] == "completed"
+async def test_memory_default_path():
+    db = MemoryDB()
+    assert db.db_path == "/workspace/.os/memory/memory.db"
 
 
-async def test_documents_delete(db):
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "trash.pdf", "/workspace/uploads/trash.pdf", 50, "application/pdf"),
-    )
-    await db.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
-    row = await db.fetchone("SELECT * FROM documents WHERE id = ?", (doc_id,))
-    assert row is None
+# -- MemoryDB CRUD ----------------------------------------------------------
 
-
-async def test_documents_status_check_constraint(db):
-    """Invalid status value should raise an IntegrityError."""
-    doc_id = str(uuid.uuid4())
-    with pytest.raises(Exception):
-        await db.execute(
-            "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type, status) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (doc_id, "bad.pdf", "/path", 1, "application/pdf", "INVALID_STATUS"),
-        )
-
-
-# -- CRUD: ocr_results ------------------------------------------------------
-
-async def test_ocr_results_insert_and_select(db):
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "scan.pdf", "/workspace/uploads/scan.pdf", 5000, "application/pdf"),
-    )
-    ocr_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO ocr_results (id, document_id, ocr_file_path, page_count, processing_time_ms, model) "
+async def test_learnings_insert_and_select(memory_db):
+    await memory_db.execute(
+        "INSERT INTO learnings (created_at, session_id, type, content, source_observation_id, confidence) "
         "VALUES (?, ?, ?, ?, ?, ?)",
-        (ocr_id, doc_id, f"/workspace/ocr/{doc_id}.md", 3, 1200, "mistral-ocr"),
+        (1707700000.0, "sess-1", "FACT", "User prefers dark mode", 1, 0.9),
     )
-    row = await db.fetchone("SELECT * FROM ocr_results WHERE id = ?", (ocr_id,))
-    assert row["document_id"] == doc_id
-    assert row["page_count"] == 3
-    assert row["model"] == "mistral-ocr"
+    row = await memory_db.fetchone("SELECT * FROM learnings WHERE session_id = ?", ("sess-1",))
+    assert row["type"] == "FACT"
+    assert row["content"] == "User prefers dark mode"
+    assert row["confidence"] == 0.9
 
 
-async def test_ocr_results_unique_document_id(db):
-    """Only one OCR result per document (UNIQUE constraint)."""
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "dup.pdf", "/path", 100, "application/pdf"),
-    )
-    await db.execute(
-        "INSERT INTO ocr_results (id, document_id, ocr_file_path, page_count, processing_time_ms, model) "
+async def test_learnings_fts_search(memory_db):
+    await memory_db.execute(
+        "INSERT INTO learnings (created_at, session_id, type, content, source_observation_id, confidence) "
         "VALUES (?, ?, ?, ?, ?, ?)",
-        (str(uuid.uuid4()), doc_id, "/workspace/ocr/x.md", 1, 500, "mistral-ocr"),
+        (1707700000.0, "sess-1", "FACT", "User prefers dark mode", 1, 0.9),
     )
-    with pytest.raises(Exception):
-        await db.execute(
-            "INSERT INTO ocr_results (id, document_id, ocr_file_path, page_count, processing_time_ms, model) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (str(uuid.uuid4()), doc_id, "/workspace/ocr/y.md", 2, 600, "claude-pdf"),
-        )
-
-
-# -- CRUD: extractions ------------------------------------------------------
-
-async def test_extractions_insert_and_select(db):
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "inv.pdf", "/path", 200, "application/pdf"),
+    await memory_db.execute(
+        "INSERT INTO learnings (created_at, session_id, type, content, source_observation_id, confidence) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (1707700001.0, "sess-1", "PREFERENCE", "Dates should be DD/MM/YYYY", 2, 0.95),
     )
-    ext_id = str(uuid.uuid4())
-    fields_json = '{"vendor": "Acme", "total": 150.00}'
-    await db.execute(
-        "INSERT INTO extractions (id, document_id, extracted_fields, mode) "
-        "VALUES (?, ?, ?, ?)",
-        (ext_id, doc_id, fields_json, "auto"),
-    )
-    row = await db.fetchone("SELECT * FROM extractions WHERE id = ?", (ext_id,))
-    assert row["extracted_fields"] == fields_json
-    assert row["status"] == "completed"  # default
-
-
-async def test_extractions_update_and_delete(db):
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "x.pdf", "/path", 10, "application/pdf"),
-    )
-    ext_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO extractions (id, document_id, extracted_fields, mode) "
-        "VALUES (?, ?, ?, ?)",
-        (ext_id, doc_id, '{}', "manual"),
-    )
-    await db.execute(
-        "UPDATE extractions SET status = ? WHERE id = ?",
-        ("failed", ext_id),
-    )
-    row = await db.fetchone("SELECT * FROM extractions WHERE id = ?", (ext_id,))
-    assert row["status"] == "failed"
-
-    await db.execute("DELETE FROM extractions WHERE id = ?", (ext_id,))
-    assert await db.fetchone("SELECT * FROM extractions WHERE id = ?", (ext_id,)) is None
-
-
-# -- CRUD: memory_fts -------------------------------------------------------
-
-async def test_memory_fts_insert_and_search(db):
-    await db.execute(
-        "INSERT INTO memory_fts (chunk_id, content, source_file, agent_id) "
-        "VALUES (?, ?, ?, ?)",
-        ("c1", "The user prefers dark mode and metric units", "user.md", "agent-1"),
-    )
-    await db.execute(
-        "INSERT INTO memory_fts (chunk_id, content, source_file, agent_id) "
-        "VALUES (?, ?, ?, ?)",
-        ("c2", "Stack processes invoices from Acme Corp", "soul.md", "agent-1"),
-    )
-    rows = await db.fetchall(
-        "SELECT chunk_id, content FROM memory_fts WHERE memory_fts MATCH ?",
-        ("invoices",),
+    # FTS5 search
+    rows = await memory_db.fetchall(
+        "SELECT content, type FROM learnings_fts WHERE learnings_fts MATCH ?",
+        ("dark mode",),
     )
     assert len(rows) == 1
-    assert rows[0]["chunk_id"] == "c2"
+    assert rows[0]["content"] == "User prefers dark mode"
 
 
-async def test_memory_fts_delete(db):
-    await db.execute(
-        "INSERT INTO memory_fts (chunk_id, content, source_file, agent_id) "
+async def test_pending_actions_insert_and_select(memory_db):
+    await memory_db.execute(
+        "INSERT INTO pending_actions (created_at, content, priority, status, source_learning_id) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (1707700000.0, "Set up Xero integration", 1, "pending", 1),
+    )
+    row = await memory_db.fetchone("SELECT * FROM pending_actions WHERE status = ?", ("pending",))
+    assert row["content"] == "Set up Xero integration"
+    assert row["priority"] == 1
+
+
+async def test_pending_actions_status_update(memory_db):
+    await memory_db.execute(
+        "INSERT INTO pending_actions (created_at, content, priority, status) "
         "VALUES (?, ?, ?, ?)",
-        ("d1", "temporary memory", "scratch.md", "agent-1"),
+        (1707700000.0, "Install pandas", 2, "pending"),
     )
-    await db.execute("DELETE FROM memory_fts WHERE chunk_id = ?", ("d1",))
-    rows = await db.fetchall(
-        "SELECT * FROM memory_fts WHERE memory_fts MATCH ?", ("temporary",)
+    row = await memory_db.fetchone("SELECT * FROM pending_actions WHERE status = ?", ("pending",))
+    await memory_db.execute(
+        "UPDATE pending_actions SET status = ? WHERE id = ?",
+        ("completed", row["id"]),
     )
-    assert len(rows) == 0
+    updated = await memory_db.fetchone("SELECT * FROM pending_actions WHERE id = ?", (row["id"],))
+    assert updated["status"] == "completed"
+
+
+# -- Old Database class is gone ---------------------------------------------
+
+async def test_old_database_class_removed():
+    """The old Database class no longer exists in database.py."""
+    import importlib
+    mod = importlib.import_module("src.database")
+    assert not hasattr(mod, "Database"), "Old Database class should be deleted"
+
+
+# -- Context manager --------------------------------------------------------
+
+async def test_transcript_context_manager(tmp_path):
+    path = str(tmp_path / "ctx_transcript.db")
+    async with TranscriptDB(db_path=path) as db:
+        rows = await db.fetchall(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'observations'"
+        )
+        assert len(rows) == 1
+
+
+async def test_memory_context_manager(tmp_path):
+    path = str(tmp_path / "ctx_memory.db")
+    async with MemoryDB(db_path=path) as db:
+        rows = await db.fetchall(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'learnings'"
+        )
+        assert len(rows) == 1
+
+
+# -- Idempotent schema ------------------------------------------------------
+
+async def test_transcript_schema_idempotent(tmp_path):
+    path = str(tmp_path / "idem_transcript.db")
+    db1 = TranscriptDB(db_path=path)
+    await db1.connect()
+    await db1.close()
+    db2 = TranscriptDB(db_path=path)
+    await db2.connect()
+    rows = await db2.fetchall(
+        "SELECT name FROM sqlite_master WHERE type IN ('table') AND name NOT LIKE 'sqlite_%'"
+    )
+    assert {"observations", "sessions"}.issubset({r["name"] for r in rows})
+    await db2.close()
+
+
+async def test_memory_schema_idempotent(tmp_path):
+    path = str(tmp_path / "idem_memory.db")
+    db1 = MemoryDB(db_path=path)
+    await db1.connect()
+    await db1.close()
+    db2 = MemoryDB(db_path=path)
+    await db2.connect()
+    rows = await db2.fetchall(
+        "SELECT name FROM sqlite_master WHERE type IN ('table') AND name NOT LIKE 'sqlite_%'"
+    )
+    assert {"learnings", "pending_actions", "learnings_fts"}.issubset({r["name"] for r in rows})
+    await db2.close()
+
+
+# -- File creation -----------------------------------------------------------
+
+async def test_db_files_created_at_path(tmp_path):
+    t_path = str(tmp_path / "t.db")
+    m_path = str(tmp_path / "m.db")
+    assert not os.path.exists(t_path)
+    assert not os.path.exists(m_path)
+
+    t = TranscriptDB(db_path=t_path)
+    await t.connect()
+    assert os.path.exists(t_path)
+    await t.close()
+
+    m = MemoryDB(db_path=m_path)
+    await m.connect()
+    assert os.path.exists(m_path)
+    await m.close()
 
 
 # -- Concurrent reads (WAL) -------------------------------------------------
 
-async def test_concurrent_reads_dont_block(db):
-    """Multiple concurrent reads complete without blocking each other (WAL mode)."""
-    doc_id = str(uuid.uuid4())
-    await db.execute(
-        "INSERT INTO documents (id, filename, file_path, file_size_bytes, mime_type) "
+async def test_concurrent_reads_transcript(transcript_db):
+    await transcript_db.execute(
+        "INSERT INTO observations (timestamp, session_id, sequence_num, user_message, agent_response) "
         "VALUES (?, ?, ?, ?, ?)",
-        (doc_id, "concurrent.pdf", "/path", 1, "application/pdf"),
+        (1707700000.0, "sess-c", 1, "test", "reply"),
     )
-
-    async def read_doc():
-        return await db.fetchone("SELECT * FROM documents WHERE id = ?", (doc_id,))
-
-    results = await asyncio.gather(*[read_doc() for _ in range(10)])
-    assert all(r["id"] == doc_id for r in results)
-
-
-# -- Database file path ------------------------------------------------------
-
-async def test_db_file_created_at_path(tmp_path):
-    """Database file is created at the specified path."""
-    import os
-    path = str(tmp_path / "custom.db")
-    assert not os.path.exists(path)
-
-    database = Database(db_path=path)
-    await database.connect()
-    assert os.path.exists(path)
-    await database.close()
-
-
-async def test_default_path_is_workspace():
-    """Default db_path points to /workspace/.os/memory/agent.db."""
-    database = Database()
-    assert database.db_path == "/workspace/.os/memory/agent.db"
-
-
-# -- Context manager ---------------------------------------------------------
-
-async def test_context_manager(tmp_path):
-    """Database works as async context manager."""
-    path = str(tmp_path / "ctx.db")
-    async with Database(db_path=path) as database:
-        rows = await database.fetchall(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'documents'"
-        )
-        assert len(rows) == 1
+    results = await asyncio.gather(*[
+        transcript_db.fetchone("SELECT * FROM observations WHERE session_id = ?", ("sess-c",))
+        for _ in range(10)
+    ])
+    assert all(r["session_id"] == "sess-c" for r in results)

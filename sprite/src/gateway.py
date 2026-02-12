@@ -9,7 +9,6 @@ from typing import Any, Callable, Awaitable
 
 from .protocol import SystemMessage, SystemPayload, to_json, is_websocket_message
 from .runtime import AgentRuntime
-from .database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +30,12 @@ class SpriteGateway:
     def __init__(
         self,
         send_fn: SendFn,
-        db: Database | None = None,
         runtime: AgentRuntime | None = None,
     ) -> None:
         self.send = send_fn
         self.mission_lock = asyncio.Lock()
         # Use provided runtime (server-scoped) or create one (tests)
-        self.runtime = runtime or (AgentRuntime(send_fn=send_fn, db=db) if db else None)
+        self.runtime = runtime or AgentRuntime(send_fn=send_fn)
 
     async def route(self, raw: str) -> None:
         """Parse a raw WS message and dispatch to the correct handler."""

@@ -1,4 +1,11 @@
-"""Async SQLite database layer for the Sprite runtime."""
+"""Async SQLite database layer — TranscriptDB and MemoryDB.
+
+Two databases with distinct access patterns:
+- TranscriptDB: append-only conversation log (hooks write, daemon reads)
+- MemoryDB: searchable learnings archive (daemon writes, agent reads via search_memory)
+
+Schemas must match bridge/src/bootstrap.ts INIT_DB_SCRIPT exactly.
+"""
 
 from __future__ import annotations
 
@@ -9,56 +16,68 @@ import aiosqlite
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = "/workspace/.os/memory/agent.db"
-
-# Schema DDL -- must match bridge/src/bootstrap.ts lines 51-89 exactly
-SCHEMA = """\
-CREATE TABLE IF NOT EXISTS documents (
-    id TEXT PRIMARY KEY,
-    filename TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    file_size_bytes INTEGER NOT NULL,
-    mime_type TEXT NOT NULL,
-    status TEXT DEFAULT 'processing' CHECK(status IN ('processing','ocr_complete','completed','failed')),
-    display_name TEXT,
-    tags TEXT,
-    summary TEXT,
+TRANSCRIPT_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS observations (
+    id INTEGER PRIMARY KEY,
+    timestamp REAL,
     session_id TEXT,
-    uploaded_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
+    sequence_num INTEGER,
+    user_message TEXT,
+    tool_calls_json TEXT,
+    agent_response TEXT,
+    processed INTEGER DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS ocr_results (
+CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
-    document_id TEXT NOT NULL UNIQUE REFERENCES documents(id),
-    ocr_file_path TEXT NOT NULL,
-    page_count INTEGER NOT NULL,
-    processing_time_ms INTEGER NOT NULL,
-    model TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS extractions (
-    id TEXT PRIMARY KEY,
-    document_id TEXT NOT NULL REFERENCES documents(id),
-    extracted_fields TEXT NOT NULL,
-    confidence_scores TEXT,
-    mode TEXT NOT NULL,
-    custom_fields TEXT,
-    status TEXT DEFAULT 'completed' CHECK(status IN ('pending','in_progress','completed','failed')),
-    session_id TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
-    chunk_id, content, source_file, agent_id
+    started_at REAL,
+    ended_at REAL,
+    message_count INTEGER,
+    observation_count INTEGER
 );
 """
 
+MEMORY_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS learnings (
+    id INTEGER PRIMARY KEY,
+    created_at REAL,
+    session_id TEXT,
+    type TEXT,
+    content TEXT,
+    source_observation_id INTEGER,
+    confidence REAL
+);
+CREATE TABLE IF NOT EXISTS pending_actions (
+    id INTEGER PRIMARY KEY,
+    created_at REAL,
+    content TEXT,
+    priority INTEGER,
+    status TEXT,
+    source_learning_id INTEGER
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS learnings_fts USING fts5(
+    content, type, content=learnings, content_rowid=id
+);
+CREATE TRIGGER IF NOT EXISTS learnings_ai AFTER INSERT ON learnings BEGIN
+    INSERT INTO learnings_fts(rowid, content, type) VALUES (new.id, new.content, new.type);
+END;
+CREATE TRIGGER IF NOT EXISTS learnings_ad AFTER DELETE ON learnings BEGIN
+    INSERT INTO learnings_fts(learnings_fts, rowid, content, type) VALUES ('delete', old.id, old.content, old.type);
+END;
+CREATE TRIGGER IF NOT EXISTS learnings_au AFTER UPDATE ON learnings BEGIN
+    INSERT INTO learnings_fts(learnings_fts, rowid, content, type) VALUES ('delete', old.id, old.content, old.type);
+    INSERT INTO learnings_fts(learnings_fts, rowid, content, type) VALUES (new.id, new.content, new.type);
+END;
+"""
 
-class Database:
-    """Async SQLite wrapper. Single connection for MVP, WAL mode for concurrent reads."""
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH) -> None:
-        self.db_path = db_path
+class _BaseDB:
+    """Shared async SQLite wrapper. WAL mode, busy_timeout=5000, foreign_keys=ON."""
+
+    _schema: str = ""
+    _default_path: str = ""
+
+    def __init__(self, db_path: str | None = None) -> None:
+        self.db_path = db_path or self._default_path
         self._conn: aiosqlite.Connection | None = None
 
     async def connect(self) -> None:
@@ -66,7 +85,8 @@ class Database:
         self._conn.row_factory = sqlite3.Row
         await self._conn.execute("PRAGMA journal_mode=WAL")
         await self._conn.execute("PRAGMA foreign_keys=ON")
-        await self._conn.executescript(SCHEMA)
+        await self._conn.execute("PRAGMA busy_timeout=5000")
+        await self._conn.executescript(self._schema)
         logger.info("Database connected: %s", self.db_path)
 
     async def close(self) -> None:
@@ -75,7 +95,6 @@ class Database:
             self._conn = None
 
     async def execute(self, sql: str, params: tuple = ()) -> aiosqlite.Cursor:
-        """Execute a write operation (INSERT/UPDATE/DELETE). Auto-commits."""
         cursor = await self._conn.execute(sql, params)
         await self._conn.commit()
         return cursor
@@ -86,23 +105,30 @@ class Database:
         return cursor
 
     async def fetchone(self, sql: str, params: tuple = ()) -> dict | None:
-        """Execute a query and return one row as a dict, or None."""
         cursor = await self._conn.execute(sql, params)
         row = await cursor.fetchone()
         return dict(row) if row else None
 
     async def fetchall(self, sql: str, params: tuple = ()) -> list[dict]:
-        """Execute a query and return all rows as dicts."""
         cursor = await self._conn.execute(sql, params)
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
 
-    # Alias expected by downstream tool factories (m7b.3.2)
-    query = fetchall
-
-    async def __aenter__(self) -> Database:
+    async def __aenter__(self):
         await self.connect()
         return self
 
     async def __aexit__(self, *exc) -> None:
         await self.close()
+
+
+class TranscriptDB(_BaseDB):
+    """Append-only conversation transcript. Hooks write observations, daemon reads for processing."""
+    _schema = TRANSCRIPT_SCHEMA
+    _default_path = "/workspace/.os/memory/transcript.db"
+
+
+class MemoryDB(_BaseDB):
+    """Searchable learnings archive with FTS5. Daemon writes, agent reads via search_memory."""
+    _schema = MEMORY_SCHEMA
+    _default_path = "/workspace/.os/memory/memory.db"

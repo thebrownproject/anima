@@ -17,7 +17,6 @@ from claude_agent_sdk import (
 )
 
 from .protocol import AgentEvent, AgentEventPayload, AgentEventMeta, to_json
-from .database import Database
 from .agents.shared.canvas_tools import create_canvas_tools
 from .agents.shared.memory_tools import create_memory_tools
 from .memory.loader import load as load_memory
@@ -43,9 +42,8 @@ class AgentRuntime:
     Mission serialization is handled by the gateway's mission_lock.
     """
 
-    def __init__(self, send_fn: SendFn, db: Database) -> None:
+    def __init__(self, send_fn: SendFn) -> None:
         self._send = send_fn
-        self._db = db
         self.last_session_id: str | None = None
         self._transcript: TranscriptLogger | None = None
         self._client: ClaudeSDKClient | None = None
