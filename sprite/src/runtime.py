@@ -9,6 +9,7 @@ from typing import Callable, Awaitable
 from claude_agent_sdk import (
     ClaudeSDKClient,
     ClaudeAgentOptions,
+    HookMatcher,
     AssistantMessage,
     TextBlock,
     ToolUseBlock,
@@ -23,6 +24,7 @@ from .memory.loader import load as load_memory
 from .memory.journal import append_journal
 from .memory.transcript import TranscriptLogger
 from .memory import ensure_templates
+from .memory.hooks import TurnBuffer, create_hook_callbacks
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +44,77 @@ class AgentRuntime:
     Mission serialization is handled by the gateway's mission_lock.
     """
 
-    def __init__(self, send_fn: SendFn) -> None:
+    def __init__(
+        self,
+        send_fn: SendFn,
+        transcript_db: object | None = None,
+        processor: object | None = None,
+    ) -> None:
         self._send = send_fn
         self.last_session_id: str | None = None
         self._transcript: TranscriptLogger | None = None
         self._client: ClaudeSDKClient | None = None
+        self._buffer = TurnBuffer()
+        self._transcript_db = transcript_db
+        self._processor = processor
+        self._hooks: dict | None = None
+        if transcript_db and processor:
+            self._hooks = create_hook_callbacks(
+                transcript_db, processor, self._buffer
+            )
 
-        # Ensure memory templates exist on first boot
         ensure_templates()
 
     async def _indirect_send(self, data: str) -> None:
         """Delegate to the current send_fn. Canvas tools capture this method
         instead of the raw send_fn so they survive TCP reconnections."""
         await self._send(data)
+
+    def _build_hooks_dict(self) -> dict | None:
+        """Build hooks kwarg for ClaudeAgentOptions, or None if no hooks configured."""
+        if not self._hooks:
+            return None
+        # Non-tool hooks: try matcher=None first per KEY DECISIONS.
+        # PostToolUse uses '*' to match all tools.
+        try:
+            return {
+                "UserPromptSubmit": [
+                    HookMatcher(matcher=None, hooks=[self._hooks["on_user_prompt_submit"]]),
+                ],
+                "PostToolUse": [
+                    HookMatcher(matcher="*", hooks=[self._hooks["on_post_tool_use"]]),
+                ],
+                "Stop": [
+                    HookMatcher(matcher=None, hooks=[self._hooks["on_stop"]]),
+                ],
+                "PreCompact": [
+                    HookMatcher(matcher=None, hooks=[self._hooks["on_pre_compact"]]),
+                ],
+            }
+        except Exception:
+            logger.exception("Failed to build hooks dict")
+            return None
+
+    def _build_options(
+        self, *, system_prompt: str | None = None, resume: str | None = None,
+        mcp_servers: dict | None = None,
+    ) -> ClaudeAgentOptions:
+        """Construct ClaudeAgentOptions with hooks registered (if available)."""
+        kwargs: dict = {
+            "max_turns": MAX_TURNS,
+            "permission_mode": "bypassPermissions",
+            "cwd": "/workspace",
+        }
+        if system_prompt:
+            kwargs["system_prompt"] = system_prompt
+        if resume:
+            kwargs["resume"] = resume
+        if mcp_servers:
+            kwargs["mcp_servers"] = mcp_servers
+        hooks = self._build_hooks_dict()
+        if hooks:
+            kwargs["hooks"] = hooks
+        return ClaudeAgentOptions(**kwargs)
 
     def update_send_fn(self, send_fn: SendFn) -> None:
         """Point the runtime at a new connection's send function.
@@ -99,14 +159,9 @@ class AgentRuntime:
             name="sprite", tools=canvas_tools + memory_tools
         )
 
-        # Initialize transcript logger for this session
         self._transcript = TranscriptLogger()
-
-        options = ClaudeAgentOptions(
+        options = self._build_options(
             system_prompt=system_prompt,
-            max_turns=MAX_TURNS,
-            permission_mode="bypassPermissions",
-            cwd="/workspace",
             mcp_servers={"sprite": sprite_server},
         )
 
@@ -181,12 +236,8 @@ class AgentRuntime:
         )
 
         self._transcript = TranscriptLogger()
-
-        options = ClaudeAgentOptions(
+        options = self._build_options(
             system_prompt=system_prompt,
-            max_turns=MAX_TURNS,
-            permission_mode="bypassPermissions",
-            cwd="/workspace",
             mcp_servers={"sprite": sprite_server},
         )
         try:
@@ -217,11 +268,8 @@ class AgentRuntime:
         if not self._transcript:
             self._transcript = TranscriptLogger(session_id=session_id)
 
-        options = ClaudeAgentOptions(
+        options = self._build_options(
             resume=session_id,
-            max_turns=MAX_TURNS,
-            permission_mode="bypassPermissions",
-            cwd="/workspace",
             mcp_servers={"sprite": sprite_server},
         )
         try:
@@ -241,6 +289,7 @@ class AgentRuntime:
         if isinstance(message, AssistantMessage):
             for block in message.content:
                 if isinstance(block, TextBlock):
+                    self._buffer.append_agent_response(block.text)
                     await self._send_event("text", block.text, request_id)
                     if self._transcript:
                         await self._transcript.log("text", {"content": block.text})
