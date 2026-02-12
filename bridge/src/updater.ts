@@ -7,8 +7,8 @@
  *
  * Update flow:
  *   1. Read /workspace/.os/VERSION from sprite (FS API, no wake needed if warm)
- *   2. Compare with CURRENT_VERSION
- *   3. If outdated: deploy new code, optionally update deps, write new VERSION
+ *   2. Compare with CURRENT_VERSION (semver)
+ *   3. If outdated: deploy new code, clean stale files, update deps, write new VERSION
  *   4. Restart the Python server if it's running
  */
 
@@ -16,13 +16,42 @@ import { readFile, writeFile } from './sprites-client.js'
 import { spriteExec } from './sprite-exec.js'
 import { CURRENT_VERSION, deployCode } from './bootstrap.js'
 
-/** Read the current version from a sprite. Returns 0 if VERSION file is missing. */
-async function getSpriteVersion(spriteName: string): Promise<number> {
+/**
+ * Compare two semver strings. Returns:
+ *  -1 if a < b, 0 if a == b, 1 if a > b
+ *
+ * Also handles legacy integer versions (e.g. "3") by treating them as "0.0.3".
+ */
+export function compareSemver(a: string, b: string): number {
+  const parse = (v: string): number[] => {
+    const trimmed = v.trim()
+    // Legacy integer format — treat as 0.0.N
+    if (/^\d+$/.test(trimmed)) {
+      return [0, 0, parseInt(trimmed, 10)]
+    }
+    return trimmed.split('.').map(n => parseInt(n, 10) || 0)
+  }
+
+  const pa = parse(a)
+  const pb = parse(b)
+  const len = Math.max(pa.length, pb.length)
+
+  for (let i = 0; i < len; i++) {
+    const va = pa[i] ?? 0
+    const vb = pb[i] ?? 0
+    if (va < vb) return -1
+    if (va > vb) return 1
+  }
+  return 0
+}
+
+/** Read the current version from a sprite. Returns '0.0.0' if VERSION file is missing. */
+async function getSpriteVersion(spriteName: string): Promise<string> {
   try {
     const content = await readFile(spriteName, '/workspace/.os/VERSION')
-    return parseInt(content.trim(), 10) || 0
+    return content.trim() || '0.0.0'
   } catch {
-    return 0
+    return '0.0.0'
   }
 }
 
@@ -35,7 +64,7 @@ async function getSpriteVersion(spriteName: string): Promise<number> {
 export async function checkAndUpdate(spriteName: string): Promise<boolean> {
   const spriteVersion = await getSpriteVersion(spriteName)
 
-  if (spriteVersion >= CURRENT_VERSION) {
+  if (compareSemver(spriteVersion, CURRENT_VERSION) >= 0) {
     return false
   }
 
@@ -44,9 +73,20 @@ export async function checkAndUpdate(spriteName: string): Promise<boolean> {
   )
   const start = Date.now()
 
+  // Create new directories that may not exist on older sprites
+  await spriteExec(spriteName, 'mkdir -p /workspace/.os/src/tools')
+
   // Deploy new code
   await deployCode(spriteName)
   console.log(`[updater] Code deployed to ${spriteName}`)
+
+  // Clean up stale files from previous versions
+  await spriteExec(spriteName, [
+    'rm -rf /workspace/.os/src/agents',
+    '/workspace/.os/src/memory/journal.py',
+    '/workspace/.os/src/memory/transcript.py',
+  ].join(' '))
+  console.log(`[updater] Cleaned stale files`)
 
   // Update deps if requirements changed (pip install is idempotent — skips already-installed)
   await spriteExec(spriteName,
@@ -54,7 +94,10 @@ export async function checkAndUpdate(spriteName: string): Promise<boolean> {
   )
 
   // Write new VERSION
-  await writeFile(spriteName, '/workspace/.os/VERSION', String(CURRENT_VERSION))
+  await writeFile(spriteName, '/workspace/.os/VERSION', CURRENT_VERSION)
+
+  // Fix ownership
+  await spriteExec(spriteName, 'sudo chown -R sprite:sprite /workspace/.os')
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(1)
   console.log(`[updater] Updated ${spriteName} from v${spriteVersion} to v${CURRENT_VERSION} in ${elapsed}s`)

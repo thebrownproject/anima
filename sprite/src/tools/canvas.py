@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable
 
 from claude_agent_sdk import tool
 
-from ...protocol import (
+from ..protocol import (
     CanvasUpdate,
     CanvasUpdatePayload,
     HeadingBlock,

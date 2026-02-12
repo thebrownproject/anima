@@ -1,7 +1,7 @@
 """Manual test for canvas tools integration — verifies MCP server registration."""
 
 import asyncio
-from src.agents.shared.canvas_tools import create_canvas_tools
+from src.tools.canvas import create_canvas_tools
 from claude_agent_sdk import create_sdk_mcp_server
 
 

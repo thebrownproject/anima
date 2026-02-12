@@ -16,7 +16,7 @@ import { spriteExec } from './sprite-exec.js'
 
 // Current version — bump this when code or deps change.
 // The updater checks this against the sprite's /workspace/.os/VERSION file.
-export const CURRENT_VERSION = 3
+export const CURRENT_VERSION = '0.3.0'
 
 // -- Source code deployment --
 
@@ -31,13 +31,13 @@ export async function deployCode(spriteName: string): Promise<void> {
     'protocol.py',
     'database.py',
     'runtime.py',
-    'agents/shared/__init__.py',
-    'agents/shared/canvas_tools.py',
-    'agents/shared/memory_tools.py',
     'memory/__init__.py',
     'memory/loader.py',
-    'memory/journal.py',
-    'memory/transcript.py',
+    'memory/hooks.py',
+    'memory/processor.py',
+    'tools/__init__.py',
+    'tools/canvas.py',
+    'tools/memory.py',
   ]
 
   for (const file of srcFiles) {
@@ -152,7 +152,7 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   // 1. Create directories and fix ownership (FS API writes as ubuntu, server runs as sprite)
   await spriteExec(spriteName, [
     'sudo chown sprite:sprite /workspace',
-    '&& mkdir -p /workspace/.os/src /workspace/.os/src/agents /workspace/.os/src/agents/shared',
+    '&& mkdir -p /workspace/.os/src /workspace/.os/src/tools',
     '/workspace/.os/src/memory /workspace/.os/memory /workspace/.os/.venv /workspace/.os/apps',
     '/workspace/documents /workspace/ocr /workspace/extractions /workspace/artifacts',
   ].join(' '))
@@ -189,7 +189,7 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   console.log(`[bootstrap] Memory templates created (${DAEMON_MANAGED_FILES.length} daemon-managed)`)
 
   // 7. Write VERSION file
-  await writeFile(spriteName, '/workspace/.os/VERSION', String(CURRENT_VERSION))
+  await writeFile(spriteName, '/workspace/.os/VERSION', CURRENT_VERSION)
 
   // 8. Fix ownership — FS API writes as ubuntu, but server runs as sprite
   await spriteExec(spriteName, 'sudo chown -R sprite:sprite /workspace')

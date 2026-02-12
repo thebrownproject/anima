@@ -12,7 +12,7 @@ vi.mock('../src/sprite-exec.js', () => ({
 }))
 
 import { writeFile } from '../src/sprites-client.js'
-import { deployCode, bootstrapSprite } from '../src/bootstrap.js'
+import { deployCode, bootstrapSprite, CURRENT_VERSION } from '../src/bootstrap.js'
 
 const mockWriteFile = vi.mocked(writeFile)
 
@@ -68,6 +68,27 @@ describe('deployCode', () => {
     expect(paths).not.toContain('/workspace/.os/memory/user.md')
     expect(paths).not.toContain('/workspace/.os/memory/context.md')
   })
+
+  it('deploys new tools/ structure, not old agents/shared/', async () => {
+    await deployCode('test-sprite')
+
+    const calls = mockWriteFile.mock.calls
+    const paths = calls.map(c => c[1] as string)
+
+    // New paths
+    expect(paths).toContain('/workspace/.os/src/tools/canvas.py')
+    expect(paths).toContain('/workspace/.os/src/tools/memory.py')
+    expect(paths).toContain('/workspace/.os/src/tools/__init__.py')
+    expect(paths).toContain('/workspace/.os/src/memory/hooks.py')
+    expect(paths).toContain('/workspace/.os/src/memory/processor.py')
+
+    // Old paths should NOT be deployed
+    expect(paths).not.toContain('/workspace/.os/src/agents/shared/canvas_tools.py')
+    expect(paths).not.toContain('/workspace/.os/src/agents/shared/memory_tools.py')
+    expect(paths).not.toContain('/workspace/.os/src/agents/shared/__init__.py')
+    expect(paths).not.toContain('/workspace/.os/src/memory/journal.py')
+    expect(paths).not.toContain('/workspace/.os/src/memory/transcript.py')
+  })
 })
 
 describe('bootstrapSprite', () => {
@@ -112,5 +133,16 @@ describe('bootstrapSprite', () => {
       )
       expect(call![2]).toBe(actualContent)
     }
+  })
+
+  it('writes VERSION in semver format', async () => {
+    await bootstrapSprite('test-sprite')
+
+    const versionCall = mockWriteFile.mock.calls.find(
+      c => c[1] === '/workspace/.os/VERSION',
+    )
+    expect(versionCall).toBeDefined()
+    expect(versionCall![2]).toBe(CURRENT_VERSION)
+    expect(CURRENT_VERSION).toMatch(/^\d+\.\d+\.\d+$/)
   })
 })

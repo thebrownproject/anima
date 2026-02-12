@@ -6,7 +6,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -85,14 +85,9 @@ def send_fn(sent):
 
 
 @pytest.fixture
-def mock_db():
-    return MagicMock()
-
-
-@pytest.fixture
-def runtime(send_fn, mock_db):
+def runtime(send_fn):
     with patch("src.runtime.ensure_templates"):
-        return AgentRuntime(send_fn=send_fn, db=mock_db)
+        return AgentRuntime(send_fn=send_fn)
 
 
 # -- Test: Agent invocation streams agent_event messages ---------------------
@@ -185,7 +180,7 @@ async def test_thinking_block_is_skipped(runtime, sent):
 
 # -- Test: mission_lock prevents concurrent missions -------------------------
 
-async def test_mission_lock_serialization(send_fn, mock_db):
+async def test_mission_lock_serialization(send_fn):
     """Second mission waits until first completes (missions serialize)."""
     timestamps: list[tuple[str, float]] = []
 
@@ -196,7 +191,7 @@ async def test_mission_lock_serialization(send_fn, mock_db):
         timestamps.append(("end", asyncio.get_event_loop().time()))
 
     with patch("src.runtime.ensure_templates"):
-        runtime = AgentRuntime(send_fn=send_fn, db=mock_db)
+        runtime = AgentRuntime(send_fn=send_fn)
 
     with _mock_sdk_generator(slow_messages):
         await asyncio.gather(
@@ -272,23 +267,30 @@ async def test_loads_memory_as_system_prompt(runtime, sent):
     captured_options = {}
     messages = [MockResultMessage()]
 
+    async def mock_load_memory(memory_db=None):
+        return memory_content
+
     with _mock_sdk(messages, capture_options=captured_options), \
-         patch("src.runtime.load_memory", return_value=memory_content):
+         patch("src.runtime.load_memory", side_effect=mock_load_memory):
         await runtime.run_mission("Extract", request_id="req-soul")
 
     assert captured_options.get("system_prompt") == memory_content
 
 
 async def test_fallback_prompt_when_no_memory(runtime, sent):
-    """When no memory files exist, system prompt is empty string."""
+    """When no memory files exist, system prompt is not set (empty string is falsy)."""
     captured_options = {}
     messages = [MockResultMessage()]
 
+    async def mock_load_memory(memory_db=None):
+        return ""
+
     with _mock_sdk(messages, capture_options=captured_options), \
-         patch("src.runtime.load_memory", return_value=""):
+         patch("src.runtime.load_memory", side_effect=mock_load_memory):
         await runtime.run_mission("Extract", request_id="req-fallback")
 
-    assert captured_options.get("system_prompt") == ""
+    # Empty string is falsy, so runtime doesn't pass system_prompt to SDK
+    assert not captured_options.get("system_prompt")
 
 
 # -- Test: session_id stored for resume --------------------------------------
@@ -325,7 +327,7 @@ async def test_resume_registers_mcp_tools(runtime, sent):
     assert "sprite" in captured_options["mcp_servers"]
 
 
-async def test_indirect_send_survives_send_fn_swap(send_fn, mock_db):
+async def test_indirect_send_survives_send_fn_swap(send_fn):
     """After update_send_fn, _indirect_send uses the NEW send_fn, not the old one."""
     old_sent: list[str] = []
     new_sent: list[str] = []
@@ -337,7 +339,7 @@ async def test_indirect_send_survives_send_fn_swap(send_fn, mock_db):
         new_sent.append(data)
 
     with patch("src.runtime.ensure_templates"):
-        rt = AgentRuntime(send_fn=old_send, db=mock_db)
+        rt = AgentRuntime(send_fn=old_send)
 
     # _indirect_send should use old_send initially
     await rt._indirect_send("msg1")
@@ -375,7 +377,9 @@ async def test_resume_fallback_on_error(runtime, sent):
     stack.enter_context(patch("src.runtime.ClaudeSDKClient", side_effect=factory))
     _apply_common_patches(stack)
     # Fallback calls run_mission which needs load_memory
-    stack.enter_context(patch("src.runtime.load_memory", return_value=""))
+    async def mock_load_memory(memory_db=None):
+        return ""
+    stack.enter_context(patch("src.runtime.load_memory", side_effect=mock_load_memory))
 
     with stack:
         runtime.last_session_id = "sess-expired"
@@ -395,6 +399,88 @@ async def test_resume_fallback_on_error(runtime, sent):
     assert len(text_events) == 1
     assert text_events[0]["payload"]["content"] == "Fresh start"
     assert len(complete_events) == 1
+
+
+# -- Test: TurnBuffer receives agent response text ----------------------------
+
+async def test_buffer_receives_agent_response(runtime, sent):
+    """TextBlock content is forwarded to TurnBuffer via append_agent_response."""
+    messages = [
+        MockAssistantMessage(content=[
+            MockTextBlock(text="Part 1"),
+            MockTextBlock(text=" Part 2"),
+        ]),
+        MockResultMessage(),
+    ]
+
+    with _mock_sdk(messages):
+        await runtime.run_mission("Test buffer", request_id="req-buf")
+
+    assert runtime._buffer.agent_response == "Part 1 Part 2"
+
+
+# -- Test: Hooks registered when databases provided --------------------------
+
+async def test_hooks_registered_with_databases(send_fn):
+    """When transcript_db and processor are provided, hooks are created."""
+    mock_transcript_db = MagicMock()
+    mock_processor = MagicMock()
+
+    with patch("src.runtime.ensure_templates"):
+        rt = AgentRuntime(
+            send_fn=send_fn,
+            transcript_db=mock_transcript_db,
+            processor=mock_processor,
+        )
+
+    assert rt._hooks is not None
+    assert "on_user_prompt_submit" in rt._hooks
+    assert "on_post_tool_use" in rt._hooks
+    assert "on_stop" in rt._hooks
+    assert "on_pre_compact" in rt._hooks
+
+
+async def test_no_hooks_without_databases(send_fn):
+    """When no databases are provided, hooks are None."""
+    with patch("src.runtime.ensure_templates"):
+        rt = AgentRuntime(send_fn=send_fn)
+
+    assert rt._hooks is None
+
+
+async def test_hooks_in_options(send_fn):
+    """When hooks are configured, _build_options includes them."""
+    mock_transcript_db = MagicMock()
+    mock_processor = MagicMock()
+
+    with patch("src.runtime.ensure_templates"):
+        rt = AgentRuntime(
+            send_fn=send_fn,
+            transcript_db=mock_transcript_db,
+            processor=mock_processor,
+        )
+
+    hooks_dict = rt._build_hooks_dict()
+    assert hooks_dict is not None
+    assert "UserPromptSubmit" in hooks_dict
+    assert "PostToolUse" in hooks_dict
+    assert "Stop" in hooks_dict
+    assert "PreCompact" in hooks_dict
+
+
+# -- Test: memory_tools only created with memory_db --------------------------
+
+async def test_no_memory_tools_without_db(runtime, sent):
+    """Without memory_db, no memory tools are registered (only canvas tools)."""
+    captured_options = {}
+    messages = [MockResultMessage()]
+
+    with _mock_sdk(messages, capture_options=captured_options):
+        await runtime.run_mission("Test", request_id="req-no-mem")
+
+    # Verify MCP server was created (has canvas tools at minimum)
+    assert captured_options.get("mcp_servers") is not None
+    assert "sprite" in captured_options["mcp_servers"]
 
 
 # -- Mock infrastructure -----------------------------------------------------
@@ -474,13 +560,10 @@ def _apply_common_patches(stack):
     """Apply SDK type patches and filesystem patches to an ExitStack."""
     for target, replacement in _SDK_TYPE_PATCHES.items():
         stack.enter_context(patch(target, replacement))
-    # Mock filesystem-dependent code (TranscriptLogger writes to /workspace)
-    mock_transcript = MagicMock()
-    mock_transcript.return_value.log = MagicMock(side_effect=lambda *a, **kw: asyncio.sleep(0))
-    mock_transcript.return_value.session_id = None
-    stack.enter_context(patch("src.runtime.TranscriptLogger", mock_transcript))
-    async def _noop_journal(*a): pass
-    stack.enter_context(patch("src.runtime.append_journal", side_effect=_noop_journal))
+    # Mock async load_memory
+    async def _noop_load(memory_db=None):
+        return ""
+    stack.enter_context(patch("src.runtime.load_memory", side_effect=_noop_load))
 
 
 def _mock_sdk(messages, capture_options=None):

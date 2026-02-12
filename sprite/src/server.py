@@ -11,7 +11,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
+from pathlib import Path
 
+import anthropic
+
+from .database import TranscriptDB, MemoryDB
+from .memory.processor import ObservationProcessor
 from .gateway import SpriteGateway
 from .runtime import AgentRuntime
 
@@ -19,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 HOST = "0.0.0.0"
 PORT = 8765
+MEMORY_DIR = Path("/workspace/.os/memory")
 
 
 async def handle_connection(
@@ -68,9 +74,30 @@ async def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, lambda: stop.set_result(None))
 
+    # Initialize databases
+    transcript_db = TranscriptDB()
+    memory_db = MemoryDB()
+    await transcript_db.connect()
+    await memory_db.connect()
+
+    # Anthropic client for batch processor (reads ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from env)
+    anthropic_client = anthropic.AsyncAnthropic()
+
+    # Observation batch processor
+    processor = ObservationProcessor(
+        transcript_db=transcript_db,
+        memory_db=memory_db,
+        anthropic_client=anthropic_client,
+        memory_dir=MEMORY_DIR,
+    )
+
     # Runtime scoped to server — survives TCP reconnections
-    # Task 8 wires in TranscriptDB/MemoryDB
-    runtime = AgentRuntime(send_fn=_noop_send)
+    runtime = AgentRuntime(
+        send_fn=_noop_send,
+        transcript_db=transcript_db,
+        memory_db=memory_db,
+        processor=processor,
+    )
 
     handler = lambda r, w: handle_connection(r, w, runtime=runtime)
     server = await asyncio.start_server(handler, HOST, PORT)
@@ -78,6 +105,8 @@ async def main() -> None:
     await stop
     server.close()
     await runtime.cleanup()
+    await transcript_db.close()
+    await memory_db.close()
     logger.info("Shutting down...")
 
 

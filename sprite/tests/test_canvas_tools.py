@@ -4,7 +4,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock
 
-from src.agents.shared.canvas_tools import create_canvas_tools
+from src.tools.canvas import create_canvas_tools
 from src.protocol import parse_message
 
 

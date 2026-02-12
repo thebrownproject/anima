@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for memory system — templates, path constants, ensure_templates, loader, journal, transcript."""
+"""Tests for memory system — templates, path constants, ensure_templates, loader."""
 
 import asyncio
 import json
@@ -36,18 +36,8 @@ import src.memory.loader as loader_module
 
 loader_module.ALL_MEMORY_FILES = memory_module.ALL_MEMORY_FILES
 
-import src.memory.journal as journal_module
-
-journal_module.MEMORY_DIR = memory_module.MEMORY_DIR
-
-import src.memory.transcript as transcript_module
-
-transcript_module.TRANSCRIPTS_DIR = TEST_WORKSPACE / "transcripts"
-
 from src.memory import ensure_templates
 from src.memory.loader import load
-from src.memory.journal import append_journal
-from src.memory.transcript import TranscriptLogger
 
 REPO_MEMORY_DIR = Path(__file__).parent.parent / "memory"
 
@@ -193,7 +183,7 @@ async def test_ensure_templates_no_overwrite():
     print("  Existing files preserved")
 
 
-# -- Loader + journal + transcript tests (unchanged) --
+# -- Loader tests --
 
 async def test_loader_all_sections():
     """Loader returns all 7 sections when populated (6 files + pending actions)."""
@@ -303,45 +293,32 @@ async def test_loader_no_db():
     print("  Works without memory_db")
 
 
-async def test_journal():
-    """Journal appends to correct date file."""
-    print("Test 15: Journal appends...")
+# -- Runtime integration checks --
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    journal_path = memory_module.MEMORY_DIR / f"{today}.md"
-    if journal_path.exists():
-        journal_path.unlink()
+async def test_runtime_no_journal_or_transcript_imports():
+    """runtime.py has no imports from journal.py or transcript.py."""
+    print("Test 15: No journal/transcript imports in runtime...")
 
-    await append_journal("First session completed")
-    assert journal_path.exists()
-    await append_journal("Second session completed")
-    content = journal_path.read_text()
-    assert "First session completed" in content
-    assert "Second session completed" in content
+    runtime_path = Path(__file__).parent.parent / "src" / "runtime.py"
+    source = runtime_path.read_text()
+    assert "from .memory.journal" not in source, "runtime.py should not import journal"
+    assert "from .memory.transcript" not in source, "runtime.py should not import transcript"
+    assert "TranscriptLogger" not in source, "runtime.py should not reference TranscriptLogger"
+    assert "append_journal" not in source, "runtime.py should not reference append_journal"
 
-    print("  Journal appends correctly")
+    print("  No legacy journal/transcript imports")
 
 
-async def test_transcript():
-    """Transcript logs valid JSONL."""
-    print("Test 16: Transcript logs JSONL...")
+async def test_runtime_imports_new_canvas_path():
+    """runtime.py imports canvas_tools from tools.canvas (not agents.shared)."""
+    print("Test 16: Canvas tools imported from new path...")
 
-    logger = TranscriptLogger(session_id="test_session_123")
-    await logger.log("text", {"content": "Hello world"})
-    await logger.log("tool_use", {"tool": "create_card", "input": {"title": "Test"}})
-    await logger.log("complete", {"session_id": "test_session_123", "cost_usd": 0.025})
+    runtime_path = Path(__file__).parent.parent / "src" / "runtime.py"
+    source = runtime_path.read_text()
+    assert "from .tools.canvas" in source, "runtime.py should import from .tools.canvas"
+    assert "agents.shared" not in source, "runtime.py should not reference agents.shared"
 
-    assert logger.log_path.exists()
-    lines = logger.log_path.read_text().strip().split("\n")
-    assert len(lines) == 3
-
-    for line in lines:
-        data = json.loads(line)
-        assert "timestamp" in data
-        assert "session_id" in data
-        assert "event_type" in data
-
-    print("  Transcript logs valid JSONL")
+    print("  Canvas tools imported from src/tools/canvas.py")
 
 
 async def main():
@@ -363,8 +340,8 @@ async def main():
         await test_loader_reads_os_memory_paths()
         await test_loader_no_legacy_references()
         await test_loader_no_db()
-        await test_journal()
-        await test_transcript()
+        await test_runtime_no_journal_or_transcript_imports()
+        await test_runtime_imports_new_canvas_path()
 
         print("\n" + "=" * 60)
         print("All 16 tests passed!")

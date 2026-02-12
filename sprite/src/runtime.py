@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Callable, Awaitable
 
 from claude_agent_sdk import (
@@ -18,13 +19,13 @@ from claude_agent_sdk import (
 )
 
 from .protocol import AgentEvent, AgentEventPayload, AgentEventMeta, to_json
-from .agents.shared.canvas_tools import create_canvas_tools
+from .tools.canvas import create_canvas_tools
 from .tools.memory import create_memory_tools
 from .memory.loader import load as load_memory
-from .memory.journal import append_journal
-from .memory.transcript import TranscriptLogger
 from .memory import ensure_templates
 from .memory.hooks import TurnBuffer, create_hook_callbacks
+from .database import TranscriptDB, MemoryDB
+from .memory.processor import ObservationProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -47,15 +48,16 @@ class AgentRuntime:
     def __init__(
         self,
         send_fn: SendFn,
-        transcript_db: object | None = None,
-        processor: object | None = None,
+        transcript_db: TranscriptDB | None = None,
+        memory_db: MemoryDB | None = None,
+        processor: ObservationProcessor | None = None,
     ) -> None:
         self._send = send_fn
         self.last_session_id: str | None = None
-        self._transcript: TranscriptLogger | None = None
         self._client: ClaudeSDKClient | None = None
         self._buffer = TurnBuffer()
         self._transcript_db = transcript_db
+        self._memory_db = memory_db
         self._processor = processor
         self._hooks: dict | None = None
         if transcript_db and processor:
@@ -147,19 +149,26 @@ class AgentRuntime:
         attachments: list[str] | None = None,
     ) -> None:
         """Start a new SDK session — first message on this connection."""
-        # soul.md + user.md + journals = the system prompt
-        system_prompt = load_memory()
+        # Load memory files + pending actions into system prompt (async)
+        system_prompt = await load_memory(self._memory_db)
 
         # Create canvas + memory tools and register via single MCP server
         # Use indirect send so canvas tools always use the CURRENT send_fn
         # (self._send gets replaced on TCP reconnect via update_send_fn)
         canvas_tools = create_canvas_tools(self._indirect_send)
-        memory_tools = create_memory_tools()
+        memory_tools = create_memory_tools(self._memory_db) if self._memory_db else []
         sprite_server = create_sdk_mcp_server(
             name="sprite", tools=canvas_tools + memory_tools
         )
 
-        self._transcript = TranscriptLogger()
+        # Insert session record in transcript.db
+        session_id = f"session-{int(time.time())}"
+        if self._transcript_db:
+            await self._transcript_db.execute(
+                "INSERT INTO sessions (id, started_at, message_count, observation_count) VALUES (?, ?, 0, 0)",
+                (session_id, time.time()),
+            )
+
         options = self._build_options(
             system_prompt=system_prompt,
             mcp_servers={"sprite": sprite_server},
@@ -226,16 +235,14 @@ class AgentRuntime:
         Used by tests and as fallback. For production multi-turn,
         use handle_message() which keeps the client alive.
         """
-        # soul.md + user.md + journals = the system prompt
-        system_prompt = load_memory()
+        system_prompt = await load_memory(self._memory_db)
 
         canvas_tools = create_canvas_tools(self._indirect_send)
-        memory_tools = create_memory_tools()
+        memory_tools = create_memory_tools(self._memory_db) if self._memory_db else []
         sprite_server = create_sdk_mcp_server(
             name="sprite", tools=canvas_tools + memory_tools
         )
 
-        self._transcript = TranscriptLogger()
         options = self._build_options(
             system_prompt=system_prompt,
             mcp_servers={"sprite": sprite_server},
@@ -260,13 +267,10 @@ class AgentRuntime:
         Kept for tests. Production multi-turn uses handle_message().
         """
         canvas_tools = create_canvas_tools(self._indirect_send)
-        memory_tools = create_memory_tools()
+        memory_tools = create_memory_tools(self._memory_db) if self._memory_db else []
         sprite_server = create_sdk_mcp_server(
             name="sprite", tools=canvas_tools + memory_tools
         )
-
-        if not self._transcript:
-            self._transcript = TranscriptLogger(session_id=session_id)
 
         options = self._build_options(
             resume=session_id,
@@ -291,20 +295,12 @@ class AgentRuntime:
                 if isinstance(block, TextBlock):
                     self._buffer.append_agent_response(block.text)
                     await self._send_event("text", block.text, request_id)
-                    if self._transcript:
-                        await self._transcript.log("text", {"content": block.text})
                 elif isinstance(block, ToolUseBlock):
                     content = json.dumps({"tool": block.name, "input": block.input})
                     await self._send_event("tool", content, request_id)
-                    if self._transcript:
-                        await self._transcript.log(
-                            "tool_use", {"tool": block.name, "input": block.input}
-                        )
 
         elif isinstance(message, ResultMessage):
             self.last_session_id = message.session_id
-            if self._transcript:
-                self._transcript.session_id = message.session_id
 
             meta = AgentEventMeta(session_id=message.session_id)
             content = json.dumps({
@@ -312,18 +308,6 @@ class AgentRuntime:
                 "cost_usd": message.total_cost_usd,
             })
             await self._send_event("complete", content, request_id, meta=meta)
-
-            summary = f"Session {message.session_id} completed (cost: ${message.total_cost_usd:.4f})"
-            await append_journal(summary)
-
-            if self._transcript:
-                await self._transcript.log(
-                    "complete",
-                    {
-                        "session_id": message.session_id,
-                        "cost_usd": message.total_cost_usd,
-                    },
-                )
 
     async def _send_event(
         self,

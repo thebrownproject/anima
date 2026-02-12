@@ -2405,3 +2405,45 @@ Orchestrated mission on m7b.7 (Sprite VM Structure + Memory System Redesign). Co
 - T10: E2E hook verification on live Sprite
 
 ---
+
+## [2026-02-12 18:30] Session 151
+
+**Branch:** main | **Git:** uncommitted (T8+T9 changes)
+
+### What Happened
+Solo mission on m7b.7 (Memory System Redesign), completing T8 and T9 with inspector verification after each.
+
+1. **T8 (Wire memory into AgentRuntime):** Connected all memory subsystems. Key changes:
+   - `runtime.py`: Rewrote to accept `transcript_db`, `memory_db`, `processor` params. Removed journal.py/transcript.py imports. `load_memory()` now called with `await` (was sync). `create_memory_tools(memory_db)` passes db instance. TurnBuffer receives agent text via `append_agent_response()`. Session record inserted to transcript.db on start. Removed all TranscriptLogger and append_journal calls.
+   - `server.py`: Creates TranscriptDB + MemoryDB connections, ObservationProcessor with `anthropic.AsyncAnthropic()` client, passes all to AgentRuntime. Closes DBs on shutdown.
+   - Moved `agents/shared/canvas_tools.py` → `tools/canvas.py` (fixed `...protocol` → `..protocol` import).
+   - Deleted `memory/journal.py`, `memory/transcript.py`, entire `agents/` directory.
+   - Updated `test_runtime.py`: removed `db=mock_db` fixture, patched `load_memory` as async, added tests for hooks registration, TurnBuffer, memory_tools conditional creation.
+   - Updated `test_memory_system.py`: replaced journal/transcript tests with runtime integration checks (no stale imports, correct canvas path).
+   - Updated `test_canvas_tools.py` and `manual_canvas_test.py` imports.
+   - **Inspector pass**: 12/12 requirements, quality pass.
+
+2. **T9 (Bootstrap cleanup + semver):** Updated Bridge deployment to match new structure.
+   - `bootstrap.ts`: srcFiles updated — removed `agents/shared/*`, `journal.py`, `transcript.py`; added `memory/hooks.py`, `memory/processor.py`, `tools/__init__.py`, `tools/canvas.py`, `tools/memory.py`. Directory creation: `tools/` instead of `agents/shared/`. VERSION changed from integer `3` to semver `'0.3.0'`.
+   - `updater.ts`: Added `compareSemver()` with legacy integer fallback (treats "3" as 0.0.3). Added stale file cleanup step (rm agents/, journal.py, transcript.py). Creates `tools/` dir on update. Fixes ownership after deploy.
+   - `bootstrap.test.ts`: Added test for new tools/ structure vs old agents/shared/. Added semver VERSION format test.
+   - `updater.test.ts` (new): 6 tests for compareSemver (equal, older, newer, legacy integers, whitespace).
+   - Fixed `test_fallback_prompt_when_no_memory` assertion (empty string is falsy, SDK gets None not "").
+   - **Inspector pass**: All requirements met, 168 tests passing (112 bridge + 56 sprite).
+
+3. **T10 (E2E hooks on Sprite):** Claimed, started scouting but ran out of credits. Left in_progress.
+
+### Decisions Made
+- `load_memory()` is now fully async — `await load_memory(memory_db)` in all call sites
+- `memory_tools` only created when `memory_db` is provided (graceful degradation without DB)
+- Semver format `0.3.0` chosen — major 0 = pre-release, minor 3 = third schema revision
+- Legacy integer VERSION "3" maps to 0.0.3 via compareSemver (backwards compatible)
+- Updater cleans stale files (agents/, journal.py, transcript.py) when upgrading old sprites
+
+### In Progress
+- **T10 (m7b.7.10)**: E2E hook test on live Sprite. Status: in_progress, no code written yet. Need to: deploy updated code to sprite, write E2E test script, run with real SDK to verify hook signatures. Sprite CLI is available locally. ANTHROPIC_BASE_URL must point to Bridge API proxy for SDK to work on sprite.
+
+### Next Action
+- Deploy code to test sprite, write and run E2E hook verification test (T10). Then m7b.7 feature is complete.
+
+---
