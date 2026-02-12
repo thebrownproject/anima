@@ -105,6 +105,9 @@ export {
   IconUser as User,
   IconApps as Apps,
   IconLayoutGrid as LayoutGrid,
+  IconCalculator as Calculator,
+  IconLayoutKanban as LayoutKanban,
+  IconChartBar as ChartBar,
 } from "@tabler/icons-react"
 
 // Re-export the Icon type for component props

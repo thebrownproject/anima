@@ -3,8 +3,7 @@
 import { useAuth } from '@clerk/nextjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
-import type { SpriteToBrowserMessage, CanvasUpdate } from '@/types/ws-protocol'
-import { GridLayoutSpike, type GridCard } from '@/components/canvas/grid-layout-spike'
+import type { SpriteToBrowserMessage, CanvasUpdate, Block } from '@/types/ws-protocol'
 import {
   GlassCard,
   GlassCardHeader,
@@ -211,10 +210,16 @@ const STATUS_COLORS: Record<ConnectionStatus, string> = {
   error: 'bg-red-500',
 }
 
+interface CanvasCard {
+  id: string
+  title: string
+  blocks: Block[]
+}
+
 function canvasUpdateToCard(
   update: CanvasUpdate,
-  existingCards: GridCard[],
-): GridCard {
+  existingCards: CanvasCard[],
+): CanvasCard {
   const existing = existingCards.find((c) => c.id === update.payload.card_id)
   return {
     id: update.payload.card_id,
@@ -232,7 +237,7 @@ export default function TestChatPage() {
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
-  const [cards, setCards] = useState<GridCard[]>([])
+  const [cards, setCards] = useState<CanvasCard[]>([])
   const [wallpaper, setWallpaper] = useState(0)
   const [chatMode, setChatMode] = useState<'chips' | 'typing'>('chips')
   const [showChat, setShowChat] = useState(true)
@@ -328,7 +333,7 @@ export default function TestChatPage() {
   }, [])
 
   return (
-    <div className={`relative h-screen w-screen overflow-hidden ${WALLPAPERS[wallpaper].class} transition-all duration-700`}>
+    <div className="relative h-full w-full overflow-hidden transition-all duration-700" style={{ backgroundImage: 'url(/wallpapers/purple-waves.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
       {/* Top Bar */}
       <TopBar />
 
@@ -398,8 +403,29 @@ export default function TestChatPage() {
 
         {/* Live WS canvas cards */}
         {cards.length > 0 && (
-          <div className="mt-8 rounded-xl bg-black/20 p-4 backdrop-blur-sm">
-            <GridLayoutSpike cards={cards} onCardClose={handleCardClose} />
+          <div className="mt-8 flex flex-wrap gap-6">
+            {cards.map((card) => (
+              <GlassCard key={card.id} className="w-80">
+                <GlassCardHeader>
+                  <div className="flex items-center justify-between">
+                    <GlassCardTitle>{card.title}</GlassCardTitle>
+                    <GlassButton
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 rounded-lg"
+                      onClick={() => handleCardClose(card.id)}
+                    >
+                      <Icons.X className="size-3 text-white/60" />
+                    </GlassButton>
+                  </div>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <pre className="whitespace-pre-wrap text-xs text-white/80">
+                    {JSON.stringify(card.blocks, null, 2)}
+                  </pre>
+                </GlassCardContent>
+              </GlassCard>
+            ))}
           </div>
         )}
       </div>

@@ -5,14 +5,15 @@
  * When updating message types, update bridge/src/protocol.ts FIRST, then
  * copy changes here and to sprite/src/protocol.py.
  *
- * NOTE: DocumentStatus is imported from ./documents (shared with v1 types)
- * rather than redefined here to avoid export collisions in the barrel.
- *
  * Source of truth: bridge/src/protocol.ts
  * Python equivalent: sprite/src/protocol.py
  */
 
-import type { DocumentStatus } from './documents'
+export type DocumentStatus =
+  | 'processing'
+  | 'ocr_complete'
+  | 'completed'
+  | 'failed'
 
 // =============================================================================
 // Base Message
@@ -198,7 +199,7 @@ export interface CanvasUpdate extends WebSocketMessageBase {
 }
 
 /** Document status updates. */
-// DocumentStatus imported from ./documents (identical definition, avoids barrel collision)
+// DocumentStatus defined at top of this file
 
 export interface StatusUpdate extends WebSocketMessageBase {
   type: 'status'

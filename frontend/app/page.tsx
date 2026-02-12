@@ -20,7 +20,7 @@ export default function HomePage() {
       <div className="flex gap-4">
         <SignedIn>
           <Button asChild>
-            <Link href="/documents">Go to Documents</Link>
+            <Link href="/stacks/default">Go to Desktop</Link>
           </Button>
         </SignedIn>
         <SignedOut>

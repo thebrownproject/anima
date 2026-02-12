@@ -2239,3 +2239,39 @@ Deep brainstorming session on Sprite VM file structure and memory system redesig
 - `/plan` to create Beads tasks from the updated 9-task plan, then begin implementation starting with Task 1 (`.os/` restructure)
 
 ---
+
+## [2026-02-12 15:00] Session 145
+
+**Branch:** main | **Git:** uncommitted (large changeset — v1 cleanup + 4 tasks)
+
+### What Happened
+Started orchestrated mission on m7b.4.12 (Glass Desktop UI). Created 12 child Beads tasks with dependency graph. Completed tasks 1-4 directly (HOUSTON executed instead of Builder agents after user preferred that approach).
+
+**v1 Frontend Cleanup** (by parallel agent): Deleted ~85 v1 files (app/(app)/ routes, components/agent/, documents/, stacks/, layout/, preview-panel/, shared/, canvas/, hooks/, lib/queries/). Removed 5 npm packages (motion, react-resizable-panels, cmdk, @radix-ui/react-collapsible, @radix-ui/react-alert-dialog). Also removed 10 unused shadcn/ui components + utilities (sidebar, resizable, breadcrumb, command, input-group, collapsible, alert-dialog, dock, lib/date.ts, lib/format.ts). Kept framer-motion (used by glass-tabs) and lucide-react (used by sonner toast icons). Frontend CLAUDE.md fully rewritten.
+
+**Task 1 — Desktop route group + glass tokens**: Created `app/(desktop)/layout.tsx` (bare layout) and `app/(desktop)/stacks/[id]/page.tsx` (placeholder). Added Ein UI CSS variables to globals.css (--glass-bg, --glass-border, --glass-blur, --glow-cyan/purple/pink, --text-primary/secondary/muted). Added --ease-apple and @keyframes animate-scan.
+
+**Task 2 — Zustand stores**: Created `lib/stores/desktop-store.ts` (cards Record, view state, persist to localStorage) and `lib/stores/chat-store.ts` (messages, chips, mode, streaming — NOT persisted). Inspector passed 8/8 tests.
+
+**Task 3 — Wallpaper layer + store**: Renamed wallpaper files (purple-waves.jpg, aurora.jpg, coral.jpg). Created `lib/stores/wallpaper-store.ts` (image presets, persist), `components/wallpaper/wallpaper-layer.tsx` (full-bleed fixed div), `components/wallpaper/wallpaper-picker.tsx` (thumbnail circles). Wired into desktop page.
+
+**Task 4 — Infinite canvas viewport**: Created `components/desktop/desktop-viewport.tsx` (96 lines). CSS transform pan/zoom, pointer capture, zoom-under-cursor math, transformOrigin: '0 0'. Inspector found stale closure bug in handlePointerMove — fixed by using useDesktopStore.getState() for synchronous reads in hot-path handlers.
+
+**Fixed /desktop 404**: Updated Clerk redirect and landing page CTA from /desktop to /stacks/default.
+
+### Decisions Made
+- Used Ein UI's official CSS variables (not custom oklch tokens) — Pathfinder incorrectly reported Ein UI doesn't use CSS vars.
+- Images-only wallpapers (no CSS gradients) for prototype simplicity.
+- `useDesktopStore.getState()` pattern for event handlers to avoid stale closures — better than functional updater since Zustand supports direct synchronous reads.
+- Kept framer-motion (not switching to motion package) — less churn.
+
+### Gotchas
+- Pathfinder agent incorrectly reported Ein UI components use hardcoded Tailwind only. Ein UI docs clearly define CSS variables (--glass-bg etc). Always verify against official docs.
+- Builder agent tried to use made-up oklch glass tokens instead of Ein UI's rgba vars. User caught it.
+- JSX comments `{/* ... */}` compile to nothing — causes "children missing" TS error if children prop is required. Make children optional.
+- `(desktop)/` route group doesn't add a URL segment — route is /stacks/[id] not /desktop/stacks/[id]. Landing page was pointing to /desktop which 404'd.
+
+### Next Action
+Task 5: Desktop card component (draggable glass card with title bar, zoom-aware drag, mount/close animations). Context already added to Beads. Then tasks 6-12 to complete the glass desktop.
+
+---
