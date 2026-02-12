@@ -8,7 +8,25 @@ const GlassTooltipProvider = TooltipPrimitive.Provider
 
 const GlassTooltip = TooltipPrimitive.Root
 
-const GlassTooltipTrigger = TooltipPrimitive.Trigger
+function GlassTooltipTrigger({
+  onFocus,
+  onFocusCapture,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  return (
+    <TooltipPrimitive.Trigger
+      onFocus={(e) => {
+        e.preventDefault()
+        onFocus?.(e)
+      }}
+      onFocusCapture={(e) => {
+        e.stopPropagation()
+        onFocusCapture?.(e)
+      }}
+      {...props}
+    />
+  )
+}
 
 const GlassTooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,

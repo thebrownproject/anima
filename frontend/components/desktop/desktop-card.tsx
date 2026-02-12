@@ -78,7 +78,7 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
   )
 
   const handleClose = useCallback(
-    (e: React.PointerEvent) => {
+    (e: React.MouseEvent) => {
       e.stopPropagation()
       useDesktopStore.getState().removeCard(card.id)
     },
@@ -122,7 +122,7 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
             </span>
             <button
               type="button"
-              onPointerDown={handleClose}
+              onClick={handleClose}
               className="flex size-7 items-center justify-center rounded hover:bg-white/10"
             >
               <Icons.X className="size-4 text-white/60" />

@@ -28,6 +28,7 @@ export function DesktopTopBar() {
   const scale = useDesktopStore((s) => s.view.scale)
   const activeWorkspace = useDesktopStore((s) => s.activeWorkspace)
   const setActiveWorkspace = useDesktopStore((s) => s.setActiveWorkspace)
+  const toggleLeftPanel = useDesktopStore((s) => s.toggleLeftPanel)
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-4 pt-4">
@@ -38,6 +39,7 @@ export function DesktopTopBar() {
             <GlassButton
               variant="ghost"
               size="icon"
+              onClick={() => toggleLeftPanel('documents')}
               className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl"
             >
               <Icons.FileText className="size-[22px] text-white/80" />
@@ -88,9 +90,8 @@ export function DesktopTopBar() {
         <GlassTabSwitcher
           value={activeWorkspace}
           onValueChange={setActiveWorkspace}
-          onClose={(v) => {
+          onClose={() => {
             // TODO: remove workspace
-            console.log('close workspace', v)
           }}
           tabs={[
             { value: 'default', label: 'Q4 Invoices' },

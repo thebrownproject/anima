@@ -19,7 +19,6 @@ interface ChatState {
   messages: ChatMessage[]
   chips: SuggestionChip[]
   mode: 'bar' | 'panel'
-  isTyping: boolean
   isAgentStreaming: boolean
 }
 
@@ -28,7 +27,6 @@ interface ChatActions {
   appendToLastAgent: (content: string) => void
   setChips: (chips: SuggestionChip[]) => void
   setMode: (mode: 'bar' | 'panel') => void
-  setTyping: (isTyping: boolean) => void
   setAgentStreaming: (isStreaming: boolean) => void
   clearMessages: () => void
 }
@@ -42,7 +40,6 @@ export const useChatStore = create<ChatState & ChatActions>()((set) => ({
   messages: [],
   chips: [],
   mode: 'bar',
-  isTyping: false,
   isAgentStreaming: false,
 
   // Actions
@@ -72,7 +69,6 @@ export const useChatStore = create<ChatState & ChatActions>()((set) => ({
 
   setChips: (chips) => set({ chips }),
   setMode: (mode) => set({ mode }),
-  setTyping: (isTyping) => set({ isTyping }),
   setAgentStreaming: (isStreaming) => set({ isAgentStreaming: isStreaming }),
   clearMessages: () => set({ messages: [], chips: [] }),
 }))

@@ -20,11 +20,14 @@ export interface ViewState {
   scale: number
 }
 
+export type LeftPanel = 'none' | 'documents'
+
 interface DesktopState {
   cards: Record<string, DesktopCard>
   view: ViewState
   activeWorkspace: string
   maxZIndex: number
+  leftPanel: LeftPanel
 }
 
 interface DesktopActions {
@@ -35,6 +38,8 @@ interface DesktopActions {
   setView: (view: Partial<ViewState>) => void
   bringToFront: (id: string) => void
   setActiveWorkspace: (workspace: string) => void
+  setLeftPanel: (panel: LeftPanel) => void
+  toggleLeftPanel: (panel: LeftPanel) => void
 }
 
 // =============================================================================
@@ -49,6 +54,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
       view: { x: 0, y: 0, scale: 1 },
       activeWorkspace: 'default',
       maxZIndex: 0,
+      leftPanel: 'none' as LeftPanel,
 
       // Actions
       addCard: (card) =>
@@ -99,6 +105,14 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
 
       setActiveWorkspace: (workspace) =>
         set({ activeWorkspace: workspace }),
+
+      setLeftPanel: (panel) =>
+        set({ leftPanel: panel }),
+
+      toggleLeftPanel: (panel) =>
+        set((state) => ({
+          leftPanel: state.leftPanel === panel ? 'none' : panel,
+        })),
     }),
     {
       name: 'stackdocs-desktop',

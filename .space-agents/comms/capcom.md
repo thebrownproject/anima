@@ -2496,3 +2496,64 @@ Completed two Glass Desktop UI tasks via orchestrated and solo modes.
 Continue Glass Desktop UI: tasks 9 (restyle card-renderer for glass), 10 (chat panel), 11 (documents panel), 12 (wallpaper images). Tasks 10+11 are now unblocked by WS provider completion.
 
 ---
+
+## [2026-02-13 11:00] Session 154
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Fixed panel rendering bug**: ChatPanel and DocumentsPanel were extracted into separate components (session 152) but never imported/rendered in `app/(desktop)/stacks/[id]/page.tsx`. Added imports and JSX mounts.
+
+**ChatBar DRY refactor** — added `embedded` prop to `chat-bar.tsx`:
+- `embedded={false}` (default): fixed bottom bar with visibility toggle, w-[500px], chat-toggle button
+- `embedded={true}`: renders inline, w-full, no positioning, hides chat-toggle (shows dock-to-bottom instead)
+- ChatPanel now renders `<ChatBar embedded />` instead of its own duplicate input area (~80 lines removed)
+- Replaced X close button in ChatPanel header with Message icon toggle in embedded ChatBar
+
+**ChatBar height jump bug** — systematic debugging traced root cause:
+- `GlassButton` wraps every button in `<div className="relative inline-block">` (glass-button.tsx:73)
+- Send button's `absolute` class went on inner `<button>`, NOT the outer wrapper div
+- Wrapper stayed in flow, creating ~24px phantom line box when send button appeared on first keystroke
+- Fix: wrapped entire send button block in `<div className="absolute right-3 top-3">`, moved positioning there
+
+**ChatBar textarea animation** — replaced instant conditional render with CSS grid-rows transition:
+- `grid-rows-[0fr]` → `grid-rows-[1fr]` (300ms, Apple easing) for smooth expand/collapse
+- Content fades in with 200ms delay (prevents cursor showing during expansion)
+- Focus delayed to 250ms to match animation
+- Removed JS auto-resize effect, replaced with CSS `field-sizing: content`
+
+**BlockRenderer** (orchestrated: Pathfinder → Builder → Inspector):
+- Created `frontend/components/desktop/block-renderer.tsx` (146 lines)
+- 8 block types: heading, stat, key-value, table, badge, progress, text, separator
+- Glass styling throughout (white/alpha classes only)
+- Wired into page.tsx replacing placeholder. Inspector 10/10 pass.
+
+**Code review + cleanup** (7 fixes):
+1. Tooltip refocus bug — `GlassTooltipTrigger` was raw Radix passthrough missing `onFocus`/`onFocusCapture` prevention (fix from Jan applied to tooltip.tsx but never to glass-tooltip.tsx)
+2. Dead state — removed `isTyping`/`setTyping` from chat-store (`isAgentStreaming` serves same purpose)
+3. Removed `console.log` from desktop-top-bar.tsx
+4. `onPointerDown` → `onClick` on card close button (keyboard accessibility)
+5. Extracted `sendMessage` helper in chat-bar (DRY chip click vs handleSend)
+6. Inline `style={{ maxHeight }}` → Tailwind `max-h-[120px]`
+7. Removed border-b/border-t lines from glass-side-panel.tsx and chat-panel.tsx
+
+**Tasks closed**: m7b.4.12.9, m7b.4.12.10, m7b.4.12.11 (3 tasks)
+**Tasks created**: m7b.4.12.13 (restyle desktop right-click context menu)
+
+### Decisions Made
+- **`embedded` prop over component extraction**: User wanted maximum DRY — one ChatBar component, modify once changes everywhere. Props approach simpler than extracting a separate ChatInput component.
+- **CSS grid-rows for height animation**: Standard Tailwind pattern for animating height 0→auto without JS measurement. Combined with delayed opacity + focus for polish.
+- **Kept "dead" WebSocket code**: `handlers`/`on()`, `clearMessages`, `setChips` look unused but will be needed when Sprite agent is wired up. Only removed genuinely dead `isTyping`/`setTyping`.
+
+### Gotchas
+- `GlassButton` wraps in `<div className="relative inline-block">` — any GlassButton meant to be absolutely positioned needs its own absolute wrapper div, because the `absolute` class goes on the inner button, not the outer wrapper.
+- `field-sizing: content` on textarea replaces JS auto-resize but needs explicit `max-h-[120px]` cap.
+- Glass tooltip refocus bug: when adding new tooltip variants (like GlassTooltip), must copy the focus prevention pattern from the base tooltip component.
+
+### Next Action
+- Add wallpaper images (user has them ready) and update wallpaper-store.ts entries
+- Restyle desktop right-click context menu (m7b.4.12.13) — use **frontend-design skill** for creative quality
+- Phase A: 11/12 tasks done. Only wallpaper sourcing (P2) + new context menu task remain.
+
+---

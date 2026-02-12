@@ -1,0 +1,94 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import * as Icons from '@/components/icons'
+import { cn } from '@/lib/utils'
+import { GlassButton } from '@/components/ui/glass-button'
+import {
+  GlassTooltip,
+  GlassTooltipTrigger,
+  GlassTooltipContent,
+} from '@/components/ui/glass-tooltip'
+
+interface GlassSidePanelProps {
+  isOpen: boolean
+  onClose: () => void
+  side: 'left' | 'right'
+  title: string
+  icon?: ReactNode
+  width?: string
+  headerActions?: ReactNode
+  footer?: ReactNode
+  children: ReactNode
+  className?: string
+}
+
+export function GlassSidePanel({
+  isOpen,
+  onClose,
+  side,
+  title,
+  icon,
+  width = 'w-[320px]',
+  headerActions,
+  footer,
+  children,
+  className,
+}: GlassSidePanelProps) {
+  return (
+    <div
+      className={cn(
+        'fixed top-16 bottom-6 z-40',
+        side === 'left' ? 'left-4' : 'right-4',
+        width,
+        'transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+        isOpen
+          ? 'translate-x-0 opacity-100'
+          : side === 'left'
+            ? '-translate-x-[110%] opacity-0 pointer-events-none'
+            : 'translate-x-[110%] opacity-0 pointer-events-none',
+        className,
+      )}
+    >
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl">
+        {/* Header */}
+        <div className="flex h-14 shrink-0 items-center justify-between px-5">
+          <div className="flex items-center gap-2.5 text-white/90">
+            {icon}
+            <span className="text-sm font-semibold tracking-wide">{title}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {headerActions}
+            <GlassTooltip>
+              <GlassTooltipTrigger asChild>
+                <GlassButton
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="size-7 rounded-full"
+                >
+                  <Icons.X className="size-3.5 text-white/50" />
+                </GlassButton>
+              </GlassTooltipTrigger>
+              <GlassTooltipContent side={side === 'left' ? 'bottom' : 'left'}>
+                Close
+              </GlassTooltipContent>
+            </GlassTooltip>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="shrink-0">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
