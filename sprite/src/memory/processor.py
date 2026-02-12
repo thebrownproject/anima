@@ -52,7 +52,7 @@ def _read_safe(path: Path) -> str:
         return ""
 
 
-def _build_user_message(memory_state: dict[str, str], observations: list[dict]) -> str:
+def _build_user_message(memory_state: dict[Path, str], observations: list[dict]) -> str:
     md_sections = "\n\n".join(
         f"### {path.stem}.md\n{content}" for path, content in memory_state.items() if content
     )

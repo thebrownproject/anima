@@ -2363,3 +2363,45 @@ Also installed Ein UI glass-switch component (`components/ui/glass-switch.tsx`) 
 Continue Glass Desktop UI: tasks 6 (WebSocket provider), 8 (Chat bar), 9 (Card restyle), 10-12.
 
 ---
+
+## [2026-02-12 17:30] Session 150
+
+**Branch:** main | **Git:** uncommitted (processor.py type fix)
+
+### What Happened
+Orchestrated mission on m7b.7 (Sprite VM Structure + Memory System Redesign). Completed 7 of 9 tasks using Pathfinder/Builder/Inspector cycle per task. Created m7b.7.10 for live Sprite hook testing.
+
+1. **T1 (.os/ layout):** Moved all system paths from `/workspace/` to `/workspace/.os/`. 11 files updated across bridge + sprite. Added `/workspace/.os/apps/` for future custom apps feature. Server startup uses `PYTHONPATH=/workspace/.os python3 -m src.server`. 97 bridge + 60 sprite tests.
+
+2. **T3 (6 memory templates):** Created soul.md (25 lines), os.md (57), tools.md (43), files.md (17), user.md (17), context.md (17) in `sprite/memory/`. Deploy-managed (soul, os) vs daemon-managed (tools, files, user, context) split. Removed stale inline constants from bootstrap. 104 bridge tests.
+
+3. **T2 (two databases):** Replaced single `Database` class with `TranscriptDB` + `MemoryDB`. `_BaseDB` extracts shared pattern (WAL, busy_timeout, foreign_keys). FTS5 virtual table with auto-sync triggers on memory.db. 23 database tests.
+
+4. **T5 (hook capture):** `TurnBuffer` + `create_hook_callbacks()` factory in `sprite/src/memory/hooks.py`. 4 hooks: UserPromptSubmit, PostToolUse, Stop, PreCompact. `append_agent_response()` accumulates across TextBlocks. `_build_options()` helper DRYs up 3 ClaudeAgentOptions construction sites. `HookMatcher(matcher=None)` for non-tool hooks — unverified, deferred to m7b.7.10. 17 hook tests.
+
+5. **T7 (search_memory):** Single read-only FTS5 tool in `sprite/src/tools/memory.py`. Moved from `agents/shared/memory_tools.py`. Old write tools deleted. 7 tests (Sprite-only, needs SDK).
+
+6. **T4 (memory loader):** Rewrote `loader.py` — async, loads 6 files via `ALL_MEMORY_FILES` + pending_actions from MemoryDB. Data-driven `_SECTION_HEADERS` dict. Omits empty sections. 56 local tests.
+
+7. **T6 (batch processor):** `ObservationProcessor` in `sprite/src/memory/processor.py`. Reads unprocessed observations, calls Haiku, parses FACT/PATTERN/CORRECTION/PREFERENCE/ACTION/TOOL_INSTALL + *_MD_UPDATE blocks. File rewrites via Path.write_text(). Error handling: API failures don't mark processed. 10 tests (Sprite-only, needs anthropic).
+
+### Decisions Made
+- Skip SDK hook spike — build pragmatically, test on live Sprite (m7b.7.10)
+- PreCompact always flushes (no auto/manual distinction) — simpler and safer
+- `append_agent_response()` instead of `set_agent_response()` — handles multiple TextBlocks per turn
+- `/workspace/.os/apps/` added for future user-created lightweight apps feature
+- Semver versioning (0.0.0 format) folded into T9 — treat Sprite OS as production
+- VERSION bumped to 3 (by T3 Builder, earlier than planned but harmless)
+
+### Gotchas
+- `python3 -m src.server` breaks when src moves to `.os/src/` — needs `PYTHONPATH=/workspace/.os`
+- `test_search_memory.py` and `test_processor.py` can't run locally (need `claude_agent_sdk` / `anthropic`)
+- Pyright diagnostics for SDK types are noise locally — all real on Sprite
+- `source_observation_id` in processor points all learnings to first observation in batch — imprecise but unavoidable
+
+### Next Action
+- T8: Wire hooks, processor, loader, search_memory into AgentRuntime. Integration task — start fresh session.
+- T9: Bootstrap cleanup + semver versioning + full test suite
+- T10: E2E hook verification on live Sprite
+
+---
