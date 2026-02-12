@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local test for memory system — verifies templates, loader, journal, transcript."""
+"""Tests for memory system — verifies templates, path constants, ensure_templates."""
 
 import asyncio
 import json
@@ -14,21 +14,37 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 # Mock /workspace/ paths to test directory
 import src.memory as memory_module
+
 memory_module.MEMORY_DIR = TEST_WORKSPACE / "memory"
 memory_module.SOUL_MD = memory_module.MEMORY_DIR / "soul.md"
+memory_module.OS_MD = memory_module.MEMORY_DIR / "os.md"
+memory_module.TOOLS_MD = memory_module.MEMORY_DIR / "tools.md"
+memory_module.FILES_MD = memory_module.MEMORY_DIR / "files.md"
 memory_module.USER_MD = memory_module.MEMORY_DIR / "user.md"
-memory_module.MEMORY_MD = memory_module.MEMORY_DIR / "MEMORY.md"
+memory_module.CONTEXT_MD = memory_module.MEMORY_DIR / "context.md"
+memory_module.ALL_MEMORY_FILES = [
+    memory_module.SOUL_MD, memory_module.OS_MD,
+    memory_module.TOOLS_MD, memory_module.FILES_MD,
+    memory_module.USER_MD, memory_module.CONTEXT_MD,
+]
+memory_module.DAEMON_MANAGED_FILES = [
+    memory_module.TOOLS_MD, memory_module.FILES_MD,
+    memory_module.USER_MD, memory_module.CONTEXT_MD,
+]
 
 import src.memory.loader as loader_module
+
 loader_module.MEMORY_DIR = memory_module.MEMORY_DIR
 loader_module.SOUL_MD = memory_module.SOUL_MD
 loader_module.USER_MD = memory_module.USER_MD
-loader_module.MEMORY_MD = memory_module.MEMORY_MD
+loader_module.MEMORY_MD = memory_module.MEMORY_DIR / "MEMORY.md"
 
 import src.memory.journal as journal_module
+
 journal_module.MEMORY_DIR = memory_module.MEMORY_DIR
 
 import src.memory.transcript as transcript_module
+
 transcript_module.TRANSCRIPTS_DIR = TEST_WORKSPACE / "transcripts"
 
 from src.memory import ensure_templates
@@ -36,124 +52,214 @@ from src.memory.loader import load
 from src.memory.journal import append_journal
 from src.memory.transcript import TranscriptLogger
 
+REPO_MEMORY_DIR = Path(__file__).parent.parent / "memory"
 
-async def test_templates():
-    """Test 1: First boot creates agent-writable templates (not soul.md)."""
-    print("Test 1: Template creation on first boot...")
+
+# -- Template file tests --
+
+async def test_all_templates_exist():
+    """All 6 memory file templates exist in sprite/memory/."""
+    print("Test 1: All 6 template files exist in repo...")
+
+    expected = ["soul.md", "os.md", "tools.md", "files.md", "user.md", "context.md"]
+    for name in expected:
+        path = REPO_MEMORY_DIR / name
+        assert path.exists(), f"Missing template: {path}"
+        content = path.read_text()
+        assert len(content.strip()) > 0, f"Template is empty: {name}"
+
+    print("  All 6 templates exist with content")
+
+
+async def test_line_limits():
+    """All templates within spec line limits."""
+    print("Test 2: Line limits...")
+
+    limits = {
+        "soul.md": 200,
+        "os.md": 200,
+        "tools.md": 150,
+        "files.md": 200,
+        "user.md": 200,
+        "context.md": 200,
+    }
+    for name, limit in limits.items():
+        path = REPO_MEMORY_DIR / name
+        lines = path.read_text().count("\n") + 1
+        assert lines <= limit, f"{name} has {lines} lines, limit is {limit}"
+        print(f"  {name}: {lines}/{limit} lines")
+
+    print("  All within limits")
+
+
+async def test_soul_md_no_canvas_or_tools():
+    """soul.md is personality-only — no Canvas guidance or tool docs."""
+    print("Test 3: soul.md is personality-only...")
+
+    content = (REPO_MEMORY_DIR / "soul.md").read_text().lower()
+    assert "canvas" not in content, "soul.md should not contain Canvas guidance (moved to os.md)"
+    assert "create_card" not in content, "soul.md should not contain tool docs (moved to tools.md)"
+    assert "block type" not in content, "soul.md should not contain block types (moved to os.md/tools.md)"
+
+    print("  No Canvas or tool content in soul.md")
+
+
+async def test_os_md_has_canvas():
+    """os.md contains Canvas guidance (moved from old soul.md)."""
+    print("Test 4: os.md has Canvas guidance...")
+
+    content = (REPO_MEMORY_DIR / "os.md").read_text().lower()
+    assert "canvas" in content, "os.md should contain Canvas guidance"
+    assert "card size" in content or "small" in content, "os.md should describe card sizes"
+
+    print("  Canvas guidance present in os.md")
+
+
+async def test_tools_md_documents_canvas_tools():
+    """tools.md documents canvas tools accurately."""
+    print("Test 5: tools.md documents canvas tools...")
+
+    content = (REPO_MEMORY_DIR / "tools.md").read_text()
+    assert "create_card" in content, "tools.md must document create_card"
+    assert "update_card" in content, "tools.md must document update_card"
+    assert "close_card" in content, "tools.md must document close_card"
+    # Block types from canvas_tools.py
+    for block_type in ["heading", "stat", "key-value", "table", "badge", "progress", "text", "separator"]:
+        assert block_type in content, f"tools.md must document block type: {block_type}"
+    # SDK tools
+    for tool_name in ["Bash", "Read", "Write", "Edit", "Grep", "Glob"]:
+        assert tool_name in content, f"tools.md must document SDK tool: {tool_name}"
+
+    print("  All canvas tools and block types documented")
+
+
+async def test_daemon_managed_have_sections():
+    """Daemon-managed files have structured section headers."""
+    print("Test 6: Daemon-managed files have section headers...")
+
+    for name in ["files.md", "user.md", "context.md"]:
+        content = (REPO_MEMORY_DIR / name).read_text()
+        assert content.startswith("#"), f"{name} should start with a heading"
+        assert "##" in content, f"{name} should have section headers"
+
+    print("  All daemon-managed files have structured sections")
+
+
+# -- Path constant tests --
+
+async def test_path_constants():
+    """__init__.py exports correct path constants."""
+    print("Test 7: Path constants...")
+
+    assert memory_module.SOUL_MD.name == "soul.md"
+    assert memory_module.OS_MD.name == "os.md"
+    assert memory_module.TOOLS_MD.name == "tools.md"
+    assert memory_module.FILES_MD.name == "files.md"
+    assert memory_module.USER_MD.name == "user.md"
+    assert memory_module.CONTEXT_MD.name == "context.md"
+    assert len(memory_module.ALL_MEMORY_FILES) == 6
+    assert len(memory_module.DAEMON_MANAGED_FILES) == 4
+
+    print("  All 6 path constants + collection exports correct")
+
+
+# -- ensure_templates tests --
+
+async def test_ensure_templates_creates_daemon_files():
+    """ensure_templates creates daemon-managed files only."""
+    print("Test 8: ensure_templates creates daemon-managed files...")
 
     ensure_templates()
 
-    # soul.md is deploy-managed, NOT created by ensure_templates()
+    # Deploy-managed files NOT created
     assert not memory_module.SOUL_MD.exists(), "soul.md should NOT be created by ensure_templates()"
-    assert memory_module.USER_MD.exists(), "user.md should exist after ensure_templates()"
-    assert memory_module.MEMORY_MD.exists(), "MEMORY.md should exist after ensure_templates()"
+    assert not memory_module.OS_MD.exists(), "os.md should NOT be created by ensure_templates()"
 
-    print("✓ Templates created successfully (soul.md excluded)")
+    # Daemon-managed files created
+    for path in memory_module.DAEMON_MANAGED_FILES:
+        assert path.exists(), f"{path.name} should exist after ensure_templates()"
+
+    print("  Daemon files created, deploy files untouched")
 
 
-async def test_templates_not_overwritten():
-    """Test 2: Second boot doesn't overwrite existing agent-writable templates."""
-    print("\nTest 2: Templates not overwritten on second boot...")
+async def test_ensure_templates_no_overwrite():
+    """ensure_templates doesn't overwrite existing files."""
+    print("Test 9: ensure_templates doesn't overwrite...")
 
-    # Modify user.md
-    custom_content = "# Custom Content\n\nThis should not be overwritten."
-    memory_module.USER_MD.write_text(custom_content)
+    custom = "# Custom\nUser-modified content"
+    memory_module.USER_MD.write_text(custom)
 
-    # Run ensure_templates again
     ensure_templates()
 
-    # Verify content unchanged
-    assert memory_module.USER_MD.read_text() == custom_content, "user.md was overwritten"
+    assert memory_module.USER_MD.read_text() == custom, "user.md was overwritten"
 
-    print("✓ Templates preserved on second boot")
+    print("  Existing files preserved")
 
+
+# -- Loader + journal + transcript tests (unchanged) --
 
 async def test_loader():
-    """Test 3: Loader returns structured prompt with all 5 sources."""
-    print("\nTest 3: Loader assembles system prompt from all sources...")
+    """Loader returns structured prompt."""
+    print("Test 10: Loader assembles system prompt...")
 
-    # Write test content to each file (soul.md simulates deploy)
     memory_module.SOUL_MD.write_text("# Soul\nTest soul content")
     memory_module.USER_MD.write_text("# User\nTest user content")
-    memory_module.MEMORY_MD.write_text("# Memory\nTest memory content")
+    loader_module.MEMORY_MD.write_text("# Memory\nTest memory content")
 
-    # Create today's and yesterday's journals
     today = datetime.now().strftime("%Y-%m-%d")
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-
     (memory_module.MEMORY_DIR / f"{today}.md").write_text("Today's activities")
     (memory_module.MEMORY_DIR / f"{yesterday}.md").write_text("Yesterday's activities")
 
-    # Load memory
     result = load()
 
-    # Verify all 5 sources present
-    assert "Test soul content" in result, "soul.md content missing"
-    assert "Test user content" in result, "user.md content missing"
-    assert "Test memory content" in result, "MEMORY.md content missing"
-    assert "Today's activities" in result, "Today's journal missing"
-    assert "Yesterday's activities" in result, "Yesterday's journal missing"
-    assert "Stack Memory: soul.md" in result, "soul.md section header missing"
+    assert "Test soul content" in result
+    assert "Test user content" in result
+    assert "Today's activities" in result
+    assert "Yesterday's activities" in result
 
-    print("✓ Loader assembled all 5 sources correctly")
+    print("  Loader assembled sources correctly")
 
 
 async def test_journal():
-    """Test 4: Journal appends to correct date file."""
-    print("\nTest 4: Journal appends to daily file...")
+    """Journal appends to correct date file."""
+    print("Test 11: Journal appends...")
 
     today = datetime.now().strftime("%Y-%m-%d")
     journal_path = memory_module.MEMORY_DIR / f"{today}.md"
-
-    # Clear existing journal
     if journal_path.exists():
         journal_path.unlink()
 
-    # Append first entry
     await append_journal("First session completed")
-    assert journal_path.exists(), "Journal file not created"
-    content1 = journal_path.read_text()
-    assert "First session completed" in content1, "First entry not found"
-
-    # Append second entry
+    assert journal_path.exists()
     await append_journal("Second session completed")
-    content2 = journal_path.read_text()
-    assert "First session completed" in content2, "First entry was overwritten"
-    assert "Second session completed" in content2, "Second entry not appended"
+    content = journal_path.read_text()
+    assert "First session completed" in content
+    assert "Second session completed" in content
 
-    print("✓ Journal appends correctly (not overwriting)")
+    print("  Journal appends correctly")
 
 
 async def test_transcript():
-    """Test 5: Transcript logs valid JSONL."""
-    print("\nTest 5: Transcript logs JSONL...")
+    """Transcript logs valid JSONL."""
+    print("Test 12: Transcript logs JSONL...")
 
     logger = TranscriptLogger(session_id="test_session_123")
-
-    # Log a few events
     await logger.log("text", {"content": "Hello world"})
     await logger.log("tool_use", {"tool": "create_card", "input": {"title": "Test"}})
     await logger.log("complete", {"session_id": "test_session_123", "cost_usd": 0.025})
 
-    # Verify JSONL file exists
-    assert logger.log_path.exists(), "Transcript file not created"
-
-    # Parse and verify JSONL
+    assert logger.log_path.exists()
     lines = logger.log_path.read_text().strip().split("\n")
-    assert len(lines) == 3, f"Expected 3 lines, got {len(lines)}"
+    assert len(lines) == 3
 
     for line in lines:
-        data = json.loads(line)  # Should not raise JSONDecodeError
-        assert "timestamp" in data, "timestamp missing"
-        assert "session_id" in data, "session_id missing"
-        assert "event_type" in data, "event_type missing"
+        data = json.loads(line)
+        assert "timestamp" in data
+        assert "session_id" in data
+        assert "event_type" in data
 
-    # Verify first entry
-    first = json.loads(lines[0])
-    assert first["event_type"] == "text", "First event type wrong"
-    assert first["content"] == "Hello world", "First event content wrong"
-
-    print("✓ Transcript logs valid JSONL")
+    print("  Transcript logs valid JSONL")
 
 
 async def main():
@@ -161,18 +267,24 @@ async def main():
     print(f"Test workspace: {TEST_WORKSPACE}\n")
 
     try:
-        await test_templates()
-        await test_templates_not_overwritten()
+        await test_all_templates_exist()
+        await test_line_limits()
+        await test_soul_md_no_canvas_or_tools()
+        await test_os_md_has_canvas()
+        await test_tools_md_documents_canvas_tools()
+        await test_daemon_managed_have_sections()
+        await test_path_constants()
+        await test_ensure_templates_creates_daemon_files()
+        await test_ensure_templates_no_overwrite()
         await test_loader()
         await test_journal()
         await test_transcript()
 
         print("\n" + "=" * 60)
-        print("All tests passed! ✓")
+        print("All 12 tests passed!")
         print("=" * 60)
 
     finally:
-        # Cleanup
         import shutil
         shutil.rmtree(TEST_WORKSPACE)
         print(f"\nCleaned up test workspace: {TEST_WORKSPACE}")

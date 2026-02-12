@@ -16,7 +16,7 @@ import { spriteExec } from './sprite-exec.js'
 
 // Current version — bump this when code or deps change.
 // The updater checks this against the sprite's /workspace/.os/VERSION file.
-export const CURRENT_VERSION = 2
+export const CURRENT_VERSION = 3
 
 // -- Source code deployment --
 
@@ -45,11 +45,14 @@ export async function deployCode(spriteName: string): Promise<void> {
     await writeFile(spriteName, `/workspace/.os/src/${file}`, content)
   }
 
-  // soul.md — developer-controlled, always overwritten on deploy
-  const soulContent = await fsRead(join(spriteDir, 'memory', 'soul.md'), 'utf-8')
-  await writeFile(spriteName, '/workspace/.os/memory/soul.md', soulContent)
+  // Deploy-managed memory files — overwritten on every deploy
+  const deployManagedFiles = ['soul.md', 'os.md']
+  for (const file of deployManagedFiles) {
+    const content = await fsRead(join(spriteDir, 'memory', file), 'utf-8')
+    await writeFile(spriteName, `/workspace/.os/memory/${file}`, content)
+  }
 
-  console.log(`[bootstrap] Deployed ${srcFiles.length} source files + soul.md`)
+  console.log(`[bootstrap] Deployed ${srcFiles.length} source files + ${deployManagedFiles.join(', ')}`)
 }
 
 /** Deploy requirements.txt to /workspace/.os/ on the sprite. */
@@ -112,28 +115,8 @@ conn.close()
 print("OK")
 `
 
-// -- Memory templates --
-
-const SOUL_MD = `# Stack Identity
-
-This stack has not been configured yet.
-
-## Purpose
-(Agent will update this after learning what the user needs)
-
-## Extraction Rules
-(Agent will learn extraction patterns from user corrections)
-`
-
-const USER_MD = `# User Preferences
-
-(Agent will learn preferences from interactions)
-`
-
-const MEMORY_MD = `# Global Memory
-
-No documents processed yet. No sessions completed.
-`
+// Daemon-managed memory files — deployed once on bootstrap, not overwritten by updates.
+const DAEMON_MANAGED_FILES = ['tools.md', 'files.md', 'user.md', 'context.md']
 
 // -- Bootstrap orchestration --
 
@@ -176,11 +159,13 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   )
   console.log(`[bootstrap] SQLite database initialized`)
 
-  // 6. Create memory templates
-  await writeFile(spriteName, '/workspace/.os/memory/soul.md', SOUL_MD)
-  await writeFile(spriteName, '/workspace/.os/memory/user.md', USER_MD)
-  await writeFile(spriteName, '/workspace/.os/memory/MEMORY.md', MEMORY_MD)
-  console.log(`[bootstrap] Memory templates created`)
+  // 6. Deploy daemon-managed memory templates (only on fresh bootstrap, not overwritten by updates)
+  const spriteDir = join(import.meta.dirname, '..', '..', 'sprite')
+  for (const file of DAEMON_MANAGED_FILES) {
+    const content = await fsRead(join(spriteDir, 'memory', file), 'utf-8')
+    await writeFile(spriteName, `/workspace/.os/memory/${file}`, content)
+  }
+  console.log(`[bootstrap] Memory templates created (${DAEMON_MANAGED_FILES.length} daemon-managed)`)
 
   // 7. Write VERSION file
   await writeFile(spriteName, '/workspace/.os/VERSION', String(CURRENT_VERSION))
