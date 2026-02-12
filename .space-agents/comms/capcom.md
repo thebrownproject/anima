@@ -2198,3 +2198,44 @@ Iterative UI refinement session on the desktop chrome prototype at `frontend/app
 - Begin planning Phase A implementation tasks from glass desktop spec
 
 ---
+
+## [2026-02-12 17:00] Session 144
+
+**Branch:** main | **Git:** uncommitted (spec + plan updates)
+
+### What Happened
+Deep brainstorming session on Sprite VM file structure and memory system redesign. Revisited the session 142 memory plan with significant architectural changes.
+
+1. **Introduced `.os/` directory concept.** Separates system infrastructure from user space on the Sprite VM. `.os/` contains runtime code (`src/`), memory system (`memory/`), venv, and VERSION. Top-level `/workspace/` has user space: `documents/`, `ocr/`, `extractions/`, `artifacts/`. Mirrors "agent IS the operating system" vision.
+
+2. **Eliminated documents database.** Agent has full filesystem access (Bash, Glob, Grep, Read) — doesn't need SQL to find files. Filesystem IS the source of truth for user data. `files.md` memory file maintains a daemon-curated index.
+
+3. **Split into two databases.** `transcript.db` (append-only, immutable black box recorder) + `memory.db` (searchable learnings, FTS5). Clean separation: transcript is raw input, memory is processed output. Can rebuild memory.db from transcript.db.
+
+4. **Expanded to 6 memory files.** Added `soul.md` (personality) separate from `os.md` (system rules), plus `files.md` (filesystem index) and `context.md` (active working state). All loaded on boot as the "launch briefing."
+
+5. **Switched to batch processing.** Instead of per-turn daemon (2s loop), accumulate observations and process every ~25 turns. Gives Haiku much better context over conversation arcs. Three triggers: batch threshold (Stop hook), emergency flush (PreCompact hook), session end.
+
+6. **Discovered PreCompact hook exists.** Previous plan said SDK didn't expose compaction controls — it does. `PreCompact` hook fires before auto-compaction with `trigger: "auto"`. Solves the edge case of context loss during compaction.
+
+7. **All memory daemon-managed, including context.md.** Initially considered agent-writable context.md, but user correctly identified this breaks the "agent is a pure worker" principle. Agent will forget to write. Daemon observes and curates all 6 files.
+
+8. **Updated spec and plan.** Spec at `.space-agents/exploration/planned/2026-02-08-memory-system-redesign/spec.md` — comprehensive rewrite. Plan expanded from 7 to 9 tasks to cover `.os/` restructure and new file layout.
+
+### Decisions Made
+- `.os/` for system, top-level for user space — clean filesystem separation
+- No documents database — filesystem + files.md is enough
+- Two databases: transcript.db (immutable source of truth) + memory.db (searchable learnings)
+- 6 memory files: soul.md, os.md, tools.md, files.md, user.md, context.md
+- soul.md (personality) separate from os.md (system rules)
+- Batch processing every ~25 turns, not per-turn
+- PreCompact hook for emergency flush (SDK supports it)
+- All memory daemon-managed — agent has zero write responsibility
+- context.md daemon-curated (not agent-writable)
+- No timer loop needed — hooks cover all trigger cases
+- Daemon is stateless (single Haiku call per batch, no inception problem)
+
+### Next Action
+- `/plan` to create Beads tasks from the updated 9-task plan, then begin implementation starting with Task 1 (`.os/` restructure)
+
+---
