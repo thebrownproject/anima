@@ -110,7 +110,7 @@ function defaultVerifyServer(conn: SpriteConnection): Promise<boolean> {
 
 /** Default: restart Python WS server via exec. */
 async function defaultRestartServer(spriteName: string, token: string): Promise<void> {
-  const url = buildExecUrl(spriteName, ['/workspace/.venv/bin/python3', '/workspace/src/server.py'])
+  const url = buildExecUrl(spriteName, ['bash', '-c', 'cd /workspace && PYTHONPATH=/workspace/.os /workspace/.os/.venv/bin/python3 -m src.server'])
   const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } })
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => { ws.close(); resolve() }, 3_000)

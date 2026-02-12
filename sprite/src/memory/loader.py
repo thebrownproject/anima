@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 
-MEMORY_DIR = Path("/workspace/memory")
+MEMORY_DIR = Path("/workspace/.os/memory")
 SOUL_MD = MEMORY_DIR / "soul.md"
 USER_MD = MEMORY_DIR / "user.md"
 MEMORY_MD = MEMORY_DIR / "MEMORY.md"

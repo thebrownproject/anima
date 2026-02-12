@@ -279,9 +279,9 @@ async def test_db_file_created_at_path(tmp_path):
 
 
 async def test_default_path_is_workspace():
-    """Default db_path points to /workspace/agent.db."""
+    """Default db_path points to /workspace/.os/memory/agent.db."""
     database = Database()
-    assert database.db_path == "/workspace/agent.db"
+    assert database.db_path == "/workspace/.os/memory/agent.db"
 
 
 # -- Context manager ---------------------------------------------------------

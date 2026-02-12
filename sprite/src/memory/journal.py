@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 
-MEMORY_DIR = Path("/workspace/memory")
+MEMORY_DIR = Path("/workspace/.os/memory")
 
 
 async def append_journal(summary: str) -> None:

@@ -9,7 +9,7 @@ import aiosqlite
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = "/workspace/agent.db"
+DEFAULT_DB_PATH = "/workspace/.os/memory/agent.db"
 
 # Schema DDL -- must match bridge/src/bootstrap.ts lines 51-89 exactly
 SCHEMA = """\

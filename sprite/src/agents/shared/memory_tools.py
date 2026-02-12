@@ -10,7 +10,7 @@ from claude_agent_sdk import tool
 
 logger = logging.getLogger(__name__)
 
-MEMORY_DIR = Path("/workspace/memory")
+MEMORY_DIR = Path("/workspace/.os/memory")
 USER_MD = MEMORY_DIR / "user.md"
 MEMORY_MD = MEMORY_DIR / "MEMORY.md"
 

@@ -15,16 +15,15 @@ import { writeFile } from './sprites-client.js'
 import { spriteExec } from './sprite-exec.js'
 
 // Current version — bump this when code or deps change.
-// The updater checks this against the sprite's /workspace/VERSION file.
+// The updater checks this against the sprite's /workspace/.os/VERSION file.
 export const CURRENT_VERSION = 2
 
 // -- Source code deployment --
 
-/** Deploy sprite/src/ Python files to /workspace/src/ on the sprite. */
+/** Deploy sprite/src/ Python files to /workspace/.os/src/ on the sprite. */
 export async function deployCode(spriteName: string): Promise<void> {
   const spriteDir = join(import.meta.dirname, '..', '..', 'sprite')
 
-  // Source code → /workspace/src/
   const srcFiles = [
     '__init__.py',
     'server.py',
@@ -43,30 +42,30 @@ export async function deployCode(spriteName: string): Promise<void> {
 
   for (const file of srcFiles) {
     const content = await fsRead(join(spriteDir, 'src', file), 'utf-8')
-    await writeFile(spriteName, `/workspace/src/${file}`, content)
+    await writeFile(spriteName, `/workspace/.os/src/${file}`, content)
   }
 
-  // soul.md → /workspace/memory/soul.md (developer-controlled, always overwritten)
+  // soul.md — developer-controlled, always overwritten on deploy
   const soulContent = await fsRead(join(spriteDir, 'memory', 'soul.md'), 'utf-8')
-  await writeFile(spriteName, '/workspace/memory/soul.md', soulContent)
+  await writeFile(spriteName, '/workspace/.os/memory/soul.md', soulContent)
 
   console.log(`[bootstrap] Deployed ${srcFiles.length} source files + soul.md`)
 }
 
-/** Deploy requirements.txt to /workspace/ on the sprite. */
+/** Deploy requirements.txt to /workspace/.os/ on the sprite. */
 async function deployRequirements(spriteName: string): Promise<void> {
   const content = await fsRead(
     join(import.meta.dirname, '..', '..', 'sprite', 'requirements.txt'),
     'utf-8',
   )
-  await writeFile(spriteName, '/workspace/requirements.txt', content)
+  await writeFile(spriteName, '/workspace/.os/requirements.txt', content)
 }
 
 // -- SQLite schema --
 
 const INIT_DB_SCRIPT = `
 import sqlite3
-DB_PATH = "/workspace/agent.db"
+DB_PATH = "/workspace/.os/memory/agent.db"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
@@ -149,9 +148,9 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   // 1. Create directories and fix ownership (FS API writes as ubuntu, server runs as sprite)
   await spriteExec(spriteName, [
     'sudo chown sprite:sprite /workspace',
-    '&& mkdir -p /workspace/documents /workspace/ocr /workspace/artifacts',
-    '/workspace/memory /workspace/transcripts /workspace/src',
-    '/workspace/src/agents /workspace/src/agents/shared /workspace/src/memory',
+    '&& mkdir -p /workspace/.os/src /workspace/.os/src/agents /workspace/.os/src/agents/shared',
+    '/workspace/.os/src/memory /workspace/.os/memory /workspace/.os/.venv /workspace/.os/apps',
+    '/workspace/documents /workspace/ocr /workspace/extractions /workspace/artifacts',
   ].join(' '))
   console.log(`[bootstrap] Directories created`)
 
@@ -161,10 +160,10 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   )
 
   // 3. Create venv and install packages
-  await spriteExec(spriteName, 'python3 -m venv /workspace/.venv')
+  await spriteExec(spriteName, 'python3 -m venv /workspace/.os/.venv')
   await deployRequirements(spriteName)
   await spriteExec(spriteName,
-    '/workspace/.venv/bin/pip install -r /workspace/requirements.txt 2>&1 | tail -1',
+    '/workspace/.os/.venv/bin/pip install -r /workspace/.os/requirements.txt 2>&1 | tail -1',
   )
   console.log(`[bootstrap] Venv created and packages installed`)
 
@@ -173,18 +172,18 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
 
   // 5. Initialize SQLite database
   await spriteExec(spriteName,
-    `/workspace/.venv/bin/python3 -c '${INIT_DB_SCRIPT.replace(/'/g, "'\\''")}'`,
+    `/workspace/.os/.venv/bin/python3 -c '${INIT_DB_SCRIPT.replace(/'/g, "'\\''")}'`,
   )
   console.log(`[bootstrap] SQLite database initialized`)
 
   // 6. Create memory templates
-  await writeFile(spriteName, '/workspace/memory/soul.md', SOUL_MD)
-  await writeFile(spriteName, '/workspace/memory/user.md', USER_MD)
-  await writeFile(spriteName, '/workspace/memory/MEMORY.md', MEMORY_MD)
+  await writeFile(spriteName, '/workspace/.os/memory/soul.md', SOUL_MD)
+  await writeFile(spriteName, '/workspace/.os/memory/user.md', USER_MD)
+  await writeFile(spriteName, '/workspace/.os/memory/MEMORY.md', MEMORY_MD)
   console.log(`[bootstrap] Memory templates created`)
 
   // 7. Write VERSION file
-  await writeFile(spriteName, '/workspace/VERSION', String(CURRENT_VERSION))
+  await writeFile(spriteName, '/workspace/.os/VERSION', String(CURRENT_VERSION))
 
   // 8. Fix ownership — FS API writes as ubuntu, but server runs as sprite
   await spriteExec(spriteName, 'sudo chown -R sprite:sprite /workspace')
