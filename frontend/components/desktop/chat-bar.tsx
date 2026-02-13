@@ -5,6 +5,7 @@ import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { GlassIconButton } from '@/components/ui/glass-icon-button'
+import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useWebSocket } from './ws-provider'
 
 interface ChatBarProps {
@@ -17,11 +18,12 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { send } = useWebSocket()
   const { chips, mode, isAgentStreaming, addMessage, setMode } = useChatStore()
+  const activeStackId = useDesktopStore((s) => s.activeStackId)
 
   const sendMessage = useCallback((text: string) => {
     addMessage({ role: 'user', content: text, timestamp: Date.now() })
-    send({ type: 'mission', payload: { text } })
-  }, [addMessage, send])
+    send({ type: 'mission', payload: { text, context: { stack_id: activeStackId } } })
+  }, [addMessage, send, activeStackId])
 
   const handleSend = useCallback(() => {
     const text = inputValue.trim()

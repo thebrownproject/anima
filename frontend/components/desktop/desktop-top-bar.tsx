@@ -4,6 +4,7 @@ import { GlassTabSwitcher } from '@/components/desktop/glass-tab-switcher'
 import { GlassIconButton } from '@/components/ui/glass-icon-button'
 import * as Icons from '@/components/icons'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { useWebSocket } from './ws-provider'
 import { cn } from '@/lib/utils'
 
 const launcherClass = 'border border-white/20 bg-white/10 backdrop-blur-2xl'
@@ -22,9 +23,14 @@ function GlassPill({ children, className }: { children: React.ReactNode; classNa
 }
 
 export function DesktopTopBar() {
-  const activeWorkspace = useDesktopStore((s) => s.activeWorkspace)
-  const setActiveWorkspace = useDesktopStore((s) => s.setActiveWorkspace)
+  const stacks = useDesktopStore((s) => s.stacks)
+  const archivedStackIds = useDesktopStore((s) => s.archivedStackIds)
+  const activeStackId = useDesktopStore((s) => s.activeStackId)
+  const setActiveStackId = useDesktopStore((s) => s.setActiveStackId)
   const toggleLeftPanel = useDesktopStore((s) => s.toggleLeftPanel)
+  const { send } = useWebSocket()
+
+  const visibleStacks = stacks.filter((s) => !archivedStackIds.includes(s.id))
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-4 pt-4">
@@ -55,21 +61,33 @@ export function DesktopTopBar() {
           tooltip="Back"
           className={launcherClass}
         />
-        <GlassTabSwitcher
-          value={activeWorkspace}
-          onValueChange={setActiveWorkspace}
-          onClose={() => {
-            // TODO: remove workspace
-          }}
-          tabs={[
-            { value: 'default', label: 'Q4 Invoices' },
-            { value: 'tax', label: 'Tax Returns' },
-          ]}
-        />
+        {visibleStacks.length > 0 ? (
+          <GlassTabSwitcher
+            value={activeStackId}
+            onValueChange={setActiveStackId}
+            onClose={(stackId) => {
+              send({
+                type: 'canvas_interaction',
+                payload: { action: 'archive_stack', card_id: '', data: { stack_id: stackId } },
+              })
+            }}
+            tabs={visibleStacks.map((s) => ({ value: s.id, label: s.name, dot: s.color ?? undefined }))}
+          />
+        ) : (
+          <div className="flex h-10 items-center rounded-full border border-white/20 bg-white/10 px-4 backdrop-blur-2xl">
+            <span className="text-sm text-white/40">Loading...</span>
+          </div>
+        )}
         <GlassIconButton
           icon={<Icons.Plus  />}
-          tooltip="New workspace"
+          tooltip="New stack"
           className={launcherClass}
+          onClick={() => {
+            send({
+              type: 'canvas_interaction',
+              payload: { action: 'create_stack', card_id: '', data: null },
+            })
+          }}
         />
       </div>
 

@@ -2948,3 +2948,54 @@ Explored adding bidirectional voice (STT + TTS) to the Stackdocs frontend. Multi
 - When m7b.12 completes: `/plan` on voice-integration spec to break into tasks
 
 ---
+
+## [2026-02-14 00:30] Session 161
+
+**Branch:** main | **Git:** uncommitted (frontend changes)
+
+### What Happened
+
+**Executed m7b.12 — One Sprite Per User (16/17 tasks completed via orchestrated mode)**
+
+Ran full Pathfinder → Builder → Inspector cycle for each task. All Bridge and Sprite phases complete, Frontend phase complete except E2E test.
+
+**Bridge phase (Tasks 1–7):**
+- m7b.12.1: Protocol types — added `stack_id` to CanvasUpdate, `context` to MissionMessage, new `StateSyncMessage` type, expanded `CanvasAction` with archive/create/restore. All 3 codebases synced (bridge/sprite/frontend). 128/128 bridge tests, 19/19 sprite protocol tests.
+- m7b.12.2: Supabase migration 012 — moves `sprite_name`/`sprite_status` from stacks to users table, adds `archived_at`/`color`/`sort_order` to stacks. Transaction-wrapped, idempotent, deterministic data copy via `DISTINCT ON`.
+- m7b.12.3: Bridge core re-key — `authenticateConnection(token)` (no stackId), queries `users` table, `/ws` exact match (not `/ws/{stack_id}`), `getConnectionsByUser`.
+- m7b.12.4: Bridge proxy re-key — `spriteConnections` Map keyed by userId, all functions renamed.
+- m7b.12.5: Bridge reconnect + keepalive re-key — mechanical rename, deprecated `getConnectionsByStack` alias removed.
+- m7b.12.6: Bridge provisioning per-user — writes to `users` table, sprite names user-derived.
+- m7b.12.7: Bridge test verification — 128/128 tests, zero `stackId` references in `bridge/src/`.
+
+**Sprite phase (Tasks 8–11):**
+- m7b.12.8: WorkspaceDB — subclasses `_BaseDB`, 3 tables (stacks/cards/chat_messages), 14 CRUD methods, transactional cascade for archive/restore. 38/38 tests.
+- m7b.12.9: State sync — `build_state_sync_message(db)` sends full workspace state on TCP connect. Data conversion: timestamp s→ms, id int→str, position defaults. Creates default "My Stack" on first connect. 10/10 tests.
+- m7b.12.10: Canvas tools + DB persistence — factory accepts `workspace_db` + `stack_id`, persists to DB, close_card archives (not deletes). Gateway dispatches user-initiated canvas_interaction (archive_card/archive_stack/create_stack/restore_stack) directly — no agent. 29/29 tests.
+- m7b.12.11: Chat persistence — user messages saved in gateway, agent responses accumulated via separate `_turn_response` field (avoids TurnBuffer/Stop hook timing). 6/6 tests.
+
+**Frontend phase (Tasks 12–16):**
+- m7b.12.12: WS + routing — removed stackId from WebSocket URL, created `/desktop` route, deleted `/stacks/[id]` dynamic route.
+- m7b.12.13: Stack store — `DesktopCard.stackId`, `stacks` array, `activeStackId` (renamed from `activeWorkspace`), `useCardsForActiveStack()` selector, persist v1 migration.
+- m7b.12.14: State sync handler — `state_sync` case in ws-provider, role mapping `assistant→agent`, auto-position for (0,0) cards, `setCards`/`setMessages` bulk actions.
+- m7b.12.15: Message context — ChatBar sends `context: { stack_id: activeStackId }` with every mission.
+- m7b.12.16: Top bar wiring — tabs from store (not hardcoded), plus sends `create_stack`, close sends `archive_stack` via canvas_interaction.
+
+### Decisions Made
+- `CanvasInteraction.data` field carries `stack_id` for stack operations (not top-level on payload)
+- Separate `_turn_response` accumulator on AgentRuntime (TurnBuffer cleared by Stop hook before ResultMessage)
+- `archiveStack` removes cards from store (not just hides) — consistent with archive model
+- Role mapping: `"assistant"` → `"agent"` in state_sync chat ingestion
+- Cards at (0,0) position auto-placed via `getAutoPosition()` during state_sync
+
+### Gotchas
+- Pyright diagnostics frequently stale — always verify with `tsc --noEmit` or `pytest`
+- `_BaseDB._conn` optional access warnings are pre-existing pattern, not real bugs
+- Builder agents sometimes leave unused imports or stale comments — quick cleanup needed after each
+
+### Next Action
+- m7b.12.17: Integration E2E test (deferred to next session)
+- After E2E: close m7b.12 feature, deploy Bridge update to Fly.io
+- Then: `/plan` on voice-integration spec
+
+---

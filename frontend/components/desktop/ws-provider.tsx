@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
-import type { SpriteToBrowserMessage, BrowserToSpriteMessage, CardInfo, ChatMessageInfo } from '@/types/ws-protocol'
+import type { SpriteToBrowserMessage, BrowserToSpriteMessage, ChatMessageInfo } from '@/types/ws-protocol'
 import { useDesktopStore, type DesktopCard } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { getAutoPosition } from './auto-placer'
