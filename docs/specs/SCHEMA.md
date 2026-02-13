@@ -2,7 +2,7 @@
 
 **Product:** Stackdocs — Personal AI Computer for Document Intelligence
 **Version:** 2.0
-**Last Updated:** 2026-02-07
+**Last Updated:** 2026-02-13
 **Database:** Supabase PostgreSQL (platform) + Sprite SQLite (per-stack)
 
 ---
@@ -26,7 +26,7 @@ In v2, data ownership splits across two databases:
 - **Supabase PostgreSQL (platform):** User accounts, stack metadata, Sprite VM mapping. Shared across all stacks. Accessed by Bridge for auth and routing.
 - **Sprite SQLite (per-stack):** Documents, OCR results, extractions, memory. Lives on the Sprite VM filesystem. Accessed only by the stack's agent runtime.
 
-All v1 tables remain in Supabase (not dropped). New stacks use Sprite-local SQLite for document data. The `stacks` table gains `sprite_name` and `sprite_status` columns to map stacks to their Sprite VMs.
+All v1 tables remain in Supabase (not dropped). New stacks use Sprite-local SQLite for document data. The `users` table has `sprite_name` and `sprite_status` columns to map each user to their single Sprite VM (one Sprite per user, not per stack).
 
 ---
 
@@ -36,33 +36,19 @@ The Bridge service uses these two tables for auth and Sprite routing.
 
 ### `users`
 
-User profiles. Clerk user IDs (TEXT primary key).
+User profiles with Sprite VM mapping. Clerk user IDs (TEXT primary key). One Sprite per user.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | TEXT PK | Clerk user ID (`user_xxx`) |
 | `email` | TEXT NOT NULL | |
+| `sprite_name` | TEXT | Sprites.dev VM identifier, NULL until provisioned |
+| `sprite_status` | TEXT | `'pending'` default — see lifecycle below |
 | `documents_processed_this_month` | INTEGER | v1 usage tracking |
 | `usage_reset_date` | DATE | v1 usage tracking |
 | `subscription_tier` | VARCHAR(20) | `'free'` default |
 | `documents_limit` | INTEGER | `5` default |
 | `created_at` | TIMESTAMPTZ | |
-
-### `stacks`
-
-Stack metadata with Sprite VM mapping. One stack = one Sprite VM.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | UUID PK | |
-| `user_id` | TEXT NOT NULL | Clerk user ID (FK to users) |
-| `name` | VARCHAR(255) NOT NULL | |
-| `description` | TEXT | |
-| `status` | VARCHAR(20) | `'active'` / `'archived'` |
-| `sprite_name` | TEXT | Sprites.dev VM identifier, NULL until provisioned |
-| `sprite_status` | TEXT | `'pending'` default — see lifecycle below |
-| `created_at` | TIMESTAMPTZ | |
-| `updated_at` | TIMESTAMPTZ | |
 
 **`sprite_status` lifecycle:**
 
@@ -77,7 +63,24 @@ pending → provisioning → active → suspended
 | `active` | Sprite VM exists and is mapped. May be sleeping (Sprites auto-sleep after 30s). |
 | `suspended` | Sprite deactivated (e.g. subscription lapsed). |
 
-### Sprite SQLite (per-stack, on-VM)
+### `stacks`
+
+Stack metadata. Lightweight canvas layouts — all stacks share the user's single Sprite VM.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `user_id` | TEXT NOT NULL | Clerk user ID (FK to users) |
+| `name` | VARCHAR(255) NOT NULL | |
+| `description` | TEXT | |
+| `status` | VARCHAR(20) | `'active'` / `'archived'` |
+| `archived_at` | TIMESTAMPTZ | When stack was archived, NULL if active |
+| `color` | TEXT | User-chosen stack color |
+| `sort_order` | INTEGER | `0` default, for custom ordering |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+### Sprite SQLite (per-user, on-VM)
 
 Each Sprite VM has its own SQLite database at `/workspace/data/stackdocs.db`:
 
@@ -112,12 +115,16 @@ All v1 tables remain in Supabase. They are not dropped but are no longer written
 
 ## Table: `users`
 
-User profiles with current month usage tracking. Uses Clerk user IDs (TEXT).
+User profiles with Sprite VM mapping and usage tracking. Uses Clerk user IDs (TEXT). One Sprite per user.
 
 ```sql
 CREATE TABLE public.users (
     id TEXT PRIMARY KEY DEFAULT auth.jwt()->>'sub',  -- Clerk user ID
     email TEXT NOT NULL,
+
+    -- Sprite VM mapping (one per user)
+    sprite_name TEXT,                        -- Sprites.dev VM identifier, NULL until provisioned
+    sprite_status TEXT DEFAULT 'pending',    -- pending → provisioning → active → suspended
 
     -- Usage tracking (current month only)
     documents_processed_this_month INTEGER DEFAULT 0,
@@ -247,7 +254,7 @@ CREATE INDEX idx_extractions_fields ON extractions USING GIN(extracted_fields);
 
 ### Table: `stacks`
 
-Document groupings for batch extraction.
+Lightweight canvas layouts. All stacks share the user's single Sprite VM.
 
 ```sql
 CREATE TABLE stacks (
@@ -256,6 +263,9 @@ CREATE TABLE stacks (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(20) DEFAULT 'active',     -- 'active', 'archived'
+    archived_at TIMESTAMPTZ,                 -- When archived, NULL if active
+    color TEXT,                              -- User-chosen stack color
+    sort_order INTEGER DEFAULT 0,            -- Custom ordering
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -538,20 +548,21 @@ Migration files are in `backend/migrations/`:
 | 009_clerk_supabase_integration.sql | UUID→TEXT for user_id, Clerk RLS policies |
 | 010_document_metadata.sql | Add display_name, tags, summary, updated_at columns; convert all timestamps to TIMESTAMPTZ |
 | 011_add_sprite_columns.sql | Add sprite_name, sprite_status columns to stacks for v2 Sprite VM mapping |
+| 012_sprite_to_users.sql | Move sprite_name/sprite_status from stacks to users (one Sprite per user); add archived_at, color, sort_order to stacks |
 
 ---
 
 ## Key Relationships
 
 ```
-users
+users (sprite_name → Sprite VM, one per user)
+  ├── stacks (1:N, lightweight canvas layouts)
+  │     └── stack_documents (N:M via documents)
+  │           └── stack_tables (1:N)
+  │                 └── stack_table_rows (1:N)
   └── documents (1:N)
         ├── ocr_results (1:1, cached)
-        ├── extractions (1:N, history preserved)
-        └── stack_documents (N:M via stacks)
-              └── stacks
-                    └── stack_tables (1:N)
-                          └── stack_table_rows (1:N)
+        └── extractions (1:N, history preserved)
 ```
 
 ---
@@ -562,6 +573,6 @@ users
 |----------|---------|
 | `ARCHITECTURE.md` | System design |
 | `PRD.md` | Product requirements |
-| `bridge/src/auth.ts` | Bridge auth — queries stacks for sprite_name/sprite_status |
+| `bridge/src/auth.ts` | Bridge auth — queries users for sprite_name/sprite_status (post-m7b.12.3) |
 | `bridge/src/sprites-client.ts` | Sprites.dev API client |
 | `sprite/src/database.py` | Sprite SQLite schema definition |
