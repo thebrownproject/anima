@@ -134,14 +134,14 @@ function stopMockSprite(): Promise<void> {
 
 let testCounter = 0
 
-/** Generate a unique stack ID per test to prevent reconnect interference. */
-function uniqueStackId(): string {
-  return `stack-e2e-${++testCounter}`
+/** Generate a unique user ID per test to prevent reconnect interference. */
+function uniqueUserId(): string {
+  return `user-e2e-${++testCounter}`
 }
 
-function connectBrowser(stackId: string): Promise<WebSocket> {
+function connectBrowser(): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${BRIDGE_WS}/ws/${stackId}`)
+    const ws = new WebSocket(`${BRIDGE_WS}/ws`)
     ws.on('open', () => resolve(ws))
     ws.on('error', reject)
   })
@@ -187,13 +187,12 @@ function createCanvasInteractionMsg(): { raw: string; id: string } {
   }
 }
 
-function mockAuth(stackId: string, userId = 'user_e2e'): void {
+function mockAuth(userId: string): void {
   vi.mocked(verifyToken).mockResolvedValue({ sub: userId } as any)
   mockSingle.mockResolvedValue({
     data: {
-      id: stackId,
-      user_id: userId,
-      sprite_name: `sprite-${stackId}`,
+      id: userId,
+      sprite_name: `sprite-${userId}`,
       sprite_status: 'active',
     },
     error: null,
@@ -250,9 +249,9 @@ beforeEach(() => {
 
 describe('E2E: Browser -> Bridge -> Sprite round-trip', () => {
   it('sends mission message and receives echo ack from Sprite', async () => {
-    const stackId = uniqueStackId()
-    mockAuth(stackId)
-    const ws = await connectBrowser(stackId)
+    const userId = uniqueUserId()
+    mockAuth(userId)
+    const ws = await connectBrowser()
     await authenticateBrowser(ws)
 
     const mission = createMissionMsg('hello agent')
@@ -267,9 +266,9 @@ describe('E2E: Browser -> Bridge -> Sprite round-trip', () => {
   })
 
   it('sends canvas_interaction and receives echo ack', async () => {
-    const stackId = uniqueStackId()
-    mockAuth(stackId)
-    const ws = await connectBrowser(stackId)
+    const userId = uniqueUserId()
+    mockAuth(userId)
+    const ws = await connectBrowser()
     await authenticateBrowser(ws)
 
     const interaction = createCanvasInteractionMsg()
@@ -284,9 +283,9 @@ describe('E2E: Browser -> Bridge -> Sprite round-trip', () => {
   })
 
   it('receives error for unknown message type from Sprite', async () => {
-    const stackId = uniqueStackId()
-    mockAuth(stackId)
-    const ws = await connectBrowser(stackId)
+    const userId = uniqueUserId()
+    mockAuth(userId)
+    const ws = await connectBrowser()
     await authenticateBrowser(ws)
 
     const unknownMsg = JSON.stringify({
@@ -305,9 +304,9 @@ describe('E2E: Browser -> Bridge -> Sprite round-trip', () => {
   })
 
   it('round-trip latency is under 500ms', async () => {
-    const stackId = uniqueStackId()
-    mockAuth(stackId)
-    const ws = await connectBrowser(stackId)
+    const userId = uniqueUserId()
+    mockAuth(userId)
+    const ws = await connectBrowser()
     await authenticateBrowser(ws)
 
     const mission = createMissionMsg('latency test')
@@ -324,9 +323,9 @@ describe('E2E: Browser -> Bridge -> Sprite round-trip', () => {
   })
 
   it('handles multiple sequential messages correctly', async () => {
-    const stackId = uniqueStackId()
-    mockAuth(stackId)
-    const ws = await connectBrowser(stackId)
+    const userId = uniqueUserId()
+    mockAuth(userId)
+    const ws = await connectBrowser()
     await authenticateBrowser(ws)
 
     const m1 = createMissionMsg('first')

@@ -4,7 +4,6 @@ export interface Connection {
   id: string
   ws: WebSocket
   userId: string
-  stackId: string
   spriteName: string | null
   spriteStatus: string
   connectedAt: number
@@ -14,7 +13,7 @@ export interface Connection {
 const connections = new Map<string, Connection>()
 
 /** Pending connections awaiting auth (timeout after AUTH_TIMEOUT_MS). */
-const pendingAuth = new Map<string, { ws: WebSocket; stackId: string; timer: ReturnType<typeof setTimeout> }>()
+const pendingAuth = new Map<string, { ws: WebSocket; timer: ReturnType<typeof setTimeout> }>()
 
 export function getConnection(id: string): Connection | undefined {
   return connections.get(id)
@@ -24,13 +23,16 @@ export function setConnection(id: string, conn: Connection): void {
   connections.set(id, conn)
 }
 
-export function getConnectionsByStack(stackId: string): Connection[] {
+export function getConnectionsByUser(userId: string): Connection[] {
   const result: Connection[] = []
   for (const conn of connections.values()) {
-    if (conn.stackId === stackId) result.push(conn)
+    if (conn.userId === userId) result.push(conn)
   }
   return result
 }
+
+/** @deprecated Temporary alias — use getConnectionsByUser. Removed in m7b.12.4/m7b.12.5. */
+export const getConnectionsByStack = getConnectionsByUser
 
 export function getConnectionCount(): number {
   return connections.size
@@ -40,7 +42,7 @@ export function removeConnection(connectionId: string): void {
   connections.delete(connectionId)
 }
 
-export function setPending(connectionId: string, entry: { ws: WebSocket; stackId: string; timer: ReturnType<typeof setTimeout> }): void {
+export function setPending(connectionId: string, entry: { ws: WebSocket; timer: ReturnType<typeof setTimeout> }): void {
   pendingAuth.set(connectionId, entry)
 }
 
@@ -66,6 +68,6 @@ export function allConnections(): IterableIterator<Connection> {
 }
 
 /** Iterate all pending entries (for shutdown). */
-export function allPending(): IterableIterator<{ ws: WebSocket; stackId: string; timer: ReturnType<typeof setTimeout> }> {
+export function allPending(): IterableIterator<{ ws: WebSocket; timer: ReturnType<typeof setTimeout> }> {
   return pendingAuth.values()
 }

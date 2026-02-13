@@ -1,13 +1,9 @@
 /**
  * Bridge Service — WebSocket proxy between browsers and Sprites.
  *
- * Lightweight Node.js server on Fly.io (~300 lines). Accepts browser
- * WebSocket connections on /ws/{stack_id}, validates Clerk JWT on
- * first message, looks up stack ownership in Supabase, and tracks
- * authenticated connections.
- *
- * Later tasks add: Sprite TCP Proxy connection, message forwarding,
- * sleep/wake reconnection, keepalive pings.
+ * Lightweight Node.js server on Fly.io. Accepts browser WebSocket
+ * connections on /ws, validates Clerk JWT on first message, looks up
+ * user's Sprite in Supabase, and tracks authenticated connections.
  */
 
 import { createServer, IncomingMessage, ServerResponse } from 'node:http'
@@ -33,6 +29,7 @@ import {
   type Connection,
   getConnection,
   setConnection,
+  getConnectionsByUser,
   getConnectionsByStack,
   getConnectionCount,
   removeConnection,
@@ -45,14 +42,9 @@ import {
 } from './connection-store.js'
 
 // Re-export for consumers that previously imported from index
-export { type Connection, getConnection, getConnectionsByStack, getConnectionCount, getPendingCount } from './connection-store.js'
+export { type Connection, getConnection, getConnectionsByUser, getConnectionsByStack, getConnectionCount, getPendingCount } from './connection-store.js'
 
-/** How long a client has to send an auth message after connecting. */
 const AUTH_TIMEOUT_MS = 10_000
-
-// =============================================================================
-// Message Helpers
-// =============================================================================
 
 function createSystemMessage(
   event: 'connected' | 'sprite_waking' | 'sprite_ready' | 'error',
@@ -75,21 +67,16 @@ function sendError(ws: WebSocket, message: string, requestId?: string): void {
   }
 }
 
-// =============================================================================
-// WebSocket Connection Handler
-// =============================================================================
-
-function handleConnection(ws: WebSocket, stackId: string): void {
+function handleConnection(ws: WebSocket): void {
   const connectionId = uuidv4()
 
-  // Set up auth timeout — client must send auth message within AUTH_TIMEOUT_MS
   const timer = setTimeout(() => {
     sendError(ws, 'Auth timeout: no auth message received')
     ws.close(4001, 'Auth timeout')
     removePending(connectionId)
   }, AUTH_TIMEOUT_MS)
 
-  setPending(connectionId, { ws, stackId, timer })
+  setPending(connectionId, { ws, timer })
 
   ws.on('error', (err) => {
     console.error(`[${connectionId}] WebSocket error:`, err.message)
@@ -99,9 +86,9 @@ function handleConnection(ws: WebSocket, stackId: string): void {
     const conn = getConnection(connectionId)
     removePending(connectionId)
     removeConnection(connectionId)
-    // Disconnect Sprite if this was the last browser for the stack
-    if (conn && getConnectionsByStack(conn.stackId).length === 0) {
-      disconnectSprite(conn.stackId)
+    // Disconnect Sprite if this was the last browser for the user
+    if (conn && getConnectionsByUser(conn.userId).length === 0) {
+      disconnectSprite(conn.userId)
     }
   })
 
@@ -133,8 +120,7 @@ function handleConnection(ws: WebSocket, stackId: string): void {
         return
       }
 
-      // Authenticate
-      const result = await authenticateConnection(parsed.payload.token, stackId)
+      const result = await authenticateConnection(parsed.payload.token)
 
       if (isAuthError(result)) {
         sendError(ws, result.reason, parsed.id)
@@ -143,24 +129,21 @@ function handleConnection(ws: WebSocket, stackId: string): void {
         return
       }
 
-      // Auth successful — promote to authenticated connection
       removePending(connectionId)
       const conn: Connection = {
         id: connectionId,
         ws,
         userId: result.userId,
-        stackId: result.stackId,
         spriteName: result.spriteName,
         spriteStatus: result.spriteStatus,
         connectedAt: Date.now(),
       }
       setConnection(connectionId, conn)
 
-      // Send connected confirmation
       ws.send(createSystemMessage('connected', `Authenticated as ${result.userId}`, parsed.id))
 
       console.log(
-        `[${connectionId}] Authenticated: user=${result.userId} stack=${result.stackId} sprite=${result.spriteName ?? 'none'}`,
+        `[${connectionId}] Authenticated: user=${result.userId} sprite=${result.spriteName ?? 'none'}`,
       )
 
       // Establish Sprite connection if a sprite is assigned
@@ -168,7 +151,7 @@ function handleConnection(ws: WebSocket, stackId: string): void {
         const token = process.env.SPRITES_TOKEN
         if (token) {
           try {
-            await ensureSpriteConnection(result.stackId, result.spriteName, token)
+            await ensureSpriteConnection(result.userId, result.spriteName, token)
             ws.send(createSystemMessage('sprite_ready', `Sprite ${result.spriteName} connected`, parsed.id))
           } catch (err) {
             const msg = err instanceof Error ? err.message : 'Sprite connection failed'
@@ -187,15 +170,11 @@ function handleConnection(ws: WebSocket, stackId: string): void {
       return
     }
 
-    if (!forwardToSprite(conn.stackId, raw)) {
+    if (!forwardToSprite(conn.userId, raw)) {
       sendError(ws, 'Sprite not connected', parsed.request_id ?? parsed.id)
     }
   })
 }
-
-// =============================================================================
-// HTTP Server + WebSocket Upgrade
-// =============================================================================
 
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
   // Health check endpoint for Fly.io
@@ -216,41 +195,32 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     return
   }
 
-  // All other HTTP requests get 426 Upgrade Required
   res.writeHead(426, { 'Content-Type': 'text/plain' })
-  res.end('WebSocket connections only. Connect to /ws/{stack_id}')
+  res.end('WebSocket connections only. Connect to /ws')
 })
 
 const wss = new WebSocketServer({ noServer: true })
 
 server.on('upgrade', (request: IncomingMessage, socket, head) => {
-  // Extract stack_id from path: /ws/{stack_id}
   const url = new URL(request.url ?? '', `http://${request.headers.host ?? 'localhost'}`)
-  const match = url.pathname.match(/^\/ws\/([a-zA-Z0-9_-]+)$/)
 
-  if (!match) {
+  if (url.pathname !== '/ws') {
     socket.write('HTTP/1.1 400 Bad Request\r\n\r\n')
     socket.destroy()
     return
   }
 
-  const stackId = match[1]
-
   wss.handleUpgrade(request, socket, head, (ws) => {
-    handleConnection(ws, stackId)
+    handleConnection(ws)
   })
 })
-
-// =============================================================================
-// Server Startup
-// =============================================================================
 
 const PORT = parseInt(process.env.PORT ?? '8080', 10)
 
 export function startServer(port: number = PORT): ReturnType<typeof server.listen> {
   return server.listen(port, () => {
     console.log(`Bridge listening on port ${port}`)
-    console.log(`WebSocket endpoint: ws://localhost:${port}/ws/{stack_id}`)
+    console.log(`WebSocket endpoint: ws://localhost:${port}/ws`)
   })
 }
 

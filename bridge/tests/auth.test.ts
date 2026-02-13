@@ -1,18 +1,9 @@
-/**
- * Tests for the auth module.
- *
- * Mocks @clerk/backend verifyToken and @supabase/supabase-js to test
- * the auth flow without external dependencies.
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock @clerk/backend before importing auth module
 vi.mock('@clerk/backend', () => ({
   verifyToken: vi.fn(),
 }))
 
-// Mock @supabase/supabase-js before importing auth module
 const mockFrom = vi.fn()
 const mockSelect = vi.fn()
 const mockEq = vi.fn()
@@ -29,25 +20,19 @@ import {
   authenticateConnection,
   isAuthError,
   verifyClerkToken,
-  lookupStack,
+  lookupUser,
   resetSupabaseClient,
 } from '../src/auth.js'
-
-// =============================================================================
-// Setup
-// =============================================================================
 
 beforeEach(() => {
   vi.clearAllMocks()
   resetSupabaseClient()
 
-  // Set env vars for tests
   process.env.CLERK_JWT_KEY = 'test-jwt-key'
   process.env.CLERK_SECRET_KEY = 'test-secret-key'
   process.env.SUPABASE_URL = 'https://test.supabase.co'
   process.env.SUPABASE_SERVICE_KEY = 'test-service-key'
 
-  // Chain mock: from().select().eq().single()
   mockFrom.mockReturnValue({ select: mockSelect })
   mockSelect.mockReturnValue({ eq: mockEq })
   mockEq.mockReturnValue({ single: mockSingle })
@@ -59,10 +44,6 @@ afterEach(() => {
   delete process.env.SUPABASE_URL
   delete process.env.SUPABASE_SERVICE_KEY
 })
-
-// =============================================================================
-// verifyClerkToken
-// =============================================================================
 
 describe('verifyClerkToken', () => {
   it('returns userId on successful verification', async () => {
@@ -99,71 +80,78 @@ describe('verifyClerkToken', () => {
   })
 })
 
-// =============================================================================
-// lookupStack
-// =============================================================================
-
-describe('lookupStack', () => {
-  it('returns stack data when user owns the stack', async () => {
+describe('lookupUser', () => {
+  it('returns user data with sprite mapping', async () => {
     mockSingle.mockResolvedValue({
-      data: { id: 'stack_1', user_id: 'user_123', sprite_name: 'sprite-abc', sprite_status: 'active' },
+      data: { id: 'user_123', sprite_name: 'sprite-abc', sprite_status: 'active' },
       error: null,
     })
 
-    const stack = await lookupStack('stack_1', 'user_123')
-    expect(stack).toEqual({
-      id: 'stack_1',
-      user_id: 'user_123',
+    const user = await lookupUser('user_123')
+    expect(user).toEqual({
+      id: 'user_123',
       sprite_name: 'sprite-abc',
       sprite_status: 'active',
     })
+    expect(mockFrom).toHaveBeenCalledWith('users')
   })
 
-  it('throws when stack not found', async () => {
+  it('throws when user not found', async () => {
     mockSingle.mockResolvedValue({ data: null, error: { message: 'not found' } })
 
-    await expect(lookupStack('nonexistent', 'user_123')).rejects.toThrow('Stack not found: nonexistent')
+    await expect(lookupUser('nonexistent')).rejects.toThrow('User not found: nonexistent')
   })
 
-  it('throws when user does not own the stack', async () => {
+  it('returns user with no sprite assigned', async () => {
     mockSingle.mockResolvedValue({
-      data: { id: 'stack_1', user_id: 'other_user', sprite_name: null, sprite_status: 'pending' },
+      data: { id: 'user_123', sprite_name: null, sprite_status: 'pending' },
       error: null,
     })
 
-    await expect(lookupStack('stack_1', 'user_123')).rejects.toThrow('does not own stack')
+    const user = await lookupUser('user_123')
+    expect(user.sprite_name).toBeNull()
+    expect(user.sprite_status).toBe('pending')
   })
 })
 
-// =============================================================================
-// authenticateConnection
-// =============================================================================
-
 describe('authenticateConnection', () => {
-  it('returns AuthResult on successful auth', async () => {
+  it('returns AuthResult with userId, no stackId', async () => {
     const mockVerify = vi.mocked(verifyToken)
     mockVerify.mockResolvedValue({ sub: 'user_123' } as any)
     mockSingle.mockResolvedValue({
-      data: { id: 'stack_1', user_id: 'user_123', sprite_name: 'sprite-abc', sprite_status: 'active' },
+      data: { id: 'user_123', sprite_name: 'sprite-abc', sprite_status: 'active' },
       error: null,
     })
 
-    const result = await authenticateConnection('valid-token', 'stack_1')
+    const result = await authenticateConnection('valid-token')
 
     expect(isAuthError(result)).toBe(false)
     if (!isAuthError(result)) {
       expect(result.userId).toBe('user_123')
-      expect(result.stackId).toBe('stack_1')
+      expect(result).not.toHaveProperty('stackId')
       expect(result.spriteName).toBe('sprite-abc')
       expect(result.spriteStatus).toBe('active')
     }
+  })
+
+  it('queries users table (not stacks)', async () => {
+    const mockVerify = vi.mocked(verifyToken)
+    mockVerify.mockResolvedValue({ sub: 'user_123' } as any)
+    mockSingle.mockResolvedValue({
+      data: { id: 'user_123', sprite_name: null, sprite_status: 'pending' },
+      error: null,
+    })
+
+    await authenticateConnection('valid-token')
+
+    expect(mockFrom).toHaveBeenCalledWith('users')
   })
 
   it('returns code 4001 on invalid JWT', async () => {
     const mockVerify = vi.mocked(verifyToken)
     mockVerify.mockRejectedValue(new Error('Invalid'))
 
-    const result = await authenticateConnection('bad-token', 'stack_1')
+    const result = await authenticateConnection('bad-token')
 
     expect(isAuthError(result)).toBe(true)
     if (isAuthError(result)) {
@@ -172,41 +160,20 @@ describe('authenticateConnection', () => {
     }
   })
 
-  it('returns code 4003 when user does not own stack', async () => {
-    const mockVerify = vi.mocked(verifyToken)
-    mockVerify.mockResolvedValue({ sub: 'user_123' } as any)
-    mockSingle.mockResolvedValue({
-      data: { id: 'stack_1', user_id: 'other_user', sprite_name: null, sprite_status: 'pending' },
-      error: null,
-    })
-
-    const result = await authenticateConnection('valid-token', 'stack_1')
-
-    expect(isAuthError(result)).toBe(true)
-    if (isAuthError(result)) {
-      expect(result.code).toBe(4003)
-      expect(result.reason).toContain('do not own')
-    }
-  })
-
-  it('returns code 4003 when stack not found', async () => {
+  it('returns code 4003 when user not found', async () => {
     const mockVerify = vi.mocked(verifyToken)
     mockVerify.mockResolvedValue({ sub: 'user_123' } as any)
     mockSingle.mockResolvedValue({ data: null, error: { message: 'not found' } })
 
-    const result = await authenticateConnection('valid-token', 'nonexistent')
+    const result = await authenticateConnection('valid-token')
 
     expect(isAuthError(result)).toBe(true)
     if (isAuthError(result)) {
       expect(result.code).toBe(4003)
-      expect(result.reason).toContain('not found')
+      expect(result.reason).toContain('User not found')
     }
   })
 })
-
-// =============================================================================
-// isAuthError
-// =============================================================================
 
 describe('isAuthError', () => {
   it('returns true for AuthError', () => {
@@ -216,7 +183,6 @@ describe('isAuthError', () => {
   it('returns false for AuthResult', () => {
     expect(isAuthError({
       userId: 'user_123',
-      stackId: 'stack_1',
       spriteName: 'sprite-abc',
       spriteStatus: 'active',
     })).toBe(false)

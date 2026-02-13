@@ -1,20 +1,15 @@
 /**
- * Auth Module — Clerk JWT validation and Supabase stack lookup.
+ * Auth Module — Clerk JWT validation and Supabase user lookup.
  *
  * Validates JWT once on WebSocket connect, then trusts the connection.
- * Looks up stack ownership via Supabase stacks table.
+ * Looks up user's Sprite mapping via Supabase users table.
  */
 
 import { verifyToken } from '@clerk/backend'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-// =============================================================================
-// Types
-// =============================================================================
-
 export interface AuthResult {
   userId: string
-  stackId: string
   spriteName: string | null
   spriteStatus: string
 }
@@ -24,16 +19,11 @@ export interface AuthError {
   reason: string
 }
 
-interface StackRow {
+interface UserRow {
   id: string
-  user_id: string
   sprite_name: string | null
   sprite_status: string
 }
-
-// =============================================================================
-// Supabase Client (singleton)
-// =============================================================================
 
 let supabase: SupabaseClient | null = null
 
@@ -55,10 +45,6 @@ export function getSupabaseClient(): SupabaseClient {
 export function resetSupabaseClient(): void {
   supabase = null
 }
-
-// =============================================================================
-// JWT Validation
-// =============================================================================
 
 /**
  * Verify a Clerk JWT token. Returns the user ID (sub claim) on success.
@@ -90,50 +76,33 @@ export async function verifyClerkToken(token: string): Promise<string> {
   return userId
 }
 
-// =============================================================================
-// Stack Lookup
-// =============================================================================
-
 /**
- * Look up a stack in Supabase and verify the user owns it.
- * Returns stack details including sprite_name and sprite_status.
+ * Look up a user in Supabase to get their Sprite mapping.
+ * One Sprite per user — no ownership check needed.
  */
-export async function lookupStack(
-  stackId: string,
-  userId: string,
-): Promise<StackRow> {
+export async function lookupUser(userId: string): Promise<UserRow> {
   const client = getSupabaseClient()
 
   const { data, error } = await client
-    .from('stacks')
-    .select('id, user_id, sprite_name, sprite_status')
-    .eq('id', stackId)
+    .from('users')
+    .select('id, sprite_name, sprite_status')
+    .eq('id', userId)
     .single()
 
   if (error || !data) {
-    throw new Error(`Stack not found: ${stackId}`)
+    throw new Error(`User not found: ${userId}`)
   }
 
-  if (data.user_id !== userId) {
-    throw new Error(`User ${userId} does not own stack ${stackId}`)
-  }
-
-  return data as StackRow
+  return data as UserRow
 }
 
-// =============================================================================
-// Combined Auth Flow
-// =============================================================================
-
 /**
- * Full auth flow: validate JWT + verify stack ownership.
+ * Full auth flow: validate JWT + look up user's Sprite.
  * Returns AuthResult on success, AuthError on failure.
  */
 export async function authenticateConnection(
   token: string,
-  stackId: string,
 ): Promise<AuthResult | AuthError> {
-  // Step 1: Validate JWT
   let userId: string
   try {
     userId = await verifyClerkToken(token)
@@ -141,30 +110,20 @@ export async function authenticateConnection(
     return { code: 4001, reason: 'Invalid or expired JWT' }
   }
 
-  // Step 2: Verify stack ownership
-  let stack: StackRow
+  let user: UserRow
   try {
-    stack = await lookupStack(stackId, userId)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Stack lookup failed'
-    // Distinguish "not found" from "not owned"
-    if (message.includes('does not own')) {
-      return { code: 4003, reason: 'Unauthorized: you do not own this stack' }
-    }
-    return { code: 4003, reason: 'Stack not found' }
+    user = await lookupUser(userId)
+  } catch {
+    return { code: 4003, reason: 'User not found' }
   }
 
   return {
     userId,
-    stackId: stack.id,
-    spriteName: stack.sprite_name,
-    spriteStatus: stack.sprite_status,
+    spriteName: user.sprite_name,
+    spriteStatus: user.sprite_status,
   }
 }
 
-/**
- * Type guard: check if auth result is an error.
- */
 export function isAuthError(result: AuthResult | AuthError): result is AuthError {
   return 'code' in result && 'reason' in result && !('userId' in result)
 }

@@ -9,10 +9,6 @@ import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vites
 import { WebSocket } from 'ws'
 import { v4 as uuidv4 } from 'uuid'
 
-// =============================================================================
-// Mock External Dependencies
-// =============================================================================
-
 vi.mock('@clerk/backend', () => ({
   verifyToken: vi.fn(),
 }))
@@ -31,11 +27,6 @@ vi.mock('@supabase/supabase-js', () => ({
 import { verifyToken } from '@clerk/backend'
 import { resetSupabaseClient } from '../src/auth.js'
 
-// =============================================================================
-// Env Setup
-// =============================================================================
-
-// Set env vars before importing server module
 process.env.NODE_ENV = 'test'
 process.env.CLERK_JWT_KEY = 'test-jwt-key'
 process.env.CLERK_SECRET_KEY = 'test-secret-key'
@@ -48,10 +39,6 @@ import {
   getConnectionCount,
   getPendingCount,
 } from '../src/index.js'
-
-// =============================================================================
-// Helpers
-// =============================================================================
 
 const TEST_PORT = 9876
 const WS_URL = `ws://localhost:${TEST_PORT}`
@@ -74,16 +61,14 @@ function createMissionMessage(text: string): string {
   })
 }
 
-/** Connect a WS client and wait for the connection to open. */
-function connectWs(stackId: string): Promise<WebSocket> {
+function connectWs(): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${WS_URL}/ws/${stackId}`)
+    const ws = new WebSocket(`${WS_URL}/ws`)
     ws.on('open', () => resolve(ws))
     ws.on('error', reject)
   })
 }
 
-/** Wait for the next message on a WebSocket. */
 function nextMessage(ws: WebSocket, timeoutMs: number = 5000): Promise<any> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Message timeout')), timeoutMs)
@@ -94,7 +79,6 @@ function nextMessage(ws: WebSocket, timeoutMs: number = 5000): Promise<any> {
   })
 }
 
-/** Wait for the WS close event. */
 function waitForClose(ws: WebSocket, timeoutMs: number = 5000): Promise<{ code: number; reason: string }> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Close timeout')), timeoutMs)
@@ -105,15 +89,14 @@ function waitForClose(ws: WebSocket, timeoutMs: number = 5000): Promise<{ code: 
   })
 }
 
-/** Set up mocks for successful auth. */
-function mockSuccessfulAuth(userId: string = 'user_123', stackId: string = 'stack_1'): void {
+/** Mock successful auth — queries users table for sprite mapping. */
+function mockSuccessfulAuth(userId: string = 'user_123'): void {
   const mockVerify = vi.mocked(verifyToken)
   mockVerify.mockResolvedValue({ sub: userId } as any)
 
   mockSingle.mockResolvedValue({
     data: {
-      id: stackId,
-      user_id: userId,
+      id: userId,
       sprite_name: 'sprite-abc',
       sprite_status: 'active',
     },
@@ -121,15 +104,10 @@ function mockSuccessfulAuth(userId: string = 'user_123', stackId: string = 'stac
   })
 }
 
-// =============================================================================
-// Server Lifecycle
-// =============================================================================
-
 let httpServer: ReturnType<typeof startServer>
 
 beforeAll(async () => {
   httpServer = startServer(TEST_PORT)
-  // Wait for server to be listening
   await new Promise<void>((resolve) => {
     if (httpServer.listening) return resolve()
     httpServer.on('listening', resolve)
@@ -146,15 +124,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   resetSupabaseClient()
 
-  // Reset Supabase mock chain
   mockFrom.mockReturnValue({ select: mockSelect })
   mockSelect.mockReturnValue({ eq: mockEq })
   mockEq.mockReturnValue({ single: mockSingle })
 })
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 describe('Bridge WebSocket Server', () => {
   describe('HTTP endpoints', () => {
@@ -169,49 +142,41 @@ describe('Bridge WebSocket Server', () => {
     })
 
     it('returns 426 on non-upgrade HTTP requests', async () => {
-      const res = await fetch(`http://localhost:${TEST_PORT}/ws/stack_1`)
+      const res = await fetch(`http://localhost:${TEST_PORT}/ws`)
       expect(res.status).toBe(426)
     })
   })
 
   describe('WebSocket upgrade', () => {
-    it('upgrades connection on /ws/{stack_id}', async () => {
+    it('upgrades connection on /ws', async () => {
       mockSuccessfulAuth()
 
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
       expect(ws.readyState).toBe(WebSocket.OPEN)
 
       ws.close()
     })
 
-    it('rejects upgrade on invalid paths', async () => {
-      // Connect to bad path — should get destroyed
+    it('rejects upgrade on /ws/{anything}', async () => {
       await expect(
         new Promise<void>((resolve, reject) => {
-          const ws = new WebSocket(`${WS_URL}/invalid`)
+          const ws = new WebSocket(`${WS_URL}/ws/stack_1`)
           ws.on('open', () => reject(new Error('Should not connect')))
           ws.on('error', () => resolve())
-          // Some WS implementations emit close instead of error
           ws.on('close', () => resolve())
         }),
       ).resolves.toBeUndefined()
     })
 
-    it('accepts stack IDs with valid characters', async () => {
-      mockSuccessfulAuth('user_123', 'stack-with-dashes_123')
-      mockSingle.mockResolvedValue({
-        data: {
-          id: 'stack-with-dashes_123',
-          user_id: 'user_123',
-          sprite_name: null,
-          sprite_status: 'pending',
-        },
-        error: null,
-      })
-
-      const ws = await connectWs('stack-with-dashes_123')
-      expect(ws.readyState).toBe(WebSocket.OPEN)
-      ws.close()
+    it('rejects upgrade on invalid paths', async () => {
+      await expect(
+        new Promise<void>((resolve, reject) => {
+          const ws = new WebSocket(`${WS_URL}/invalid`)
+          ws.on('open', () => reject(new Error('Should not connect')))
+          ws.on('error', () => resolve())
+          ws.on('close', () => resolve())
+        }),
+      ).resolves.toBeUndefined()
     })
   })
 
@@ -219,7 +184,7 @@ describe('Bridge WebSocket Server', () => {
     it('authenticates with valid JWT and stores connection', async () => {
       mockSuccessfulAuth()
 
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
       ws.send(createAuthMessage('valid-token'))
 
       const msg = await nextMessage(ws)
@@ -227,7 +192,6 @@ describe('Bridge WebSocket Server', () => {
       expect(msg.payload.event).toBe('connected')
       expect(msg.payload.message).toContain('user_123')
 
-      // Connection should be in the active map
       expect(getConnectionCount()).toBeGreaterThanOrEqual(1)
 
       ws.close()
@@ -237,7 +201,7 @@ describe('Bridge WebSocket Server', () => {
       const mockVerify = vi.mocked(verifyToken)
       mockVerify.mockRejectedValue(new Error('Invalid token'))
 
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
       const closePromise = waitForClose(ws)
 
       ws.send(createAuthMessage('bad-token'))
@@ -246,16 +210,13 @@ describe('Bridge WebSocket Server', () => {
       expect(code).toBe(4001)
     })
 
-    it('closes with 4003 on unauthorized stack', async () => {
+    it('closes with 4003 when user not found', async () => {
       const mockVerify = vi.mocked(verifyToken)
       mockVerify.mockResolvedValue({ sub: 'user_123' } as any)
 
-      mockSingle.mockResolvedValue({
-        data: { id: 'stack_1', user_id: 'other_user', sprite_name: null, sprite_status: 'pending' },
-        error: null,
-      })
+      mockSingle.mockResolvedValue({ data: null, error: { message: 'not found' } })
 
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
       const closePromise = waitForClose(ws)
 
       ws.send(createAuthMessage('valid-token'))
@@ -265,10 +226,9 @@ describe('Bridge WebSocket Server', () => {
     })
 
     it('closes with 4001 when first message is not auth', async () => {
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
       const closePromise = waitForClose(ws)
 
-      // Send a mission message before auth
       ws.send(createMissionMessage('hello'))
 
       const { code } = await closePromise
@@ -278,7 +238,7 @@ describe('Bridge WebSocket Server', () => {
     it('rejects invalid JSON', async () => {
       mockSuccessfulAuth()
 
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
       ws.send('not json at all')
 
       const msg = await nextMessage(ws)
@@ -292,8 +252,8 @@ describe('Bridge WebSocket Server', () => {
     it('rejects messages with missing required fields', async () => {
       mockSuccessfulAuth()
 
-      const ws = await connectWs('stack_1')
-      ws.send(JSON.stringify({ type: 'auth' })) // Missing id and timestamp
+      const ws = await connectWs()
+      ws.send(JSON.stringify({ type: 'auth' }))
 
       const msg = await nextMessage(ws)
       expect(msg.type).toBe('system')
@@ -308,20 +268,16 @@ describe('Bridge WebSocket Server', () => {
     it('accepts messages after successful auth', async () => {
       mockSuccessfulAuth()
 
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
 
-      // Authenticate
       ws.send(createAuthMessage('valid-token'))
       const authReply = await nextMessage(ws)
       expect(authReply.payload.event).toBe('connected')
 
-      // Send a mission message — should not close the connection
       ws.send(createMissionMessage('hello agent'))
 
-      // Give the server a moment to process
       await new Promise((resolve) => setTimeout(resolve, 100))
 
-      // Connection should still be open
       expect(ws.readyState).toBe(WebSocket.OPEN)
 
       ws.close()
@@ -332,14 +288,13 @@ describe('Bridge WebSocket Server', () => {
     it('removes connection from map on close', async () => {
       mockSuccessfulAuth()
 
-      const ws = await connectWs('stack_1')
+      const ws = await connectWs()
       ws.send(createAuthMessage('valid-token'))
-      await nextMessage(ws) // Wait for connected
+      await nextMessage(ws)
 
       const countBefore = getConnectionCount()
 
       ws.close()
-      // Wait for close to propagate
       await new Promise((resolve) => setTimeout(resolve, 200))
 
       expect(getConnectionCount()).toBeLessThanOrEqual(countBefore)
