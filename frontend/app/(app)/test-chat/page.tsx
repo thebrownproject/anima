@@ -298,7 +298,6 @@ export default function TestChatPage() {
     if (!stackId.trim()) return
     managerRef.current?.destroy()
     const manager = new WebSocketManager({
-      stackId: stackId.trim(),
       getToken: () => getToken(),
       onStatusChange: (s, err) => { setStatus(s); setError(err ?? null) },
       onMessage: handleMessage,

@@ -32,7 +32,7 @@ export function useWebSocket(): WebSocketContextValue {
   return ctx
 }
 
-export function WebSocketProvider({ stackId, children }: { stackId: string; children: ReactNode }) {
+export function WebSocketProvider({ children }: { children: ReactNode }) {
   const { getToken } = useAuth()
   const [status, setStatus] = useState<ConnectionStatus>('disconnected')
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +94,6 @@ export function WebSocketProvider({ stackId, children }: { stackId: string; chil
   const connect = useCallback(() => {
     managerRef.current?.destroy()
     const manager = new WebSocketManager({
-      stackId,
       getToken: () => getTokenRef.current(),
       onStatusChange: (s, err) => {
         setStatus(s)
@@ -104,7 +103,7 @@ export function WebSocketProvider({ stackId, children }: { stackId: string; chil
     })
     managerRef.current = manager
     manager.connect()
-  }, [stackId, handleMessage])
+  }, [handleMessage])
 
   const disconnect = useCallback(() => {
     managerRef.current?.destroy()
@@ -119,7 +118,7 @@ export function WebSocketProvider({ stackId, children }: { stackId: string; chil
     []
   )
 
-  // Auto-connect on mount, destroy on unmount or stackId change
+  // Auto-connect on mount, destroy on unmount
   useEffect(() => {
     connect()
     return () => { managerRef.current?.destroy() }

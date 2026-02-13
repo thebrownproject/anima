@@ -21,7 +21,6 @@ export type ConnectionStatus =
 export type MessageHandler = (message: SpriteToBrowserMessage) => void
 
 export interface WebSocketManagerOptions {
-  stackId: string
   getToken: () => Promise<string | null>
   onStatusChange: (status: ConnectionStatus, error?: string) => void
   onMessage: (message: SpriteToBrowserMessage) => void
@@ -65,7 +64,7 @@ export class WebSocketManager {
     this.intentionalClose = false
     this.setStatus('connecting')
 
-    const url = `${this.options.url ?? WS_BASE_URL}/ws/${this.options.stackId}`
+    const url = `${this.options.url ?? WS_BASE_URL}/ws`
     this.ws = new WebSocket(url)
 
     this.ws.onopen = () => {

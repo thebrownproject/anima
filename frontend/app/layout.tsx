@@ -43,8 +43,8 @@ export default function RootLayout({
           },
         },
       }}
-      signInFallbackRedirectUrl="/stacks/default"
-      signUpFallbackRedirectUrl="/stacks/default"
+      signInFallbackRedirectUrl="/desktop"
+      signUpFallbackRedirectUrl="/desktop"
     >
       <html lang="en" suppressHydrationWarning>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

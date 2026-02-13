@@ -1,6 +1,5 @@
 'use client'
 
-import { use } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { WallpaperLayer } from '@/components/wallpaper/wallpaper-layer'
 import { DesktopViewport } from '@/components/desktop/desktop-viewport'
@@ -15,20 +14,17 @@ import { DesktopContextMenu } from '@/components/desktop/desktop-context-menu'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 
-export default function DesktopPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function DesktopPage() {
   const cards = useDesktopStore((s) => s.cards)
 
   return (
-    <WebSocketProvider stackId={id}>
+    <WebSocketProvider>
       <GlassTooltipProvider delayDuration={800}>
         <div className="relative h-svh w-full overflow-hidden">
           <WallpaperLayer />
 
-          {/* Top bar */}
           <DesktopTopBar />
 
-          {/* Canvas viewport with right-click context menu */}
           <DesktopContextMenu>
             <DesktopViewport>
               <AnimatePresence>
@@ -41,17 +37,10 @@ export default function DesktopPage({ params }: { params: Promise<{ id: string }
             </DesktopViewport>
           </DesktopContextMenu>
 
-          {/* Side panels */}
           <DocumentsPanel />
           <ChatPanel />
 
-          {/* Chat bar */}
           <ChatBar />
-
-          {/* Stack ID for debugging */}
-          <div className="pointer-events-none absolute bottom-4 left-4 z-10 font-mono text-xs text-white/30">
-            stack: {id}
-          </div>
         </div>
       </GlassTooltipProvider>
     </WebSocketProvider>
