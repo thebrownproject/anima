@@ -12,7 +12,6 @@ import { v4 as uuidv4 } from 'uuid'
 import {
   authenticateConnection,
   isAuthError,
-  type AuthResult,
 } from './auth.js'
 import { handleApiProxy } from './api-proxy.js'
 import {
@@ -30,7 +29,6 @@ import {
   getConnection,
   setConnection,
   getConnectionsByUser,
-  getConnectionsByStack,
   getConnectionCount,
   removeConnection,
   setPending,
@@ -42,7 +40,7 @@ import {
 } from './connection-store.js'
 
 // Re-export for consumers that previously imported from index
-export { type Connection, getConnection, getConnectionsByUser, getConnectionsByStack, getConnectionCount, getPendingCount } from './connection-store.js'
+export { type Connection, getConnection, getConnectionsByUser, getConnectionCount, getPendingCount } from './connection-store.js'
 
 const AUTH_TIMEOUT_MS = 10_000
 

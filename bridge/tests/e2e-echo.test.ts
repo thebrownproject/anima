@@ -6,7 +6,7 @@
  * message round-trip for mission messages, multiple message types, and
  * error handling for unknown types.
  *
- * Each test uses a unique stack ID to avoid reconnect interference.
+ * Each test uses a unique user ID to avoid reconnect interference.
  */
 
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'

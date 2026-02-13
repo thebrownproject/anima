@@ -42,6 +42,7 @@ MESSAGE_TYPES = (
     "canvas_update",
     "status",
     "system",
+    "state_sync",
 )
 
 # Type aliases matching TypeScript literal unions
@@ -51,9 +52,12 @@ BlockType = Literal[
 ]
 MessageType = Literal[
     "mission", "file_upload", "canvas_interaction", "auth",
-    "agent_event", "canvas_update", "status", "system",
+    "agent_event", "canvas_update", "status", "system", "state_sync",
 ]
-CanvasAction = Literal["edit_cell", "resize", "move", "close"]
+CanvasAction = Literal[
+    "edit_cell", "resize", "move", "close",
+    "archive_card", "archive_stack", "create_stack", "restore_stack",
+]
 CanvasCommand = Literal["create_card", "update_card", "close_card"]
 CardSize = Literal["small", "medium", "large", "full"]
 AgentEventType = Literal["text", "tool", "complete", "error"]
@@ -174,10 +178,17 @@ Block = Union[
 # =============================================================================
 
 @dataclass
+class MissionContext:
+    """Context sent with a mission to identify the active stack."""
+    stack_id: str
+
+
+@dataclass
 class MissionPayload:
     """Payload for a user mission (chat message)."""
     text: str
     attachments: Optional[list[str]] = None
+    context: Optional[MissionContext] = None
 
 
 @dataclass
@@ -281,6 +292,7 @@ class CanvasUpdatePayload:
     blocks: Optional[list[Block]] = None
     size: Optional[CardSize] = None
     mission_id: Optional[str] = None
+    stack_id: Optional[str] = None
 
 
 @dataclass
@@ -306,6 +318,61 @@ class StatusUpdate:
     """Document status updates."""
     type: Literal["status"]
     payload: StatusPayload
+    id: str = field(default_factory=_new_id)
+    timestamp: int = field(default_factory=_now_ms)
+    request_id: Optional[str] = None
+
+
+@dataclass
+class StackInfo:
+    """Stack metadata for state sync."""
+    id: str
+    name: str
+    color: Optional[str] = None
+
+
+@dataclass
+class CardPosition:
+    """Card position on canvas."""
+    x: float
+    y: float
+
+
+@dataclass
+class CardInfo:
+    """Card metadata for state sync."""
+    id: str
+    stack_id: str
+    title: str
+    blocks: list[Block]
+    size: CardSize
+    position: CardPosition
+    z_index: int
+
+
+@dataclass
+class ChatMessageInfo:
+    """Chat message for state sync."""
+    id: str
+    role: str
+    content: str
+    timestamp: int
+
+
+@dataclass
+class StateSyncPayload:
+    """Payload for state sync messages."""
+    stacks: list[StackInfo]
+    active_stack_id: str
+    cards: list[CardInfo]
+    chat_history: list[ChatMessageInfo]
+
+
+@dataclass
+class StateSyncMessage:
+    """Full workspace state sent on connect or stack switch."""
+    type: Literal["state_sync"]
+    payload: StateSyncPayload
     id: str = field(default_factory=_new_id)
     timestamp: int = field(default_factory=_now_ms)
     request_id: Optional[str] = None
@@ -344,6 +411,7 @@ SpriteToBrowserMessage = Union[
     CanvasUpdate,
     StatusUpdate,
     SystemMessage,
+    StateSyncMessage,
 ]
 
 ProtocolMessage = Union[BrowserToSpriteMessage, SpriteToBrowserMessage]
@@ -397,7 +465,10 @@ def is_canvas_interaction(value: Any) -> bool:
     if not is_websocket_message(value) or not _has_payload(value):
         return False
     p = value["payload"]
-    valid_actions = ("edit_cell", "resize", "move", "close")
+    valid_actions = (
+        "edit_cell", "resize", "move", "close",
+        "archive_card", "archive_stack", "create_stack", "restore_stack",
+    )
     return (
         value["type"] == "canvas_interaction"
         and isinstance(p.get("card_id"), str)
@@ -466,6 +537,20 @@ def is_system_message(value: Any) -> bool:
     )
 
 
+def is_state_sync(value: Any) -> bool:
+    """Validate a StateSyncMessage dict."""
+    if not is_websocket_message(value) or not _has_payload(value):
+        return False
+    p = value["payload"]
+    return (
+        value["type"] == "state_sync"
+        and isinstance(p.get("stacks"), list)
+        and isinstance(p.get("active_stack_id"), str)
+        and isinstance(p.get("cards"), list)
+        and isinstance(p.get("chat_history"), list)
+    )
+
+
 def is_protocol_message(value: Any) -> bool:
     """Validate any protocol message by dispatching to the correct type guard."""
     if not is_websocket_message(value):
@@ -479,6 +564,7 @@ def is_protocol_message(value: Any) -> bool:
         "canvas_update": is_canvas_update,
         "status": is_status_update,
         "system": is_system_message,
+        "state_sync": is_state_sync,
     }
     validator = validators.get(value["type"])
     if validator is None:

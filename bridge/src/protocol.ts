@@ -115,12 +115,18 @@ export type BlockType = (typeof BLOCK_TYPES)[number]
 // Browser -> Sprite Messages
 // =============================================================================
 
+/** Context sent with a mission to identify the active stack. */
+export interface MissionContext {
+  stack_id: string
+}
+
 /** User sends a mission (chat message). */
 export interface MissionMessage extends WebSocketMessageBase {
   type: 'mission'
   payload: {
     text: string
     attachments?: string[]  // Document IDs to reference
+    context?: MissionContext
   }
 }
 
@@ -135,7 +141,9 @@ export interface FileUploadMessage extends WebSocketMessageBase {
 }
 
 /** Canvas interaction (user edited a cell, moved a card, etc.). */
-export type CanvasAction = 'edit_cell' | 'resize' | 'move' | 'close'
+export type CanvasAction =
+  | 'edit_cell' | 'resize' | 'move' | 'close'
+  | 'archive_card' | 'archive_stack' | 'create_stack' | 'restore_stack'
 
 export interface CanvasInteraction extends WebSocketMessageBase {
   type: 'canvas_interaction'
@@ -190,6 +198,7 @@ export interface CanvasUpdate extends WebSocketMessageBase {
     blocks?: Block[]  // Array of composable blocks (create/update)
     size?: CardSize   // Card size hint (small/medium/large/full)
     mission_id?: string
+    stack_id?: string
   }
 }
 
@@ -206,6 +215,45 @@ export interface StatusUpdate extends WebSocketMessageBase {
     document_id: string
     status: DocumentStatus
     message?: string
+  }
+}
+
+/** State sync — full workspace state sent on connect/stack-switch. */
+export interface StackInfo {
+  id: string
+  name: string
+  color?: string
+}
+
+export interface CardPosition {
+  x: number
+  y: number
+}
+
+export interface CardInfo {
+  id: string
+  stack_id: string
+  title: string
+  blocks: Block[]
+  size: CardSize
+  position: CardPosition
+  z_index: number
+}
+
+export interface ChatMessageInfo {
+  id: string
+  role: string
+  content: string
+  timestamp: number
+}
+
+export interface StateSyncMessage extends WebSocketMessageBase {
+  type: 'state_sync'
+  payload: {
+    stacks: StackInfo[]
+    active_stack_id: string
+    cards: CardInfo[]
+    chat_history: ChatMessageInfo[]
   }
 }
 
@@ -241,6 +289,7 @@ export type SpriteToBrowserMessage =
   | CanvasUpdate
   | StatusUpdate
   | SystemMessage
+  | StateSyncMessage
 
 /** Any valid WebSocket message in the protocol. */
 export type ProtocolMessage = BrowserToSpriteMessage | SpriteToBrowserMessage
@@ -255,6 +304,7 @@ export const MESSAGE_TYPES = [
   'canvas_update',
   'status',
   'system',
+  'state_sync',
 ] as const
 
 export type MessageType = (typeof MESSAGE_TYPES)[number]
@@ -288,10 +338,12 @@ function hasPayload(value: unknown): value is { payload: Record<string, unknown>
 export function isMissionMessage(value: unknown): value is MissionMessage {
   if (!isWebSocketMessage(value) || !hasPayload(value)) return false
   const msg = value as MissionMessage
-  return (
-    msg.type === 'mission' &&
-    typeof msg.payload.text === 'string'
-  )
+  if (msg.type !== 'mission' || typeof msg.payload.text !== 'string') return false
+  if (msg.payload.context !== undefined) {
+    if (typeof msg.payload.context !== 'object' || msg.payload.context === null) return false
+    if (typeof msg.payload.context.stack_id !== 'string') return false
+  }
+  return true
 }
 
 /** Validate a FileUploadMessage. */
@@ -310,7 +362,10 @@ export function isFileUploadMessage(value: unknown): value is FileUploadMessage 
 export function isCanvasInteraction(value: unknown): value is CanvasInteraction {
   if (!isWebSocketMessage(value) || !hasPayload(value)) return false
   const msg = value as CanvasInteraction
-  const validActions: CanvasAction[] = ['edit_cell', 'resize', 'move', 'close']
+  const validActions: CanvasAction[] = [
+    'edit_cell', 'resize', 'move', 'close',
+    'archive_card', 'archive_stack', 'create_stack', 'restore_stack',
+  ]
   return (
     msg.type === 'canvas_interaction' &&
     typeof msg.payload.card_id === 'string' &&
@@ -345,11 +400,10 @@ export function isCanvasUpdate(value: unknown): value is CanvasUpdate {
   if (!isWebSocketMessage(value) || !hasPayload(value)) return false
   const msg = value as CanvasUpdate
   const validCommands: CanvasCommand[] = ['create_card', 'update_card', 'close_card']
-  return (
-    msg.type === 'canvas_update' &&
-    validCommands.includes(msg.payload.command) &&
-    typeof msg.payload.card_id === 'string'
-  )
+  if (msg.type !== 'canvas_update' || !validCommands.includes(msg.payload.command)) return false
+  if (typeof msg.payload.card_id !== 'string') return false
+  if (msg.payload.stack_id !== undefined && typeof msg.payload.stack_id !== 'string') return false
+  return true
 }
 
 /** Validate a StatusUpdate. */
@@ -385,6 +439,19 @@ export function isSystemMessage(value: unknown): value is SystemMessage {
   )
 }
 
+/** Validate a StateSyncMessage. */
+export function isStateSyncMessage(value: unknown): value is StateSyncMessage {
+  if (!isWebSocketMessage(value) || !hasPayload(value)) return false
+  const msg = value as StateSyncMessage
+  return (
+    msg.type === 'state_sync' &&
+    Array.isArray(msg.payload.stacks) &&
+    typeof msg.payload.active_stack_id === 'string' &&
+    Array.isArray(msg.payload.cards) &&
+    Array.isArray(msg.payload.chat_history)
+  )
+}
+
 /** Validate any protocol message by dispatching to the correct type guard. */
 export function isProtocolMessage(value: unknown): value is ProtocolMessage {
   if (!isWebSocketMessage(value)) return false
@@ -406,6 +473,8 @@ export function isProtocolMessage(value: unknown): value is ProtocolMessage {
       return isStatusUpdate(value)
     case 'system':
       return isSystemMessage(value)
+    case 'state_sync':
+      return isStateSyncMessage(value)
     default:
       return false
   }
