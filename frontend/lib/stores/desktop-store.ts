@@ -1,13 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Block, CardSize } from '@/types/ws-protocol'
-
-// =============================================================================
-// Types
-// =============================================================================
+import { useShallow } from 'zustand/react/shallow'
+import type { Block, CardSize, StackInfo } from '@/types/ws-protocol'
 
 export interface DesktopCard {
   id: string
+  stackId: string
   title: string
   blocks: Block[]
   size: CardSize
@@ -24,40 +22,88 @@ export interface ViewState {
 export type LeftPanel = 'none' | 'documents'
 
 interface DesktopState {
+  stacks: StackInfo[]
+  archivedStackIds: string[]
   cards: Record<string, DesktopCard>
   view: ViewState
-  activeWorkspace: string
+  activeStackId: string
   maxZIndex: number
   leftPanel: LeftPanel
 }
 
 interface DesktopActions {
+  // Stack actions
+  setStacks: (stacks: StackInfo[]) => void
+  addStack: (stack: StackInfo) => void
+  archiveStack: (id: string) => void
+  restoreStack: (id: string) => void
+  renameStack: (id: string, name: string) => void
+  setActiveStackId: (stackId: string) => void
+
+  // Card actions
   addCard: (card: DesktopCard) => void
   updateCard: (id: string, updates: Partial<Omit<DesktopCard, 'id'>>) => void
   removeCard: (id: string) => void
   moveCard: (id: string, position: { x: number; y: number }) => void
-  setView: (view: Partial<ViewState>) => void
   bringToFront: (id: string) => void
-  setActiveWorkspace: (workspace: string) => void
+
+  // View actions
+  setView: (view: Partial<ViewState>) => void
   setLeftPanel: (panel: LeftPanel) => void
   toggleLeftPanel: (panel: LeftPanel) => void
 }
 
-// =============================================================================
-// Store
-// =============================================================================
-
 export const useDesktopStore = create<DesktopState & DesktopActions>()(
   persist(
     (set) => ({
-      // State
+      stacks: [],
+      archivedStackIds: [],
       cards: {},
       view: { x: 0, y: 0, scale: 1 },
-      activeWorkspace: 'default',
+      activeStackId: 'default',
       maxZIndex: 0,
       leftPanel: 'none' as LeftPanel,
 
-      // Actions
+      // Stack actions
+      setStacks: (stacks) => set({ stacks }),
+
+      addStack: (stack) =>
+        set((state) => ({ stacks: [...state.stacks, stack] })),
+
+      archiveStack: (id) =>
+        set((state) => {
+          const archivedStackIds = [...state.archivedStackIds, id]
+          // Remove cards belonging to this stack
+          const cards: Record<string, DesktopCard> = {}
+          for (const [cardId, card] of Object.entries(state.cards)) {
+            if (card.stackId !== id) cards[cardId] = card
+          }
+          // If archiving the active stack, switch to first non-archived stack
+          let { activeStackId } = state
+          if (activeStackId === id) {
+            const remaining = state.stacks.find(
+              (s) => s.id !== id && !archivedStackIds.includes(s.id)
+            )
+            activeStackId = remaining?.id ?? 'default'
+          }
+          return { archivedStackIds, cards, activeStackId }
+        }),
+
+      restoreStack: (id) =>
+        set((state) => ({
+          archivedStackIds: state.archivedStackIds.filter((sid) => sid !== id),
+        })),
+
+      renameStack: (id, name) =>
+        set((state) => ({
+          stacks: state.stacks.map((s) =>
+            s.id === id ? { ...s, name } : s
+          ),
+        })),
+
+      setActiveStackId: (stackId) => set({ activeStackId: stackId }),
+
+      // Card actions
       addCard: (card) =>
         set((state) => ({
           cards: { ...state.cards, [card.id]: card },
@@ -88,11 +134,6 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
           }
         }),
 
-      setView: (view) =>
-        set((state) => ({
-          view: { ...state.view, ...view },
-        })),
-
       bringToFront: (id) =>
         set((state) => {
           const existing = state.cards[id]
@@ -104,11 +145,11 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
           }
         }),
 
-      setActiveWorkspace: (workspace) =>
-        set({ activeWorkspace: workspace }),
+      // View actions
+      setView: (view) =>
+        set((state) => ({ view: { ...state.view, ...view } })),
 
-      setLeftPanel: (panel) =>
-        set({ leftPanel: panel }),
+      setLeftPanel: (panel) => set({ leftPanel: panel }),
 
       toggleLeftPanel: (panel) =>
         set((state) => ({
@@ -117,6 +158,37 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
     }),
     {
       name: 'stackdocs-desktop',
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as Record<string, unknown>
+        if (version === 0 || version === undefined) {
+          // v0 -> v1: add stacks, rename activeWorkspace, add stackId to cards
+          const oldCards = (state.cards ?? {}) as Record<string, Record<string, unknown>>
+          const migratedCards: Record<string, unknown> = {}
+          for (const [id, card] of Object.entries(oldCards)) {
+            migratedCards[id] = { ...card, stackId: card.stackId ?? 'default' }
+          }
+          return {
+            ...state,
+            stacks: state.stacks ?? [],
+            archivedStackIds: state.archivedStackIds ?? [],
+            activeStackId: state.activeWorkspace ?? state.activeStackId ?? 'default',
+            cards: migratedCards,
+          }
+        }
+        return state
+      },
     }
   )
 )
+
+/** Selector: returns cards for the currently active stack. */
+export function useCardsForActiveStack(): DesktopCard[] {
+  return useDesktopStore(
+    useShallow((state) =>
+      Object.values(state.cards).filter(
+        (card) => card.stackId === state.activeStackId
+      )
+    )
+  )
+}
