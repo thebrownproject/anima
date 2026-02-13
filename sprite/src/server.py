@@ -49,7 +49,7 @@ async def handle_connection(
     # Point the runtime at the new connection's send_fn
     runtime.update_send_fn(send_fn)
 
-    gateway = SpriteGateway(send_fn=send_fn, runtime=runtime)
+    gateway = SpriteGateway(send_fn=send_fn, runtime=runtime, workspace_db=workspace_db)
 
     await send_state_sync(workspace_db, send_fn)
 
@@ -103,6 +103,7 @@ async def main() -> None:
         transcript_db=transcript_db,
         memory_db=memory_db,
         processor=processor,
+        workspace_db=workspace_db,
     )
 
     handler = lambda r, w: handle_connection(r, w, runtime=runtime, workspace_db=workspace_db)

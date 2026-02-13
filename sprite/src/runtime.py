@@ -24,7 +24,7 @@ from .tools.memory import create_memory_tools
 from .memory.loader import load as load_memory
 from .memory import ensure_templates
 from .memory.hooks import TurnBuffer, create_hook_callbacks
-from .database import TranscriptDB, MemoryDB
+from .database import TranscriptDB, MemoryDB, WorkspaceDB
 from .memory.processor import ObservationProcessor
 
 logger = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ class AgentRuntime:
         transcript_db: TranscriptDB | None = None,
         memory_db: MemoryDB | None = None,
         processor: ObservationProcessor | None = None,
+        workspace_db: WorkspaceDB | None = None,
     ) -> None:
         self._send = send_fn
         self.last_session_id: str | None = None
@@ -59,6 +60,8 @@ class AgentRuntime:
         self._transcript_db = transcript_db
         self._memory_db = memory_db
         self._processor = processor
+        self._workspace_db = workspace_db
+        self._active_stack_id: str | None = None
         self._hooks: dict | None = None
         if transcript_db and processor:
             self._hooks = create_hook_callbacks(
@@ -66,6 +69,10 @@ class AgentRuntime:
             )
 
         ensure_templates()
+
+    def set_active_stack_id(self, stack_id: str) -> None:
+        """Set the active stack_id for canvas tool scoping (called by gateway per mission)."""
+        self._active_stack_id = stack_id
 
     async def _indirect_send(self, data: str) -> None:
         """Delegate to the current send_fn. Canvas tools capture this method
@@ -155,7 +162,11 @@ class AgentRuntime:
         # Create canvas + memory tools and register via single MCP server
         # Use indirect send so canvas tools always use the CURRENT send_fn
         # (self._send gets replaced on TCP reconnect via update_send_fn)
-        canvas_tools = create_canvas_tools(self._indirect_send)
+        canvas_tools = create_canvas_tools(
+            self._indirect_send,
+            workspace_db=self._workspace_db,
+            stack_id=self._active_stack_id,
+        )
         memory_tools = create_memory_tools(self._memory_db) if self._memory_db else []
         sprite_server = create_sdk_mcp_server(
             name="sprite", tools=canvas_tools + memory_tools

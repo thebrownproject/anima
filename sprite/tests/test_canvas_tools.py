@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 
 from src.tools.canvas import create_canvas_tools
 from src.protocol import parse_message
+from src.database import WorkspaceDB
 
 
 @pytest.fixture
@@ -16,8 +17,24 @@ def mock_send():
 
 @pytest.fixture
 def canvas_tools(mock_send):
-    """Canvas tools scoped with mock send function."""
+    """Canvas tools scoped with mock send function (no DB, backward compat)."""
     return create_canvas_tools(mock_send)
+
+
+@pytest.fixture
+async def workspace_db(tmp_path):
+    path = str(tmp_path / "workspace.db")
+    db = WorkspaceDB(db_path=path)
+    await db.connect()
+    await db.create_stack("stack-1", "Test Stack")
+    yield db
+    await db.close()
+
+
+@pytest.fixture
+def db_canvas_tools(mock_send, workspace_db):
+    """Canvas tools with workspace_db and stack_id for persistence tests."""
+    return create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id="stack-1")
 
 
 @pytest.mark.asyncio
@@ -333,3 +350,129 @@ async def test_protocol_message_parseable(canvas_tools, mock_send):
 
     assert parsed is not None
     assert parsed["type"] == "canvas_update"
+
+
+# -- DB persistence tests (m7b.12.10) ----------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_card_sends_stack_id(db_canvas_tools, mock_send):
+    """create_card sends canvas_update with stack_id from closure."""
+    create_card = db_canvas_tools[0].handler
+
+    result = await create_card({
+        "title": "Persistent Card",
+        "blocks": [{"type": "text", "content": "Hello"}],
+    })
+
+    assert "is_error" not in result
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    assert sent_msg["payload"]["stack_id"] == "stack-1"
+
+
+@pytest.mark.asyncio
+async def test_create_card_persists_to_db(db_canvas_tools, mock_send, workspace_db):
+    """create_card persists card row to WorkspaceDB."""
+    create_card = db_canvas_tools[0].handler
+
+    await create_card({
+        "title": "DB Card",
+        "size": "large",
+        "blocks": [{"type": "text", "content": "Saved"}],
+    })
+
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    card_id = sent_msg["payload"]["card_id"]
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
+    assert row is not None
+    assert row["title"] == "DB Card"
+    assert row["stack_id"] == "stack-1"
+    assert row["size"] == "large"
+    assert row["status"] == "active"
+    blocks = json.loads(row["blocks"])
+    assert blocks[0]["type"] == "text"
+
+
+@pytest.mark.asyncio
+async def test_create_card_no_db_still_works(canvas_tools, mock_send):
+    """create_card works without workspace_db (backward compat)."""
+    create_card = canvas_tools[0].handler
+
+    result = await create_card({
+        "title": "No DB Card",
+        "blocks": [{"type": "text", "content": "No persist"}],
+    })
+
+    assert "is_error" not in result
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    assert "stack_id" not in sent_msg["payload"]
+
+
+@pytest.mark.asyncio
+async def test_update_card_persists_to_db(db_canvas_tools, mock_send, workspace_db):
+    """update_card persists block changes to WorkspaceDB."""
+    create_card = db_canvas_tools[0].handler
+    update_card = db_canvas_tools[1].handler
+
+    # Create first
+    await create_card({
+        "title": "Update Me",
+        "blocks": [{"type": "text", "content": "Original"}],
+    })
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    card_id = sent_msg["payload"]["card_id"]
+
+    # Update
+    await update_card({
+        "card_id": card_id,
+        "blocks": [{"type": "stat", "value": "42", "label": "Count"}],
+        "size": "full",
+    })
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
+    assert row["size"] == "full"
+    blocks = json.loads(row["blocks"])
+    assert blocks[0]["type"] == "stat"
+    assert blocks[0]["value"] == "42"
+
+
+@pytest.mark.asyncio
+async def test_close_card_archives_not_deletes(db_canvas_tools, mock_send, workspace_db):
+    """close_card archives the card (status='archived'), not delete."""
+    create_card = db_canvas_tools[0].handler
+    close_card = db_canvas_tools[2].handler
+
+    await create_card({
+        "title": "To Archive",
+        "blocks": [{"type": "text", "content": "Bye"}],
+    })
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    card_id = sent_msg["payload"]["card_id"]
+
+    await close_card({"card_id": card_id})
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
+    assert row is not None, "Card should still exist (archived, not deleted)"
+    assert row["status"] == "archived"
+    assert row["archived_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_stack_id_from_closure(mock_send, workspace_db):
+    """stack_id is captured from factory closure, not from tool args."""
+    tools_a = create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id="stack-a")
+    await workspace_db.create_stack("stack-a", "Stack A")
+
+    await tools_a[0].handler({
+        "title": "Card A",
+        "blocks": [{"type": "text", "content": "A"}],
+    })
+
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    assert sent_msg["payload"]["stack_id"] == "stack-a"
+
+    row = await workspace_db.fetchone(
+        "SELECT * FROM cards WHERE stack_id = ?", ("stack-a",)
+    )
+    assert row is not None

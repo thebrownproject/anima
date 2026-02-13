@@ -5,10 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable, Awaitable, TYPE_CHECKING
 
-from .protocol import SystemMessage, SystemPayload, to_json, is_websocket_message
+from .protocol import SystemMessage, SystemPayload, _new_id, to_json, is_websocket_message
 from .runtime import AgentRuntime
+
+if TYPE_CHECKING:
+    from .database import WorkspaceDB
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +34,11 @@ class SpriteGateway:
         self,
         send_fn: SendFn,
         runtime: AgentRuntime | None = None,
+        workspace_db: WorkspaceDB | None = None,
     ) -> None:
         self.send = send_fn
         self.mission_lock = asyncio.Lock()
+        self._workspace_db = workspace_db
         # Use provided runtime (server-scoped) or create one (tests)
         self.runtime = runtime or AgentRuntime(send_fn=send_fn)
 
@@ -96,6 +101,12 @@ class SpriteGateway:
             await self._send_error("Agent runtime not initialized")
             return
 
+        # Extract stack_id from mission context for canvas tool scoping
+        context = payload.get("context") or {}
+        stack_id = context.get("stack_id")
+        if stack_id:
+            self.runtime.set_active_stack_id(stack_id)
+
         attachments = payload.get("attachments")
         await self.runtime.handle_message(text, request_id=req_id, attachments=attachments)
 
@@ -104,7 +115,35 @@ class SpriteGateway:
         await self._send_ack("file_upload_received", req_id)
 
     async def _handle_canvas(self, msg: dict[str, Any], req_id: str | None) -> None:
-        logger.info("Canvas interaction: %s", msg.get("payload", {}).get("action", "?"))
+        payload = msg.get("payload", {})
+        action = payload.get("action", "")
+        card_id = payload.get("card_id", "")
+        data = payload.get("data") or {}
+        logger.info("Canvas interaction: %s", action)
+
+        if not self._workspace_db:
+            await self._send_ack("canvas_interaction_received", req_id)
+            return
+
+        try:
+            if action == "archive_card":
+                await self._workspace_db.archive_card(card_id)
+            elif action == "archive_stack":
+                sid = data.get("stack_id", card_id)
+                await self._workspace_db.archive_stack(sid)
+            elif action == "create_stack":
+                sid = data.get("stack_id", _new_id())
+                name = data.get("name", "New Stack")
+                color = data.get("color")
+                await self._workspace_db.create_stack(sid, name, color)
+            elif action == "restore_stack":
+                sid = data.get("stack_id", card_id)
+                await self._workspace_db.restore_stack(sid)
+        except Exception as e:
+            logger.error("Canvas %s failed: %s", action, e)
+            await self._send_error(f"Canvas operation failed: {e}")
+            return
+
         await self._send_ack("canvas_interaction_received", req_id)
 
     async def _handle_heartbeat(self, msg: dict[str, Any], req_id: str | None) -> None:

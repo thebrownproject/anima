@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, TYPE_CHECKING
 
 from claude_agent_sdk import tool
 
@@ -23,6 +23,9 @@ from ..protocol import (
     _new_id,
     to_json,
 )
+
+if TYPE_CHECKING:
+    from ..database import WorkspaceDB
 
 logger = logging.getLogger(__name__)
 
@@ -160,8 +163,12 @@ async def _send_canvas_update(send_fn: SendFn, message: CanvasUpdate, action: st
         return _error_result(f"WebSocket error: {str(e)}")
 
 
-def create_canvas_tools(send_fn: SendFn) -> list:
-    """Create canvas tools scoped with WebSocket send function."""
+def create_canvas_tools(
+    send_fn: SendFn,
+    workspace_db: WorkspaceDB | None = None,
+    stack_id: str | None = None,
+) -> list:
+    """Create canvas tools scoped with WebSocket send function and optional DB persistence."""
 
     @tool(
         "create_card",
@@ -203,13 +210,17 @@ def create_canvas_tools(send_fn: SendFn) -> list:
         message = CanvasUpdate(
             type="canvas_update",
             payload=CanvasUpdatePayload(
-                command="create_card", card_id=card_id, title=title, blocks=block_dataclasses, size=size
+                command="create_card", card_id=card_id, title=title,
+                blocks=block_dataclasses, size=size, stack_id=stack_id,
             ),
         )
 
         error = await _send_canvas_update(send_fn, message, f"create_card {card_id}")
         if error:
             return error
+
+        if workspace_db and stack_id:
+            await workspace_db.upsert_card(card_id, stack_id, title, blocks, size)
 
         logger.info(f"Created card {card_id}: {title} ({len(blocks)} blocks)")
         return {"content": [{"type": "text", "text": f"Card created: {title} (ID: {card_id})"}]}
@@ -250,6 +261,9 @@ def create_canvas_tools(send_fn: SendFn) -> list:
         if error:
             return error
 
+        if workspace_db:
+            await workspace_db.update_card_content(card_id, blocks, size)
+
         logger.info(f"Updated card {card_id} ({len(blocks)} blocks)")
         return {"content": [{"type": "text", "text": f"Card {card_id} updated ({len(blocks)} blocks changed)"}]}
 
@@ -273,6 +287,9 @@ def create_canvas_tools(send_fn: SendFn) -> list:
         error = await _send_canvas_update(send_fn, message, f"close_card {card_id}")
         if error:
             return error
+
+        if workspace_db:
+            await workspace_db.archive_card(card_id)
 
         logger.info(f"Closed card {card_id}")
         return {"content": [{"type": "text", "text": f"Card {card_id} closed"}]}

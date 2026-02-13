@@ -243,6 +243,23 @@ class WorkspaceDB(_BaseDB):
         )
         return await self.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
 
+    async def update_card_content(
+        self, card_id: str, blocks: list, size: str | None = None
+    ) -> dict | None:
+        """Update only blocks (and optionally size) on an existing card."""
+        now = time.time()
+        if size:
+            await self.execute(
+                "UPDATE cards SET blocks = ?, size = ?, updated_at = ? WHERE card_id = ?",
+                (json.dumps(blocks), size, now, card_id),
+            )
+        else:
+            await self.execute(
+                "UPDATE cards SET blocks = ?, updated_at = ? WHERE card_id = ?",
+                (json.dumps(blocks), now, card_id),
+            )
+        return await self.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
+
     async def archive_card(self, card_id: str) -> None:
         now = time.time()
         await self.execute(
