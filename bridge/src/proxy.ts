@@ -1,38 +1,38 @@
 import { WebSocket } from 'ws'
 import { SpriteConnection } from './sprite-connection.js'
-import { getConnectionsByStack } from './connection-store.js'
+import { getConnectionsByUser } from './connection-store.js'
 import { handleDisconnect, isReconnecting, bufferMessage, cleanupReconnectState } from './reconnect.js'
 import { startKeepalive, stopKeepalive } from './keepalive.js'
 import { checkAndUpdate } from './updater.js'
 import { startSpriteServer } from './provisioning.js'
 
-/** Active Sprite connections keyed by stack ID. */
+/** Active Sprite connections keyed by user ID. */
 const spriteConnections = new Map<string, SpriteConnection>()
 
-export function getSpriteConnection(stackId: string): SpriteConnection | undefined {
-  return spriteConnections.get(stackId)
+export function getSpriteConnection(userId: string): SpriteConnection | undefined {
+  return spriteConnections.get(userId)
 }
 
 /**
  * Create a SpriteConnection, register it, and wire up reconnection on close.
  * Extracted so reconnect.ts can call the same logic for re-establishment.
  */
-async function createAndRegister(stackId: string, spriteName: string, token: string): Promise<SpriteConnection> {
+async function createAndRegister(userId: string, spriteName: string, token: string): Promise<SpriteConnection> {
   const conn = new SpriteConnection({
     spriteName,
     token,
-    onMessage: (data) => broadcastToBrowsers(stackId, data),
+    onMessage: (data) => broadcastToBrowsers(userId, data),
     onClose: (_code, _reason) => {
-      spriteConnections.delete(stackId)
+      spriteConnections.delete(userId)
       // Only attempt reconnection if browsers are still connected
-      if (getConnectionsByStack(stackId).length > 0) {
-        handleDisconnect(stackId, {
+      if (getConnectionsByUser(userId).length > 0) {
+        handleDisconnect(userId, {
           spriteName,
           token,
-          createConnection: (sn, tk) => createAndRegister(stackId, sn, tk),
-          sendToSprite: (data) => forwardToSprite(stackId, data),
+          createConnection: (sn, tk) => createAndRegister(userId, sn, tk),
+          sendToSprite: (data) => forwardToSprite(userId, data),
         }).catch((err) => {
-          console.error(`[reconnect:${stackId}] Unhandled error:`, err)
+          console.error(`[reconnect:${userId}] Unhandled error:`, err)
         })
       }
     },
@@ -42,7 +42,7 @@ async function createAndRegister(stackId: string, spriteName: string, token: str
   })
 
   await conn.connect()
-  spriteConnections.set(stackId, conn)
+  spriteConnections.set(userId, conn)
   return conn
 }
 
@@ -55,15 +55,15 @@ export function resetSpriteConnections(): void {
 }
 
 /**
- * Connect to a Sprite via TCP Proxy if not already connected for this stack.
+ * Connect to a Sprite via TCP Proxy if not already connected for this user.
  * Returns the existing connection if one is active.
  */
 export async function ensureSpriteConnection(
-  stackId: string,
+  userId: string,
   spriteName: string,
   token: string,
 ): Promise<SpriteConnection> {
-  const existing = spriteConnections.get(stackId)
+  const existing = spriteConnections.get(userId)
   if (existing && existing.state === 'connected') {
     return existing
   }
@@ -71,7 +71,7 @@ export async function ensureSpriteConnection(
   // Clean up stale entry
   if (existing) {
     existing.close()
-    spriteConnections.delete(stackId)
+    spriteConnections.delete(userId)
   }
 
   // Best-effort lazy update — don't block connection on failure
@@ -83,35 +83,35 @@ export async function ensureSpriteConnection(
 
   let conn: SpriteConnection
   try {
-    conn = await createAndRegister(stackId, spriteName, token)
+    conn = await createAndRegister(userId, spriteName, token)
   } catch (err) {
     // If server isn't running (1011 = nothing listening on port), start it and retry once
     const msg = err instanceof Error ? err.message : ''
     if (msg.includes('TCP Proxy closed during init')) {
       console.warn(`[proxy:${spriteName}] Server not running, starting via exec...`)
       await startSpriteServer(spriteName, token)
-      conn = await createAndRegister(stackId, spriteName, token)
+      conn = await createAndRegister(userId, spriteName, token)
     } else {
       throw err
     }
   }
-  startKeepalive(stackId)
+  startKeepalive(userId)
   return conn
 }
 
-/** Forward a browser message to the Sprite for this stack. Buffers during reconnect. */
-export function forwardToSprite(stackId: string, message: string): boolean {
-  if (isReconnecting(stackId)) {
-    return bufferMessage(stackId, message)
+/** Forward a browser message to the Sprite for this user. Buffers during reconnect. */
+export function forwardToSprite(userId: string, message: string): boolean {
+  if (isReconnecting(userId)) {
+    return bufferMessage(userId, message)
   }
-  const conn = spriteConnections.get(stackId)
+  const conn = spriteConnections.get(userId)
   if (!conn || conn.state !== 'connected') return false
   return conn.send(message)
 }
 
-/** Broadcast a Sprite message to all browser connections for a stack. */
-function broadcastToBrowsers(stackId: string, data: string): void {
-  const browsers = getConnectionsByStack(stackId)
+/** Broadcast a Sprite message to all browser connections for a user. */
+function broadcastToBrowsers(userId: string, data: string): void {
+  const browsers = getConnectionsByUser(userId)
   for (const browser of browsers) {
     if (browser.ws.readyState === WebSocket.OPEN) {
       browser.ws.send(data)
@@ -119,13 +119,13 @@ function broadcastToBrowsers(stackId: string, data: string): void {
   }
 }
 
-/** Disconnect the Sprite connection for a stack (e.g., when last browser disconnects). */
-export function disconnectSprite(stackId: string): void {
-  stopKeepalive(stackId)
-  cleanupReconnectState(stackId)
-  const conn = spriteConnections.get(stackId)
+/** Disconnect the Sprite connection for a user (e.g., when last browser disconnects). */
+export function disconnectSprite(userId: string): void {
+  stopKeepalive(userId)
+  cleanupReconnectState(userId)
+  const conn = spriteConnections.get(userId)
   if (conn) {
     conn.close()
-    spriteConnections.delete(stackId)
+    spriteConnections.delete(userId)
   }
 }

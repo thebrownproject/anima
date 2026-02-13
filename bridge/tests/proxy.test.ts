@@ -232,50 +232,50 @@ describe('proxy module', () => {
     vi.restoreAllMocks()
   })
 
-  it('tracks stack_id to active Sprite connection', async () => {
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+  it('tracks userId to active Sprite connection', async () => {
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
 
-    const conn = proxyModule.getSpriteConnection('stack-1')
+    const conn = proxyModule.getSpriteConnection('user-1')
     expect(conn).toBeDefined()
     expect(conn!.spriteName).toBe('sprite-a')
     expect(conn!.state).toBe('connected')
   })
 
-  it('reuses existing connection for same stack', async () => {
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    const first = proxyModule.getSpriteConnection('stack-1')
+  it('reuses existing connection for same user', async () => {
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
+    const first = proxyModule.getSpriteConnection('user-1')
 
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
-    const second = proxyModule.getSpriteConnection('stack-1')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
+    const second = proxyModule.getSpriteConnection('user-1')
 
     // Same object reference
     expect(second).toBe(first)
   })
 
   it('forwards messages from browser to Sprite via forwardToSprite', async () => {
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
 
     const spriteWs = mockSpriteClients[mockSpriteClients.length - 1]
     const msgPromise = nextMessage(spriteWs)
 
     const testMsg = JSON.stringify({ type: 'mission', id: uuidv4(), timestamp: Date.now(), payload: { text: 'hello' } })
-    const sent = proxyModule.forwardToSprite('stack-1', testMsg)
+    const sent = proxyModule.forwardToSprite('user-1', testMsg)
     expect(sent).toBe(true)
 
     const received = await msgPromise
     expect(received).toBe(testMsg + '\n')
   })
 
-  it('returns false when forwarding to non-existent stack', () => {
+  it('returns false when forwarding to non-existent user', () => {
     const sent = proxyModule.forwardToSprite('nonexistent', '{}')
     expect(sent).toBe(false)
   })
 
   it('cleans up on disconnectSprite', async () => {
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
 
-    proxyModule.disconnectSprite('stack-1')
-    expect(proxyModule.getSpriteConnection('stack-1')).toBeUndefined()
+    proxyModule.disconnectSprite('user-1')
+    expect(proxyModule.getSpriteConnection('user-1')).toBeUndefined()
   })
 })
 
@@ -315,30 +315,30 @@ describe('proxy updater integration', () => {
   })
 
   it('calls checkAndUpdate when establishing new connection', async () => {
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
     expect(checkAndUpdateMock).toHaveBeenCalledWith('sprite-a')
-    expect(proxyModule.getSpriteConnection('stack-1')?.state).toBe('connected')
+    expect(proxyModule.getSpriteConnection('user-1')?.state).toBe('connected')
   })
 
   it('proceeds normally when update was applied', async () => {
     checkAndUpdateMock.mockResolvedValue(true)
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
     expect(checkAndUpdateMock).toHaveBeenCalledWith('sprite-a')
-    expect(proxyModule.getSpriteConnection('stack-1')?.state).toBe('connected')
+    expect(proxyModule.getSpriteConnection('user-1')?.state).toBe('connected')
   })
 
   it('proceeds when checkAndUpdate throws', async () => {
     checkAndUpdateMock.mockRejectedValue(new Error('FS API unreachable'))
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
     expect(checkAndUpdateMock).toHaveBeenCalledWith('sprite-a')
-    expect(proxyModule.getSpriteConnection('stack-1')?.state).toBe('connected')
+    expect(proxyModule.getSpriteConnection('user-1')?.state).toBe('connected')
   })
 
   it('skips checkAndUpdate when reusing existing connection', async () => {
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
     expect(checkAndUpdateMock).toHaveBeenCalledTimes(1)
 
-    await proxyModule.ensureSpriteConnection('stack-1', 'sprite-a', 'token')
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
     // Still 1 — reused existing, no second update check
     expect(checkAndUpdateMock).toHaveBeenCalledTimes(1)
   })
