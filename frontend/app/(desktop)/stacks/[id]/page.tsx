@@ -3,7 +3,6 @@
 import { use } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { WallpaperLayer } from '@/components/wallpaper/wallpaper-layer'
-import { WallpaperPicker } from '@/components/wallpaper/wallpaper-picker'
 import { DesktopViewport } from '@/components/desktop/desktop-viewport'
 import { DesktopCard } from '@/components/desktop/desktop-card'
 import { DesktopTopBar } from '@/components/desktop/desktop-top-bar'
@@ -48,13 +47,6 @@ export default function DesktopPage({ params }: { params: Promise<{ id: string }
 
           {/* Chat bar */}
           <ChatBar />
-
-          {/* Wallpaper picker (bottom-right, above viewport HUD) */}
-          <div className="pointer-events-none absolute bottom-12 right-4 z-10">
-            <div className="pointer-events-auto">
-              <WallpaperPicker />
-            </div>
-          </div>
 
           {/* Stack ID for debugging */}
           <div className="pointer-events-none absolute bottom-4 left-4 z-10 font-mono text-xs text-white/30">

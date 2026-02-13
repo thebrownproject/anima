@@ -25,7 +25,6 @@ function GlassPill({ children, className }: { children: React.ReactNode; classNa
 }
 
 export function DesktopTopBar() {
-  const scale = useDesktopStore((s) => s.view.scale)
   const activeWorkspace = useDesktopStore((s) => s.activeWorkspace)
   const setActiveWorkspace = useDesktopStore((s) => s.setActiveWorkspace)
   const toggleLeftPanel = useDesktopStore((s) => s.toggleLeftPanel)
@@ -73,8 +72,8 @@ export function DesktopTopBar() {
         </GlassTooltip>
       </div>
 
-      {/* Center — Back + Workspace Tabs + Add */}
-      <div className="pointer-events-auto flex items-center gap-2">
+      {/* Center — Back + Workspace Tabs + Add (absolute for true page centering) */}
+      <div className="pointer-events-auto absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2">
         <GlassTooltip>
           <GlassTooltipTrigger asChild>
             <GlassButton
@@ -114,9 +113,6 @@ export function DesktopTopBar() {
 
       {/* Right — System tray */}
       <GlassPill className="h-10 pointer-events-auto [&>div]:flex [&>div]:items-center">
-        <span className="px-2 text-xs font-medium text-white/70">
-          {Math.round(scale * 100)}%
-        </span>
         <GlassTooltip>
           <GlassTooltipTrigger asChild>
             <GlassButton variant="ghost" size="icon" className="size-8 rounded-full">

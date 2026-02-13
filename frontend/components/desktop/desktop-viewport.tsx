@@ -144,6 +144,9 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
         scale: clamped,
       }
 
+      // Update store scale immediately so UI (menu %) stays responsive
+      useDesktopStore.getState().setView({ scale: clamped })
+
       if (sharpTimer.current) clearTimeout(sharpTimer.current)
       startZoomAnimation()
     }

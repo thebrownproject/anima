@@ -5,6 +5,39 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import * as Icons from "@/components/icons"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { DesktopMenuBody } from "@/components/desktop/desktop-context-menu"
+
+function TabMenuPopover() {
+  return (
+    <PopoverPrimitive.Root>
+      <PopoverPrimitive.Trigger asChild>
+        <span
+          role="button"
+          tabIndex={-1}
+          className="absolute left-0.5 z-20 flex size-5 items-center justify-center rounded-full opacity-0 transition-opacity hover:bg-white/10 group-hover:opacity-100"
+        >
+          <Icons.DotsHorizontal className="size-3 text-white/60" />
+        </span>
+      </PopoverPrimitive.Trigger>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          side="bottom"
+          align="start"
+          sideOffset={12}
+          className={cn(
+            "z-50 min-w-[14rem] overflow-hidden rounded-xl p-1.5",
+            "bg-white/10 backdrop-blur-xl border border-white/20",
+            "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+            "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+            "data-[side=bottom]:slide-in-from-top-2",
+          )}
+        >
+          <DesktopMenuBody />
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  )
+}
 
 interface GlassTabSwitcherProps {
   tabs: { value: string; label: string; dot?: string }[]
@@ -83,49 +116,7 @@ const GlassTabSwitcher = React.forwardRef<HTMLDivElement, GlassTabSwitcherProps>
               </button>
 
               {/* More button (left) */}
-              <PopoverPrimitive.Root>
-                <PopoverPrimitive.Trigger asChild>
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    className="absolute left-0.5 z-20 flex size-5 items-center justify-center rounded-full opacity-0 transition-opacity hover:bg-white/10 group-hover:opacity-100"
-                  >
-                    <Icons.DotsHorizontal className="size-3 text-white/60" />
-                  </span>
-                </PopoverPrimitive.Trigger>
-                <PopoverPrimitive.Portal>
-                  <PopoverPrimitive.Content
-                    side="bottom"
-                    align="start"
-                    sideOffset={12}
-                    className={cn(
-                      "z-50 w-56 overflow-hidden rounded-xl p-1.5",
-                      "bg-white/10 backdrop-blur-xl border border-white/20",
-                      "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
-                      "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-                      "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-                      "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-                    )}
-                  >
-                    <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
-                      Workspace
-                    </p>
-                    <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white">
-                      <Icons.Edit className="size-4" />
-                      Rename
-                    </button>
-                    <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white">
-                      <Icons.Files className="size-4" />
-                      Duplicate
-                    </button>
-                    <div className="mx-2 my-1 h-px bg-white/10" />
-                    <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-red-400/70 transition-colors hover:bg-white/10 hover:text-red-300">
-                      <Icons.Trash className="size-4" />
-                      Delete
-                    </button>
-                  </PopoverPrimitive.Content>
-                </PopoverPrimitive.Portal>
-              </PopoverPrimitive.Root>
+              <TabMenuPopover />
 
               {/* Close button (right) */}
               {onClose && (

@@ -2745,3 +2745,46 @@ Research agent explored all 3 codebases (bridge, sprite, frontend) — found 19 
 - This is a significant refactor touching Bridge (re-key by userId), Supabase (schema migration), Frontend (single-page + tab switcher), and Protocol (context enrichment + state_sync)
 
 ---
+
+## [2026-02-13 19:00] Session 158
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Tab popover fix (stackdocs-qj2 — CLOSED):** The "..." button on tabs was showing an old Workspace/Rename/Duplicate/Delete popover. Root cause wasn't CSS — it was showing the WRONG content. Replaced popover body with the same Environment/View/Stack menu used by the right-click context menu. Extracted shared `DesktopMenuBody` component in `desktop-context-menu.tsx` to avoid duplication. `glass-tab-switcher.tsx` now imports `DesktopMenuBody` instead of inline content.
+
+**Context menu restyle (m7b.4.12.13 — CLOSED):** Already done in session 155. Confirmed working, closed the bead.
+
+**Unused UI component cleanup:** Ran audit via subagent — found 19 unused component files in `components/ui/` (18 shadcn primitives + 2 glass components: `glass-dock`, `glass-switch`). Deleted all 19. `components/ui/` now has 8 files that are actually used.
+
+**Wallpaper update (m7b.4.12.12):** Replaced old wallpapers (aurora, coral) with 9 new grainy gradient wallpapers. Resized from 5K (~4MB each) to 2560px (~250KB each) via `sips`. Named: Neon Silk, Amethyst Tide, Electric Dusk, Ocean Breeze, Cosmic Spiral, Neon Ribbon, Crimson Wave, Scarlet Bloom, Coral Tide. Kept Purple Waves. Updated `wallpaper-store.ts`. Wallpaper thumbnails now circular (`rounded-full`).
+
+**Menu section reorder:** Changed from Environment/View/Stack to Stack/View/Environment (top to bottom). Wallpaper names left-aligned.
+
+**Removed wallpaper picker overlay:** Deleted `<WallpaperPicker>` from desktop page — wallpaper switching now only via context menu / tab popover.
+
+**Top bar centering:** Tab bar was centered between left/right icon groups (flexbox `justify-between`), not page-centered. Fixed with `absolute left-1/2 -translate-x-1/2` positioning.
+
+**Zoom % moved to menu:** Removed zoom percentage from top-right pill bar. Added it as the middle button in the View section zoom controls (between zoom out/in). Clicking it resets to 100%. Fixed slow update — added immediate `setView({ scale })` call in viewport's desktop-zoom handler instead of waiting for 150ms `SYNC_DELAY`.
+
+**CSS variable wiring attempt (REVERTED):** Sent subagent to wire `--glass-bg`, `--glass-border` etc. to all components. Variables had WRONG values — `--glass-bg: 0.05` but components use `bg-white/10` (0.10), `--glass-border: 0.1` but components use `border-white/20` (0.20). Agent changes made borders/backgrounds half as visible. Reverted `glass-card.tsx` and `glass-button.tsx`. Other files weren't touched by agent.
+
+**One Sprite per user architecture:** User decided to change from one Sprite per stack to one Sprite per user. Created detailed brainstorm prompt for a separate session covering Bridge routing, Supabase schema, filesystem layout, WebSocket protocol, and memory system changes.
+
+### Decisions Made
+- **One Sprite per user** (not per stack) — decided, brainstorm prompt created for separate session
+- **Shared `DesktopMenuBody`** — single source of truth for menu content, rendered in both ContextMenu (right-click) and Popover (tab dots)
+- **CSS variables need value update before wiring** — `--glass-bg` should be 0.10, `--glass-border` should be 0.20 to match what components actually use
+
+### Gotchas
+- **Tab popover "styling bug" was actually a content bug** — the CSS was fine, it was just showing the wrong popover entirely
+- **Ein UI CSS vars are set to LOWER opacity than what looks good** — must update values before wiring to components
+- **Zoom % lag** — `SYNC_DELAY = 150ms` debounce in viewport delays store updates; fixed by writing scale immediately on external zoom events
+
+### Next Action
+- Fix CSS variable values (`--glass-bg: 0.10`, `--glass-border: 0.20`) then re-wire to all glass components
+- Close m7b.4.12.12 (wallpaper images done)
+- Brainstorm one-Sprite-per-user architecture in separate session
+
+---
