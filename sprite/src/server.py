@@ -15,10 +15,11 @@ from pathlib import Path
 
 import anthropic
 
-from .database import TranscriptDB, MemoryDB
+from .database import TranscriptDB, MemoryDB, WorkspaceDB
 from .memory.processor import ObservationProcessor
 from .gateway import SpriteGateway
 from .runtime import AgentRuntime
+from .state_sync import send_state_sync
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ async def handle_connection(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     runtime: AgentRuntime,
+    workspace_db: WorkspaceDB,
 ) -> None:
     """Handle a single TCP connection from the Bridge (via Sprites TCP Proxy).
 
@@ -48,6 +50,8 @@ async def handle_connection(
     runtime.update_send_fn(send_fn)
 
     gateway = SpriteGateway(send_fn=send_fn, runtime=runtime)
+
+    await send_state_sync(workspace_db, send_fn)
 
     try:
         while True:
@@ -77,8 +81,10 @@ async def main() -> None:
     # Initialize databases
     transcript_db = TranscriptDB()
     memory_db = MemoryDB()
+    workspace_db = WorkspaceDB()
     await transcript_db.connect()
     await memory_db.connect()
+    await workspace_db.connect()
 
     # Anthropic client for batch processor (reads ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from env)
     anthropic_client = anthropic.AsyncAnthropic()
@@ -99,7 +105,7 @@ async def main() -> None:
         processor=processor,
     )
 
-    handler = lambda r, w: handle_connection(r, w, runtime=runtime)
+    handler = lambda r, w: handle_connection(r, w, runtime=runtime, workspace_db=workspace_db)
     server = await asyncio.start_server(handler, HOST, PORT)
     logger.info("Sprite server listening on tcp://%s:%d", HOST, PORT)
     await stop
@@ -107,6 +113,7 @@ async def main() -> None:
     await runtime.cleanup()
     await transcript_db.close()
     await memory_db.close()
+    await workspace_db.close()
     logger.info("Shutting down...")
 
 
