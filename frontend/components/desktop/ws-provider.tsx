@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
-import type { SpriteToBrowserMessage, BrowserToSpriteMessage } from '@/types/ws-protocol'
+import type { SpriteToBrowserMessage, BrowserToSpriteMessage, CardInfo, ChatMessageInfo } from '@/types/ws-protocol'
 import { useDesktopStore, type DesktopCard } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { getAutoPosition } from './auto-placer'
@@ -43,13 +43,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const handleMessage = useCallback((message: SpriteToBrowserMessage) => {
     switch (message.type) {
       case 'canvas_update': {
-        const { command, card_id, title, blocks, size } = message.payload
+        const { command, card_id, title, blocks, size, stack_id } = message.payload
         const store = useDesktopStore.getState()
 
         if (command === 'create_card') {
           const position = getAutoPosition(store.cards, store.view)
           store.addCard({
             id: card_id,
+            stackId: stack_id ?? store.activeStackId,
             title: title ?? 'Untitled',
             blocks: blocks ?? [],
             size: size ?? 'medium',
@@ -83,6 +84,55 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           chat.setAgentStreaming(false)
           chat.addMessage({ role: 'system', content: `[error] ${content}`, timestamp: message.timestamp })
         }
+        break
+      }
+
+      case 'state_sync': {
+        const { stacks, active_stack_id, cards, chat_history } = message.payload
+        const store = useDesktopStore.getState()
+        const chat = useChatStore.getState()
+
+        // Populate stacks
+        store.setStacks(stacks)
+        store.setActiveStackId(active_stack_id)
+
+        // Map CardInfo (snake_case) -> DesktopCard (camelCase)
+        // Use getAutoPosition for cards with default (0,0) position
+        const cardRecord: Record<string, DesktopCard> = {}
+        let idx = 0
+        for (const c of cards) {
+          const needsPosition = c.position.x === 0 && c.position.y === 0
+          // Build a temporary cards record for position calculation
+          const position = needsPosition
+            ? getAutoPosition(cardRecord, store.view)
+            : c.position
+          cardRecord[c.id] = {
+            id: c.id,
+            stackId: c.stack_id,
+            title: c.title,
+            blocks: c.blocks,
+            size: c.size,
+            position,
+            zIndex: c.z_index || idx + 1,
+          }
+          idx++
+        }
+        store.setCards(cardRecord)
+
+        // Map chat history — Sprite stores "assistant", frontend uses "agent"
+        const roleMap: Record<string, 'user' | 'agent' | 'system'> = {
+          user: 'user',
+          assistant: 'agent',
+          agent: 'agent',
+          system: 'system',
+        }
+        const mapped = chat_history.map((m: ChatMessageInfo) => ({
+          id: m.id,
+          role: roleMap[m.role] ?? 'system',
+          content: m.content,
+          timestamp: m.timestamp,
+        }))
+        chat.setMessages(mapped)
         break
       }
 

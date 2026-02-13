@@ -41,6 +41,7 @@ interface DesktopActions {
   setActiveStackId: (stackId: string) => void
 
   // Card actions
+  setCards: (cards: Record<string, DesktopCard>) => void
   addCard: (card: DesktopCard) => void
   updateCard: (id: string, updates: Partial<Omit<DesktopCard, 'id'>>) => void
   removeCard: (id: string) => void
@@ -104,6 +105,14 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
       setActiveStackId: (stackId) => set({ activeStackId: stackId }),
 
       // Card actions
+      setCards: (cards) => {
+        let maxZ = 0
+        for (const card of Object.values(cards)) {
+          if (card.zIndex > maxZ) maxZ = card.zIndex
+        }
+        set({ cards, maxZIndex: maxZ })
+      },
+
       addCard: (card) =>
         set((state) => ({
           cards: { ...state.cards, [card.id]: card },

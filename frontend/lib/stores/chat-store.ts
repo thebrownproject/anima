@@ -27,6 +27,7 @@ type ChatMessageInput = Omit<ChatMessage, 'id'> & { id?: string }
 
 interface ChatActions {
   addMessage: (message: ChatMessageInput) => void
+  setMessages: (messages: ChatMessage[]) => void
   appendToLastAgent: (content: string) => void
   setChips: (chips: SuggestionChip[]) => void
   setMode: (mode: 'bar' | 'panel') => void
@@ -50,6 +51,8 @@ export const useChatStore = create<ChatState & ChatActions>()((set) => ({
     set((state) => ({
       messages: [...state.messages, { ...message, id: message.id || crypto.randomUUID() }],
     })),
+
+  setMessages: (messages) => set({ messages, chips: [] }),
 
   appendToLastAgent: (content) =>
     set((state) => {
