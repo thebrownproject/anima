@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { cn } from '@/lib/utils'
+import { useMomentum } from '@/hooks/use-momentum'
 
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.0
@@ -12,10 +13,6 @@ const SHARP_DELAY = 200
 // Zoom lerp — fast enough to feel instant, smooth enough to soften mouse wheel steps
 const LERP_SPEED = 0.5
 const SETTLE_THRESHOLD = 0.0005
-
-// Pan momentum
-const MOMENTUM_DECAY = 0.92
-const MOMENTUM_MIN = 0.5
 
 interface ViewSnapshot {
   x: number
@@ -39,11 +36,6 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sharpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSettled = useRef(true)
-
-  // Pan velocity tracking for momentum
-  const velocity = useRef({ x: 0, y: 0 })
-  const lastMoveTime = useRef(0)
-  const momentumRafId = useRef<number>(0)
 
   // Seed from Zustand on mount
   useEffect(() => {
@@ -155,25 +147,18 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
     return () => window.removeEventListener('desktop-zoom', handler)
   }, [startZoomAnimation])
 
-  // Pan momentum animation loop
-  const animateMomentum = useCallback(() => {
-    const v = velocity.current
-    v.x *= MOMENTUM_DECAY
-    v.y *= MOMENTUM_DECAY
-
-    if (Math.abs(v.x) < MOMENTUM_MIN && Math.abs(v.y) < MOMENTUM_MIN) {
-      momentumRafId.current = 0
+  // Pan momentum via shared hook
+  const momentum = useMomentum({
+    onFrame: (vx, vy) => {
+      current.current.x += vx
+      current.current.y += vy
+      applyAnimationMode(current.current)
+    },
+    onStop: () => {
       applySharpMode(current.current)
       scheduleSync()
-      return
-    }
-
-    current.current.x += v.x
-    current.current.y += v.y
-    applyAnimationMode(current.current)
-
-    momentumRafId.current = requestAnimationFrame(animateMomentum)
-  }, [scheduleSync])
+    },
+  })
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -217,18 +202,15 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       if ((e.target as HTMLElement).id !== 'desktop-canvas-bg') return
       if (e.button === 2) return
 
-      if (momentumRafId.current) {
-        cancelAnimationFrame(momentumRafId.current)
-        momentumRafId.current = 0
+      if (momentum.isAnimating()) {
+        momentum.cancel()
       }
 
       setIsPanning(true)
       lastPos.current = { x: e.clientX, y: e.clientY }
-      velocity.current = { x: 0, y: 0 }
-      lastMoveTime.current = performance.now()
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     },
-    [],
+    [momentum],
   )
 
   const handlePointerMove = useCallback(
@@ -239,9 +221,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       const dy = e.clientY - lastPos.current.y
       lastPos.current = { x: e.clientX, y: e.clientY }
 
-      lastMoveTime.current = performance.now()
-      velocity.current.x = dx * 0.6 + velocity.current.x * 0.4
-      velocity.current.y = dy * 0.6 + velocity.current.y * 0.4
+      momentum.trackVelocity(dx, dy)
 
       current.current.x += dx
       current.current.y += dy
@@ -250,7 +230,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
 
       applyAnimationMode(current.current)
     },
-    [isPanning],
+    [isPanning, momentum],
   )
 
   const handlePointerUp = useCallback(
@@ -259,22 +239,18 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       setIsPanning(false)
       ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
 
-      const timeSinceLastMove = performance.now() - lastMoveTime.current
-      const v = velocity.current
-      if (timeSinceLastMove < 60 && (Math.abs(v.x) > MOMENTUM_MIN || Math.abs(v.y) > MOMENTUM_MIN)) {
-        momentumRafId.current = requestAnimationFrame(animateMomentum)
-      } else {
+      // Flick -> momentum glide, otherwise settle immediately
+      if (!momentum.releaseWithFlick()) {
         applySharpMode(current.current)
         scheduleSync()
       }
     },
-    [isPanning, animateMomentum, scheduleSync],
+    [isPanning, momentum, scheduleSync],
   )
 
   useEffect(() => {
     return () => {
       if (zoomRafId.current) cancelAnimationFrame(zoomRafId.current)
-      if (momentumRafId.current) cancelAnimationFrame(momentumRafId.current)
       if (syncTimer.current) clearTimeout(syncTimer.current)
       if (sharpTimer.current) clearTimeout(sharpTimer.current)
     }

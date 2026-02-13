@@ -7,6 +7,7 @@ import { useDesktopStore } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
+import { useMomentum } from '@/hooks/use-momentum'
 
 interface DesktopCardProps {
   card: DesktopCardType
@@ -14,11 +15,6 @@ interface DesktopCardProps {
 }
 
 const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
-
-// Momentum physics — matched to DesktopViewport for consistent feel
-const MOMENTUM_DECAY = 0.92
-const MOMENTUM_MIN = 0.5
-const FLICK_WINDOW = 60 // ms — must move within this window to trigger glide
 
 export function DesktopCard({ card, children }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -28,51 +24,33 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
   // Local position tracked in ref during drag (no re-renders)
   const localPos = useRef({ x: card.position.x, y: card.position.y })
 
-  // Velocity tracking for drag momentum
-  const velocity = useRef({ x: 0, y: 0 })
-  const lastMoveTime = useRef(0)
-  const momentumRafId = useRef<number>(0)
-
-  // Sync from store when not dragging (external updates like canvas_update)
-  useEffect(() => {
-    if (!isDragging && !momentumRafId.current) {
-      localPos.current = { x: card.position.x, y: card.position.y }
-    }
-  }, [card.position.x, card.position.y, isDragging])
-
-  // Cleanup momentum RAF on unmount
-  useEffect(() => {
-    return () => {
-      if (momentumRafId.current) cancelAnimationFrame(momentumRafId.current)
-    }
-  }, [])
-
   const syncToStore = useCallback(() => {
     useDesktopStore.getState().moveCard(card.id, { ...localPos.current })
   }, [card.id])
 
-  const animateMomentum = useCallback(() => {
-    const v = velocity.current
-    v.x *= MOMENTUM_DECAY
-    v.y *= MOMENTUM_DECAY
-
-    if (Math.abs(v.x) < MOMENTUM_MIN && Math.abs(v.y) < MOMENTUM_MIN) {
-      momentumRafId.current = 0
-      syncToStore()
-      return
-    }
-
-    const { view } = useDesktopStore.getState()
-    localPos.current.x += v.x / view.scale
-    localPos.current.y += v.y / view.scale
-
+  const applyPosition = useCallback(() => {
     if (positionRef.current) {
       positionRef.current.style.left = `${localPos.current.x}px`
       positionRef.current.style.top = `${localPos.current.y}px`
     }
+  }, [])
 
-    momentumRafId.current = requestAnimationFrame(animateMomentum)
-  }, [syncToStore])
+  const momentum = useMomentum({
+    onFrame: (vx, vy) => {
+      const { view } = useDesktopStore.getState()
+      localPos.current.x += vx / view.scale
+      localPos.current.y += vy / view.scale
+      applyPosition()
+    },
+    onStop: syncToStore,
+  })
+
+  // Sync from store when not dragging (external updates like canvas_update)
+  useEffect(() => {
+    if (!isDragging && !momentum.isAnimating()) {
+      localPos.current = { x: card.position.x, y: card.position.y }
+    }
+  }, [card.position.x, card.position.y, isDragging, momentum])
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -80,10 +58,8 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       useDesktopStore.getState().bringToFront(card.id)
 
       // Cancel any running momentum
-      if (momentumRafId.current) {
-        cancelAnimationFrame(momentumRafId.current)
-        momentumRafId.current = 0
-        syncToStore()
+      if (momentum.isAnimating()) {
+        momentum.cancel()
       }
 
       if (!cardRef.current) return
@@ -91,12 +67,10 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       const current = useDesktopStore.getState().cards[card.id]
       if (current) localPos.current = { ...current.position }
 
-      velocity.current = { x: 0, y: 0 }
-      lastMoveTime.current = performance.now()
       setIsDragging(true)
       cardRef.current.setPointerCapture(e.pointerId)
     },
-    [card.id, syncToStore],
+    [card.id, momentum],
   )
 
   const handlePointerMove = useCallback(
@@ -108,18 +82,10 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       localPos.current.x += e.movementX / view.scale
       localPos.current.y += e.movementY / view.scale
 
-      // Track velocity with exponential moving average (same blend as viewport)
-      lastMoveTime.current = performance.now()
-      velocity.current.x = e.movementX * 0.6 + velocity.current.x * 0.4
-      velocity.current.y = e.movementY * 0.6 + velocity.current.y * 0.4
-
-      // Direct DOM update — no React re-render
-      if (positionRef.current) {
-        positionRef.current.style.left = `${localPos.current.x}px`
-        positionRef.current.style.top = `${localPos.current.y}px`
-      }
+      momentum.trackVelocity(e.movementX, e.movementY)
+      applyPosition()
     },
-    [isDragging],
+    [isDragging, momentum, applyPosition],
   )
 
   const handlePointerUp = useCallback(
@@ -129,16 +95,12 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       setIsDragging(false)
       cardRef.current?.releasePointerCapture(e.pointerId)
 
-      // Flick → momentum glide, otherwise snap to final position
-      const timeSinceLastMove = performance.now() - lastMoveTime.current
-      const v = velocity.current
-      if (timeSinceLastMove < FLICK_WINDOW && (Math.abs(v.x) > MOMENTUM_MIN || Math.abs(v.y) > MOMENTUM_MIN)) {
-        momentumRafId.current = requestAnimationFrame(animateMomentum)
-      } else {
+      // Flick -> momentum glide, otherwise snap to final position
+      if (!momentum.releaseWithFlick()) {
         syncToStore()
       }
     },
-    [isDragging, animateMomentum, syncToStore],
+    [isDragging, momentum, syncToStore],
   )
 
   const handleClose = useCallback(

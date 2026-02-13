@@ -47,6 +47,7 @@ export class WebSocketManager {
   private backoffMs = INITIAL_BACKOFF_MS
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private intentionalClose = false
+  // TODO: handlers registry not currently used — review if needed when message routing is implemented
   private handlers = new Map<MessageType, Set<MessageHandler>>()
   private _status: ConnectionStatus = 'disconnected'
 

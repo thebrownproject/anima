@@ -2865,3 +2865,42 @@ Took the Session 157 spec (`.space-agents/exploration/ideas/2026-02-13-one-sprit
 - Start with Task 1 (Protocol types) and Task 2 (Supabase schema) — both have no blockers
 
 ---
+
+## [2026-02-13 23:45] Session 161
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Frontend cleanup: review findings + code simplification + CLAUDE.md audit**
+
+1. **Executed `stackdocs-m7b.4.12.14`** — 4 review findings from session 160:
+   - **ChatPanel → GlassSidePanel refactor** (`chat-panel.tsx`): Eliminated duplicated glass container/animation code. ChatPanel now uses GlassSidePanel with `side="right"`, custom `closeIcon={<Icons.LayoutBottombar />}`, `containerClassName` for streaming glow. GlassSidePanel gained 3 new optional props: `closeIcon`, `closeTooltip`, `containerClassName`, plus `title` became optional.
+   - **GlassButton dead code** (`glass-button.tsx`): Removed `glowEffect` prop (never used with `true`), wrapper `<div>`, and inner `<span>`. Fixes Radix `asChild` compatibility. 87→81 lines.
+   - **ChatMessage stable keys** (`chat-store.ts`, `chat-panel.tsx`): Added `id: string` to `ChatMessage` interface, auto-generated via `crypto.randomUUID()` in store. `ChatMessageInput` type makes `id` optional at call sites. Fixed `key={i}` → `key={msg.id}`.
+   - **appendToLastAgent perf**: Deferred — premature optimization at current scale.
+
+2. **Code simplifier review** — agent scanned all 47 frontend files, found 1 critical + 7 medium + 4 low:
+   - **Extracted `hooks/use-momentum.ts`** — shared momentum physics hook used by both `desktop-card.tsx` (204→167 lines) and `desktop-viewport.tsx` (307→283 lines). ~80 lines of duplicated velocity tracking, RAF loop, flick detection consolidated.
+   - **GlassCard inner wrapper removed** (`glass-card.tsx`): Deleted unnecessary `<div className="relative z-10">`.
+   - **GlassSidePanel nested ternary simplified**: Extracted `hiddenTransform` variable.
+   - **Empty `(desktop)/layout.tsx` deleted**: Next.js App Router doesn't need fragment wrapper.
+   - **WebSocket `handlers` TODO**: Added comment for future review (per user instruction — still WIP).
+
+3. **Final code review** — second agent verified all changes. 4 "critical" findings were all false positives (verified: `animate` self-ref is stable useCallback pattern, ref-sync during render is standard, `radix-ui` 2.x import is correct, viewport forward refs are pre-existing). TypeScript: 0 errors. Build: clean.
+
+4. **CLAUDE.md audit** — all 3 frontend docs were significantly outdated:
+   - **`frontend/CLAUDE.md`**: Full directory tree rewrite. Removed stale refs (canvas/, agent/, documents/, stacks/, glass-dock.tsx, ws-store.ts, canvas-store.ts, layout.tsx). Added actual dirs (desktop/ with 12 files, wallpaper/, ai-elements/). Correct stores, hooks, shadcn count (3 not 16).
+   - **`frontend/components/ui/CLAUDE.md`**: Replaced 20+ non-existent shadcn categories with actual 10 components (3 managed + 7 glass).
+   - **Root `CLAUDE.md` frontend section**: Updated directory tree to match reality.
+
+### Decisions Made
+- **Finding 4 deferred** — appendToLastAgent array copy per token is O(n) but fine at current scale. Immer/batching only worth it with actual perf issues.
+- **WebSocket handlers left as TODO** — infrastructure exists internally but no external callers yet. User wants future agent to review when message routing is implemented.
+- **Code reviewer false positives documented** — animate self-ref, ref-sync during render, radix-ui 2.x import, and viewport forward refs are all valid patterns. Noted for future reviewers.
+
+### Next Action
+- `/mission` on `stackdocs-m7b.12` (One Sprite Per User) — tasks .12.1 (protocol types) and .12.2 (Supabase schema) are unblocked
+- Or continue Glass Desktop polish (m7b.4.12 review findings all closed)
+
+---

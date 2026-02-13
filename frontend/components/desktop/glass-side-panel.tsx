@@ -9,12 +9,15 @@ interface GlassSidePanelProps {
   isOpen: boolean
   onClose: () => void
   side: 'left' | 'right'
-  title: string
+  title?: string
   icon?: ReactNode
+  closeIcon?: ReactNode
+  closeTooltip?: string
   width?: string
   headerActions?: ReactNode
   footer?: ReactNode
   children: ReactNode
+  containerClassName?: string
   className?: string
 }
 
@@ -24,10 +27,13 @@ export function GlassSidePanel({
   side,
   title,
   icon,
+  closeIcon,
+  closeTooltip = 'Close',
   width = 'w-[320px]',
   headerActions,
   footer,
   children,
+  containerClassName,
   className,
 }: GlassSidePanelProps) {
   return (
@@ -39,24 +45,30 @@ export function GlassSidePanel({
         'transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
         isOpen
           ? 'translate-x-0 opacity-100'
-          : side === 'left'
-            ? '-translate-x-[110%] opacity-0 pointer-events-none'
-            : 'translate-x-[110%] opacity-0 pointer-events-none',
+          : `${side === 'left' ? '-translate-x-[110%]' : 'translate-x-[110%]'} opacity-0 pointer-events-none`,
         className,
       )}
     >
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl">
+      <div className={cn(
+        'flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl',
+        containerClassName,
+      )}>
         {/* Header */}
-        <div className="flex h-14 shrink-0 items-center justify-between px-5">
-          <div className="flex items-center gap-2.5">
-            {icon}
-            <span className="text-base font-semibold tracking-wide text-white/90">{title}</span>
-          </div>
+        <div className={cn(
+          'flex h-14 shrink-0 items-center px-5',
+          title ? 'justify-between' : 'justify-end',
+        )}>
+          {title && (
+            <div className="flex items-center gap-2.5">
+              {icon}
+              <span className="text-base font-semibold tracking-wide text-white/90">{title}</span>
+            </div>
+          )}
           <div className="flex items-center">
             {headerActions}
             <GlassIconButton
-              icon={<Icons.X  />}
-              tooltip="Close"
+              icon={closeIcon ?? <Icons.X />}
+              tooltip={closeTooltip}
               onClick={onClose}
               className="-mr-2"
             />

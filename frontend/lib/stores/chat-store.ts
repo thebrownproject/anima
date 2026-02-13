@@ -5,6 +5,7 @@ import { create } from 'zustand'
 // =============================================================================
 
 export interface ChatMessage {
+  id: string
   role: 'user' | 'agent' | 'system'
   content: string
   timestamp: number
@@ -22,8 +23,10 @@ interface ChatState {
   isAgentStreaming: boolean
 }
 
+type ChatMessageInput = Omit<ChatMessage, 'id'> & { id?: string }
+
 interface ChatActions {
-  addMessage: (message: ChatMessage) => void
+  addMessage: (message: ChatMessageInput) => void
   appendToLastAgent: (content: string) => void
   setChips: (chips: SuggestionChip[]) => void
   setMode: (mode: 'bar' | 'panel') => void
@@ -45,7 +48,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set) => ({
   // Actions
   addMessage: (message) =>
     set((state) => ({
-      messages: [...state.messages, message],
+      messages: [...state.messages, { ...message, id: message.id || crypto.randomUUID() }],
     })),
 
   appendToLastAgent: (content) =>
@@ -62,7 +65,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set) => ({
       return {
         messages: [
           ...state.messages,
-          { role: 'agent' as const, content, timestamp: Date.now() },
+          { id: crypto.randomUUID(), role: 'agent' as const, content, timestamp: Date.now() },
         ],
       }
     }),

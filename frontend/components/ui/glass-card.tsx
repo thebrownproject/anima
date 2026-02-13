@@ -29,7 +29,7 @@ const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
           )}
           {...props}
         >
-          <div className="relative z-10">{children}</div>
+          {children}
         </div>
       </div>
     )

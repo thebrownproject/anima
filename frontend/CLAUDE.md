@@ -9,7 +9,7 @@ See root `CLAUDE.md` for project overview, tech stack, and development workflow.
 - **Components**: shadcn/ui (new-york style) + Ein UI glass components
 - **Auth**: Clerk (modal sign-in/sign-up)
 - **Data**: Supabase (platform data only — users/stacks), WebSocket to Bridge/Sprite
-- **State**: Zustand stores for canvas + chat state (v2)
+- **State**: Zustand stores for desktop + chat + wallpaper state
 - **Animation**: framer-motion (used by Ein UI glass-tabs)
 
 ## Current State
@@ -23,26 +23,52 @@ frontend/
 ├── app/
 │   ├── (app)/                      # Prototype route group
 │   │   ├── layout.tsx              # Minimal inset shell (dark bg, rounded-xl)
-│   │   └── test-chat/page.tsx      # Glass desktop prototype (529 lines)
+│   │   └── test-chat/page.tsx      # Glass desktop prototype
 │   ├── (desktop)/                  # v2 glass desktop route group
-│   │   ├── layout.tsx              # Bare layout — just {children}
-│   │   └── stacks/[id]/page.tsx    # Desktop workspace page (placeholder)
+│   │   └── stacks/[id]/page.tsx    # Desktop workspace page
 │   ├── layout.tsx                  # Root — Clerk, ThemeProvider, Toaster
 │   ├── page.tsx                    # Landing page (sign in → /desktop)
 │   ├── globals.css                 # Global styles + Ein UI CSS vars + glass tokens
 │   └── api/webhooks/clerk/         # Clerk webhook for user sync to Supabase
 ├── components/
+│   ├── ai-elements/                # AI Elements (Vercel) — FileTree
+│   ├── desktop/                    # v2 glass desktop components
+│   │   ├── desktop-viewport.tsx    # Infinite canvas with pan/zoom/momentum
+│   │   ├── desktop-card.tsx        # Draggable card with momentum physics
+│   │   ├── desktop-top-bar.tsx     # Top bar with workspace tabs
+│   │   ├── desktop-context-menu.tsx # Right-click context menu
+│   │   ├── chat-panel.tsx          # Side panel chat (uses GlassSidePanel)
+│   │   ├── chat-bar.tsx            # Bottom chat bar + embedded mode
+│   │   ├── documents-panel.tsx     # File tree side panel
+│   │   ├── glass-side-panel.tsx    # Reusable sliding glass panel
+│   │   ├── glass-tab-switcher.tsx  # Workspace tab switcher
+│   │   ├── block-renderer.tsx      # Card content block renderer
+│   │   ├── auto-placer.ts          # Auto-position new cards on canvas
+│   │   └── ws-provider.tsx         # WebSocket React context provider
 │   ├── icons/                      # Tabler icon barrel export
 │   ├── providers/                  # ThemeProvider (next-themes)
-│   └── ui/                         # shadcn/ui primitives + Ein UI glass components
-│       ├── glass-button.tsx        # Glass morphism button (variants: default, primary, outline, ghost, destructive)
-│       ├── glass-card.tsx          # Glass morphism card with optional glow
-│       ├── glass-dock.tsx          # Vertical dock component
-│       ├── glass-input.tsx         # Glass input field
-│       └── glass-tabs.tsx          # Glass tab switcher (framer-motion animated)
+│   ├── ui/                         # shadcn/ui primitives + glass components
+│   │   ├── button.tsx              # shadcn button (managed)
+│   │   ├── collapsible.tsx         # shadcn collapsible (managed)
+│   │   ├── sonner.tsx              # shadcn toast (managed)
+│   │   ├── glass-button.tsx        # Glass morphism button (CVA variants)
+│   │   ├── glass-card.tsx          # Glass morphism card with optional glow
+│   │   ├── glass-icon-button.tsx   # Reusable tooltip + icon button
+│   │   ├── glass-input.tsx         # Glass input field
+│   │   ├── glass-tabs.tsx          # Glass tab switcher (framer-motion)
+│   │   ├── glass-tooltip.tsx       # Glass tooltip
+│   │   └── glass-context-menu.tsx  # Glass right-click menu
+│   └── wallpaper/                  # Desktop wallpaper system
+│       ├── wallpaper-layer.tsx     # Wallpaper background renderer
+│       └── wallpaper-picker.tsx    # Wallpaper selection UI
 ├── hooks/
-│   └── use-mobile.ts              # Viewport detection (used by shadcn tooltip)
+│   ├── use-mobile.ts              # Viewport detection (used by shadcn tooltip)
+│   └── use-momentum.ts            # Shared momentum physics (card + viewport drag)
 ├── lib/
+│   ├── stores/
+│   │   ├── chat-store.ts          # Chat messages, mode, streaming state
+│   │   ├── desktop-store.ts       # Cards, tabs, active workspace
+│   │   └── wallpaper-store.ts     # Wallpaper selection + persistence
 │   ├── supabase.ts                # Supabase client (browser)
 │   ├── supabase-server.ts         # Supabase client (server components)
 │   ├── websocket.ts               # v2 WebSocketManager (auto-reconnect, routing)
@@ -86,7 +112,7 @@ frontend/
 ### Route Groups
 
 - `(app)/` — prototype/dev routes. Inset layout with dark bg + rounded corners.
-- `(desktop)/` — v2 production routes. Bare layout, full viewport. URL: `/stacks/[id]`
+- `(desktop)/` — v2 production routes. No layout wrapper. URL: `/stacks/[id]`
 
 ### Clerk Auth with Next.js 16 (proxy.ts)
 
@@ -107,7 +133,7 @@ export function proxy(req: NextRequest, event: NextFetchEvent) {
 
 ### Icons
 
-All icons via `@/components/icons` barrel. Never import directly from `@tabler/icons-react`.
+All icons via `@/components/icons` barrel. Never import directly from `@tabler/icons-react`. Global stroke-width set to 1.25 in `globals.css`.
 
 ```typescript
 import * as Icons from "@/components/icons"
@@ -124,10 +150,6 @@ Types in `types/ws-protocol.ts` are a copy of `bridge/src/protocol.ts` (source o
 
 ## shadcn/ui Components
 
-16 primitives: avatar, badge, button, card, checkbox, dialog, dropdown-menu, input, popover, progress, separator, sheet, skeleton, sonner, table, tabs, textarea, tooltip.
+3 managed primitives: `button`, `collapsible`, `sonner`.
 
-**Do not modify** — managed by shadcn CLI. Custom components belong in `components/<feature>/`.
-
-## What Was Removed (v1)
-
-All v1 code preserved in `archive/v1-frontend` worktree. See git history for details.
+**Do not modify** — managed by shadcn CLI. Custom glass components (`glass-*.tsx`) are project-owned and editable.

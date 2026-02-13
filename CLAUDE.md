@@ -111,25 +111,30 @@ backend/      # FastAPI — v1 backend (being replaced by sprite/)
 
 ## Frontend
 
-Next.js 16 (App Router) with Clerk auth, shadcn/ui components, and React Flow Canvas.
+Next.js 16 (App Router) with Clerk auth, shadcn/ui + glass components, Zustand stores.
 
 ```
 frontend/
-├── app/(app)/              # Protected routes with @header/@subbar parallel slots
+├── app/(app)/              # Prototype routes (test-chat)
+├── app/(desktop)/          # v2 production routes (/stacks/[id])
 ├── components/
-│   ├── canvas/             # v2: React Flow canvas, window components (NEW)
-│   ├── agent/              # v1: Agent flow system (being replaced by Canvas chat)
-│   ├── documents/          # Document tables, detail views
-│   ├── stacks/             # Stack list, detail views
-│   └── ui/                 # shadcn/ui primitives
+│   ├── desktop/            # Glass desktop: viewport, cards, chat, panels
+│   ├── ui/                 # shadcn/ui primitives + glass-* components
+│   ├── wallpaper/          # Desktop wallpaper system
+│   ├── ai-elements/        # Vercel AI Elements (FileTree)
+│   └── icons/              # Tabler icon barrel export
+├── hooks/
+│   ├── use-mobile.ts       # Viewport detection
+│   └── use-momentum.ts     # Shared momentum physics (drag)
 ├── lib/
-│   ├── websocket.ts        # v2: WebSocket connection manager (NEW)
+│   ├── websocket.ts        # WebSocket connection manager
 │   ├── stores/
-│   │   ├── ws-store.ts     # v2: WS connection state (NEW)
-│   │   └── canvas-store.ts # v2: Canvas window state (NEW)
-│   └── supabase/           # Supabase client (platform data only in v2)
+│   │   ├── chat-store.ts   # Chat messages, mode, streaming
+│   │   ├── desktop-store.ts # Cards, tabs, active workspace
+│   │   └── wallpaper-store.ts # Wallpaper + persistence
+│   └── supabase/           # Supabase client (platform data only)
 └── types/
-    └── ws-protocol.ts      # v2: WebSocket message types (NEW)
+    └── ws-protocol.ts      # WebSocket message types (copy of bridge source)
 ```
 
 See `frontend/CLAUDE.md` for patterns and directory structure.

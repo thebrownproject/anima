@@ -62,22 +62,16 @@ const glassButtonVariants = cva(
 export interface GlassButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof glassButtonVariants> {
-  glowEffect?: boolean,
   asChild?: boolean
 }
 
 const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, variant, asChild = false, size, glowEffect = false, children, ...props }, ref) => {
+  ({ className, variant, asChild = false, size, children, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button'
     return (
-      <div className="relative inline-block">
-        {glowEffect && (
-          <div className="absolute -inset-1 rounded-xl bg-linear-to-r from-cyan-500/40 via-blue-500/40 to-purple-500/40 blur-lg opacity-70 transition-opacity group-hover:opacity-100" />
-        )}
-        <Comp className={cn(glassButtonVariants({ variant, size, className }))} ref={ref} {...props}>
-          <span className="relative z-10 flex items-center gap-2">{children}</span>
-        </Comp>
-      </div>
+      <Comp className={cn(glassButtonVariants({ variant, size, className }))} ref={ref} {...props}>
+        {children}
+      </Comp>
     )
   },
 )

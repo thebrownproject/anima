@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { useChatStore, type ChatMessage } from '@/lib/stores/chat-store'
 import { ChatBar } from './chat-bar'
-import { GlassIconButton } from '@/components/ui/glass-icon-button'
+import { GlassSidePanel } from './glass-side-panel'
 import * as Icons from '@/components/icons'
 
 function formatTime(ts: number) {
@@ -75,50 +75,41 @@ export function ChatPanel() {
   }, [messages, isAgentStreaming])
 
   return (
-    <div
-      className={cn(
-        'fixed right-4 top-20 bottom-6 z-30 flex w-[400px] flex-col overflow-hidden',
-        'rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl',
-        'transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-        isOpen
-          ? 'translate-x-0 opacity-100'
-          : 'translate-x-[110%] opacity-0 pointer-events-none',
+    <GlassSidePanel
+      isOpen={isOpen}
+      onClose={() => setMode('bar')}
+      side="right"
+      width="w-[400px]"
+      closeIcon={<Icons.LayoutBottombar />}
+      closeTooltip="Dock to bottom"
+      className="top-20 z-30"
+      containerClassName={cn(
         isAgentStreaming && isOpen && 'border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_20px_rgba(6,182,212,0.06)]',
       )}
+      footer={
+        <div className="p-3">
+          <ChatBar embedded />
+        </div>
+      }
     >
       {/* Agent streaming ambient glow */}
       {isAgentStreaming && (
         <div className="pointer-events-none absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-b from-cyan-500/5 via-transparent to-purple-500/5" />
       )}
 
-      {/* Header */}
-      <div className="relative flex h-14 shrink-0 items-center justify-end px-5">
-        <GlassIconButton
-          icon={<Icons.LayoutBottombar  />}
-          tooltip="Dock to bottom"
-          onClick={() => setMode('bar')}
-          className="-mr-2"
-        />
-      </div>
-
       {/* Messages */}
       <div className="relative flex flex-1 flex-col gap-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="flex-1" />
         )}
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
+        {messages.map((msg) => (
+          <MessageBubble key={msg.id} message={msg} />
         ))}
         {isAgentStreaming && messages[messages.length - 1]?.role !== 'agent' && (
           <TypingIndicator />
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Input — reuse ChatBar in embedded mode */}
-      <div className="shrink-0 p-3">
-        <ChatBar embedded />
-      </div>
-    </div>
+    </GlassSidePanel>
   )
 }
