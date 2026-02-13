@@ -2703,3 +2703,45 @@ System prompt (`sprite/memory/os.md`):
 - m7b.4.12 has 2 remaining sub-tasks (context menu restyle, wallpaper sourcing)
 
 ---
+
+## [2026-02-13 17:30] Session 157
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Architecture brainstorm: One Sprite VM per user (spec written):**
+
+Major architectural pivot explored and documented. Changed from one Sprite VM per stack to one Sprite VM per user. Key decisions made through interactive brainstorm:
+
+- **VM model**: One Sprite per user (cost savings, cross-workspace intelligence)
+- **WS model**: One connection per user (`/ws/`, user from JWT, no stackId in URL)
+- **"Stacks" become "Desktops"**: Lightweight virtual desktop layouts, like macOS Spaces. Not isolated workspaces. Tab switching, not URL routing.
+- **Agent is user-level**: Works across all desktops. Gets compact canvas context (card IDs, titles, block types) with every message.
+- **Card state**: Sprite DB is source of truth, localStorage cache for instant render on page load (avoids 1-12s Sprite wake delay)
+- **Chat history**: Persisted on Sprite, loaded on WS connect
+- **Desktop metadata**: Supabase for tab bar (instant load) + billing limits. Card content on Sprite only.
+- **Supabase schema**: `sprite_name`/`sprite_status` move from `stacks` to `users`. `stacks` table renamed to `desktops` (id, user_id, name, position, created_at).
+
+Research agent explored all 3 codebases (bridge, sprite, frontend) — found 19 coupling points where stackId-as-routing-key is baked in. Bridge has the deepest coupling (proxy Map, reconnect, keepalive, connection store all keyed by stackId). Sprite runtime is cleanest — completely single-tenant with no stack concept, favorable for the change.
+
+**Protocol changes designed:**
+- `mission` payload gains `context?: { desktop_id, cards: [{id, title, size, block_types}] }`
+- `canvas_update` gains `desktop_id` field
+- New `state_sync` message (Sprite -> browser on connect): all cards, desktops, recent chat
+- No `switch_desktop` message — context comes with user messages
+
+**Spec written to:** `.space-agents/exploration/ideas/2026-02-13-one-sprite-per-user/spec.md`
+
+### Decisions Made
+- **One VM per user, not per stack**: Stacks are too lightweight (like tabs) to justify their own VMs. Agent needs cross-workspace intelligence.
+- **Desktops are canvas layouts, not data containers**: No per-desktop filesystem isolation, no per-desktop DB. Agent manages one shared filesystem.
+- **Supabase for metadata, Sprite for content**: Desktop list in Supabase (instant page load, billing). Card content on Sprite only. localStorage as cache layer.
+- **No desktop-switch notifications**: Agent only learns about active desktop when user sends a message. Simpler protocol, no wasted context.
+- **Compact context over full content**: Send card IDs + titles + block types (not full block data). Agent can fetch full content via tools if needed.
+
+### Next Action
+- `/plan` on the spec to break into ordered implementation tasks
+- This is a significant refactor touching Bridge (re-key by userId), Supabase (schema migration), Frontend (single-page + tab switcher), and Protocol (context enrichment + state_sync)
+
+---
