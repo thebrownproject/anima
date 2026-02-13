@@ -2788,3 +2788,44 @@ Research agent explored all 3 codebases (bridge, sprite, frontend) — found 19 
 - Brainstorm one-Sprite-per-user architecture in separate session
 
 ---
+
+## [2026-02-13 22:30] Session 159
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Planning session: One Sprite Per User refactor (spec → plan → Beads)**
+
+Took the Session 157 spec (`.space-agents/exploration/ideas/2026-02-13-one-sprite-per-user/spec.md`) through the full planning pipeline:
+
+1. **Convened planning council** — 3 sequential agents (Task Planner, Sequencer, Implementer) analyzed the spec. Task Planner produced 21 tasks, Sequencer identified critical path of 14 tasks across 5 phases, Implementer provided TDD guidance per task.
+
+2. **Synthesized into 17 tasks** — Merged tightly-coupled tasks (auth+index+connection-store, proxy+reconnect, WS+routing, chatbar+canvas-handler) to avoid broken intermediate states. 5 phases: Foundation → Bridge → Sprite → Frontend → Integration.
+
+3. **Design discussions refined the architecture:**
+   - **Archive model** — Nothing is ever destroyed. Closing a stack sets `status='archived'` with `archived_at` timestamp. Closing a card archives it too. Archiving a stack cascades to all its cards. Agent can search/reference all archived data. Sprite is a persistent knowledge base that accumulates over time.
+   - **User-initiated vs agent-initiated actions** — User UI actions (close tab, close card, create stack) go through `canvas_interaction` WS messages → Sprite gateway handles directly as system operations (no agent involvement). Agent learns of changes passively via updated `context.cards` in next message. Agent-initiated actions use tools that call same DB methods.
+   - **Naming convention** — "Stack" is the canonical term everywhere (not desktop/workspace/canvas). `stackId` = which canvas layout. `userId` = which Sprite VM. They never cross. Bridge routes by userId, protocol references stack_id for card placement.
+   - **Supabase migration simplified** — `stacks` table keeps its name (no rename to desktops). Just move `sprite_name`/`sprite_status` columns to `users` table, add `status`/`archived_at` columns to `stacks`.
+
+4. **Codebase naming audits** — Sent explore agents to audit all 3 codebases:
+   - **Bridge**: 60+ routing `stackId` refs that need → `userId`. Zero desktop/workspace confusion. Clean.
+   - **Sprite**: Completely clean. No domain-level stack/desktop naming. All additive.
+   - **Frontend**: `activeWorkspace` → `activeStackId`, store types need `stackId` field, `components/desktop/` folder stays (refers to visual environment).
+
+5. **Created Beads** — Feature `stackdocs-m7b.12` with 17 tasks, all dependencies wired. Plan moved to `mission/staged/m7b.12-one-sprite-per-user/`.
+
+### Decisions Made
+- **Archive model for stacks AND cards** — nothing is ever destroyed, agent can search all history
+- **Gateway handles user UI actions directly** — no agent involvement for close/create/archive operations
+- **Keep "stack" as the canonical name** — matches brand (Stackdocs), no rename needed for Supabase table
+- **Keep `components/desktop/` folder name** — "desktop" there means visual OS environment, not the data concept
+- **Merged tightly-coupled tasks** — auth+index+connection-store as one task, etc. (21 → 17 tasks)
+- **Free tier: 3 stacks, 50 chat messages on connect, debounced position sync, last-write-wins for multi-tab**
+
+### Next Action
+- `/mission` on `stackdocs-m7b.12` to begin implementation
+- Start with Task 1 (Protocol types) and Task 2 (Supabase schema) — both have no blockers
+
+---

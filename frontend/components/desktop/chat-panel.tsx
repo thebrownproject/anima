@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import { useChatStore, type ChatMessage } from '@/lib/stores/chat-store'
 import { useWebSocket } from './ws-provider'
 import { ChatBar } from './chat-bar'
+import { GlassButton } from '@/components/ui/glass-button'
+import * as Icons from '@/components/icons'
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -65,7 +67,7 @@ function TypingIndicator() {
 export function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { status } = useWebSocket()
-  const { messages, mode, isAgentStreaming } = useChatStore()
+  const { messages, mode, isAgentStreaming, setMode } = useChatStore()
 
   const isOpen = mode === 'panel'
   const isConnected = status === 'connected'
@@ -93,7 +95,7 @@ export function ChatPanel() {
       )}
 
       {/* Header */}
-      <div className="relative flex h-14 shrink-0 items-center px-5">
+      <div className="relative flex h-14 shrink-0 items-center justify-between px-5">
         <div className="flex items-center gap-2.5">
           <div
             className={cn(
@@ -107,6 +109,14 @@ export function ChatPanel() {
           />
           <span className="text-sm font-semibold tracking-wide text-white/90">Assistant</span>
         </div>
+        <GlassButton
+          variant="ghost"
+          size="icon"
+          onClick={() => setMode('bar')}
+          className="size-10 rounded-full"
+        >
+          <Icons.LayoutBottombar className="size-[22px] text-white/70" />
+        </GlassButton>
       </div>
 
       {/* Messages */}

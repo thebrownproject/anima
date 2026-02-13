@@ -102,6 +102,7 @@ export {
   IconZoomReset as ZoomReset,
 
   // Desktop UI
+  IconLayoutBottombar as LayoutBottombar,
   IconPaperclip as Paperclip,
   IconKeyboard as Keyboard,
   IconMicrophone as Microphone,

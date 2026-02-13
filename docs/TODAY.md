@@ -14,40 +14,25 @@ User types in ChatBar → mission msg → Bridge → Sprite → agent calls crea
 ## Task Order
 
 ### 1. m7b.4.11 — Fix Bridge → Sprite connection pipe
-**Status:** open | **Risk:** high (debugging, unknown scope)
+**Status:** DONE (Session 155)
 
-The blocker. Agent already tries to create cards (soul.md tells it to), but `canvas_update` messages fail in transit back to browser. Known bug from Session 136 — agent calls `create_card`, gets WebSocket error, falls back to text.
+**Root cause:** Bridge had no logic to start the Sprite's Python server on initial connect. TCP Proxy got 1011 (nothing listening on port 8765) and gave up.
 
-**Likely cause:** Bridge TCP Proxy not forwarding Sprite-originated messages back to browser WS. Or send_fn in canvas_tools.py pointing at stale connection.
+**Fixes applied:**
+- `bridge/src/provisioning.ts` — Added `startSpriteServer()` shared utility with env vars. Called after `bootstrapSprite()`.
+- `bridge/src/proxy.ts` — Added 1011 retry in `ensureSpriteConnection`: detect error → start server → retry once.
+- `bridge/src/reconnect.ts` — Replaced inline exec with shared `startSpriteServer` (fixed missing env vars bug).
+- Deployed to Fly.io. Created venv symlink + VERSION on `sd-e2e-test` Sprite.
+- **E2E verified:** Agent creates Tool discography card → canvas_update flows through Bridge → card appears in browser.
 
-**Debug chain:** canvas_tools → runtime → gateway → server → TCP connection → Bridge → browser WS
-
-**Key files:**
-- `sprite/src/agents/shared/canvas_tools.py` — send_fn
-- `sprite/src/gateway.py` — message router
-- `sprite/src/server.py` — WS server on port 8765
-- `bridge/src/proxy.ts` — message forwarding
-- `bridge/src/sprite-connection.ts` — TCP Proxy connection
+**Bug found:** `spriteExec` uses `sprite` CLI not available on Fly.io (stackdocs-sm2, P1).
 
 ### 2. m7b.4.12.9 — Block renderer (frontend)
-**Status:** open | **Risk:** low (well-scoped, pure frontend)
+**Status:** DONE (Session 153/154)
 
-Build `<BlockRenderer blocks={Block[]}/>` that renders all 8 block types with glass styling. Wire into `DesktopCard` replacing the "Block renderer coming in task 9" placeholder.
+`frontend/components/desktop/block-renderer.tsx` (146 lines) — all 8 block types with glass styling. Wired into `page.tsx`. Inspector passed 10/10.
 
-**Block types to render:**
-- `heading` — text + optional subtitle
-- `stat` — value + label + optional trend
-- `key-value` — array of label:value pairs
-- `table` — columns + rows
-- `badge` — text + variant (default/success/warning/destructive)
-- `progress` — 0-100 value + optional label
-- `text` — markdown content
-- `separator` — visual divider
-
-**Key files:**
-- `frontend/app/(desktop)/stacks/[id]/page.tsx:33-39` — placeholder to replace
-- `frontend/components/desktop/desktop-card.tsx` — card container
-- `frontend/types/ws-protocol.ts:36-119` — Block type definitions
+**Outstanding:** Agent sends `blocks` as a JSON string, not parsed array. Need a small fix in ws-provider or desktop-store to `JSON.parse(blocks)` if it arrives as a string. The test-chat page renders raw JSON because it doesn't use BlockRenderer — desktop route (`/stacks/default`) should work once the string parsing is added.
 
 ### 3. m7b.4.9 — Agent system prompt + canvas tool API
 **Status:** open | **Risk:** low (well-defined changes)
@@ -61,23 +46,18 @@ Update agent to create better cards. Swap `card_type` → `size` param. Update s
 - `bridge/src/protocol.ts` — add `size` field
 - `frontend/types/ws-protocol.ts` — mirror bridge changes
 
-## Housekeeping
-
-Close these (code is built, uncommitted in working tree):
-- **m7b.4.12.10** — Chat panel ✅ (`chat-panel.tsx`, 137 lines)
-- **m7b.4.12.11** — Documents panel ✅ (`documents-panel.tsx`, 171 lines)
-
 ## Current Architecture Context
 
-**What's working in `/stacks/default`:**
+**What's working:**
+- Full E2E pipe: browser → Bridge → Sprite → agent → canvas_update → browser
 - WebSocketProvider → auto-connects, dispatches to Zustand stores
 - DesktopCard with drag/drop, z-index, close, framer-motion animations
 - ChatPanel with message bubbles, typing indicator, streaming glow
 - ChatBar (bottom glass pill, idle/active states, send mission messages)
 - DocumentsPanel (file tree, mock data)
 - Desktop viewport with pan/zoom
+- Agent creates cards proactively (soul.md working)
 
 **What's NOT working:**
-- Cards show "Block renderer coming in task 9" instead of actual content
-- canvas_update messages from Sprite don't reach browser (pipe broken)
-- Agent uses `card_type` param (should be `size`)
+- Cards show raw JSON instead of rendered blocks (m7b.4.12.9)
+- Agent uses `card_type` param (should be `size`) (m7b.4.9)

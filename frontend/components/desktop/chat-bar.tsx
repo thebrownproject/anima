@@ -160,7 +160,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
               <div className="flex-1" />
             )}
 
-            {/* Right — Mic + Chat toggle (toggle hidden when embedded) */}
+            {/* Right — Mic + Panel toggle (only in standalone bar) */}
             <div className="flex items-center gap-1">
               <GlassTooltip>
                 <GlassTooltipTrigger asChild>
@@ -170,21 +170,21 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                 </GlassTooltipTrigger>
                 <GlassTooltipContent side="left">Voice input</GlassTooltipContent>
               </GlassTooltip>
-              <GlassTooltip>
-                <GlassTooltipTrigger asChild>
-                  <GlassButton
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setMode(embedded ? 'bar' : 'panel')}
-                    className="size-10 rounded-full"
-                  >
-                    <Icons.Message className="size-[22px] text-white/70" />
-                  </GlassButton>
-                </GlassTooltipTrigger>
-                <GlassTooltipContent side="right">
-                  {embedded ? 'Dock to bottom' : 'Open chat panel'}
-                </GlassTooltipContent>
-              </GlassTooltip>
+              {!embedded && (
+                <GlassTooltip>
+                  <GlassTooltipTrigger asChild>
+                    <GlassButton
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setMode('panel')}
+                      className="size-10 rounded-full"
+                    >
+                      <Icons.PanelRight className="size-[22px] text-white/70" />
+                    </GlassButton>
+                  </GlassTooltipTrigger>
+                  <GlassTooltipContent side="right">Open chat panel</GlassTooltipContent>
+                </GlassTooltip>
+              )}
             </div>
           </div>
         </div>
