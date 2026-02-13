@@ -62,6 +62,7 @@ class AgentRuntime:
         self._processor = processor
         self._workspace_db = workspace_db
         self._active_stack_id: str | None = None
+        self._turn_response: str = ""  # chat persistence accumulator (separate from TurnBuffer which is cleared by Stop hook)
         self._hooks: dict | None = None
         if transcript_db and processor:
             self._hooks = create_hook_callbacks(
@@ -241,6 +242,7 @@ class AgentRuntime:
             for block in message.content:
                 if isinstance(block, TextBlock):
                     self._buffer.append_agent_response(block.text)
+                    self._turn_response += block.text
                     await self._send_event("text", block.text, request_id)
                 elif isinstance(block, ToolUseBlock):
                     content = json.dumps({"tool": block.name, "input": block.input})
@@ -248,6 +250,10 @@ class AgentRuntime:
 
         elif isinstance(message, ResultMessage):
             self.last_session_id = message.session_id
+
+            if self._workspace_db and self._turn_response:
+                await self._workspace_db.add_chat_message("agent", self._turn_response)
+            self._turn_response = ""
 
             meta = AgentEventMeta(session_id=message.session_id)
             content = json.dumps({

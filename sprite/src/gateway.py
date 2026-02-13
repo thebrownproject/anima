@@ -97,6 +97,9 @@ class SpriteGateway:
         logger.info("Mission received: %.80s", text)
         await self._send_ack("mission_received", req_id)
 
+        if self._workspace_db and text:
+            await self._workspace_db.add_chat_message("user", text)
+
         if not self.runtime:
             await self._send_error("Agent runtime not initialized")
             return
