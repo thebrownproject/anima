@@ -80,7 +80,7 @@ export function ChatPanel() {
   return (
     <div
       className={cn(
-        'fixed right-4 top-16 bottom-6 z-30 flex w-[400px] flex-col overflow-hidden',
+        'fixed right-4 top-20 bottom-6 z-30 flex w-[400px] flex-col overflow-hidden',
         'rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl',
         'transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
         isOpen
@@ -95,25 +95,12 @@ export function ChatPanel() {
       )}
 
       {/* Header */}
-      <div className="relative flex h-14 shrink-0 items-center justify-between px-5">
-        <div className="flex items-center gap-2.5">
-          <div
-            className={cn(
-              'size-2 rounded-full transition-colors',
-              isConnected
-                ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]'
-                : status === 'connecting' || status === 'authenticating' || status === 'sprite_waking'
-                  ? 'animate-pulse bg-amber-400'
-                  : 'bg-white/30'
-            )}
-          />
-          <span className="text-sm font-semibold tracking-wide text-white/90">Assistant</span>
-        </div>
+      <div className="relative flex h-14 shrink-0 items-center justify-end px-5">
         <GlassButton
           variant="ghost"
           size="icon"
           onClick={() => setMode('bar')}
-          className="size-10 rounded-full"
+          className="-mr-2 size-10 rounded-full"
         >
           <Icons.LayoutBottombar className="size-[22px] text-white/70" />
         </GlassButton>
@@ -122,11 +109,7 @@ export function ChatPanel() {
       {/* Messages */}
       <div className="relative flex flex-1 flex-col gap-3 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-white/25">
-              {isConnected ? 'Start a conversation...' : 'Connecting to agent...'}
-            </p>
-          </div>
+          <div className="flex-1" />
         )}
         {messages.map((msg, i) => (
           <MessageBubble key={i} message={msg} />
