@@ -1,13 +1,15 @@
-"""Tests for TranscriptDB and MemoryDB async SQLite layers."""
+"""Tests for TranscriptDB, MemoryDB, and WorkspaceDB async SQLite layers."""
 
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import time
 
 import pytest
 
-from src.database import TranscriptDB, MemoryDB
+from src.database import TranscriptDB, MemoryDB, WorkspaceDB
 
 
 # -- Fixtures ----------------------------------------------------------------
@@ -280,3 +282,236 @@ async def test_concurrent_reads_transcript(transcript_db):
         for _ in range(10)
     ])
     assert all(r["session_id"] == "sess-c" for r in results)
+
+
+# -- WorkspaceDB fixtures --------------------------------------------------
+
+@pytest.fixture
+async def workspace_db(tmp_path):
+    path = str(tmp_path / "workspace.db")
+    db = WorkspaceDB(db_path=path)
+    await db.connect()
+    yield db
+    await db.close()
+
+
+# -- WorkspaceDB schema ----------------------------------------------------
+
+async def test_workspace_tables_created(workspace_db):
+    """init() creates all 3 tables with status/archived_at columns."""
+    rows = await workspace_db.fetchall(
+        "SELECT name FROM sqlite_master WHERE type = 'table' "
+        "AND name NOT LIKE 'sqlite_%'"
+    )
+    names = {r["name"] for r in rows}
+    assert {"stacks", "cards", "chat_messages"}.issubset(names)
+
+    # Verify status/archived_at columns exist on stacks
+    stack_cols = await workspace_db.fetchall("PRAGMA table_info(stacks)")
+    col_names = {c["name"] for c in stack_cols}
+    assert "status" in col_names
+    assert "archived_at" in col_names
+
+    # Verify status/archived_at columns exist on cards
+    card_cols = await workspace_db.fetchall("PRAGMA table_info(cards)")
+    col_names = {c["name"] for c in card_cols}
+    assert "status" in col_names
+    assert "archived_at" in col_names
+
+
+async def test_workspace_default_path():
+    db = WorkspaceDB()
+    assert db.db_path == "/workspace/.os/workspace.db"
+
+
+# -- WorkspaceDB stacks CRUD -----------------------------------------------
+
+async def test_create_stack_returns_active(workspace_db):
+    """create_stack returns stack with status='active'."""
+    stack = await workspace_db.create_stack("s1", "My Stack", "#ff0000")
+    assert stack["id"] == "s1"
+    assert stack["name"] == "My Stack"
+    assert stack["color"] == "#ff0000"
+    assert stack["status"] == "active"
+    assert stack["created_at"] is not None
+
+
+async def test_list_stacks_active_only(workspace_db):
+    """list_stacks returns only active stacks, ordered by sort_order."""
+    await workspace_db.create_stack("s1", "First", sort_order=2)
+    await workspace_db.create_stack("s2", "Second", sort_order=1)
+    await workspace_db.create_stack("s3", "Third", sort_order=3)
+    await workspace_db.archive_stack("s3")
+
+    stacks = await workspace_db.list_stacks()
+    assert len(stacks) == 2
+    assert stacks[0]["id"] == "s2"  # sort_order=1 first
+    assert stacks[1]["id"] == "s1"  # sort_order=2 second
+    assert all(s["status"] == "active" for s in stacks)
+
+
+async def test_list_all_stacks_includes_archived(workspace_db):
+    """list_all_stacks returns active + archived."""
+    await workspace_db.create_stack("s1", "Active Stack")
+    await workspace_db.create_stack("s2", "Archived Stack")
+    await workspace_db.archive_stack("s2")
+
+    all_stacks = await workspace_db.list_all_stacks()
+    assert len(all_stacks) == 2
+    statuses = {s["id"]: s["status"] for s in all_stacks}
+    assert statuses["s1"] == "active"
+    assert statuses["s2"] == "archived"
+
+
+async def test_rename_stack(workspace_db):
+    await workspace_db.create_stack("s1", "Old Name")
+    await workspace_db.rename_stack("s1", "New Name")
+    stack = await workspace_db.fetchone("SELECT * FROM stacks WHERE id = ?", ("s1",))
+    assert stack["name"] == "New Name"
+
+
+async def test_archive_stack_cascades_to_cards(workspace_db):
+    """archive_stack sets status='archived' and cascades to all its cards."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Card 1", [])
+    await workspace_db.upsert_card("c2", "s1", "Card 2", [])
+    # Card on different stack should not be affected
+    await workspace_db.create_stack("s2", "Other")
+    await workspace_db.upsert_card("c3", "s2", "Card 3", [])
+
+    await workspace_db.archive_stack("s1")
+
+    stack = await workspace_db.fetchone("SELECT * FROM stacks WHERE id = ?", ("s1",))
+    assert stack["status"] == "archived"
+    assert stack["archived_at"] is not None
+
+    c1 = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    c2 = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c2",))
+    c3 = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c3",))
+    assert c1["status"] == "archived"
+    assert c2["status"] == "archived"
+    assert c3["status"] == "active"  # untouched
+
+
+async def test_restore_stack_restores_cards(workspace_db):
+    """restore_stack sets status='active' and restores its cards."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Card 1", [])
+    await workspace_db.upsert_card("c2", "s1", "Card 2", [])
+    await workspace_db.archive_stack("s1")
+
+    await workspace_db.restore_stack("s1")
+
+    stack = await workspace_db.fetchone("SELECT * FROM stacks WHERE id = ?", ("s1",))
+    assert stack["status"] == "active"
+    assert stack["archived_at"] is None
+
+    c1 = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    c2 = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c2",))
+    assert c1["status"] == "active"
+    assert c2["status"] == "active"
+
+
+# -- WorkspaceDB cards CRUD ------------------------------------------------
+
+async def test_upsert_card_creates_and_updates(workspace_db):
+    """upsert_card creates and updates cards with status='active'."""
+    await workspace_db.create_stack("s1", "Stack")
+
+    # Create
+    card = await workspace_db.upsert_card("c1", "s1", "Card 1", [{"type": "heading", "content": "Hi"}])
+    assert card["card_id"] == "c1"
+    assert card["status"] == "active"
+    assert card["title"] == "Card 1"
+
+    # Update
+    updated = await workspace_db.upsert_card("c1", "s1", "Updated Card", [{"type": "stat", "value": "42"}], size="large")
+    assert updated["title"] == "Updated Card"
+    assert updated["size"] == "large"
+    blocks = json.loads(updated["blocks"])
+    assert blocks[0]["type"] == "stat"
+
+
+async def test_archive_card(workspace_db):
+    """archive_card sets status='archived' with archived_at timestamp."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Card", [])
+
+    before = time.time()
+    await workspace_db.archive_card("c1")
+    after = time.time()
+
+    card = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert card["status"] == "archived"
+    assert before <= card["archived_at"] <= after
+
+
+async def test_restore_card(workspace_db):
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Card", [])
+    await workspace_db.archive_card("c1")
+
+    await workspace_db.restore_card("c1")
+
+    card = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert card["status"] == "active"
+    assert card["archived_at"] is None
+
+
+async def test_get_cards_by_stack_active_only(workspace_db):
+    """get_cards_by_stack returns only active cards."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Active Card", [])
+    await workspace_db.upsert_card("c2", "s1", "Archived Card", [])
+    await workspace_db.archive_card("c2")
+
+    cards = await workspace_db.get_cards_by_stack("s1")
+    assert len(cards) == 1
+    assert cards[0]["card_id"] == "c1"
+
+
+async def test_get_all_cards_includes_archived(workspace_db):
+    """get_all_cards returns active + archived (for agent search)."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Active", [])
+    await workspace_db.upsert_card("c2", "s1", "Archived", [])
+    await workspace_db.archive_card("c2")
+
+    cards = await workspace_db.get_all_cards()
+    assert len(cards) == 2
+    statuses = {c["card_id"]: c["status"] for c in cards}
+    assert statuses["c1"] == "active"
+    assert statuses["c2"] == "archived"
+
+
+# -- WorkspaceDB chat CRUD -------------------------------------------------
+
+async def test_add_chat_message_persists(workspace_db):
+    """add_chat_message persists with timestamp."""
+    before = time.time()
+    msg = await workspace_db.add_chat_message("user", "Hello there")
+    after = time.time()
+
+    assert msg["role"] == "user"
+    assert msg["content"] == "Hello there"
+    assert before <= msg["timestamp"] <= after
+    assert msg["id"] is not None
+
+
+async def test_get_chat_history_limit_and_order(workspace_db):
+    """get_chat_history(limit) returns recent messages in order."""
+    for i in range(5):
+        await workspace_db.add_chat_message("user" if i % 2 == 0 else "assistant", f"msg-{i}")
+
+    # Get last 3
+    history = await workspace_db.get_chat_history(limit=3)
+    assert len(history) == 3
+    # Should be in chronological order (oldest first of the last 3)
+    assert history[0]["content"] == "msg-2"
+    assert history[1]["content"] == "msg-3"
+    assert history[2]["content"] == "msg-4"
+
+    # Get all
+    all_msgs = await workspace_db.get_chat_history()
+    assert len(all_msgs) == 5
+    assert all_msgs[0]["content"] == "msg-0"

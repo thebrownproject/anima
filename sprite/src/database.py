@@ -1,16 +1,19 @@
-"""Async SQLite database layer — TranscriptDB and MemoryDB.
+"""Async SQLite database layer — TranscriptDB, MemoryDB, and WorkspaceDB.
 
-Two databases with distinct access patterns:
+Three databases with distinct access patterns:
 - TranscriptDB: append-only conversation log (hooks write, daemon reads)
 - MemoryDB: searchable learnings archive (daemon writes, agent reads via search_memory)
+- WorkspaceDB: stacks, cards, and chat messages (gateway + agent tools)
 
 Schemas must match bridge/src/bootstrap.ts INIT_DB_SCRIPT exactly.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
+import time
 
 import aiosqlite
 
@@ -132,3 +135,151 @@ class MemoryDB(_BaseDB):
     """Searchable learnings archive with FTS5. Daemon writes, agent reads via search_memory."""
     _schema = MEMORY_SCHEMA
     _default_path = "/workspace/.os/memory/memory.db"
+
+
+WORKSPACE_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS stacks (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT,
+    sort_order INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    archived_at REAL,
+    created_at REAL
+);
+CREATE TABLE IF NOT EXISTS cards (
+    card_id TEXT PRIMARY KEY,
+    stack_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    blocks TEXT,
+    size TEXT DEFAULT 'medium',
+    status TEXT DEFAULT 'active',
+    archived_at REAL,
+    updated_at REAL,
+    FOREIGN KEY (stack_id) REFERENCES stacks(id)
+);
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    timestamp REAL
+);
+"""
+
+
+class WorkspaceDB(_BaseDB):
+    """Stacks, cards, and chat messages. Gateway writes, agent reads via tools."""
+
+    _schema = WORKSPACE_SCHEMA
+    _default_path = "/workspace/.os/workspace.db"
+
+    # -- Stacks ----------------------------------------------------------------
+
+    async def create_stack(
+        self, stack_id: str, name: str, color: str | None = None, sort_order: int = 0
+    ) -> dict:
+        now = time.time()
+        await self.execute(
+            "INSERT INTO stacks (id, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?)",
+            (stack_id, name, color, sort_order, now),
+        )
+        return await self.fetchone("SELECT * FROM stacks WHERE id = ?", (stack_id,))
+
+    async def list_stacks(self) -> list[dict]:
+        return await self.fetchall(
+            "SELECT * FROM stacks WHERE status = 'active' ORDER BY sort_order"
+        )
+
+    async def list_all_stacks(self) -> list[dict]:
+        return await self.fetchall("SELECT * FROM stacks ORDER BY sort_order")
+
+    async def rename_stack(self, stack_id: str, name: str) -> None:
+        await self.execute("UPDATE stacks SET name = ? WHERE id = ?", (name, stack_id))
+
+    async def archive_stack(self, stack_id: str) -> None:
+        """Archive stack and cascade to all its cards (transactional)."""
+        now = time.time()
+        await self._conn.execute(
+            "UPDATE stacks SET status = 'archived', archived_at = ? WHERE id = ?",
+            (now, stack_id),
+        )
+        await self._conn.execute(
+            "UPDATE cards SET status = 'archived', archived_at = ? WHERE stack_id = ?",
+            (now, stack_id),
+        )
+        await self._conn.commit()
+
+    async def restore_stack(self, stack_id: str) -> None:
+        """Restore stack and all its cards (transactional)."""
+        await self._conn.execute(
+            "UPDATE stacks SET status = 'active', archived_at = NULL WHERE id = ?",
+            (stack_id,),
+        )
+        await self._conn.execute(
+            "UPDATE cards SET status = 'active', archived_at = NULL WHERE stack_id = ?",
+            (stack_id,),
+        )
+        await self._conn.commit()
+
+    # -- Cards -----------------------------------------------------------------
+
+    async def upsert_card(
+        self,
+        card_id: str,
+        stack_id: str,
+        title: str,
+        blocks: list,
+        size: str = "medium",
+    ) -> dict:
+        now = time.time()
+        blocks_json = json.dumps(blocks)
+        await self.execute(
+            "INSERT INTO cards (card_id, stack_id, title, blocks, size, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(card_id) DO UPDATE SET "
+            "title = excluded.title, blocks = excluded.blocks, "
+            "size = excluded.size, updated_at = excluded.updated_at",
+            (card_id, stack_id, title, blocks_json, size, now),
+        )
+        return await self.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
+
+    async def archive_card(self, card_id: str) -> None:
+        now = time.time()
+        await self.execute(
+            "UPDATE cards SET status = 'archived', archived_at = ? WHERE card_id = ?",
+            (now, card_id),
+        )
+
+    async def restore_card(self, card_id: str) -> None:
+        await self.execute(
+            "UPDATE cards SET status = 'active', archived_at = NULL WHERE card_id = ?",
+            (card_id,),
+        )
+
+    async def get_cards_by_stack(self, stack_id: str) -> list[dict]:
+        return await self.fetchall(
+            "SELECT * FROM cards WHERE stack_id = ? AND status = 'active'",
+            (stack_id,),
+        )
+
+    async def get_all_cards(self) -> list[dict]:
+        return await self.fetchall("SELECT * FROM cards")
+
+    # -- Chat ------------------------------------------------------------------
+
+    async def add_chat_message(self, role: str, content: str) -> dict:
+        now = time.time()
+        cursor = await self.execute(
+            "INSERT INTO chat_messages (role, content, timestamp) VALUES (?, ?, ?)",
+            (role, content, now),
+        )
+        return await self.fetchone(
+            "SELECT * FROM chat_messages WHERE id = ?", (cursor.lastrowid,)
+        )
+
+    async def get_chat_history(self, limit: int = 100) -> list[dict]:
+        return await self.fetchall(
+            "SELECT * FROM chat_messages ORDER BY id ASC "
+            "LIMIT ? OFFSET MAX(0, (SELECT COUNT(*) FROM chat_messages) - ?)",
+            (limit, limit),
+        )
