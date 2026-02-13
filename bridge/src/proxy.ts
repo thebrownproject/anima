@@ -4,6 +4,7 @@ import { getConnectionsByStack } from './connection-store.js'
 import { handleDisconnect, isReconnecting, bufferMessage, cleanupReconnectState } from './reconnect.js'
 import { startKeepalive, stopKeepalive } from './keepalive.js'
 import { checkAndUpdate } from './updater.js'
+import { startSpriteServer } from './provisioning.js'
 
 /** Active Sprite connections keyed by stack ID. */
 const spriteConnections = new Map<string, SpriteConnection>()
@@ -80,7 +81,20 @@ export async function ensureSpriteConnection(
     console.warn(`[proxy] Update check failed for ${spriteName}, proceeding:`, err)
   }
 
-  const conn = await createAndRegister(stackId, spriteName, token)
+  let conn: SpriteConnection
+  try {
+    conn = await createAndRegister(stackId, spriteName, token)
+  } catch (err) {
+    // If server isn't running (1011 = nothing listening on port), start it and retry once
+    const msg = err instanceof Error ? err.message : ''
+    if (msg.includes('TCP Proxy closed during init')) {
+      console.warn(`[proxy:${spriteName}] Server not running, starting via exec...`)
+      await startSpriteServer(spriteName, token)
+      conn = await createAndRegister(stackId, spriteName, token)
+    } else {
+      throw err
+    }
+  }
   startKeepalive(stackId)
   return conn
 }

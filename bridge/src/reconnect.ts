@@ -1,9 +1,9 @@
 import { WebSocket } from 'ws'
 import { v4 as uuidv4 } from 'uuid'
-import { getSprite, buildExecUrl } from './sprites-client.js'
+import { getSprite } from './sprites-client.js'
 import { SpriteConnection } from './sprite-connection.js'
 import { getConnectionsByStack } from './connection-store.js'
-import { DEFAULT_SERVER_CMD } from './provisioning.js'
+import { startSpriteServer } from './provisioning.js'
 import type { SystemMessage } from './protocol.js'
 
 const MAX_BUFFER = 50
@@ -109,16 +109,9 @@ function defaultVerifyServer(conn: SpriteConnection): Promise<boolean> {
   })
 }
 
-/** Default: restart Python WS server via exec. */
+/** Default: restart Python server via shared utility (includes env vars). */
 async function defaultRestartServer(spriteName: string, token: string): Promise<void> {
-  const url = buildExecUrl(spriteName, DEFAULT_SERVER_CMD)
-  const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } })
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => { ws.close(); resolve() }, 3_000)
-    ws.on('open', () => { clearTimeout(timer); setTimeout(() => { ws.close(); resolve() }, 1_000) })
-    ws.on('error', (err) => { clearTimeout(timer); reject(err) })
-  })
-  await new Promise((r) => setTimeout(r, 2_000))
+  await startSpriteServer(spriteName, token)
 }
 
 export interface ReconnectDeps {

@@ -82,9 +82,11 @@ describe('provisionSprite', () => {
     expect(createSprite).toHaveBeenCalledWith(result.spriteName)
   })
 
-  it('does not call buildExecUrl (caller uses buildServerExecUrl)', async () => {
+  it('skips server start when SPRITES_TOKEN is unset', async () => {
+    delete process.env.SPRITES_TOKEN
     await provisionSprite('stack_1')
 
+    // startSpriteServer guarded by `if (token)` — no exec call without token
     expect(buildExecUrl).not.toHaveBeenCalled()
   })
 

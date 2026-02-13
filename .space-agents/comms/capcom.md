@@ -2497,6 +2497,48 @@ Continue Glass Desktop UI: tasks 9 (restyle card-renderer for glass), 10 (chat p
 
 ---
 
+## [2026-02-13 11:10] Session 155
+
+**Branch:** main | **Git:** uncommitted (bridge changes)
+
+### What Happened
+Debugged and fixed the broken Bridge-to-Sprite connection pipe (m7b.4.11). Full E2E loop now working: user types in browser -> Bridge -> Sprite agent -> agent creates cards -> canvas_update flows back through Bridge -> card renders in browser.
+
+**Debugging (exploration-debug mode):**
+- User saw `TCP Proxy closed during init: 1011` when connecting from test-chat page
+- Traced the full message path: sprite-connection.ts -> proxy.ts -> index.ts
+- Found root cause: Bridge had NO logic to start the Sprite's Python server on initial connect
+- Three bugs identified: (1) provisioning never started server after bootstrap, (2) proxy gave up on 1011 instead of retrying, (3) reconnect.ts didn't pass env vars when starting server via exec
+
+**Implementation (mission-orchestrated: Pathfinder -> Builder -> Inspector):**
+- `bridge/src/provisioning.ts`: Added `startSpriteServer()` exported function with env vars. Called after `bootstrapSprite()` in `provisionSprite()`. Removed dead `buildServerExecUrl`.
+- `bridge/src/proxy.ts`: Added try/catch in `ensureSpriteConnection` — detects `TCP Proxy closed during init` error, starts server via exec, retries connect once.
+- `bridge/src/reconnect.ts`: Replaced inline exec logic in `defaultRestartServer` with shared `startSpriteServer` call. Fixes missing env vars bug (ANTHROPIC_BASE_URL etc).
+- `bridge/tests/provisioning.test.ts`: Fixed stale test description referencing deleted `buildServerExecUrl`.
+- Inspector review: PASS on requirements (4/4) and quality. Two info-level findings (non-blocking).
+
+**Deployment and testing:**
+- Deployed to Fly.io (`flyctl deploy`). Retry logic fired but still failed.
+- Found `spriteExec` uses `sprite` CLI binary not available on Fly.io Docker container (ENOENT). Created bug bead stackdocs-sm2.
+- Found `/workspace/.os/.venv/` didn't exist on Sprite `sd-e2e-test` (old venv at `/workspace/.venv/`).
+- Created symlink `/workspace/.os/.venv -> /workspace/.venv` and wrote VERSION file via Sprites.dev API.
+- Reconnected successfully. Agent created Tool discography card — full E2E confirmed working.
+
+### Decisions Made
+- **Shared `startSpriteServer` in provisioning.ts**: Both proxy.ts and reconnect.ts import it. Single source of truth for exec command + env vars. No circular imports.
+- **Retry once, not loop**: proxy.ts catches 1011, starts server, retries createAndRegister once. If that fails too, error propagates. Simple and predictable.
+
+### Gotchas
+- `spriteExec` (`bridge/src/sprite-exec.ts`) uses `execFile('sprite', ...)` — the CLI binary. This works locally but NOT on Fly.io. All updater/bootstrap operations broken in production. Tracked as stackdocs-sm2 (P1).
+- Sprite `sd-e2e-test` had code at `/workspace/.os/src/` but venv at old path `/workspace/.venv/`. Symlink fixed it. Future Sprites need proper bootstrap.
+- 3s wait in `startSpriteServer` (1s post-open + 2s bind) may be too short for cold Sprite wake (up to 12s). Worked for warm Sprite. May need tuning.
+- Agent sends `blocks` as JSON string not parsed array — block renderer (m7b.4.12.9) needs to handle this.
+
+### Next Action
+m7b.4.12.9 — Block renderer (frontend). Pure frontend task. Build `<BlockRenderer blocks={Block[]}/>` for all 8 block types with glass styling. Replace raw JSON dump with actual rendered heading/table/key-value/etc.
+
+---
+
 ## [2026-02-13 11:00] Session 154
 
 **Branch:** main | **Git:** uncommitted

@@ -9,6 +9,7 @@
  * On failure: -> failed (retried on next connect)
  */
 
+import { WebSocket } from 'ws'
 import { getSupabaseClient } from './auth.js'
 import {
   createSprite,
@@ -87,6 +88,12 @@ export async function provisionSprite(
     await createSprite(spriteName)
     await bootstrapSprite(spriteName)
 
+    // Start the Python server before marking as active
+    const token = process.env.SPRITES_TOKEN
+    if (token) {
+      await startSpriteServer(spriteName, token)
+    }
+
     // Mark as active
     await updateSpriteStatus(stackId, 'active')
 
@@ -131,10 +138,19 @@ export async function ensureSpriteProvisioned(
 }
 
 /**
- * Build the exec URL for starting the Sprite's Python WS server.
- * Exposed so index.ts can open the WS connection after provisioning.
+ * Start the Sprite's Python server via exec WebSocket.
+ * Opens a persistent exec session (max_run_after_disconnect=0) with env vars
+ * for API proxy routing, then waits for the server to bind to port 8765.
  */
-function buildServerExecUrl(spriteName: string): string {
+export async function startSpriteServer(spriteName: string, token: string): Promise<void> {
   const envVars = getEnvVarsForSprite()
-  return buildExecUrl(spriteName, DEFAULT_SERVER_CMD, envVars)
+  const url = buildExecUrl(spriteName, DEFAULT_SERVER_CMD, envVars)
+  const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } })
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => { ws.close(); resolve() }, 3_000)
+    ws.on('open', () => { clearTimeout(timer); setTimeout(() => { ws.close(); resolve() }, 1_000) })
+    ws.on('error', (err) => { clearTimeout(timer); reject(err) })
+  })
+  // Wait for server to finish binding to port 8765
+  await new Promise((r) => setTimeout(r, 2_000))
 }
