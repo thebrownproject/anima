@@ -1,9 +1,9 @@
 /**
  * Lazy Sprite Provisioning.
  *
- * When a user connects and their stack has sprite_status='pending',
+ * When a user connects and their record has sprite_status='pending',
  * provisions a new Sprite via bootstrap (installs packages, deploys
- * code, creates DB and memory), then updates the Supabase stacks row.
+ * code, creates DB and memory), then updates the Supabase users row.
  *
  * Status transitions: pending -> provisioning -> active
  * On failure: -> failed (retried on next connect)
@@ -47,7 +47,7 @@ function getEnvVarsForSprite(): Record<string, string> {
 // -- Supabase Helpers --
 
 async function updateSpriteStatus(
-  stackId: string,
+  userId: string,
   status: string,
   spriteName?: string,
 ): Promise<void> {
@@ -55,34 +55,34 @@ async function updateSpriteStatus(
   const update: Record<string, string> = { sprite_status: status }
   if (spriteName) update.sprite_name = spriteName
 
-  const { error } = await client.from('stacks').update(update).eq('id', stackId)
-  if (error) throw new Error(`Failed to update stack ${stackId}: ${error.message}`)
+  const { error } = await client.from('users').update(update).eq('id', userId)
+  if (error) throw new Error(`Failed to update user ${userId}: ${error.message}`)
 }
 
 // -- Provisioning Flow --
 
 /**
- * Generate a unique sprite name from a stack ID.
+ * Generate a unique sprite name from a user ID.
  * Sprites.dev names must be lowercase alphanumeric + hyphens.
  */
-function generateSpriteName(stackId: string): string {
-  const clean = stackId.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40)
+function generateSpriteName(userId: string): string {
+  const clean = userId.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40)
   const suffix = Date.now().toString(36).slice(-4)
   return `sd-${clean}-${suffix}`
 }
 
 /**
- * Provision a new Sprite for a stack.
+ * Provision a new Sprite for a user.
  * Creates the Sprite, starts the Python WS server, updates Supabase.
  */
 export async function provisionSprite(
-  stackId: string,
+  userId: string,
 ): Promise<ProvisionResult> {
-  const spriteName = generateSpriteName(stackId)
+  const spriteName = generateSpriteName(userId)
 
   try {
     // Mark as provisioning
-    await updateSpriteStatus(stackId, 'provisioning', spriteName)
+    await updateSpriteStatus(userId, 'provisioning', spriteName)
 
     // Create the Sprite and bootstrap it with packages, code, DB, and memory
     await createSprite(spriteName)
@@ -95,18 +95,18 @@ export async function provisionSprite(
     }
 
     // Mark as active
-    await updateSpriteStatus(stackId, 'active')
+    await updateSpriteStatus(userId, 'active')
 
     return { spriteName, spriteStatus: 'active' }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown provisioning error'
-    console.error(`[provisioning] Failed for stack=${stackId}: ${message}`)
+    console.error(`[provisioning] Failed for user=${userId}: ${message}`)
 
     // Mark as failed — retry on next connect
     try {
-      await updateSpriteStatus(stackId, 'failed', spriteName)
+      await updateSpriteStatus(userId, 'failed', spriteName)
     } catch (updateErr) {
-      console.error(`[provisioning] Failed to mark stack as failed:`, updateErr)
+      console.error(`[provisioning] Failed to mark user as failed:`, updateErr)
     }
 
     return { spriteName, spriteStatus: 'failed', error: message }
@@ -114,11 +114,11 @@ export async function provisionSprite(
 }
 
 /**
- * Ensure a Sprite is provisioned for the given stack.
+ * Ensure a Sprite is provisioned for the given user.
  * If already active, returns immediately. If pending/failed, provisions.
  */
 export async function ensureSpriteProvisioned(
-  stackId: string,
+  userId: string,
   currentStatus: string,
   currentSpriteName: string | null,
 ): Promise<ProvisionResult> {
@@ -134,7 +134,7 @@ export async function ensureSpriteProvisioned(
   }
 
   // Pending or failed — provision fresh
-  return provisionSprite(stackId)
+  return provisionSprite(userId)
 }
 
 /**
