@@ -1,15 +1,12 @@
 'use client'
 
-import { GlassButton } from '@/components/ui/glass-button'
 import { GlassTabSwitcher } from '@/components/desktop/glass-tab-switcher'
-import {
-  GlassTooltip,
-  GlassTooltipTrigger,
-  GlassTooltipContent,
-} from '@/components/ui/glass-tooltip'
+import { GlassIconButton } from '@/components/ui/glass-icon-button'
 import * as Icons from '@/components/icons'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { cn } from '@/lib/utils'
+
+const launcherClass = 'border border-white/20 bg-white/10 backdrop-blur-2xl'
 
 function GlassPill({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -33,59 +30,31 @@ export function DesktopTopBar() {
     <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-4 pt-4">
       {/* Left — App launcher circles */}
       <div className="pointer-events-auto flex items-center gap-2">
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton
-              variant="ghost"
-              size="icon"
-              onClick={() => toggleLeftPanel('documents')}
-              className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl"
-            >
-              <Icons.FileText className="size-[22px] text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">Documents</GlassTooltipContent>
-        </GlassTooltip>
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl"
-            >
-              <Icons.LayoutGrid className="size-[22px] text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">Apps</GlassTooltipContent>
-        </GlassTooltip>
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl"
-            >
-              <Icons.SlidersHorizontal className="size-[22px] text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">Settings</GlassTooltipContent>
-        </GlassTooltip>
+        <GlassIconButton
+          icon={<Icons.FileText  />}
+          tooltip="Documents"
+          onClick={() => toggleLeftPanel('documents')}
+          className={launcherClass}
+        />
+        <GlassIconButton
+          icon={<Icons.LayoutGrid  />}
+          tooltip="Apps"
+          className={launcherClass}
+        />
+        <GlassIconButton
+          icon={<Icons.SlidersHorizontal  />}
+          tooltip="Settings"
+          className={launcherClass}
+        />
       </div>
 
       {/* Center — Back + Workspace Tabs + Add (absolute for true page centering) */}
       <div className="pointer-events-auto absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2">
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl"
-            >
-              <Icons.ChevronLeft className="-ml-0.5 size-5 text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">Back</GlassTooltipContent>
-        </GlassTooltip>
+        <GlassIconButton
+          icon={<Icons.ChevronLeft />}
+          tooltip="Back"
+          className={launcherClass}
+        />
         <GlassTabSwitcher
           value={activeWorkspace}
           onValueChange={setActiveWorkspace}
@@ -97,46 +66,30 @@ export function DesktopTopBar() {
             { value: 'tax', label: 'Tax Returns' },
           ]}
         />
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-full border border-white/20 bg-white/10 backdrop-blur-2xl"
-            >
-              <Icons.Plus className="size-[22px] text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">New workspace</GlassTooltipContent>
-        </GlassTooltip>
+        <GlassIconButton
+          icon={<Icons.Plus  />}
+          tooltip="New workspace"
+          className={launcherClass}
+        />
       </div>
 
       {/* Right — System tray */}
       <GlassPill className="h-10 pointer-events-auto [&>div]:flex [&>div]:items-center">
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton variant="ghost" size="icon" className="size-8 rounded-full">
-              <Icons.Search className="size-[22px] text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">Search</GlassTooltipContent>
-        </GlassTooltip>
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton variant="ghost" size="icon" className="size-8 rounded-full">
-              <Icons.Bell className="size-[22px] text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">Notifications</GlassTooltipContent>
-        </GlassTooltip>
-        <GlassTooltip>
-          <GlassTooltipTrigger asChild>
-            <GlassButton variant="ghost" size="icon" className="size-8 rounded-full">
-              <Icons.User className="size-[22px] text-white/80" />
-            </GlassButton>
-          </GlassTooltipTrigger>
-          <GlassTooltipContent side="bottom">Account</GlassTooltipContent>
-        </GlassTooltip>
+        <GlassIconButton
+          icon={<Icons.Search  />}
+          tooltip="Search"
+          className="size-8"
+        />
+        <GlassIconButton
+          icon={<Icons.Bell  />}
+          tooltip="Notifications"
+          className="size-8"
+        />
+        <GlassIconButton
+          icon={<Icons.User  />}
+          tooltip="Account"
+          className="size-8"
+        />
       </GlassPill>
     </div>
   )

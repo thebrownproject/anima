@@ -2789,6 +2789,42 @@ Research agent explored all 3 codebases (bridge, sprite, frontend) — found 19 
 
 ---
 
+## [2026-02-13 17:00] Session 160
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Card drag momentum:** Added physics-based momentum to card dragging in `desktop-card.tsx`. Velocity tracked via exponential moving average (same 0.6/0.4 blend as viewport), RAF momentum loop with 0.92 decay on flick release. Constants (`MOMENTUM_DECAY`, `MOMENTUM_MIN`, `FLICK_WINDOW`) match `desktop-viewport.tsx` for consistent feel.
+
+**Card lift animation:** Added smooth scale(1.02) + shadow transition on grab/release using Apple easing (0.25s). Fixed rectangular shadow artifact by adding `rounded-2xl` to the cardRef wrapper div.
+
+**Icon stroke weight:** Global Tabler icon stroke-width set to 1.25 (from default 2) in `globals.css`.
+
+**Chat toggle rework:** Removed "Assistant" label, status dot, and "Connecting to agent..." from chat panel. Added `LayoutBottombar` icon to panel header for dock-to-bottom. Bottom bar uses `PanelRight` icon to open panel. Panel height adjusted (`top-20`).
+
+**Documents panel overhaul:** Removed folder icon from header. Replaced custom `TreeItem` with Vercel AI Elements `FileTree` component, restyled for glass. All icons neutralized to `text-white/50`. Upload button moved to header icon row. Header buttons bumped to `size-10`.
+
+**GlassIconButton extraction:** Created `components/ui/glass-icon-button.tsx` — reusable tooltip+button wrapper replacing 16 instances across 5 files. Defaults: `size-10`, `text-white/70`, `[&_svg]:size-[22px]`. Callers now pass bare `<Icons.Search />`.
+
+**Code review:** Full review of desktop components. 0 critical, 8 medium, 22 low. Four medium findings stored in stackdocs-m7b.4.12.14.
+
+### Decisions Made
+- **Icon stroke 1.25** — settled between 1 (too thin) and 1.5
+- **Standardized icon color to text-white/70** and size to 22px, baked into GlassIconButton
+- **AI Elements FileTree** over custom recursion — context-based state, keyboard nav, selection built-in
+
+### Gotchas
+- **Card shadow rectangle** — inner div had no border-radius, transitioning shadow showed rectangular outline. Fix: `rounded-2xl`.
+- **Turbopack stale cache** — bulk import removal required `rm -rf .next` and server restart
+- **FileTree onSelect type conflict** — HTML `onSelect` event conflicts with component prop. Fix: `Omit<HTMLAttributes, 'onSelect'>`
+
+### Next Action
+- Hit 4 review findings in stackdocs-m7b.4.12.14
+- Wire + button for new tabs, CSS variable values fix
+
+---
+
 ## [2026-02-13 22:30] Session 159
 
 **Branch:** main | **Git:** uncommitted

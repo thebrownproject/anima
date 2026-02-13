@@ -3,9 +3,8 @@
 import { useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { useChatStore, type ChatMessage } from '@/lib/stores/chat-store'
-import { useWebSocket } from './ws-provider'
 import { ChatBar } from './chat-bar'
-import { GlassButton } from '@/components/ui/glass-button'
+import { GlassIconButton } from '@/components/ui/glass-icon-button'
 import * as Icons from '@/components/icons'
 
 function formatTime(ts: number) {
@@ -66,11 +65,9 @@ function TypingIndicator() {
 
 export function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { status } = useWebSocket()
   const { messages, mode, isAgentStreaming, setMode } = useChatStore()
 
   const isOpen = mode === 'panel'
-  const isConnected = status === 'connected'
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -96,14 +93,12 @@ export function ChatPanel() {
 
       {/* Header */}
       <div className="relative flex h-14 shrink-0 items-center justify-end px-5">
-        <GlassButton
-          variant="ghost"
-          size="icon"
+        <GlassIconButton
+          icon={<Icons.LayoutBottombar  />}
+          tooltip="Dock to bottom"
           onClick={() => setMode('bar')}
-          className="-mr-2 size-10 rounded-full"
-        >
-          <Icons.LayoutBottombar className="size-[22px] text-white/70" />
-        </GlassButton>
+          className="-mr-2"
+        />
       </div>
 
       {/* Messages */}

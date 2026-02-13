@@ -4,12 +4,7 @@ import { useRef, useState, useCallback } from 'react'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/lib/stores/chat-store'
-import {
-  GlassTooltip,
-  GlassTooltipTrigger,
-  GlassTooltipContent,
-} from '@/components/ui/glass-tooltip'
-import { GlassButton } from '@/components/ui/glass-button'
+import { GlassIconButton } from '@/components/ui/glass-icon-button'
 import { useWebSocket } from './ws-provider'
 
 interface ChatBarProps {
@@ -121,32 +116,23 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
               ? 'opacity-100'
               : 'opacity-0 pointer-events-none'
           )}>
-            <GlassTooltip>
-              <GlassTooltipTrigger asChild>
-                <GlassButton
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleSend}
-                  className="size-10 rounded-full bg-white/15 hover:bg-white/25"
-                >
-                  <Icons.ArrowUp className="size-[22px] text-white" />
-                </GlassButton>
-              </GlassTooltipTrigger>
-              <GlassTooltipContent side="right">Send</GlassTooltipContent>
-            </GlassTooltip>
+            <GlassIconButton
+              icon={<Icons.ArrowUp className="text-white" />}
+              tooltip="Send"
+              tooltipSide="right"
+              onClick={handleSend}
+              className="bg-white/15 hover:bg-white/25"
+            />
           </div>
 
           {/* Action bar */}
           <div className="flex items-center px-3 py-2.5">
             {/* Left — Attach */}
-            <GlassTooltip>
-              <GlassTooltipTrigger asChild>
-                <GlassButton variant="ghost" size="icon" className="size-10 rounded-full">
-                  <Icons.Plus className="size-[22px] text-white/70" />
-                </GlassButton>
-              </GlassTooltipTrigger>
-              <GlassTooltipContent side="right">Attach file</GlassTooltipContent>
-            </GlassTooltip>
+            <GlassIconButton
+              icon={<Icons.Plus  />}
+              tooltip="Attach file"
+              tooltipSide="right"
+            />
 
             {/* Center — clickable hover zone to activate text input */}
             {!inputActive ? (
@@ -162,28 +148,18 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
             {/* Right — Mic + Panel toggle (only in standalone bar) */}
             <div className="flex items-center gap-1">
-              <GlassTooltip>
-                <GlassTooltipTrigger asChild>
-                  <GlassButton variant="ghost" size="icon" className="size-10 rounded-full">
-                    <Icons.Microphone className="size-[22px] text-white/70" />
-                  </GlassButton>
-                </GlassTooltipTrigger>
-                <GlassTooltipContent side="left">Voice input</GlassTooltipContent>
-              </GlassTooltip>
+              <GlassIconButton
+                icon={<Icons.Microphone  />}
+                tooltip="Voice input"
+                tooltipSide="left"
+              />
               {!embedded && (
-                <GlassTooltip>
-                  <GlassTooltipTrigger asChild>
-                    <GlassButton
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setMode('panel')}
-                      className="size-10 rounded-full"
-                    >
-                      <Icons.PanelRight className="size-[22px] text-white/70" />
-                    </GlassButton>
-                  </GlassTooltipTrigger>
-                  <GlassTooltipContent side="right">Open chat panel</GlassTooltipContent>
-                </GlassTooltip>
+                <GlassIconButton
+                  icon={<Icons.PanelRight  />}
+                  tooltip="Open chat panel"
+                  tooltipSide="right"
+                  onClick={() => setMode('panel')}
+                />
               )}
             </div>
           </div>

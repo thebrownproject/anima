@@ -3,12 +3,7 @@
 import type { ReactNode } from 'react'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
-import { GlassButton } from '@/components/ui/glass-button'
-import {
-  GlassTooltip,
-  GlassTooltipTrigger,
-  GlassTooltipContent,
-} from '@/components/ui/glass-tooltip'
+import { GlassIconButton } from '@/components/ui/glass-icon-button'
 
 interface GlassSidePanelProps {
   isOpen: boolean
@@ -53,27 +48,18 @@ export function GlassSidePanel({
       <div className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl">
         {/* Header */}
         <div className="flex h-14 shrink-0 items-center justify-between px-5">
-          <div className="flex items-center gap-2.5 text-white/90">
+          <div className="flex items-center gap-2.5">
             {icon}
-            <span className="text-sm font-semibold tracking-wide">{title}</span>
+            <span className="text-base font-semibold tracking-wide text-white/90">{title}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             {headerActions}
-            <GlassTooltip>
-              <GlassTooltipTrigger asChild>
-                <GlassButton
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="size-7 rounded-full"
-                >
-                  <Icons.X className="size-3.5 text-white/50" />
-                </GlassButton>
-              </GlassTooltipTrigger>
-              <GlassTooltipContent side={side === 'left' ? 'bottom' : 'left'}>
-                Close
-              </GlassTooltipContent>
-            </GlassTooltip>
+            <GlassIconButton
+              icon={<Icons.X  />}
+              tooltip="Close"
+              onClick={onClose}
+              className="-mr-2"
+            />
           </div>
         </div>
 
