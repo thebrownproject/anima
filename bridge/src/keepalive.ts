@@ -4,25 +4,25 @@ const KEEPALIVE_INTERVAL_MS = 15_000
 
 const timers = new Map<string, ReturnType<typeof setInterval>>()
 
-/** Start keepalive pings for a stack if not already running. */
-export function startKeepalive(stackId: string): void {
-  if (timers.has(stackId)) return
+/** Start keepalive pings for a user if not already running. */
+export function startKeepalive(userId: string): void {
+  if (timers.has(userId)) return
 
   const interval = setInterval(() => {
-    const conn = getSpriteConnection(stackId)
+    const conn = getSpriteConnection(userId)
     if (!conn || conn.state !== 'connected') return
     conn.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }))
   }, KEEPALIVE_INTERVAL_MS)
 
-  timers.set(stackId, interval)
+  timers.set(userId, interval)
 }
 
-/** Stop keepalive pings for a stack. */
-export function stopKeepalive(stackId: string): void {
-  const interval = timers.get(stackId)
+/** Stop keepalive pings for a user. */
+export function stopKeepalive(userId: string): void {
+  const interval = timers.get(userId)
   if (interval) {
     clearInterval(interval)
-    timers.delete(stackId)
+    timers.delete(userId)
   }
 }
 

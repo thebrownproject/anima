@@ -2,7 +2,7 @@ import { WebSocket } from 'ws'
 import { v4 as uuidv4 } from 'uuid'
 import { getSprite } from './sprites-client.js'
 import { SpriteConnection } from './sprite-connection.js'
-import { getConnectionsByStack } from './connection-store.js'
+import { getConnectionsByUser } from './connection-store.js'
 import { startSpriteServer } from './provisioning.js'
 import type { SystemMessage } from './protocol.js'
 
@@ -25,29 +25,29 @@ interface ReconnectState {
 
 const reconnectStates = new Map<string, ReconnectState>()
 
-function getState(stackId: string): ReconnectState {
-  let state = reconnectStates.get(stackId)
+function getState(userId: string): ReconnectState {
+  let state = reconnectStates.get(userId)
   if (!state) {
     state = { inProgress: false, buffer: [], connection: null }
-    reconnectStates.set(stackId, state)
+    reconnectStates.set(userId, state)
   }
   return state
 }
 
-export function isReconnecting(stackId: string): boolean {
-  return reconnectStates.get(stackId)?.inProgress === true
+export function isReconnecting(userId: string): boolean {
+  return reconnectStates.get(userId)?.inProgress === true
 }
 
-export function bufferMessage(stackId: string, data: string): boolean {
-  const state = getState(stackId)
+export function bufferMessage(userId: string, data: string): boolean {
+  const state = getState(userId)
   if (!state.inProgress) return false
   if (state.buffer.length >= MAX_BUFFER) return false
   state.buffer.push({ data, bufferedAt: Date.now() })
   return true
 }
 
-function drainBuffer(stackId: string): string[] {
-  const state = reconnectStates.get(stackId)
+function drainBuffer(userId: string): string[] {
+  const state = reconnectStates.get(userId)
   if (!state) return []
   const now = Date.now()
   const valid = state.buffer
@@ -57,7 +57,7 @@ function drainBuffer(stackId: string): string[] {
   return valid
 }
 
-function broadcastSystem(stackId: string, event: 'sprite_waking' | 'sprite_ready', message?: string): void {
+function broadcastSystem(userId: string, event: 'sprite_waking' | 'sprite_ready', message?: string): void {
   const msg: SystemMessage = {
     type: 'system',
     id: uuidv4(),
@@ -65,7 +65,7 @@ function broadcastSystem(stackId: string, event: 'sprite_waking' | 'sprite_ready
     payload: { event, message },
   }
   const data = JSON.stringify(msg)
-  for (const browser of getConnectionsByStack(stackId)) {
+  for (const browser of getConnectionsByUser(userId)) {
     if (browser.ws.readyState === WebSocket.OPEN) {
       browser.ws.send(data)
     }
@@ -128,10 +128,10 @@ export interface ReconnectDeps {
 /**
  * Handle a Sprite TCP Proxy connection drop.
  * Wakes the Sprite, reconnects, verifies server, replays buffered messages.
- * Coalesces concurrent calls — only one reconnect runs per stack.
+ * Coalesces concurrent calls — only one reconnect runs per user.
  */
-export async function handleDisconnect(stackId: string, deps: ReconnectDeps): Promise<boolean> {
-  const state = getState(stackId)
+export async function handleDisconnect(userId: string, deps: ReconnectDeps): Promise<boolean> {
+  const state = getState(userId)
   if (state.inProgress) return false
 
   state.inProgress = true
@@ -139,11 +139,11 @@ export async function handleDisconnect(stackId: string, deps: ReconnectDeps): Pr
   const restart = deps.restartServer ?? defaultRestartServer
 
   try {
-    broadcastSystem(stackId, 'sprite_waking', 'Sprite connection lost, reconnecting...')
+    broadcastSystem(userId, 'sprite_waking', 'Sprite connection lost, reconnecting...')
 
     const running = await waitForRunning(deps.spriteName)
     if (!running) {
-      console.error(`[reconnect:${stackId}] Sprite ${deps.spriteName} failed to reach running state`)
+      console.error(`[reconnect:${userId}] Sprite ${deps.spriteName} failed to reach running state`)
       return false
     }
 
@@ -152,16 +152,16 @@ export async function handleDisconnect(stackId: string, deps: ReconnectDeps): Pr
 
     const alive = await verify(conn)
     if (!alive) {
-      console.warn(`[reconnect:${stackId}] Server unresponsive, attempting exec restart`)
+      console.warn(`[reconnect:${userId}] Server unresponsive, attempting exec restart`)
       conn.close()
       await restart(deps.spriteName, deps.token)
       const retryConn = await deps.createConnection(deps.spriteName, deps.token)
       state.connection = retryConn
     }
 
-    broadcastSystem(stackId, 'sprite_ready', 'Sprite reconnected')
+    broadcastSystem(userId, 'sprite_ready', 'Sprite reconnected')
 
-    const messages = drainBuffer(stackId)
+    const messages = drainBuffer(userId)
     for (const msg of messages) {
       deps.sendToSprite(msg)
     }
@@ -169,15 +169,15 @@ export async function handleDisconnect(stackId: string, deps: ReconnectDeps): Pr
     return true
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[reconnect:${stackId}] Reconnection failed:`, msg)
+    console.error(`[reconnect:${userId}] Reconnection failed:`, msg)
     return false
   } finally {
     state.inProgress = false
   }
 }
 
-export function cleanupReconnectState(stackId: string): void {
-  reconnectStates.delete(stackId)
+export function cleanupReconnectState(userId: string): void {
+  reconnectStates.delete(userId)
 }
 
 export function resetReconnectState(): void {

@@ -31,9 +31,6 @@ export function getConnectionsByUser(userId: string): Connection[] {
   return result
 }
 
-/** @deprecated Temporary alias — use getConnectionsByUser. Removed in m7b.12.4/m7b.12.5. */
-export const getConnectionsByStack = getConnectionsByUser
-
 export function getConnectionCount(): number {
   return connections.size
 }

@@ -17,7 +17,7 @@ vi.mock('../src/sprites-client.js', () => ({
 const mockBrowsers: Array<{ ws: { readyState: number; send: ReturnType<typeof vi.fn> } }> = []
 
 vi.mock('../src/connection-store.js', () => ({
-  getConnectionsByStack: vi.fn(() => mockBrowsers),
+  getConnectionsByUser: vi.fn(() => mockBrowsers),
 }))
 
 import { getSprite } from '../src/sprites-client.js'
@@ -67,7 +67,7 @@ describe('reconnect', () => {
   })
 
   it('sends sprite_waking system message on connection drop', async () => {
-    await handleDisconnect('stack-1', makeDeps())
+    await handleDisconnect('user-1', makeDeps())
 
     const wakingCall = mockBrowsers[0].ws.send.mock.calls[0][0]
     const wakingMsg = JSON.parse(wakingCall)
@@ -76,7 +76,7 @@ describe('reconnect', () => {
   })
 
   it('sends sprite_ready after reconnect', async () => {
-    await handleDisconnect('stack-1', makeDeps())
+    await handleDisconnect('user-1', makeDeps())
 
     const calls = mockBrowsers[0].ws.send.mock.calls
     const readyCall = calls[calls.length - 1][0]
@@ -96,12 +96,12 @@ describe('reconnect', () => {
     })
 
     const deps = makeDeps({ sendToSprite })
-    const reconnectPromise = handleDisconnect('stack-1', deps)
+    const reconnectPromise = handleDisconnect('user-1', deps)
 
-    expect(isReconnecting('stack-1')).toBe(true)
-    bufferMessage('stack-1', '{"type":"mission","id":"m1"}')
-    bufferMessage('stack-1', '{"type":"mission","id":"m2"}')
-    bufferMessage('stack-1', '{"type":"mission","id":"m3"}')
+    expect(isReconnecting('user-1')).toBe(true)
+    bufferMessage('user-1', '{"type":"mission","id":"m1"}')
+    bufferMessage('user-1', '{"type":"mission","id":"m2"}')
+    bufferMessage('user-1', '{"type":"mission","id":"m3"}')
 
     resolveWake()
     await reconnectPromise
@@ -118,12 +118,12 @@ describe('reconnect', () => {
       new Promise((r) => { resolveWake = r as any }),
     )
 
-    const promise = handleDisconnect('stack-1', makeDeps())
+    const promise = handleDisconnect('user-1', makeDeps())
 
     for (let i = 0; i < 50; i++) {
-      expect(bufferMessage('stack-1', `msg-${i}`)).toBe(true)
+      expect(bufferMessage('user-1', `msg-${i}`)).toBe(true)
     }
-    expect(bufferMessage('stack-1', 'overflow')).toBe(false)
+    expect(bufferMessage('user-1', 'overflow')).toBe(false)
 
     resolveWake()
     await promise.catch(() => {})
@@ -132,8 +132,8 @@ describe('reconnect', () => {
   it('coalesces concurrent wake attempts (no duplicate wake calls)', async () => {
     const deps = makeDeps()
 
-    const first = handleDisconnect('stack-1', deps)
-    const second = handleDisconnect('stack-1', deps)
+    const first = handleDisconnect('user-1', deps)
+    const second = handleDisconnect('user-1', deps)
 
     const [firstResult, secondResult] = await Promise.all([first, second])
     expect(firstResult).toBe(true)
@@ -156,7 +156,7 @@ describe('reconnect', () => {
       verifyServer: vi.fn().mockResolvedValue(false), // server unresponsive
     })
 
-    const result = await handleDisconnect('stack-1', deps)
+    const result = await handleDisconnect('user-1', deps)
     expect(result).toBe(true)
     expect(restartServer).toHaveBeenCalledWith('test-sprite', 'test-token')
     // createConnection called twice: initial reconnect + retry after restart
