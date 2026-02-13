@@ -2904,3 +2904,47 @@ Took the Session 157 spec (`.space-agents/exploration/ideas/2026-02-13-one-sprit
 - Or continue Glass Desktop polish (m7b.4.12 review findings all closed)
 
 ---
+
+## [2026-02-13 22:30] Session 162
+
+**Branch:** main | **Git:** uncommitted (spec file only)
+
+### What Happened
+
+**Voice integration brainstorm — full spec produced.**
+
+Explored adding bidirectional voice (STT + TTS) to the Stackdocs frontend. Multi-round brainstorm covering architecture, providers, UX, security, and cost.
+
+1. **Architecture decided**: Voice is a browser I/O layer. Sprite agent stays the brain. Raw audio never touches Bridge or Sprite. Two thin Next.js API routes handle provider auth/CORS (`/api/voice/deepgram-token` for temp tokens, `/api/voice/tts` as OpenAI proxy).
+
+2. **Providers chosen**: Deepgram Nova-3 for STT ($0.0077/min, streaming WebSocket, best accuracy at 5.26% WER). OpenAI `gpt-4o-mini-tts` with `fable` voice for TTS ($0.60/1M input tokens + $12/1M audio output tokens, ~$0.015/min).
+
+3. **UI design**: Vercel AI Elements Persona component (Rive animation) replaces mic button in chat bar. States: idle, listening, thinking, speaking, asleep. Layout toggle moves to chat panel top bar. Real-time transcription preview in chat input field.
+
+4. **MVP scoped**: Tap-to-record, tap-to-send (no VAD/continuous mode). Separate mic and TTS toggles. No cancel recording. No accessibility in v1. Continuous conversation mode explicitly deferred to v2.
+
+5. **Research agent** compared TTS/STT landscape: ElevenLabs (best quality, 4-5x expensive), Deepgram (best single-vendor), Cartesia (lowest latency at 40ms), OpenAI Whisper (no streaming — eliminated). Browser Web Speech API not production-viable (Chrome-only, broken Edge).
+
+6. **Two review agents** caught critical spec issues:
+   - OpenAI TTS is CORS-blocked from browsers → must use Next.js API route proxy
+   - Deepgram recommends temporary tokens, not raw API keys in browser
+   - Persona installed via `npx ai-elements@latest add persona`, not `@ai-sdk/react`
+   - TTS needs sentence-level buffering (no input streaming on `/v1/audio/speech`)
+   - `asleep` Persona state should map to Sprite disconnected/waking
+
+7. **Spec written** at `.space-agents/exploration/ideas/2026-02-13-voice-integration/spec.md` — status: Ready for planning.
+
+### Decisions Made
+
+- **Browser-direct for STT** (Deepgram WebSocket with temp tokens), **server-proxied for TTS** (Next.js API route → OpenAI). Eliminates all API key exposure.
+- **gpt-4o-mini-tts over tts-1** — token-based pricing is cheaper at scale (~$0.015/min vs $15/1M chars).
+- **No cancel recording for MVP** — every recording gets sent. User can correct via text.
+- **TTS buffering strategy deferred** to implementation — sentence-level chunking likely but edge cases (markdown, code blocks) need hands-on testing.
+- **Build after m7b.12** — voice depends on working chat pipeline.
+
+### Next Action
+
+- Continue m7b.12 (One Sprite Per User) — active front with .12.9 in progress
+- When m7b.12 completes: `/plan` on voice-integration spec to break into tasks
+
+---
