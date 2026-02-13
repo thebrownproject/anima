@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 SendFn = Callable[[str], Awaitable[None]]
 
-VALID_CARD_TYPES = {"table", "document", "notes"}
+VALID_SIZES = {"small", "medium", "large", "full"}
 
 # Block registry: type -> (required_fields, dataclass_type, builder_fn)
 BLOCK_REGISTRY = {
@@ -168,7 +168,9 @@ def create_canvas_tools(send_fn: SendFn) -> list:
         "Create a new card on the user's Canvas with composable blocks.\n\n"
         "Parameters:\n"
         "- title (str): Card title displayed in the title bar.\n"
-        "- card_type (str): One of 'table', 'document', or 'notes'.\n"
+        "- size (str): Card size — 'small', 'medium' (default), 'large', or 'full'.\n"
+        "  small: single stat or badge. medium: key-value pairs, short tables.\n"
+        "  large: wide tables, detailed content. full: full-width dashboards.\n"
         "- blocks (list[dict]): Array of block objects. Each block needs a 'type' field "
         "(do NOT include 'id' — it is auto-generated). Valid block types:\n"
         "  - heading: {type: 'heading', text: str, subtitle?: str}\n"
@@ -179,19 +181,19 @@ def create_canvas_tools(send_fn: SendFn) -> list:
         "  - progress: {type: 'progress', value: int (0-100), label?: str}\n"
         "  - text: {type: 'text', content: str}  NOTE: field is 'content', NOT 'text'\n"
         "  - separator: {type: 'separator'}  NOTE: type is 'separator', NOT 'divider'\n",
-        {"title": str, "card_type": str, "blocks": list},
+        {"title": str, "size": str, "blocks": list},
     )
     async def create_card(_args: dict) -> dict:
-        """Create a card with title, card_type, and blocks array."""
+        """Create a card with title, size, and blocks array."""
         title = _args.get("title", "").strip()
-        card_type = _args.get("card_type", "table").strip()
+        size = _args.get("size", "medium").strip()
         blocks = _parse_json_param(_args.get("blocks", []))
 
         if not title:
             return _error_result("title is required")
 
-        if card_type not in VALID_CARD_TYPES:
-            return _error_result(f"card_type must be one of: {', '.join(VALID_CARD_TYPES)}")
+        if size not in VALID_SIZES:
+            return _error_result(f"size must be one of: {', '.join(sorted(VALID_SIZES))}")
 
         block_dataclasses, error = _validate_and_build_blocks(blocks)
         if error:
@@ -201,7 +203,7 @@ def create_canvas_tools(send_fn: SendFn) -> list:
         message = CanvasUpdate(
             type="canvas_update",
             payload=CanvasUpdatePayload(
-                command="create_card", card_id=card_id, title=title, blocks=block_dataclasses
+                command="create_card", card_id=card_id, title=title, blocks=block_dataclasses, size=size
             ),
         )
 
@@ -219,16 +221,21 @@ def create_canvas_tools(send_fn: SendFn) -> list:
         "- card_id (str): The ID of the card to update (returned by create_card).\n"
         "- blocks (list[dict]): Replacement blocks. Same format as create_card blocks.\n"
         "  Valid types: heading, stat, key-value, table, badge, progress, text, separator.\n"
-        "  See create_card for full schema of each block type.\n",
+        "  See create_card for full schema of each block type.\n"
+        "- size (str, optional): Resize the card — 'small', 'medium', 'large', or 'full'.\n",
         {"card_id": str, "blocks": list},
     )
     async def update_card(_args: dict) -> dict:
         """Update blocks on a card. Blocks matched by id field."""
         card_id = _args.get("card_id", "").strip()
         blocks = _parse_json_param(_args.get("blocks", []))
+        size = _args.get("size", "").strip() or None
 
         if not card_id:
             return _error_result("card_id is required")
+
+        if size and size not in VALID_SIZES:
+            return _error_result(f"size must be one of: {', '.join(sorted(VALID_SIZES))}")
 
         block_dataclasses, error = _validate_and_build_blocks(blocks)
         if error:
@@ -236,7 +243,7 @@ def create_canvas_tools(send_fn: SendFn) -> list:
 
         message = CanvasUpdate(
             type="canvas_update",
-            payload=CanvasUpdatePayload(command="update_card", card_id=card_id, blocks=block_dataclasses),
+            payload=CanvasUpdatePayload(command="update_card", card_id=card_id, blocks=block_dataclasses, size=size),
         )
 
         error = await _send_canvas_update(send_fn, message, f"update_card {card_id}")

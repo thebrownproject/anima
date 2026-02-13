@@ -55,6 +55,7 @@ MessageType = Literal[
 ]
 CanvasAction = Literal["edit_cell", "resize", "move", "close"]
 CanvasCommand = Literal["create_card", "update_card", "close_card"]
+CardSize = Literal["small", "medium", "large", "full"]
 AgentEventType = Literal["text", "tool", "complete", "error"]
 BadgeVariant = Literal["default", "success", "warning", "destructive"]
 DocumentStatus = Literal["processing", "ocr_complete", "completed", "failed"]
@@ -278,6 +279,7 @@ class CanvasUpdatePayload:
     card_id: str
     title: Optional[str] = None
     blocks: Optional[list[Block]] = None
+    size: Optional[CardSize] = None
     mission_id: Optional[str] = None
 
 

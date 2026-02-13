@@ -2641,3 +2641,65 @@ m7b.4.12.9 — Block renderer (frontend). Pure frontend task. Build `<BlockRende
 - Source wallpaper images (m7b.4.12.12) to wrap up Phase A
 
 ---
+
+## [2026-02-13 14:20] Session 156
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**m7b.4.9 — Agent system prompt + canvas tool API update (CLOSED):**
+
+Protocol sync across 3 codebases — added `CardSize` type (`small`|`medium`|`large`|`full`) and `size` field to `CanvasUpdate` payload:
+- `bridge/src/protocol.ts` — `CardSize` type + `size?: CardSize` in CanvasUpdate payload
+- `frontend/types/ws-protocol.ts` — mirror of bridge
+- `sprite/src/protocol.py` — `CardSize` Literal + `size` field on `CanvasUpdatePayload`
+
+Canvas tools (`sprite/src/tools/canvas.py`):
+- Replaced `card_type` param with `size` in `create_card` (default `"medium"`)
+- Added optional `size` to `update_card` for resizing
+- `VALID_CARD_TYPES` → `VALID_SIZES`, validation updated
+- Added `size` to tool schema dict: `{"title": str, "size": str, "blocks": list}`
+
+Frontend integration:
+- `frontend/lib/stores/desktop-store.ts` — `size: CardSize` on `DesktopCard` interface
+- `frontend/components/desktop/ws-provider.tsx` — passes `size` through on create/update
+
+System prompt (`sprite/memory/os.md`):
+- Added named block composition patterns (overview, data, status, extraction)
+- Added close_card guidance to "Managing cards" section
+- Canvas section already had `size` terminology — os.md was ahead of the tool API
+
+**conftest.py for local Sprite testing (NEW):**
+- `sprite/tests/conftest.py` — mocks `claude_agent_sdk` when not installed locally
+- `_ToolWrapper` class mimics SDK's `@tool` decorator (returns objects with `.handler`)
+- Stubs for `ClaudeSDKClient`, `ClaudeAgentOptions`, etc. (MagicMock)
+- All 69 locally-runnable Sprite tests pass (17 canvas, 7 search, 22 db, 16 hooks, 7 memory)
+
+**Tests updated** (`sprite/tests/test_canvas_tools.py`):
+- All `card_type` references → `size` (or removed)
+- 3 new tests: default size, update_card with size, update_card invalid size
+- 17/17 pass
+
+**Deployed + E2E tested** on `sd-e2e-test` Sprite:
+- Full deploy cycle: code upload, ownership fix, server restart
+- E2E pipe working: browser → Bridge → Sprite agent → canvas_update → browser
+- Discovered model still passes `card_type` instead of `size` (tracked as m7b.4.13)
+
+### Decisions Made
+- **`size` replaces `card_type`**: `card_type` was validated but never sent to frontend — phantom param. `size` actually affects rendering (card width on grid).
+- **os.md over loader.py for Canvas prompt**: User correctly pointed out Canvas instructions belong in memory files (deploy-managed), not hardcoded in the loader. os.md already had the content.
+- **conftest.py mock over SDK install**: Lightweight stub unblocks local testing. Real SDK stays Sprite-only. Integration tests still require Sprite.
+
+### Gotchas
+- **SDK client persists across connections**: `AgentRuntime._client` survives reconnections. Deploying new code doesn't update tool definitions until server restarts AND the old `claude` CLI subprocess is killed.
+- **`pgrep` false positives on Sprites**: `pgrep -f "python"` catches the ephemeral bash/grep processes from exec commands. Use `ps aux | grep -vE "grep|bash" | grep python` instead.
+- **Proxy timeout on first server start**: Normal race condition. Server binds but proxy can't connect in time. Run test-e2e-v2 twice.
+- **Model ignores `size` param**: Even with `size` in tool schema and description, Sonnet still passes `card_type`. Tracked as m7b.4.13 (P2). Functionally non-blocking — defaults to "medium".
+
+### Next Action
+- Fix m7b.4.13 (model ignoring size) — try stronger tool description or investigate SDK tool registration
+- m7b.4.8 (CSV/JSON export, P2) is the last task in Phase 3
+- m7b.4.12 has 2 remaining sub-tasks (context menu restyle, wallpaper sourcing)
+
+---

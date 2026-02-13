@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Block } from '@/types/ws-protocol'
+import type { Block, CardSize } from '@/types/ws-protocol'
 
 // =============================================================================
 // Types
@@ -10,6 +10,7 @@ export interface DesktopCard {
   id: string
   title: string
   blocks: Block[]
+  size: CardSize
   position: { x: number; y: number }
   zIndex: number
 }

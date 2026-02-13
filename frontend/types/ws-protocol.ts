@@ -186,6 +186,7 @@ export interface AgentEvent extends WebSocketMessageBase {
 
 /** Canvas commands for the composable card system. */
 export type CanvasCommand = 'create_card' | 'update_card' | 'close_card'
+export type CardSize = 'small' | 'medium' | 'large' | 'full'
 
 export interface CanvasUpdate extends WebSocketMessageBase {
   type: 'canvas_update'
@@ -194,6 +195,7 @@ export interface CanvasUpdate extends WebSocketMessageBase {
     card_id: string
     title?: string
     blocks?: Block[]  // Array of composable blocks (create/update)
+    size?: CardSize   // Card size hint (small/medium/large/full)
     mission_id?: string
   }
 }

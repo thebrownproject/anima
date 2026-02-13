@@ -22,37 +22,32 @@ def canvas_tools(mock_send):
 
 @pytest.mark.asyncio
 async def test_create_card_valid(canvas_tools, mock_send):
-    """create_card sends canvas_update with create_card command."""
+    """create_card sends canvas_update with create_card command and size."""
     create_card = canvas_tools[0].handler
 
-    # Valid heading + stat blocks
     result = await create_card({
         "title": "Test Card",
-        "card_type": "table",
+        "size": "large",
         "blocks": [
             {"type": "heading", "text": "Test Heading"},
             {"type": "stat", "value": "$100", "label": "Total"},
         ]
     })
 
-    # Tool returns success
     assert "is_error" not in result
     assert "Card created" in result["content"][0]["text"]
 
-    # WebSocket send called once
     assert mock_send.call_count == 1
 
-    # Parse sent message
     sent_json = mock_send.call_args[0][0]
     sent_msg = json.loads(sent_json)
 
-    # Verify message structure
     assert sent_msg["type"] == "canvas_update"
     assert sent_msg["payload"]["command"] == "create_card"
     assert sent_msg["payload"]["title"] == "Test Card"
+    assert sent_msg["payload"]["size"] == "large"
     assert "card_id" in sent_msg["payload"]
 
-    # Verify blocks
     blocks = sent_msg["payload"]["blocks"]
     assert len(blocks) == 2
     assert blocks[0]["type"] == "heading"
@@ -60,9 +55,25 @@ async def test_create_card_valid(canvas_tools, mock_send):
     assert blocks[1]["type"] == "stat"
     assert blocks[1]["value"] == "$100"
 
-    # All blocks have IDs
     assert "id" in blocks[0]
     assert "id" in blocks[1]
+
+
+@pytest.mark.asyncio
+async def test_create_card_default_size(canvas_tools, mock_send):
+    """create_card defaults to 'medium' when size is omitted."""
+    create_card = canvas_tools[0].handler
+
+    result = await create_card({
+        "title": "Test",
+        "blocks": [{"type": "text", "content": "Hello"}]
+    })
+
+    assert "is_error" not in result
+    sent_json = mock_send.call_args[0][0]
+    sent_msg = json.loads(sent_json)
+
+    assert sent_msg["payload"]["size"] == "medium"
 
 
 @pytest.mark.asyncio
@@ -72,7 +83,6 @@ async def test_create_card_auto_block_ids(canvas_tools, mock_send):
 
     result = await create_card({
         "title": "Test",
-        "card_type": "notes",
         "blocks": [
             {"type": "text", "content": "Hello world"}
         ]
@@ -82,7 +92,6 @@ async def test_create_card_auto_block_ids(canvas_tools, mock_send):
     sent_json = mock_send.call_args[0][0]
     sent_msg = json.loads(sent_json)
 
-    # Block should have auto-generated ID
     assert "id" in sent_msg["payload"]["blocks"][0]
     assert len(sent_msg["payload"]["blocks"][0]["id"]) == 36  # UUID length
 
@@ -94,7 +103,6 @@ async def test_create_card_missing_title(canvas_tools):
 
     result = await create_card({
         "title": "",
-        "card_type": "table",
         "blocks": []
     })
 
@@ -103,18 +111,18 @@ async def test_create_card_missing_title(canvas_tools):
 
 
 @pytest.mark.asyncio
-async def test_create_card_invalid_card_type(canvas_tools):
-    """create_card returns error for invalid card_type."""
+async def test_create_card_invalid_size(canvas_tools):
+    """create_card returns error for invalid size."""
     create_card = canvas_tools[0].handler
 
     result = await create_card({
         "title": "Test",
-        "card_type": "invalid",
+        "size": "enormous",
         "blocks": []
     })
 
     assert result["is_error"] is True
-    assert "card_type must be one of" in result["content"][0]["text"]
+    assert "size must be one of" in result["content"][0]["text"]
 
 
 @pytest.mark.asyncio
@@ -124,7 +132,6 @@ async def test_create_card_invalid_block_type(canvas_tools):
 
     result = await create_card({
         "title": "Test",
-        "card_type": "table",
         "blocks": [{"type": "invalid", "data": {}}]
     })
 
@@ -139,7 +146,6 @@ async def test_create_card_missing_required_field(canvas_tools):
 
     result = await create_card({
         "title": "Test",
-        "card_type": "table",
         "blocks": [{"type": "heading"}]  # Missing 'text' field
     })
 
@@ -165,7 +171,7 @@ async def test_create_card_all_block_types(canvas_tools, mock_send):
 
     result = await create_card({
         "title": "All Blocks",
-        "card_type": "document",
+        "size": "full",
         "blocks": blocks
     })
 
@@ -202,6 +208,41 @@ async def test_update_card_valid(canvas_tools, mock_send):
 
 
 @pytest.mark.asyncio
+async def test_update_card_with_size(canvas_tools, mock_send):
+    """update_card passes size through to resize a card."""
+    update_card = canvas_tools[1].handler
+
+    result = await update_card({
+        "card_id": "test-card-123",
+        "size": "full",
+        "blocks": [
+            {"id": "block-1", "type": "text", "content": "Expanded"}
+        ]
+    })
+
+    assert "is_error" not in result
+    sent_json = mock_send.call_args[0][0]
+    sent_msg = json.loads(sent_json)
+
+    assert sent_msg["payload"]["size"] == "full"
+
+
+@pytest.mark.asyncio
+async def test_update_card_invalid_size(canvas_tools):
+    """update_card returns error for invalid size."""
+    update_card = canvas_tools[1].handler
+
+    result = await update_card({
+        "card_id": "test-card-123",
+        "size": "huge",
+        "blocks": [{"type": "text", "content": "test"}]
+    })
+
+    assert result["is_error"] is True
+    assert "size must be one of" in result["content"][0]["text"]
+
+
+@pytest.mark.asyncio
 async def test_update_card_missing_card_id(canvas_tools):
     """update_card returns error if card_id is missing."""
     update_card = canvas_tools[1].handler
@@ -233,7 +274,6 @@ async def test_close_card_valid(canvas_tools, mock_send):
     assert sent_msg["type"] == "canvas_update"
     assert sent_msg["payload"]["command"] == "close_card"
     assert sent_msg["payload"]["card_id"] == "test-card-456"
-    # close_card doesn't send blocks
     assert "blocks" not in sent_msg["payload"]
 
 
@@ -255,14 +295,12 @@ async def test_json_stringified_blocks(canvas_tools, mock_send):
     """create_card handles stringified JSON blocks (Claude sometimes does this)."""
     create_card = canvas_tools[0].handler
 
-    # Blocks passed as JSON string instead of list
     blocks_json = json.dumps([
         {"type": "text", "content": "Hello"}
     ])
 
     result = await create_card({
         "title": "Test",
-        "card_type": "notes",
         "blocks": blocks_json  # Stringified
     })
 
@@ -287,13 +325,11 @@ async def test_protocol_message_parseable(canvas_tools, mock_send):
 
     await create_card({
         "title": "Test",
-        "card_type": "table",
         "blocks": [{"type": "separator"}]
     })
 
     sent_json = mock_send.call_args[0][0]
     parsed = parse_message(sent_json)
 
-    # parse_message validates against protocol schema
     assert parsed is not None
     assert parsed["type"] == "canvas_update"

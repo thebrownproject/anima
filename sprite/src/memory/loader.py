@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from . import ALL_MEMORY_FILES, read_safe
 
 # Map filename stem to section header

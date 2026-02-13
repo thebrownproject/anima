@@ -50,8 +50,12 @@ Prefer one card with a table over many separate cards. Create multiple cards onl
 
 ### Composing blocks
 
-Lead with a heading. Use key-value for labeled fields, table for rows of data, stat for important numbers, badge for status. Common pattern: heading + key-value + separator + table for document extractions.
+Lead with a heading. Use key-value for labeled fields, table for rows of data, stat for important numbers, badge for status. Common patterns:
+- Overview: heading + key-value + badge
+- Data: heading + table
+- Status: stat + progress + badge
+- Extraction: heading + key-value + separator + table
 
-### Updating cards
+### Managing cards
 
-When the user corrects data, update the existing card — don't create a duplicate. Remember card IDs from create_card responses.
+When the user corrects data, update the existing card — don't create a duplicate. Remember card IDs from create_card responses. Close cards that are no longer relevant with close_card.

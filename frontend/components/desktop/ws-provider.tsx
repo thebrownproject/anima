@@ -43,7 +43,7 @@ export function WebSocketProvider({ stackId, children }: { stackId: string; chil
   const handleMessage = useCallback((message: SpriteToBrowserMessage) => {
     switch (message.type) {
       case 'canvas_update': {
-        const { command, card_id, title, blocks } = message.payload
+        const { command, card_id, title, blocks, size } = message.payload
         const store = useDesktopStore.getState()
 
         if (command === 'create_card') {
@@ -52,6 +52,7 @@ export function WebSocketProvider({ stackId, children }: { stackId: string; chil
             id: card_id,
             title: title ?? 'Untitled',
             blocks: blocks ?? [],
+            size: size ?? 'medium',
             position,
             zIndex: store.maxZIndex + 1,
           })
@@ -59,6 +60,7 @@ export function WebSocketProvider({ stackId, children }: { stackId: string; chil
           const updates: Partial<Omit<DesktopCard, 'id'>> = {}
           if (title !== undefined) updates.title = title
           if (blocks !== undefined) updates.blocks = blocks
+          if (size !== undefined) updates.size = size
           store.updateCard(card_id, updates)
         } else if (command === 'close_card') {
           store.removeCard(card_id)
