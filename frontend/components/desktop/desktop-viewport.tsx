@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { cn } from '@/lib/utils'
 
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.0
@@ -22,7 +23,11 @@ interface ViewSnapshot {
   scale: number
 }
 
-export function DesktopViewport({ children }: { children?: ReactNode }) {
+interface ViewportProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: ReactNode
+}
+
+export function DesktopViewport({ children, className, ...rest }: ViewportProps) {
   const [isPanning, setIsPanning] = useState(false)
   const lastPos = useRef({ x: 0, y: 0 })
   const transformRef = useRef<HTMLDivElement>(null)
@@ -120,6 +125,32 @@ export function DesktopViewport({ children }: { children?: ReactNode }) {
       zoomRafId.current = requestAnimationFrame(animateZoom)
     }
   }, [animateZoom])
+
+  // Listen for external zoom requests (from context menu, etc.)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { scale } = (e as CustomEvent<{ scale: number }>).detail
+      const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, scale))
+
+      // Zoom toward viewport center
+      const cx = window.innerWidth / 2
+      const cy = window.innerHeight / 2
+      const worldX = (cx - target.current.x) / target.current.scale
+      const worldY = (cy - target.current.y) / target.current.scale
+
+      target.current = {
+        x: cx - worldX * clamped,
+        y: cy - worldY * clamped,
+        scale: clamped,
+      }
+
+      if (sharpTimer.current) clearTimeout(sharpTimer.current)
+      startZoomAnimation()
+    }
+
+    window.addEventListener('desktop-zoom', handler)
+    return () => window.removeEventListener('desktop-zoom', handler)
+  }, [startZoomAnimation])
 
   // Pan momentum animation loop
   const animateMomentum = useCallback(() => {
@@ -248,7 +279,8 @@ export function DesktopViewport({ children }: { children?: ReactNode }) {
 
   return (
     <div
-      className="absolute inset-0 overflow-hidden"
+      {...rest}
+      className={cn("absolute inset-0 overflow-hidden", className)}
       onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

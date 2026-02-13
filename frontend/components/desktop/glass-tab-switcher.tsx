@@ -4,7 +4,7 @@ import * as React from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import * as Icons from "@/components/icons"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 interface GlassTabSwitcherProps {
   tabs: { value: string; label: string; dot?: string }[]
@@ -83,8 +83,8 @@ const GlassTabSwitcher = React.forwardRef<HTMLDivElement, GlassTabSwitcherProps>
               </button>
 
               {/* More button (left) */}
-              <Popover>
-                <PopoverTrigger asChild>
+              <PopoverPrimitive.Root>
+                <PopoverPrimitive.Trigger asChild>
                   <span
                     role="button"
                     tabIndex={-1}
@@ -92,34 +92,40 @@ const GlassTabSwitcher = React.forwardRef<HTMLDivElement, GlassTabSwitcherProps>
                   >
                     <Icons.DotsHorizontal className="size-3 text-white/60" />
                   </span>
-                </PopoverTrigger>
-                <PopoverContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={12}
-                  className="w-56 rounded-2xl border border-white/20 bg-white/10 p-0 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl"
-                >
-                  <div className="p-3">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                </PopoverPrimitive.Trigger>
+                <PopoverPrimitive.Portal>
+                  <PopoverPrimitive.Content
+                    side="bottom"
+                    align="start"
+                    sideOffset={12}
+                    className={cn(
+                      "z-50 w-56 overflow-hidden rounded-xl p-1.5",
+                      "bg-white/10 backdrop-blur-xl border border-white/20",
+                      "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+                      "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+                      "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
+                      "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+                    )}
+                  >
+                    <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
                       Workspace
                     </p>
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-white/80 transition-colors hover:bg-white/10">
-                      <Icons.Edit className="size-4 text-white/50" />
+                    <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+                      <Icons.Edit className="size-4" />
                       Rename
                     </button>
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-white/80 transition-colors hover:bg-white/10">
-                      <Icons.Files className="size-4 text-white/50" />
+                    <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+                      <Icons.Files className="size-4" />
                       Duplicate
                     </button>
-                  </div>
-                  <div className="border-t border-white/10 p-3">
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-red-400/80 transition-colors hover:bg-white/10">
-                      <Icons.Trash className="size-4 text-red-400/50" />
+                    <div className="mx-2 my-1 h-px bg-white/10" />
+                    <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-red-400/70 transition-colors hover:bg-white/10 hover:text-red-300">
+                      <Icons.Trash className="size-4" />
                       Delete
                     </button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverPrimitive.Content>
+                </PopoverPrimitive.Portal>
+              </PopoverPrimitive.Root>
 
               {/* Close button (right) */}
               {onClose && (

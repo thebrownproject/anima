@@ -12,6 +12,7 @@ import { ChatBar } from '@/components/desktop/chat-bar'
 import { ChatPanel } from '@/components/desktop/chat-panel'
 import { DocumentsPanel } from '@/components/desktop/documents-panel'
 import { BlockRenderer } from '@/components/desktop/block-renderer'
+import { DesktopContextMenu } from '@/components/desktop/desktop-context-menu'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 
@@ -28,16 +29,18 @@ export default function DesktopPage({ params }: { params: Promise<{ id: string }
           {/* Top bar */}
           <DesktopTopBar />
 
-          {/* Canvas viewport */}
-          <DesktopViewport>
-            <AnimatePresence>
-              {Object.values(cards).map((card) => (
-                <DesktopCard key={card.id} card={card}>
-                  <BlockRenderer blocks={card.blocks} />
-                </DesktopCard>
-              ))}
-            </AnimatePresence>
-          </DesktopViewport>
+          {/* Canvas viewport with right-click context menu */}
+          <DesktopContextMenu>
+            <DesktopViewport>
+              <AnimatePresence>
+                {Object.values(cards).map((card) => (
+                  <DesktopCard key={card.id} card={card}>
+                    <BlockRenderer blocks={card.blocks} />
+                  </DesktopCard>
+                ))}
+              </AnimatePresence>
+            </DesktopViewport>
+          </DesktopContextMenu>
 
           {/* Side panels */}
           <DocumentsPanel />

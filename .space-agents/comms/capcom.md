@@ -2599,3 +2599,45 @@ m7b.4.12.9 — Block renderer (frontend). Pure frontend task. Build `<BlockRende
 - Phase A: 11/12 tasks done. Only wallpaper sourcing (P2) + new context menu task remain.
 
 ---
+
+## [2026-02-13 12:00] Session 155
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Desktop right-click context menu (m7b.4.12.13)** — brainstormed approach, then implemented:
+- Installed shadcn `context-menu` (Radix ContextMenu primitive)
+- Created `frontend/components/ui/glass-context-menu.tsx` — glass wrapper (GlassContextMenuContent, GlassContextMenuItem, GlassContextMenuLabel, GlassContextMenuSeparator) following the glass-tooltip pattern
+- Created `frontend/components/desktop/desktop-context-menu.tsx` — 3-section menu: Environment (wallpaper thumbnails with active checkmark), View (3-col zoom grid + disabled "Clean Up By Name"), Stack (disabled Rename/Settings placeholders)
+- Added zoom icons to `components/icons/index.ts`: ZoomIn, ZoomOut, ZoomReset
+- Updated `desktop-viewport.tsx`: accepts rest props via `ViewportProps extends HTMLAttributes<HTMLDivElement>` (needed for Radix asChild to forward onContextMenu), added `desktop-zoom` custom event listener that zooms toward viewport center using the existing lerp animation system
+- Wired into `page.tsx`: `<DesktopContextMenu>` wraps `<DesktopViewport>`
+- Right-click context menu works correctly with glass styling and animated zoom controls
+
+**Tab popover restyle attempt (FAILED — stackdocs-qj2)**:
+- Replaced shadcn Popover import with raw `@radix-ui/react-popover` PopoverPrimitive in `glass-tab-switcher.tsx`
+- Applied identical glass classes as the working context menu
+- Cleared `.next` cache, restarted dev server — popover still renders with old styling
+- Code verified correct in file but UI doesn't reflect changes
+- Created bug bead `stackdocs-qj2` — needs DevTools investigation to trace CSS specificity issue
+
+### Decisions Made
+- **shadcn context-menu over einui glass-popover**: Radix ContextMenu is the correct primitive for right-click menus. Glass popover would need manual positioning.
+- **Custom event for zoom sync**: `desktop-zoom` CustomEvent dispatched from context menu, listened by viewport. Avoids polluting Zustand store, keeps zoom animation system intact.
+- **Disabled placeholders**: "Clean Up By Name", "Rename Stack", "Stack Settings" rendered as disabled menu items — no backing store actions exist yet.
+
+### Gotchas
+- `DesktopViewport` only accepted `{ children }` — Radix `asChild` needs the child component to forward props. Had to add `...rest` spread to the root div.
+- `startZoomAnimation` must be declared before the `useEffect` that references it — declaration order matters with `useCallback`.
+- Tab popover uses raw `PopoverPrimitive` with correct glass classes but still renders old styling. Context menu with identical classes works fine. Root cause unknown — suspected CSS specificity from globals.css base layer (`* { @apply border-border }`) or Radix data-attribute selectors.
+
+### In Progress
+- **stackdocs-qj2**: Tab "..." popover styling bug. Code is correct, UI doesn't reflect it. Needs browser DevTools to inspect computed styles on the popover element and trace what's winning the CSS fight.
+
+### Next Action
+- Debug stackdocs-qj2 with DevTools (inspect `[data-radix-popper-content-wrapper]` styles, check for `bg-popover` CSS var leaking)
+- Close m7b.4.12.13 once tab popover is also fixed
+- Source wallpaper images (m7b.4.12.12) to wrap up Phase A
+
+---

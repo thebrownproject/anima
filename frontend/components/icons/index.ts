@@ -96,6 +96,11 @@ export {
   IconList as List,
   IconListDetails as ListDetails,
 
+  // Zoom
+  IconZoomIn as ZoomIn,
+  IconZoomOut as ZoomOut,
+  IconZoomReset as ZoomReset,
+
   // Desktop UI
   IconPaperclip as Paperclip,
   IconKeyboard as Keyboard,
