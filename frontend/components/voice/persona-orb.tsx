@@ -8,7 +8,7 @@ import { useVoice } from './voice-provider'
 
 const Persona = dynamic(
   () => import('@/components/ai-elements/persona').then((m) => m.Persona),
-  { ssr: false, loading: () => <div className="size-10" /> }
+  { ssr: false }
 )
 
 const TAP_ACTIONS: Record<PersonaState, 'startVoice' | 'stopVoice' | 'interruptTTS' | null> = {
