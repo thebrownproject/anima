@@ -27,10 +27,6 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const voiceActive = isVoiceEnabled()
   const voice = useVoiceMaybe()
   const personaState = useVoiceStore((s) => s.personaState)
-  const micEnabled = useVoiceStore((s) => s.micEnabled)
-  const ttsEnabled = useVoiceStore((s) => s.ttsEnabled)
-  const toggleMic = useVoiceStore((s) => s.toggleMic)
-  const toggleTts = useVoiceStore((s) => s.toggleTts)
 
   const sendMessage = useCallback((text: string) => {
     addMessage({ role: 'user', content: text, timestamp: Date.now() })
@@ -63,7 +59,6 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   }
 
   const hasText = inputValue.trim().length > 0
-  const canSend = hasText && isConnected
   const isHidden = !embedded && mode === 'panel'
 
   // ─── Shared inner content (glass bar + chips) ───────────────────────
@@ -85,103 +80,72 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
         </div>
       )}
 
-      {/* Glass bar */}
-      <div
-        className={cn(
-          'relative overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-300',
-          embedded ? 'w-full' : 'pointer-events-auto w-[500px]',
-          isAgentStreaming && 'border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_20px_rgba(6,182,212,0.08)]',
-        )}
-      >
-        {/* Agent streaming glow */}
-        {isAgentStreaming && (
-          <div className="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-r from-cyan-500/5 via-blue-500/5 to-purple-500/5" />
-        )}
+      {/* Glass bar + orb wrapper */}
+      <div className={cn('relative', embedded ? 'w-full' : 'pointer-events-auto w-[500px]')}>
+        <div
+          className={cn(
+            'relative overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-300',
+            isAgentStreaming && 'border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_20px_rgba(6,182,212,0.08)]',
+          )}
+        >
+          {/* Agent streaming glow */}
+          {isAgentStreaming && (
+            <div className="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-r from-cyan-500/5 via-blue-500/5 to-purple-500/5" />
+          )}
 
-        <div className="relative">
-          {/* Text area — animated expand/collapse */}
-          <div className={cn(
-            'grid transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-            inputActive ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-          )}>
+          <div className="relative">
+            {/* Text area — animated expand/collapse */}
             <div className={cn(
-              'min-h-0 overflow-hidden transition-opacity',
-              inputActive
-                ? 'opacity-100 delay-200 duration-150'
-                : 'opacity-0 duration-100'
+              'grid transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+              inputActive ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
             )}>
-              <div className="px-5 pt-4 pb-1 pr-16">
-                <textarea
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => {
-                    setInputValue(e.target.value)
-                    if (voice && personaState === 'listening') voice.stopVoice()
-                  }}
-                  onKeyDown={handleKeyDown}
-                  onBlur={handleBlur}
-                  rows={1}
-                  className="w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30"
-                />
+              <div className={cn(
+                'min-h-0 overflow-hidden transition-opacity',
+                inputActive
+                  ? 'opacity-100 delay-200 duration-150'
+                  : 'opacity-0 duration-100'
+              )}>
+                <div className="px-5 pt-4 pb-1 pr-16">
+                  <textarea
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={(e) => {
+                      setInputValue(e.target.value)
+                      if (voice && personaState === 'listening') voice.stopVoice()
+                    }}
+                    onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
+                    rows={1}
+                    className="w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Send button — fades in when text present and connected */}
-          <div className={cn(
-            'absolute right-3 top-3 transition-opacity duration-200',
-            canSend && inputActive
-              ? 'opacity-100'
-              : 'opacity-0 pointer-events-none'
-          )}>
-            <GlassIconButton
-              icon={<Icons.ArrowUp className="text-white" />}
-              tooltip={isConnected ? 'Send' : 'Connecting...'}
-              tooltipSide="right"
-              onClick={handleSend}
-              className="bg-white/15 hover:bg-white/25"
-            />
-          </div>
+            {/* Action bar */}
+            <div className="flex items-center px-3 py-2.5">
+              {/* Left — Attach */}
+              <GlassIconButton
+                icon={<Icons.Plus  />}
+                tooltip="Upload file"
+                tooltipSide="right"
+              />
 
-          {/* Action bar */}
-          <div className="flex items-center px-3 py-2.5">
-            {/* Left — Attach */}
-            <GlassIconButton
-              icon={<Icons.Plus  />}
-              tooltip="Attach file"
-              tooltipSide="right"
-            />
+              {/* Center — clickable hover zone to activate text input */}
+              {!inputActive ? (
+                <button
+                  onClick={activateInput}
+                  className="mx-2 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-white/10"
+                >
+                  <span className="text-[15px] leading-none text-white/30">Ask anything...</span>
+                </button>
+              ) : (
+                <div className="flex-1" />
+              )}
 
-            {/* Center — clickable hover zone to activate text input */}
-            {!inputActive ? (
-              <button
-                onClick={activateInput}
-                className="mx-2 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-white/10"
-              >
-                <span className="text-[15px] leading-none text-white/30">Ask anything...</span>
-              </button>
-            ) : (
-              <div className="flex-1" />
-            )}
-
-            {/* Right — Voice controls */}
-            <div className="flex items-center gap-1">
+              {/* Right — spacer for orb (rendered outside overflow-hidden) */}
               {voiceActive ? (
-                <>
-                  <GlassIconButton
-                    icon={micEnabled ? <Icons.Microphone /> : <Icons.MicrophoneOff />}
-                    tooltip={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
-                    tooltipSide="left"
-                    onClick={toggleMic}
-                  />
-                  <GlassIconButton
-                    icon={ttsEnabled ? <Icons.Volume /> : <Icons.VolumeOff />}
-                    tooltip={ttsEnabled ? 'Mute speaker' : 'Unmute speaker'}
-                    tooltipSide="left"
-                    onClick={toggleTts}
-                  />
-                  <PersonaOrb />
-                </>
+                <div className="size-10" />
               ) : (
                 <div data-testid="mic-button">
                   <GlassIconButton
@@ -194,6 +158,13 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
             </div>
           </div>
         </div>
+
+        {/* Persona orb — outside overflow-hidden so hover bar isn't clipped */}
+        {voiceActive && (
+          <div className="absolute bottom-2.5 right-3">
+            <PersonaOrb hasText={hasText} inputActive={inputActive} onSendMessage={handleSend} />
+          </div>
+        )}
       </div>
     </>
   )

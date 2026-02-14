@@ -2,26 +2,13 @@
 
 import { GlassTabSwitcher } from '@/components/desktop/glass-tab-switcher'
 import { GlassIconButton } from '@/components/ui/glass-icon-button'
+import { GlassPill } from '@/components/ui/glass-pill'
 import * as Icons from '@/components/icons'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { useWebSocket } from './ws-provider'
-import { cn } from '@/lib/utils'
 
 const launcherClass = 'border border-white/20 bg-white/10 backdrop-blur-2xl'
-
-function GlassPill({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl',
-        className,
-      )}
-    >
-      {children}
-    </div>
-  )
-}
 
 export function DesktopTopBar() {
   const stacks = useDesktopStore((s) => s.stacks)
