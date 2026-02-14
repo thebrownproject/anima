@@ -6,86 +6,162 @@ interface TTSControls {
   isSpeaking: boolean
 }
 
+const PROCESSOR_CODE = `
+class PcmStreamPlayer extends AudioWorkletProcessor {
+  constructor() {
+    super()
+    this.chunks = []
+    this.offset = 0
+    this.streamDone = false
+    this.port.onmessage = (e) => {
+      if (e.data.type === 'audio') {
+        this.chunks.push(e.data.samples)
+      } else if (e.data.type === 'end') {
+        this.streamDone = true
+      } else if (e.data.type === 'clear') {
+        this.chunks = []
+        this.offset = 0
+        this.streamDone = true
+      }
+    }
+  }
+  process(inputs, outputs) {
+    const out = outputs[0][0]
+    let written = 0
+    while (written < out.length && this.chunks.length > 0) {
+      const chunk = this.chunks[0]
+      const available = chunk.length - this.offset
+      const needed = out.length - written
+      const toCopy = Math.min(available, needed)
+      out.set(chunk.subarray(this.offset, this.offset + toCopy), written)
+      written += toCopy
+      this.offset += toCopy
+      if (this.offset >= chunk.length) {
+        this.chunks.shift()
+        this.offset = 0
+      }
+    }
+    if (this.streamDone && this.chunks.length === 0) {
+      this.port.postMessage({ type: 'done' })
+      return false
+    }
+    return true
+  }
+}
+registerProcessor('pcm-stream-player', PcmStreamPlayer)
+`
+
 export function useTTS(): TTSControls {
   const [isSpeaking, setIsSpeaking] = useState(false)
 
   const audioContextRef = useRef<AudioContext | null>(null)
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null)
-  const queueRef = useRef<string[]>([])
-  const playingRef = useRef(false)
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
+  const moduleLoadedRef = useRef(false)
 
-  const playNext = useCallback(async () => {
-    const text = queueRef.current.shift()
-    if (!text) {
-      playingRef.current = false
-      setIsSpeaking(false)
-      return
+  const ensureContext = useCallback(async () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 })
     }
-
-    playingRef.current = true
-
-    try {
-      const res = await fetch('/api/voice/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-      if (!res.ok) {
-        playNext()
-        return
-      }
-
-      const ctx = audioContextRef.current!
-      const arrayBuf = await res.arrayBuffer()
-      // OpenAI PCM: 24kHz mono 16-bit signed little-endian
-      const int16 = new Int16Array(arrayBuf)
-      const float32 = new Float32Array(int16.length)
-      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-      const audioBuffer = ctx.createBuffer(1, int16.length, 24000)
-      audioBuffer.getChannelData(0).set(float32)
-      const source = ctx.createBufferSource()
-      source.buffer = audioBuffer
-      source.connect(ctx.destination)
-      sourceRef.current = source
-      source.onended = () => playNext()
-      source.start()
-    } catch {
-      // Skip failed chunk, continue queue
-      playNext()
+    const ctx = audioContextRef.current
+    if (!moduleLoadedRef.current) {
+      const blob = new Blob([PROCESSOR_CODE], { type: 'application/javascript' })
+      blobUrlRef.current = URL.createObjectURL(blob)
+      await ctx.audioWorklet.addModule(blobUrlRef.current)
+      moduleLoadedRef.current = true
     }
+    return ctx
   }, [])
 
   const speak = useCallback((text: string) => {
-    // Lazy AudioContext creation (iOS Safari user gesture requirement)
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+    // Interrupt any current playback
+    if (abortRef.current) {
+      abortRef.current.abort()
+      workletNodeRef.current?.port.postMessage({ type: 'clear' })
+      workletNodeRef.current?.disconnect()
+      workletNodeRef.current = null
     }
 
-    queueRef.current.push(text)
     setIsSpeaking(true)
 
-    if (!playingRef.current) {
-      playNext()
-    }
-  }, [playNext])
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    ;(async () => {
+      try {
+        const ctx = await ensureContext()
+        const res = await fetch('/api/voice/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+          signal: controller.signal,
+        })
+        if (!res.ok || !res.body) {
+          setIsSpeaking(false)
+          return
+        }
+
+        const node = new AudioWorkletNode(ctx, 'pcm-stream-player')
+        workletNodeRef.current = node
+        node.connect(ctx.destination)
+        node.port.onmessage = (e) => {
+          if (e.data.type === 'done') {
+            node.disconnect()
+            workletNodeRef.current = null
+            setIsSpeaking(false)
+          }
+        }
+
+        const reader = res.body.getReader()
+        let carry: number | null = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          let bytes = value as Uint8Array
+          if (carry !== null) {
+            const combined = new Uint8Array(1 + bytes.length)
+            combined[0] = carry
+            combined.set(bytes, 1)
+            bytes = combined
+            carry = null
+          }
+          if (bytes.length % 2 !== 0) {
+            carry = bytes[bytes.length - 1]
+            bytes = bytes.subarray(0, bytes.length - 1)
+          }
+          if (bytes.length === 0) continue
+
+          const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2)
+          const float32 = new Float32Array(int16.length)
+          for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
+          node.port.postMessage({ type: 'audio', samples: float32 }, [float32.buffer])
+        }
+
+        node.port.postMessage({ type: 'end' })
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') setIsSpeaking(false)
+      }
+    })()
+  }, [ensureContext])
 
   const interrupt = useCallback(() => {
-    queueRef.current = []
-    try { sourceRef.current?.stop() } catch { /* already stopped */ }
-    sourceRef.current = null
-    playingRef.current = false
+    abortRef.current?.abort()
+    abortRef.current = null
+    workletNodeRef.current?.port.postMessage({ type: 'clear' })
+    workletNodeRef.current?.disconnect()
+    workletNodeRef.current = null
     setIsSpeaking(false)
   }, [])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      queueRef.current = []
-      try { sourceRef.current?.stop() } catch { /* noop */ }
-      sourceRef.current = null
-      playingRef.current = false
+      abortRef.current?.abort()
+      workletNodeRef.current?.disconnect()
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
       audioContextRef.current?.close()
-      audioContextRef.current = null
     }
   }, [])
 

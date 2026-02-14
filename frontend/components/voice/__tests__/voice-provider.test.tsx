@@ -110,7 +110,7 @@ describe('VoiceProvider', () => {
     )
   })
 
-  it('agent completion triggers TTS with sentence chunking when ttsEnabled', () => {
+  it('agent completion triggers TTS with full text when ttsEnabled', () => {
     useVoiceStore.setState({ ttsEnabled: true, personaState: 'thinking' })
     useChatStore.setState({
       messages: [{ id: '1', role: 'agent', content: 'First sentence. Second sentence! Third?', timestamp: Date.now() }],
@@ -123,10 +123,8 @@ describe('VoiceProvider', () => {
       useChatStore.setState({ isAgentStreaming: false })
     })
 
-    expect(mockSpeak).toHaveBeenCalledTimes(3)
-    expect(mockSpeak).toHaveBeenNthCalledWith(1, 'First sentence.')
-    expect(mockSpeak).toHaveBeenNthCalledWith(2, 'Second sentence!')
-    expect(mockSpeak).toHaveBeenNthCalledWith(3, 'Third?')
+    expect(mockSpeak).toHaveBeenCalledTimes(1)
+    expect(mockSpeak).toHaveBeenCalledWith('First sentence. Second sentence! Third?')
   })
 
   it('agent completion does NOT trigger TTS when ttsEnabled false', () => {

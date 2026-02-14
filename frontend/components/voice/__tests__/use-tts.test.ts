@@ -1,137 +1,119 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
 
-// --- Mocks (hoisted above imports per Vitest pattern) ---
-
-const { mockAudioContext, mockSource, mockFetch } = vi.hoisted(() => {
-  const mockSource = {
-    connect: vi.fn(),
-    start: vi.fn(),
-    stop: vi.fn(),
-    onended: null as (() => void) | null,
-    buffer: null as unknown,
+const { mockAudioContext, mockWorkletNode, mockFetch } = vi.hoisted(() => {
+  const mockPort = {
+    postMessage: vi.fn(),
+    onmessage: null as ((e: MessageEvent) => void) | null,
   }
 
-  const mockAudioBuffer = { getChannelData: vi.fn(() => ({ set: vi.fn() })) }
+  const mockWorkletNode = {
+    port: mockPort,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  }
 
   const mockAudioContext = {
-    createBuffer: vi.fn(() => mockAudioBuffer),
-    createBufferSource: vi.fn(() => mockSource),
+    audioWorklet: { addModule: vi.fn().mockResolvedValue(undefined) },
     destination: {},
     close: vi.fn(),
   }
 
   return {
     mockAudioContext,
-    mockSource,
+    mockWorkletNode,
     mockFetch: vi.fn(),
   }
 })
 
 beforeEach(() => {
   globalThis.AudioContext = vi.fn(() => mockAudioContext) as unknown as typeof AudioContext
+  globalThis.AudioWorkletNode = vi.fn(() => mockWorkletNode) as unknown as typeof AudioWorkletNode
+  globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-url')
+  globalThis.URL.revokeObjectURL = vi.fn()
   globalThis.fetch = mockFetch
 })
 
 import { useTTS } from '../use-tts'
 
-// --- Helpers ---
-
-function mockTTSResponse() {
-  // Return raw PCM bytes (4 bytes = 2 Int16 samples)
-  mockFetch.mockResolvedValueOnce({
-    ok: true,
-    arrayBuffer: async () => new ArrayBuffer(4),
-  })
+function createMockStream(chunks: Uint8Array[]) {
+  let i = 0
+  return {
+    getReader: () => ({
+      read: vi.fn(async () => {
+        if (i < chunks.length) return { done: false, value: chunks[i++] }
+        return { done: true, value: undefined }
+      }),
+    }),
+  }
 }
 
-// --- Tests ---
+function mockTTSResponse(chunks: Uint8Array[] = [new Uint8Array([0, 0, 0, 0])]) {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    body: createMockStream(chunks),
+  })
+}
 
 describe('useTTS', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSource.onended = null
-    mockSource.buffer = null
+    mockWorkletNode.port.onmessage = null
   })
 
   afterEach(() => {
     cleanup()
   })
 
-  it('speak() calls /api/voice/tts with text', async () => {
+  it('speak() starts streaming and sets isSpeaking true', async () => {
     mockTTSResponse()
 
     const { result } = renderHook(() => useTTS())
-    await act(() => result.current.speak('hello world'))
+    await act(async () => {
+      result.current.speak('hello world')
+      await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    })
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/voice/tts', {
+    expect(mockFetch).toHaveBeenCalledWith('/api/voice/tts', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: 'hello world' }),
-    })
-  })
-
-  it('speak() sets isSpeaking true', async () => {
-    mockTTSResponse()
-
-    const { result } = renderHook(() => useTTS())
-    await act(() => result.current.speak('hello'))
-
+    }))
     expect(result.current.isSpeaking).toBe(true)
+    expect(mockWorkletNode.connect).toHaveBeenCalledWith(mockAudioContext.destination)
   })
 
-  it('multiple speak() calls queue sequentially', async () => {
-    mockTTSResponse()
+  it('interrupt() aborts fetch and disconnects worklet', async () => {
     mockTTSResponse()
 
     const { result } = renderHook(() => useTTS())
     await act(async () => {
-      result.current.speak('first')
-      result.current.speak('second')
-    })
-
-    // First fetch fires immediately, second waits in queue
-    expect(mockFetch).toHaveBeenCalledTimes(1)
-    expect(mockFetch).toHaveBeenCalledWith('/api/voice/tts', expect.objectContaining({
-      body: JSON.stringify({ text: 'first' }),
-    }))
-
-    // Trigger onended to process next in queue
-    await act(async () => {
-      mockSource.onended?.()
-      // Allow microtask queue to flush
-      await new Promise((r) => setTimeout(r, 0))
-    })
-
-    expect(mockFetch).toHaveBeenCalledTimes(2)
-    expect(mockFetch).toHaveBeenLastCalledWith('/api/voice/tts', expect.objectContaining({
-      body: JSON.stringify({ text: 'second' }),
-    }))
-  })
-
-  it('interrupt() stops audio and clears queue', async () => {
-    mockTTSResponse()
-
-    const { result } = renderHook(() => useTTS())
-    await act(async () => {
-      result.current.speak('first')
-      result.current.speak('second')
+      result.current.speak('hello')
+      await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled())
     })
 
     act(() => result.current.interrupt())
 
-    expect(mockSource.stop).toHaveBeenCalled()
+    expect(mockWorkletNode.port.postMessage).toHaveBeenCalledWith({ type: 'clear' })
+    expect(mockWorkletNode.disconnect).toHaveBeenCalled()
+    expect(result.current.isSpeaking).toBe(false)
   })
 
-  it('after interrupt, isSpeaking is false', async () => {
+  it('processor done message sets isSpeaking false', async () => {
     mockTTSResponse()
 
     const { result } = renderHook(() => useTTS())
-    await act(() => result.current.speak('hello'))
+    await act(async () => {
+      result.current.speak('hello')
+      await vi.waitFor(() => expect(mockWorkletNode.port.onmessage).not.toBeNull())
+    })
 
     expect(result.current.isSpeaking).toBe(true)
 
-    act(() => result.current.interrupt())
+    // Simulate processor signaling playback complete
+    await act(async () => {
+      mockWorkletNode.port.onmessage?.({ data: { type: 'done' } } as MessageEvent)
+    })
 
     expect(result.current.isSpeaking).toBe(false)
   })
@@ -141,11 +123,15 @@ describe('useTTS', () => {
 
     const { result } = renderHook(() => useTTS())
 
-    // Not created on mount
     expect(globalThis.AudioContext).not.toHaveBeenCalled()
 
-    await act(() => result.current.speak('hello'))
+    await act(async () => {
+      result.current.speak('hello')
+      await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    })
 
     expect(globalThis.AudioContext).toHaveBeenCalledTimes(1)
+    expect(globalThis.AudioContext).toHaveBeenCalledWith({ sampleRate: 24000 })
+    expect(mockAudioContext.audioWorklet.addModule).toHaveBeenCalledWith('blob:mock-url')
   })
 })

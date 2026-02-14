@@ -76,8 +76,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         const last = messages[messages.length - 1]
         if (last?.role === 'agent' && last.content) {
           setPersonaState('speaking')
-          const sentences = last.content.split(/(?<=[.!?])\s+/).filter(Boolean)
-          for (const s of sentences) speak(s)
+          speak(last.content)
         }
       } else if (personaState === 'thinking') {
         setPersonaState('idle')
