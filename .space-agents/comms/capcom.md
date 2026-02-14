@@ -3191,3 +3191,60 @@ Cleaned up the sloppy voice integration layout from session 164. The mic/TTS tog
 - Test voice end-to-end with real Sprite agent responses
 
 ---
+
+## [2026-02-15 11:00] Session 166
+
+**Branch:** main | **Git:** uncommitted (this session's work + prior session leftovers)
+
+### What Happened
+
+**Sprite deploy improvements + SDK session resume implementation.**
+
+Four areas of work this session:
+
+1. **Closed `stackdocs-ogm` — stale `/workspace/src/` cleanup.**
+   - Removed `/workspace/src/` from `sd-e2e-test` Sprite via `sprite exec`.
+   - Added `/workspace/src` to `updater.ts` cleanup list (line 88) so any Sprite gets cleaned on next update.
+   - Bumped `CURRENT_VERSION` from `0.3.0` → `0.3.1` in `bootstrap.ts` to trigger updater.
+
+2. **Created `stackdocs-iic` (P2 bug) — auth timeout on Fly.io cold start.**
+   - Observed 2-3 connection retries before auth succeeds when Bridge machine is cold.
+   - Root cause: `AUTH_TIMEOUT_MS = 10_000` in `bridge/src/index.ts:45` too short for Fly.io cold start (3-10s boot).
+   - Three fix options captured: bump timeout, HTTP pre-warm, or min_machines_running=1.
+
+3. **Rewrote sprite-deploy skill (`.claude/skills/sprite-deploy/SKILL.md`).**
+   - Discovered `pkill -f` kills the exec session (exit 137), `pgrep -f` gives false positives (matches own bash).
+   - New approach: kill by port PID via `ss -tlnp | grep 8765`, verify in separate exec session.
+   - Reordered steps: kill first, then deploy (not deploy then kill).
+   - Added VERSION update step and post-deploy verification.
+   - Removed misleading "run test twice" workaround — root cause was stale port, not race condition.
+
+4. **Implemented SDK session resume in `sprite/src/runtime.py`.**
+   - Problem: `last_session_id` only stored in memory — lost on every process restart/deploy.
+   - Solution: persist to `/workspace/.os/session_id` file after each turn.
+   - On restart: read file → pass `resume=session_id` to SDK (Anthropic stores full history server-side).
+   - Resume path skips memory loading, tool registration — SDK has everything from original session.
+   - Fallback: if resume fails (expired/invalid), delete file, start fresh session.
+   - Verified on `sd-e2e-test`: kill server → restart → agent correctly recalled previous exchange.
+
+### Decisions Made
+
+- **Kill by port, not process name** — `ss -tlnp | grep 8765` is the only reliable method on Sprites.
+- **Resume skips system prompt** — Anthropic stores the full session including original system prompt. No need to reload memory files on resume.
+- **Session file at `/workspace/.os/session_id`** — matches VERSION file pattern, survives code deploys (only `/workspace/.os/src/` gets overwritten).
+- **Fallback on resume failure** — delete stale file, fall through to fresh session. Matches existing `_continue_session()` error pattern.
+
+### Gotchas
+
+- **Sprite Python is now 3.13.7** (was 3.13.3 in our notes). Sprites.dev updated the runtime.
+- **`pgrep -f` on Sprites matches its own exec bash session** — always use `ss -tlnp` or `ps aux | grep "[p]ython"`.
+- **Proxy timeout on first test run after Sprite sleep** — the Sprite was waking, server startup delayed. Not a code bug.
+- **SDK resume only preserves context within one session** — earlier conversations (from before session file was persisted) are not in the resumed context. Long-term memory is handled by ObservationProcessor + learnings DB.
+- **Runtime tests (15/20 failing)** — pre-existing mock issue: `receive_response()` returns coroutine not async iterator. Not caused by our changes.
+
+### Next Action
+
+- Debug card disappearing / not loading on refresh (stackdocs-m7b.4.14 — chat history + canvas state persistence)
+- Commit this session's changes and push
+
+---

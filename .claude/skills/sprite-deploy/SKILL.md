@@ -17,49 +17,43 @@ Deploy updated Python code + soul.md to a Sprite VM and restart the server.
 
 Run sequentially from `bridge/` directory. Replace `<SPRITE>` with the sprite name (default: `sd-e2e-test`).
 
-### 1. Deploy code (FS API)
+### 1. Kill existing server
+
+**Kill by port PID — this is the only reliable method.** Do NOT use `pkill -f` (kills the exec session too, exit code 137) or `pgrep -f` (matches its own exec bash process, gives false positives).
+
+**Step 1a: Kill the process holding port 8765**
+```bash
+sprite exec -s <SPRITE> -- bash -c 'PID=$(ss -tlnp | grep 8765 | grep -oP "pid=\K\d+"); if [ -n "$PID" ]; then kill -9 $PID; sleep 1; echo "killed PID $PID"; else echo "no server on 8765"; fi'
+```
+
+**Step 1b: Verify port is free**
+```bash
+sprite exec -s <SPRITE> -- bash -c 'ss -tlnp | grep 8765 || echo "port 8765 free"'
+```
+
+If the port is still in use, repeat 1a. On Sprites, CRIU checkpoint can delay process termination — a second round is occasionally needed.
+
+### 2. Deploy code (FS API)
 
 ```bash
 cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) && npx tsx scripts/deploy-code.ts <SPRITE>
 ```
 
-Expect: `[bootstrap] Deployed 13 source files + soul.md` + `Done`
+Expect: `[bootstrap] Deployed 14 source files + soul.md, os.md` + `Done`
 
 If 401 auth error: env vars didn't load. Verify `bridge/.env` exists with `SPRITES_TOKEN`.
 
-### 2. Fix ownership
+### 3. Fix ownership + update VERSION
 
-FS API writes as `ubuntu`, server runs as `sprite`. Fix BOTH `/workspace/src` and `/workspace/memory`:
+FS API writes as `ubuntu`, server runs as `sprite`. Fix permissions and bump VERSION:
 
 ```bash
-sprite exec -s <SPRITE> -- bash -c 'sudo chown -R sprite:sprite /workspace/src /workspace/memory && echo "ownership fixed"'
+sprite exec -s <SPRITE> -- bash -c 'sudo chown -R sprite:sprite /workspace/.os && echo "ownership fixed"'
 ```
 
-### 3. Kill existing server
-
-**IMPORTANT: Server processes are stubborn on Sprites.** pkill often fails silently or the process respawns. Always verify with a separate pgrep command after killing.
-
-**Step 3a: Kill and wait**
+Update the VERSION file (replace `X.Y.Z` with CURRENT_VERSION from `bridge/src/bootstrap.ts`):
 ```bash
-sprite exec -s <SPRITE> -- bash -c 'pkill -9 -f "python.*src.server" 2>/dev/null; sleep 2; echo "kill sent"'
-```
-
-Note: The exit code will be 137 (SIGKILL) — this is expected, not an error.
-
-**Step 3b: Verify it's actually dead**
-```bash
-sprite exec -s <SPRITE> -- bash -c 'pgrep -f "python.*src.server" || echo "server stopped"'
-```
-
-If PIDs still appear, the process respawned. Repeat 3a and 3b. On Sprites, killed processes can take a few seconds to fully terminate due to checkpoint/CRIU. Two rounds of kill + verify is normal.
-
-**Step 3c: Nuclear option (if still running)**
-```bash
-sprite exec -s <SPRITE> -- bash -c 'ps aux | grep python'
-```
-Then kill specific PIDs:
-```bash
-sprite exec -s <SPRITE> -- bash -c 'kill -9 <PID> 2>/dev/null; echo "killed <PID>"'
+sprite exec -s <SPRITE> -- bash -c 'echo -n "X.Y.Z" > /workspace/.os/VERSION && echo "VERSION: $(cat /workspace/.os/VERSION)"'
 ```
 
 ### 4. Start server + verify
@@ -72,14 +66,19 @@ cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) &&
 
 Expect:
 - `Sprite server listening on tcp://0.0.0.0:8765`
-- Agent response event
+- `Proxy connected`
+- Agent response event (e.g. `"content": "4"`)
 - `=== Done ===`
 
-**If `address already in use`:** The first run of test-e2e-v2 may start the server but timeout on the proxy connection (race condition — server needs a moment to bind). In this case, just run the same command again. The second run will connect to the already-running server and succeed.
+**If proxy timeout or address-in-use:** The port was not fully freed before starting. Go back to Step 1 — verify port is free, then retry.
 
-**If proxy timeout on first run:** This is normal. The server started fine but the proxy couldn't connect in time. Run again — it will work.
+### 5. Post-deploy verification
 
-### 5. Verify resume (optional)
+```bash
+sprite exec -s <SPRITE> -- bash -c 'echo "VERSION: $(cat /workspace/.os/VERSION)"; ss -tlnp | grep 8765 && echo "server listening"; ls /workspace/src 2>/dev/null && echo "WARNING: stale /workspace/src exists" || echo "no stale code"'
+```
+
+### 6. Verify resume (optional)
 
 ```bash
 cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) && npx tsx scripts/test-resume.ts <SPRITE>
@@ -90,10 +89,17 @@ cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) &&
 | Problem | Fix |
 |---------|-----|
 | 401 auth | `export $(grep -v '^#' .env \| xargs)` then retry |
-| Address in use | Server is already running. Just run test-e2e-v2 again (it connects to existing server) |
-| Proxy timeout on first run | Normal race condition. Run test-e2e-v2 again. |
-| Exit code 137/143 after kill | Expected — that's the killed process's exit code, not an error |
-| Server processes keep respawning | Kill + wait 2s + verify. Repeat up to 3 times. CRIU checkpoint system can delay termination. |
-| Server timeout | Check exec output for Python tracebacks |
+| Address in use | Port not freed. Run Step 1 (kill by port PID), verify free, then retry Step 4 |
+| Proxy timeout | Same as above — port must be confirmed free before starting server |
+| Server timeout | Check exec output for Python tracebacks (import errors, missing deps) |
 | Sprite sleeping | Any API call auto-wakes. Just run the command. |
-| Permission denied | Re-run step 2 (ownership fix) — include `/workspace/memory` |
+| Permission denied | Re-run Step 3 ownership fix |
+| `pkill` exit code 137 | Don't use `pkill -f` — it kills the exec session. Use port-based kill (Step 1) |
+| `pgrep` shows PIDs but no Python running | False positive — `pgrep -f` matches its own exec bash. Use `ss -tlnp` instead |
+
+## Key Lessons
+
+- **Always kill by port, not by process name.** `ss -tlnp | grep 8765` is the source of truth for whether the server is running.
+- **Always verify port is free before starting.** The "run test twice" workaround was masking stale processes holding the port.
+- **Kill and verify must be separate exec sessions.** `pkill -9` propagates and kills the exec session itself.
+- **`pgrep -f` is unreliable on Sprites.** It matches the bash process running the grep. Use `ps aux | grep "[p]ython"` or `ss -tlnp` instead.

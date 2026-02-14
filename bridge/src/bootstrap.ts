@@ -16,7 +16,7 @@ import { spriteExec } from './sprite-exec.js'
 
 // Current version — bump this when code or deps change.
 // The updater checks this against the sprite's /workspace/.os/VERSION file.
-export const CURRENT_VERSION = '0.3.0'
+export const CURRENT_VERSION = '0.3.1'
 
 // -- Source code deployment --
 
@@ -31,6 +31,7 @@ export async function deployCode(spriteName: string): Promise<void> {
     'protocol.py',
     'database.py',
     'runtime.py',
+    'state_sync.py',
     'memory/__init__.py',
     'memory/loader.py',
     'memory/hooks.py',

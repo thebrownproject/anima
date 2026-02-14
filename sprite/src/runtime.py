@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from pathlib import Path
 from typing import Callable, Awaitable
 
 from claude_agent_sdk import (
@@ -156,13 +157,42 @@ class AgentRuntime:
         request_id: str | None = None,
         attachments: list[str] | None = None,
     ) -> None:
-        """Start a new SDK session — first message on this connection."""
-        # Load memory files + pending actions into system prompt (async)
+        """Start a new SDK session — first message after process start.
+
+        If a persisted session ID exists from a previous process, attempts to
+        resume via the SDK (Anthropic stores full conversation history server-side).
+        Falls back to a fresh session if resume fails or no session file exists.
+        """
+        # Check for persisted session ID from a previous process
+        session_file = Path("/workspace/.os/session_id")
+        resume_id: str | None = None
+        try:
+            if session_file.exists():
+                resume_id = session_file.read_text().strip() or None
+        except OSError:
+            pass
+
+        # --- Resume path: SDK has full context, skip local setup ---
+        if resume_id:
+            logger.info("Attempting resume from session %s", resume_id)
+            options = self._build_options(resume=resume_id)
+            try:
+                self._client = ClaudeSDKClient(options=options)
+                await self._client.__aenter__()
+                logger.info("SDK session resumed (session %s)", resume_id)
+                await self._query_and_stream(text, request_id)
+                return
+            except Exception as exc:
+                logger.warning("Resume failed (session %s): %s — starting fresh", resume_id, exc)
+                await self._cleanup_client()
+                try:
+                    session_file.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        # --- Fresh path: load memory, register tools, build system prompt ---
         system_prompt = await load_memory(self._memory_db)
 
-        # Create canvas + memory tools and register via single MCP server
-        # Use indirect send so canvas tools always use the CURRENT send_fn
-        # (self._send gets replaced on TCP reconnect via update_send_fn)
         canvas_tools = create_canvas_tools(
             self._indirect_send,
             workspace_db=self._workspace_db,
@@ -173,7 +203,6 @@ class AgentRuntime:
             name="sprite", tools=canvas_tools + memory_tools
         )
 
-        # Insert session record in transcript.db
         session_id = f"session-{int(time.time())}"
         if self._transcript_db:
             await self._transcript_db.execute(
@@ -250,6 +279,11 @@ class AgentRuntime:
 
         elif isinstance(message, ResultMessage):
             self.last_session_id = message.session_id
+            # Persist to disk for resume after process restart
+            try:
+                Path("/workspace/.os/session_id").write_text(message.session_id)
+            except OSError:
+                logger.warning("Failed to persist session_id to disk")
 
             if self._workspace_db and self._turn_response:
                 await self._workspace_db.add_chat_message("agent", self._turn_response)

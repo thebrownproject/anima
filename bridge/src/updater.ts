@@ -85,6 +85,7 @@ export async function checkAndUpdate(spriteName: string): Promise<boolean> {
     'rm -rf /workspace/.os/src/agents',
     '/workspace/.os/src/memory/journal.py',
     '/workspace/.os/src/memory/transcript.py',
+    '/workspace/src',
   ].join(' '))
   console.log(`[updater] Cleaned stale files`)
 
