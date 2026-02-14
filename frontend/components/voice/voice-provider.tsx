@@ -30,6 +30,10 @@ export function useVoice(): VoiceContextValue {
   return ctx
 }
 
+export function useVoiceMaybe(): VoiceContextValue | null {
+  return useContext(VoiceContext)
+}
+
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const { startListening, stopListening } = useSTT()
   const { speak, interrupt, isSpeaking } = useTTS()

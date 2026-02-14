@@ -14,37 +14,40 @@ import { DesktopContextMenu } from '@/components/desktop/desktop-context-menu'
 import { DebugPanel } from '@/components/debug/debug-panel'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
+import { MaybeVoiceProvider } from '@/components/voice/voice-provider'
 
 export default function DesktopPage() {
   const cards = useDesktopStore((s) => s.cards)
 
   return (
     <WebSocketProvider>
-      <GlassTooltipProvider delayDuration={800}>
-        <div className="relative h-svh w-full overflow-hidden">
-          <WallpaperLayer />
+    <MaybeVoiceProvider>
+    <GlassTooltipProvider delayDuration={800}>
+      <div className="relative h-svh w-full overflow-hidden">
+        <WallpaperLayer />
 
-          <DesktopTopBar />
+        <DesktopTopBar />
 
-          <DesktopContextMenu>
-            <DesktopViewport>
-              <AnimatePresence>
-                {Object.values(cards).map((card) => (
-                  <DesktopCard key={card.id} card={card}>
-                    <BlockRenderer blocks={card.blocks} />
-                  </DesktopCard>
-                ))}
-              </AnimatePresence>
-            </DesktopViewport>
-          </DesktopContextMenu>
+        <DesktopContextMenu>
+          <DesktopViewport>
+            <AnimatePresence>
+              {Object.values(cards).map((card) => (
+                <DesktopCard key={card.id} card={card}>
+                  <BlockRenderer blocks={card.blocks} />
+                </DesktopCard>
+              ))}
+            </AnimatePresence>
+          </DesktopViewport>
+        </DesktopContextMenu>
 
-          <DocumentsPanel />
-          <ChatPanel />
+        <DocumentsPanel />
+        <ChatPanel />
 
-          <ChatBar />
-          <DebugPanel />
-        </div>
-      </GlassTooltipProvider>
+        <ChatBar />
+        <DebugPanel />
+      </div>
+    </GlassTooltipProvider>
+    </MaybeVoiceProvider>
     </WebSocketProvider>
   )
 }

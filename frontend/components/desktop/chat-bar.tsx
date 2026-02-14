@@ -7,6 +7,10 @@ import { useChatStore } from '@/lib/stores/chat-store'
 import { GlassIconButton } from '@/components/ui/glass-icon-button'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useWebSocket } from './ws-provider'
+import { isVoiceEnabled } from '@/lib/voice-config'
+import { useVoiceStore } from '@/lib/stores/voice-store'
+import { useVoiceMaybe } from '@/components/voice/voice-provider'
+import { PersonaOrb } from '@/components/voice/persona-orb'
 
 interface ChatBarProps {
   embedded?: boolean
@@ -19,6 +23,9 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const { send } = useWebSocket()
   const { chips, mode, isAgentStreaming, addMessage, setMode } = useChatStore()
   const activeStackId = useDesktopStore((s) => s.activeStackId)
+  const voiceActive = isVoiceEnabled()
+  const voice = useVoiceMaybe()
+  const personaState = useVoiceStore((s) => s.personaState)
 
   const sendMessage = useCallback((text: string) => {
     addMessage({ role: 'user', content: text, timestamp: Date.now() })
@@ -101,7 +108,10 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                 <textarea
                   ref={inputRef}
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={(e) => {
+                    setInputValue(e.target.value)
+                    if (voice && personaState === 'listening') voice.stopVoice()
+                  }}
                   onKeyDown={handleKeyDown}
                   onBlur={handleBlur}
                   rows={1}
@@ -150,11 +160,17 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
             {/* Right — Mic + Panel toggle (only in standalone bar) */}
             <div className="flex items-center gap-1">
-              <GlassIconButton
-                icon={<Icons.Microphone  />}
-                tooltip="Voice input"
-                tooltipSide="left"
-              />
+              {voiceActive ? (
+                <PersonaOrb />
+              ) : (
+                <div data-testid="mic-button">
+                  <GlassIconButton
+                    icon={<Icons.Microphone />}
+                    tooltip="Voice input"
+                    tooltipSide="left"
+                  />
+                </div>
+              )}
               {!embedded && (
                 <GlassIconButton
                   icon={<Icons.PanelRight  />}
