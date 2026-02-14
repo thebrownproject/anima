@@ -97,25 +97,6 @@ describe('PersonaOrb', () => {
     expect(mockInterruptTTS).not.toHaveBeenCalled()
   })
 
-  // Test: Mic and TTS toggles independent
-  it('mic toggle flips micEnabled without affecting ttsEnabled', () => {
-    useVoiceStore.setState({ micEnabled: true, ttsEnabled: true })
-    render(<PersonaOrb />)
-
-    fireEvent.click(screen.getByLabelText('Toggle microphone'))
-    expect(useVoiceStore.getState().micEnabled).toBe(false)
-    expect(useVoiceStore.getState().ttsEnabled).toBe(true)
-  })
-
-  it('tts toggle flips ttsEnabled without affecting micEnabled', () => {
-    useVoiceStore.setState({ micEnabled: true, ttsEnabled: true })
-    render(<PersonaOrb />)
-
-    fireEvent.click(screen.getByLabelText('Toggle speaker'))
-    expect(useVoiceStore.getState().ttsEnabled).toBe(false)
-    expect(useVoiceStore.getState().micEnabled).toBe(true)
-  })
-
   // Test: Transcript preview shows during listening
   it('shows transcript preview when listening with non-empty transcript', () => {
     useVoiceStore.setState({ personaState: 'listening', transcript: 'hello world' })

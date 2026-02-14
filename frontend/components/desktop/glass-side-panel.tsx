@@ -15,6 +15,8 @@ interface GlassSidePanelProps {
   closeTooltip?: string
   width?: string
   headerActions?: ReactNode
+  showHeader?: boolean
+  showClose?: boolean
   footer?: ReactNode
   children: ReactNode
   containerClassName?: string
@@ -31,6 +33,8 @@ export function GlassSidePanel({
   closeTooltip = 'Close',
   width = 'w-[320px]',
   headerActions,
+  showHeader = true,
+  showClose = true,
   footer,
   children,
   containerClassName,
@@ -54,26 +58,30 @@ export function GlassSidePanel({
         containerClassName,
       )}>
         {/* Header */}
-        <div className={cn(
-          'flex h-14 shrink-0 items-center px-5',
-          title ? 'justify-between' : 'justify-end',
-        )}>
-          {title && (
-            <div className="flex items-center gap-2.5">
-              {icon}
-              <span className="text-base font-semibold tracking-wide text-white/90">{title}</span>
+        {showHeader && (
+          <div className={cn(
+            'flex h-14 shrink-0 items-center px-5',
+            title ? 'justify-between' : 'justify-end',
+          )}>
+            {title && (
+              <div className="flex items-center gap-2.5">
+                {icon}
+                <span className="text-base font-semibold tracking-wide text-white/90">{title}</span>
+              </div>
+            )}
+            <div className="flex items-center">
+              {headerActions}
+              {showClose && (
+                <GlassIconButton
+                  icon={closeIcon ?? <Icons.X />}
+                  tooltip={closeTooltip}
+                  onClick={onClose}
+                  className="-mr-2"
+                />
+              )}
             </div>
-          )}
-          <div className="flex items-center">
-            {headerActions}
-            <GlassIconButton
-              icon={closeIcon ?? <Icons.X />}
-              tooltip={closeTooltip}
-              onClick={onClose}
-              className="-mr-2"
-            />
           </div>
-        </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">

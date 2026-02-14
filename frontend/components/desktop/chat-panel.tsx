@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import { useChatStore, type ChatMessage } from '@/lib/stores/chat-store'
 import { ChatBar } from './chat-bar'
 import { GlassSidePanel } from './glass-side-panel'
-import * as Icons from '@/components/icons'
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -65,7 +64,7 @@ function TypingIndicator() {
 
 export function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { messages, mode, isAgentStreaming, setMode } = useChatStore()
+  const { messages, mode, isAgentStreaming } = useChatStore()
 
   const isOpen = mode === 'panel'
 
@@ -75,41 +74,51 @@ export function ChatPanel() {
   }, [messages, isAgentStreaming])
 
   return (
-    <GlassSidePanel
-      isOpen={isOpen}
-      onClose={() => setMode('bar')}
-      side="right"
-      width="w-[400px]"
-      closeIcon={<Icons.LayoutBottombar />}
-      closeTooltip="Dock to bottom"
-      className="top-20 z-30"
-      containerClassName={cn(
-        isAgentStreaming && isOpen && 'border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_20px_rgba(6,182,212,0.06)]',
-      )}
-      footer={
-        <div className="p-3">
-          <ChatBar embedded />
-        </div>
-      }
-    >
-      {/* Agent streaming ambient glow */}
-      {isAgentStreaming && (
-        <div className="pointer-events-none absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-b from-cyan-500/5 via-transparent to-purple-500/5" />
-      )}
+    <>
+      <GlassSidePanel
+        isOpen={isOpen}
+        onClose={() => {}}
+        side="right"
+        width="w-[400px]"
+        showHeader={false}
+        showClose={false}
+        className="top-16 z-30"
+        containerClassName={cn(
+          isAgentStreaming && isOpen && 'border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_20px_rgba(6,182,212,0.06)]',
+        )}
+      >
+        {/* Agent streaming ambient glow */}
+        {isAgentStreaming && (
+          <div className="pointer-events-none absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-b from-cyan-500/5 via-transparent to-purple-500/5" />
+        )}
 
-      {/* Messages */}
-      <div className="relative flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-        {messages.length === 0 && (
-          <div className="flex-1" />
+        {/* Messages — scroll area with bottom padding for chat bar */}
+        <div className="relative flex flex-1 flex-col gap-3 overflow-y-auto p-4 pb-20">
+          {messages.length === 0 && (
+            <div className="flex-1" />
+          )}
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
+          {isAgentStreaming && messages[messages.length - 1]?.role !== 'agent' && (
+            <TypingIndicator />
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </GlassSidePanel>
+
+      {/* Chat bar — sibling to panel so backdrop-blur works (not nested) */}
+      <div
+        className={cn(
+          'fixed bottom-6 right-4 z-30 w-[400px] p-3',
+          'transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+          isOpen
+            ? 'translate-x-0 opacity-100'
+            : 'translate-x-[110%] opacity-0 pointer-events-none',
         )}
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
-        {isAgentStreaming && messages[messages.length - 1]?.role !== 'agent' && (
-          <TypingIndicator />
-        )}
-        <div ref={messagesEndRef} />
+      >
+        <ChatBar embedded />
       </div>
-    </GlassSidePanel>
+    </>
   )
 }

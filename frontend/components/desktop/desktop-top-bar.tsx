@@ -4,6 +4,7 @@ import { GlassTabSwitcher } from '@/components/desktop/glass-tab-switcher'
 import { GlassIconButton } from '@/components/ui/glass-icon-button'
 import * as Icons from '@/components/icons'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { useChatStore } from '@/lib/stores/chat-store'
 import { useWebSocket } from './ws-provider'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,8 @@ export function DesktopTopBar() {
   const activeStackId = useDesktopStore((s) => s.activeStackId)
   const setActiveStackId = useDesktopStore((s) => s.setActiveStackId)
   const toggleLeftPanel = useDesktopStore((s) => s.toggleLeftPanel)
+  const chatMode = useChatStore((s) => s.mode)
+  const setMode = useChatStore((s) => s.setMode)
   const { send } = useWebSocket()
 
   const visibleStacks = stacks.filter((s) => !archivedStackIds.includes(s.id))
@@ -107,6 +110,12 @@ export function DesktopTopBar() {
           icon={<Icons.User  />}
           tooltip="Account"
           className="size-8"
+        />
+        <GlassIconButton
+          icon={chatMode === 'panel' ? <Icons.LayoutBottombar /> : <Icons.PanelRight />}
+          tooltip={chatMode === 'panel' ? 'Dock to bottom' : 'Chat panel'}
+          className="size-8"
+          onClick={() => setMode(chatMode === 'panel' ? 'bar' : 'panel')}
         />
       </GlassPill>
     </div>

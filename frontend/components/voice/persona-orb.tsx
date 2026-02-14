@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useVoiceStore, type PersonaState } from '@/lib/stores/voice-store'
 import { useVoice } from './voice-provider'
@@ -21,11 +20,7 @@ const TAP_ACTIONS: Record<PersonaState, 'startVoice' | 'stopVoice' | 'interruptT
 
 export function PersonaOrb() {
   const personaState = useVoiceStore((s) => s.personaState)
-  const micEnabled = useVoiceStore((s) => s.micEnabled)
-  const ttsEnabled = useVoiceStore((s) => s.ttsEnabled)
   const transcript = useVoiceStore((s) => s.transcript)
-  const toggleMic = useVoiceStore((s) => s.toggleMic)
-  const toggleTts = useVoiceStore((s) => s.toggleTts)
   const { startVoice, stopVoice, interruptTTS } = useVoice()
 
   const isAsleep = personaState === 'asleep'
@@ -61,30 +56,6 @@ export function PersonaOrb() {
       >
         <Persona state={personaState} className="size-10" />
       </button>
-
-      {/* Mic + TTS toggles */}
-      <div className="flex items-center gap-1">
-        <button
-          aria-label="Toggle microphone"
-          onClick={toggleMic}
-          className={cn(
-            'flex size-7 items-center justify-center rounded-full text-white/50 transition-colors hover:text-white/80',
-            micEnabled && 'text-white/80'
-          )}
-        >
-          {micEnabled ? <Icons.Microphone className="size-3.5" /> : <Icons.MicrophoneOff className="size-3.5" />}
-        </button>
-        <button
-          aria-label="Toggle speaker"
-          onClick={toggleTts}
-          className={cn(
-            'flex size-7 items-center justify-center rounded-full text-white/50 transition-colors hover:text-white/80',
-            ttsEnabled && 'text-white/80'
-          )}
-        >
-          {ttsEnabled ? <Icons.Volume className="size-3.5" /> : <Icons.VolumeOff className="size-3.5" />}
-        </button>
-      </div>
     </div>
   )
 }

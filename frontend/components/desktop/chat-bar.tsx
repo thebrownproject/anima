@@ -21,11 +21,15 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const [inputActive, setInputActive] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { send } = useWebSocket()
-  const { chips, mode, isAgentStreaming, addMessage, setMode } = useChatStore()
+  const { chips, mode, isAgentStreaming, addMessage } = useChatStore()
   const activeStackId = useDesktopStore((s) => s.activeStackId)
   const voiceActive = isVoiceEnabled()
   const voice = useVoiceMaybe()
   const personaState = useVoiceStore((s) => s.personaState)
+  const micEnabled = useVoiceStore((s) => s.micEnabled)
+  const ttsEnabled = useVoiceStore((s) => s.ttsEnabled)
+  const toggleMic = useVoiceStore((s) => s.toggleMic)
+  const toggleTts = useVoiceStore((s) => s.toggleTts)
 
   const sendMessage = useCallback((text: string) => {
     addMessage({ role: 'user', content: text, timestamp: Date.now() })
@@ -158,10 +162,24 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
               <div className="flex-1" />
             )}
 
-            {/* Right — Mic + Panel toggle (only in standalone bar) */}
+            {/* Right — Voice controls */}
             <div className="flex items-center gap-1">
               {voiceActive ? (
-                <PersonaOrb />
+                <>
+                  <GlassIconButton
+                    icon={micEnabled ? <Icons.Microphone /> : <Icons.MicrophoneOff />}
+                    tooltip={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
+                    tooltipSide="left"
+                    onClick={toggleMic}
+                  />
+                  <GlassIconButton
+                    icon={ttsEnabled ? <Icons.Volume /> : <Icons.VolumeOff />}
+                    tooltip={ttsEnabled ? 'Mute speaker' : 'Unmute speaker'}
+                    tooltipSide="left"
+                    onClick={toggleTts}
+                  />
+                  <PersonaOrb />
+                </>
               ) : (
                 <div data-testid="mic-button">
                   <GlassIconButton
@@ -170,14 +188,6 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                     tooltipSide="left"
                   />
                 </div>
-              )}
-              {!embedded && (
-                <GlassIconButton
-                  icon={<Icons.PanelRight  />}
-                  tooltip="Open chat panel"
-                  tooltipSide="right"
-                  onClick={() => setMode('panel')}
-                />
               )}
             </div>
           </div>
