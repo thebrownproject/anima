@@ -11,6 +11,7 @@ import { ChatPanel } from '@/components/desktop/chat-panel'
 import { DocumentsPanel } from '@/components/desktop/documents-panel'
 import { BlockRenderer } from '@/components/desktop/block-renderer'
 import { DesktopContextMenu } from '@/components/desktop/desktop-context-menu'
+import { DebugPanel } from '@/components/debug/debug-panel'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 
@@ -41,6 +42,7 @@ export default function DesktopPage() {
           <ChatPanel />
 
           <ChatBar />
+          <DebugPanel />
         </div>
       </GlassTooltipProvider>
     </WebSocketProvider>

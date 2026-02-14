@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
@@ -15,6 +16,7 @@ import type { SpriteToBrowserMessage, BrowserToSpriteMessage, ChatMessageInfo } 
 import { useDesktopStore, type DesktopCard } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { getAutoPosition } from './auto-placer'
+import { type DebugLogEntry, DEBUG_LOG_MAX } from '@/components/debug/types'
 
 interface WebSocketContextValue {
   status: ConnectionStatus
@@ -22,6 +24,7 @@ interface WebSocketContextValue {
   connect: () => void
   disconnect: () => void
   send: (msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>) => boolean
+  debugLog: RefObject<DebugLogEntry[]>
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null)
@@ -32,6 +35,45 @@ export function useWebSocket(): WebSocketContextValue {
   return ctx
 }
 
+function summarizeInbound(msg: SpriteToBrowserMessage): string {
+  switch (msg.type) {
+    case 'agent_event': {
+      const { event_type, content } = msg.payload
+      if (event_type === 'tool') return `Tool: ${content}`
+      if (event_type === 'text') return `Agent: streaming (${content.length} chars)`
+      if (event_type === 'error') return `Error: ${content}`
+      return `Agent: ${event_type}`
+    }
+    case 'canvas_update':
+      return `Canvas: ${msg.payload.command} ${msg.payload.card_id}`
+    case 'state_sync':
+      return `Sync: ${msg.payload.stacks.length} stacks, ${msg.payload.cards.length} cards, ${msg.payload.chat_history.length} msgs`
+    case 'system':
+      return `System: ${msg.payload.event}${msg.payload.message ? ` — ${msg.payload.message}` : ''}`
+    default:
+      return msg.type
+  }
+}
+
+function summarizeOutbound(msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>): string {
+  // Use 'any' for payload access — this is debug-only summarization
+  const p = msg.payload as Record<string, unknown>
+  switch (msg.type) {
+    case 'mission': {
+      const text = (p.text as string) ?? ''
+      return `User: ${text.slice(0, 60)}${text.length > 60 ? '…' : ''}`
+    }
+    case 'file_upload':
+      return `Upload: ${p.filename}`
+    case 'canvas_interaction':
+      return `Canvas: ${p.action} on ${p.card_id}`
+    case 'auth':
+      return 'Auth: token sent'
+    default:
+      return msg.type
+  }
+}
+
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const { getToken } = useAuth()
   const [status, setStatus] = useState<ConnectionStatus>('disconnected')
@@ -39,8 +81,23 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const managerRef = useRef<WebSocketManager | null>(null)
   const getTokenRef = useRef(getToken)
   getTokenRef.current = getToken
+  const debugLogRef = useRef<DebugLogEntry[]>([])
+
+  const pushDebug = useCallback((
+    direction: DebugLogEntry['direction'],
+    type: string,
+    summary: string,
+    payload: unknown,
+  ) => {
+    const log = debugLogRef.current
+    log.push({ id: crypto.randomUUID(), timestamp: Date.now(), direction, type, summary, payload })
+    if (log.length > DEBUG_LOG_MAX) log.splice(0, log.length - DEBUG_LOG_MAX)
+  }, [])
 
   const handleMessage = useCallback((message: SpriteToBrowserMessage) => {
+    // Debug log: inbound messages
+    pushDebug('inbound', message.type, summarizeInbound(message), message)
+
     switch (message.type) {
       case 'canvas_update': {
         const { command, card_id, title, blocks, size, stack_id } = message.payload
@@ -146,6 +203,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     const manager = new WebSocketManager({
       getToken: () => getTokenRef.current(),
       onStatusChange: (s, err) => {
+        pushDebug('status', 'connection', `Status: ${s}${err ? ` — ${err}` : ''}`, { status: s, error: err })
         setStatus(s)
         setError(err ?? null)
       },
@@ -163,9 +221,15 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const send = useCallback(
-    (msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>): boolean =>
-      managerRef.current?.send(msg) ?? false,
-    []
+    (msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>): boolean => {
+      const ok = managerRef.current?.send(msg) ?? false
+      if (ok) {
+        const redacted = msg.type === 'auth' ? { ...msg, payload: { token: '[REDACTED]' } } : msg
+        pushDebug('outbound', msg.type, summarizeOutbound(msg), redacted)
+      }
+      return ok
+    },
+    [pushDebug]
   )
 
   // Auto-connect on mount, destroy on unmount
@@ -175,7 +239,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, [connect])
 
   return (
-    <WebSocketContext.Provider value={{ status, error, connect, disconnect, send }}>
+    <WebSocketContext.Provider value={{ status, error, connect, disconnect, send, debugLog: debugLogRef }}>
       {children}
     </WebSocketContext.Provider>
   )

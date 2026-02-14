@@ -1,227 +1,116 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with this repository.
-
----
-
 ## Project Overview
 
-**Stackdocs** is a **personal AI computer** for document intelligence. Each workspace (stack) runs on its own persistent VM (Sprite) with a full Claude Code-equivalent agent that learns, remembers, and works autonomously.
+**Stackdocs** is a **personal AI computer** for document intelligence. Each user gets a persistent VM (Sprite) running a full Claude Code-equivalent agent that learns, remembers, and works autonomously.
 
 **Core Value:** Talk to agent → AI extracts structured data from documents → Correct via chat → Agent learns → Export CSV/JSON
 
-**Target Audience:** SMBs eliminating manual data entry from documents
-
-**Business Model:** Free tier (1 stack) → Paid tiers (multiple stacks, $100-500/month)
-
-**Mental Model:** The agent IS the operating system. Users don't navigate UI — they talk to the agent, and it pulls up information, organizes data, and renders results to a visual Canvas.
+**Mental Model:** The agent IS the operating system. Users talk to it; it pulls up information, organizes data, and renders results to a visual Canvas.
 
 ---
 
-## Development Workflow
-
-This project uses the **Space-Agents workflow** for planning and implementing features:
-
-| Phase   | Skill                  | Output                                        |
-| ------- | ---------------------- | --------------------------------------------- |
-| Explore | `/exploration`         | Brainstorm, debug, plan, or review modes      |
-| Plan    | `/exploration-plan`    | Task-by-task implementation plan in Beads     |
-| Execute | `/mission`             | Working code with Worker/Inspector/Analyst    |
-
-**Session Commands:**
-
-| Command   | When to Use |
-|-----------|-------------|
-| `/launch` | Start of session - loads context, displays project status |
-| `/land`   | End of session - syncs CAPCOM and Beads, commits |
-| `/capcom` | Check mission status and progress |
-
-**MCP Tools Guide:**
-
-- **context7** - Fetch current library docs before writing code
-- **perplexity** - Verify latest versions, APIs, and best practices
-
-**Reference Docs:**
-
-| Doc | Purpose |
-|-----|---------|
-| `.space-agents/mission/staged/m7b-stackdocs-v2-sovereign-agent-platform/spec.md` | v2 architecture spec (source of truth) |
-| `.space-agents/mission/staged/m7b-stackdocs-v2-sovereign-agent-platform/plan.md` | v2 implementation plan (29 tasks) |
-| `docs/specs/ARCHITECTURE.md` | v1 system design (being replaced) |
-| `docs/specs/SCHEMA.md` | Database schema (v1 Supabase + v2 Sprite SQLite) |
-| `docs/specs/PRD.md` | Product requirements |
-| `.space-agents/comms/capcom.md` | Session history (grep for context, don't read in full) |
-| `docs/CLAUDE.md` | Planning index, workflow details |
-| Beads | Issue tracking - `bd list`, `bd show`, `bd ready`. UI: `bdui start --open` |
-
----
-
-## Architecture (v2)
+## Architecture
 
 ```
-                         HTTPS (pages, SSR, auth)
-            +----------------------------------------------+
-            |                                              |
-  Browser --|  www.stackdocs.io (Vercel)                   |
-            |  Next.js 16, App Router, Clerk               |
-            |  Canvas UI (React Flow)                      |
-            +----------------------------------------------+
-            |
-            |  WebSocket (wss://ws.stackdocs.io)
-            |  JWT validated on connect, trust connection
-            v
-  +--------------------------------------------------------+
-  |  Fly.io Machine: Bridge Service                        |
-  |  Node.js, lightweight WS proxy (~300 lines)            |
-  |                                                        |
-  |  - WebSocket server (browser connections)              |
-  |  - Clerk JWT validation (on connect only)              |
-  |  - Route user_id → stack → sprite_name (via Supabase) |
-  |  - Proxy messages: browser ↔ Sprite                   |
-  |  - Sprite provisioning (create from golden checkpoint) |
-  |  - Handle Sprite sleep/wake reconnection               |
-  |  - Keepalive pings to prevent 30s Sprite sleep         |
-  +------------------------+-------------------------------+
-                           |  TCP Proxy API (WSS)
-                           v
-  +--------------------------------------------------------+
-  |  Sprites.dev (one VM per stack)                        |
-  |                                                        |
-  |  Python WebSocket server (persists through sleep/wake)  |
-  |  +-- SpriteGateway (message router)                    |
-  |  +-- Agent Runtime (Claude Agent SDK — full access)    |
-  |  |   +-- Extraction tools, Canvas tools, Memory tools  |
-  |  |   +-- Bash, Read, Write, WebSearch, subagents       |
-  |  +-- Memory System (soul.md, user.md, journals)        |
-  |  +-- SQLite database (documents, extractions, memory)  |
-  |  +-- 100GB persistent filesystem                       |
-  +--------------------------------------------------------+
+Browser ──HTTPS──> Vercel (Next.js 16, Clerk auth, Canvas UI)
+   │
+   └──WSS──> Fly.io Bridge (Node.js WS proxy)
+                │  - Clerk JWT validation (on connect only)
+                │  - Route user_id → sprite_name (via Supabase users table)
+                │  - API key proxy (Anthropic + Mistral for Sprites)
+                │  - Sprite provisioning + lazy code updates
+                │  - Sleep/wake reconnection + keepalive pings
+                │
+                └──TCP Proxy──> Sprites.dev (one VM per user)
+                                  - Python WebSocket server (persists through sleep/wake)
+                                  - Agent Runtime (Claude Agent SDK — full tool access)
+                                  - Memory System (6 md files + observation processor)
+                                  - SQLite databases (transcript, memory, workspace)
+                                  - 100GB persistent filesystem
 ```
 
 **Three codebases in one repo:**
 
-```
-frontend/     # Next.js 16 — Canvas UI, Clerk auth, WebSocket client
-bridge/       # Node.js — Fly.io WS proxy (NEW for v2)
-sprite/       # Python — Sprite agent runtime (NEW for v2)
-backend/      # FastAPI — v1 backend (being replaced by sprite/)
-```
+| Directory | Stack | Purpose |
+|-----------|-------|---------|
+| `frontend/` | Next.js 16, Clerk, Zustand, glass components | Canvas UI, WebSocket client |
+| `bridge/` | Node.js, Fly.io | WS proxy, auth, provisioning, API key proxy |
+| `sprite/` | Python, Claude Agent SDK, SQLite | Agent runtime, memory, extraction |
+| `backend/` | FastAPI (v1, being replaced) | Legacy endpoints on DigitalOcean |
 
 ---
 
 ## Frontend
 
-Next.js 16 (App Router) with Clerk auth, shadcn/ui + glass components, Zustand stores.
+Next.js 16 (App Router), Clerk auth, shadcn/ui + glass components, Zustand stores.
 
-```
-frontend/
-├── app/(app)/              # Prototype routes (test-chat)
-├── app/(desktop)/          # v2 production routes (/stacks/[id])
-├── components/
-│   ├── desktop/            # Glass desktop: viewport, cards, chat, panels
-│   ├── ui/                 # shadcn/ui primitives + glass-* components
-│   ├── wallpaper/          # Desktop wallpaper system
-│   ├── ai-elements/        # Vercel AI Elements (FileTree)
-│   └── icons/              # Tabler icon barrel export
-├── hooks/
-│   ├── use-mobile.ts       # Viewport detection
-│   └── use-momentum.ts     # Shared momentum physics (drag)
-├── lib/
-│   ├── websocket.ts        # WebSocket connection manager
-│   ├── stores/
-│   │   ├── chat-store.ts   # Chat messages, mode, streaming
-│   │   ├── desktop-store.ts # Cards, tabs, active workspace
-│   │   └── wallpaper-store.ts # Wallpaper + persistence
-│   └── supabase/           # Supabase client (platform data only)
-└── types/
-    └── ws-protocol.ts      # WebSocket message types (copy of bridge source)
-```
-
-See `frontend/CLAUDE.md` for patterns and directory structure.
+**Key paths:**
+- `app/(desktop)/desktop/page.tsx` — main desktop page (no dynamic route)
+- `components/desktop/` — viewport, cards, chat, panels, ws-provider (13 components)
+- `components/debug/` — debug panel (Cmd+Shift+D toggle, WS message inspector)
+- `components/ui/` — shadcn/ui primitives + glass-* components
+- `lib/websocket.ts` — WebSocket connection manager
+- `lib/stores/` — chat-store (ephemeral), desktop-store (persisted), wallpaper-store
+- `types/ws-protocol.ts` — message types (copy of bridge source)
 
 ---
 
-## Bridge (NEW — v2)
+## Bridge
 
-Node.js WebSocket proxy on Fly.io. Lightweight — routes messages between browsers and Sprites.
+Node.js WebSocket proxy on Fly.io. Routes messages between browsers and Sprites.
 
-```
-bridge/
-├── src/
-│   ├── index.ts            # HTTP server + WS upgrade
-│   ├── auth.ts             # Clerk JWT validation
-│   ├── protocol.ts         # WebSocket message types (source of truth)
-│   ├── sprites-client.ts   # Sprites.dev REST API client
-│   ├── provisioning.ts     # Lazy Sprite creation from golden checkpoint
-│   ├── proxy.ts            # Message forwarding browser ↔ Sprite
-│   ├── sprite-connection.ts # TCP Proxy connection to Sprite
-│   ├── reconnect.ts        # Sleep/wake reconnection logic
-│   └── keepalive.ts        # Prevent Sprite auto-sleep during sessions
-├── tests/
-├── Dockerfile
-└── fly.toml
-```
+**Key paths:**
+- `src/index.ts` — HTTP server + WS upgrade on `/ws`
+- `src/auth.ts` — Clerk JWT + Supabase users table lookup
+- `src/protocol.ts` — WebSocket message types (source of truth)
+- `src/proxy.ts` — browser ↔ Sprite forwarding (keyed by userId)
+- `src/api-proxy.ts` — Anthropic/Mistral API key proxy for Sprites
+- `src/provisioning.ts` — lazy Sprite creation + bootstrap
+- `src/connection-store.ts` — browser connection registry
+- `src/reconnect.ts` + `src/keepalive.ts` — sleep/wake handling
+
+**Tests:** 136 passing (Vitest) — unit, integration, E2E with mock Sprite
 
 ---
 
-## Sprite Runtime (NEW — v2)
+## Sprite Runtime
 
-Python agent runtime that runs on each Sprite VM. Ports v1 extraction agents from Supabase to SQLite.
+Python agent runtime on each Sprite VM. One per user.
 
-```
-sprite/
-├── src/
-│   ├── server.py           # WebSocket server on port 8765
-│   ├── gateway.py          # SpriteGateway message router
-│   ├── runtime.py          # AgentRuntime wrapping Claude Agent SDK
-│   ├── database.py         # Async SQLite wrapper (aiosqlite)
-│   ├── protocol.py         # WebSocket message types (Python dataclasses)
-│   ├── agents/
-│   │   ├── extraction_agent/  # Ported from backend/app/agents/
-│   │   └── shared/
-│   │       ├── canvas_tools.py  # create/update/close windows
-│   │       └── memory_tools.py  # write_memory, update_soul
-│   ├── memory/
-│   │   ├── loader.py       # Load soul.md + journals into system prompt
-│   │   ├── journal.py      # Daily journal append
-│   │   └── transcript.py   # JSONL audit logging
-│   ├── handlers/
-│   │   └── upload.py       # File upload handler
-│   └── services/
-│       └── ocr.py          # Mistral OCR + Claude native PDF
-├── tests/
-└── requirements.txt
-```
+**Key paths:**
+- `src/server.py` — WebSocket server on port 8765
+- `src/gateway.py` — message router (dispatches to agent or handles directly)
+- `src/runtime.py` — AgentRuntime wrapping Claude Agent SDK
+- `src/database.py` — three async SQLite databases (TranscriptDB, MemoryDB, WorkspaceDB)
+- `src/tools/canvas.py` — create/update/close Canvas windows
+- `src/tools/memory.py` — memory read/write tools
+- `src/memory/processor.py` — ObservationProcessor (Haiku-powered, runs every 25 turns)
+- `src/memory/hooks.py` — TurnBuffer + SDK hook callbacks
+- `src/memory/loader.py` — load memory files into system prompt
 
----
-
-## Backend (v1 — Being Replaced)
-
-FastAPI on DigitalOcean. Still running for v1 features. Being replaced by Sprite runtime.
-
-See `backend/CLAUDE.md` for legacy endpoints and deployment.
+**Memory files** (on Sprite at `/workspace/.os/memory/`):
+- `soul.md`, `os.md` — deploy-managed (stack identity, system rules)
+- `tools.md`, `files.md`, `user.md`, `context.md` — daemon-managed (auto-updated by processor)
 
 ---
 
 ## Database
 
-**Supabase (platform data only in v2):**
-
-| Table    | Purpose |
-|----------|---------|
-| `users`  | User profiles (Clerk ID, email, subscription tier) |
-| `stacks` | Stack metadata + Sprite mapping (`sprite_name`, `sprite_status`) |
-
-v1 tables (`documents`, `extractions`, `ocr_results`, etc.) still exist but are being replaced by Sprite-local SQLite.
-
-**Sprite SQLite (per-stack, on-VM):**
+**Supabase (platform data only):**
 
 | Table | Purpose |
 |-------|---------|
-| `documents` | Uploaded file metadata (files on Sprite filesystem) |
-| `ocr_results` | OCR text metadata (text cached at `/workspace/ocr/`) |
-| `extractions` | AI-extracted structured data (JSON fields) |
-| `memory_fts` | FTS5 virtual table for memory search |
+| `users` | Clerk ID, email, tier, `sprite_name`, `sprite_status` |
+| `stacks` | Stack metadata (`name`, `color`, `sort_order`, `archived_at`) |
+
+**Sprite SQLite (per-user, on-VM):**
+
+| Database | Tables | Purpose |
+|----------|--------|---------|
+| `transcript.db` | observations, sessions | Append-only conversation log |
+| `memory.db` | learnings, learnings_fts | Extracted knowledge (FTS5 indexed) |
+| `workspace.db` | stacks, cards, chat_messages | Canvas state + chat history |
 
 ---
 
@@ -229,24 +118,36 @@ v1 tables (`documents`, `extractions`, `ocr_results`, etc.) still exist but are 
 
 | Component | URL | Host |
 |-----------|-----|------|
-| Frontend  | `www.stackdocs.io` | Vercel |
-| Bridge    | `ws.stackdocs.io` | Fly.io |
-| Sprites   | (per-stack VMs) | Sprites.dev |
-| Backend   | `api.stackdocs.io` | DigitalOcean (v1, being replaced) |
+| Frontend | `www.stackdocs.io` | Vercel |
+| Bridge | `ws.stackdocs.io` | Fly.io (syd, auto-stop/start) |
+| Sprites | per-user VMs | Sprites.dev |
+| Backend | `api.stackdocs.io` | DigitalOcean (v1, being replaced) |
 
 ---
 
 ## Key Patterns
 
-**Tool factory (scoped closures):** `create_tools(extraction_id, doc_id, user_id, db)` — same pattern from v1, `db` param changes from Supabase to SQLite.
+**One Sprite per user:** Bridge maps `user_id → sprite_name` via Supabase `users` table. Stacks are lightweight canvas layouts on the same Sprite. Multiple browser tabs share one Sprite TCP connection.
 
-**WebSocket message protocol:** TypeScript types in `bridge/src/protocol.ts` (source of truth), Python dataclasses in `sprite/src/protocol.py`. Every message has mandatory `id` (UUID) and `timestamp`.
+**WebSocket protocol:** TypeScript types in `bridge/src/protocol.ts` (source of truth), Python dataclasses in `sprite/src/protocol.py`. Every message has mandatory `id` (UUID) and `timestamp`.
 
-**Canvas architecture:** Agent creates/updates/closes windows via WebSocket `canvas_update` messages. Zustand store + localStorage for persistence. React Flow for pan/zoom/grid.
+**Tool factory (scoped closures):** `create_tools(...)` — same pattern from v1, `db` param is now SQLite.
 
-**Memory system:** `soul.md` (stack identity), `user.md` (user prefs), `MEMORY.md` (global context), daily journals. Loaded into system prompt at session start.
+**Canvas architecture:** Agent creates/updates/closes windows via `canvas_update` messages. Custom viewport with momentum physics (not React Flow). Zustand desktop-store + localStorage persistence.
 
-**Sprites.dev behavior:** Processes frozen on sleep (checkpoint/CRIU, same PID on wake). TCP connections die on sleep — Bridge must reconnect. 30s auto-sleep, 1-12s cold wake. Start server via `exec` with `max_run_after_disconnect=0` — persists indefinitely through sleep/wake.
+**Memory system:** 6 markdown files loaded into system prompt. ObservationProcessor (Haiku) runs every 25 turns to extract learnings and update daemon-managed files. TurnBuffer captures user messages + tool calls + agent responses via SDK hooks.
+
+**Sprites.dev behavior:** Processes frozen on sleep (CRIU checkpoint, same PID on wake). TCP connections die on sleep — Bridge reconnects. 30s auto-sleep, keepalive prevents during active sessions.
+
+**Debug panel:** `Cmd+Shift+D` toggles left-side WS inspector. Shows connection status, all messages sent/received, agent tool calls. `localStorage.setItem('stackdocs:debug', 'true')` also works.
+
+---
+
+## Development Workflow
+
+Uses **Space-Agents** for planning and execution: `/launch`, `/exploration`, `/mission`, `/land`.
+
+**Issue tracking:** Beads (`bd list`, `bd show`, `bd ready`). MCP tools: **context7** for library docs, **perplexity** for verification, **supabase** for DB queries.
 
 ---
 
@@ -260,27 +161,10 @@ v1 tables (`documents`, `extractions`, `ocr_results`, etc.) still exist but are 
 
 **Understand before solving:** Always examine the existing structure before proposing workarounds.
 
----
+**Protocol types are shared:** Changes to message types must update both TypeScript and Python.
 
-## Frontend Testing
+**Supabase is platform-only:** User data lives on Sprite SQLite + filesystem, not Supabase.
 
-**Tool:** `agent-browser` (v0.9.1, installed globally) — Vercel's AI-agent-optimised browser CLI. Uses Playwright under the hood with 93% less context than Playwright MCP.
+**Ask before adding:** No extra features, refactoring, or "improvements" without explicit request.
 
-**Use agent-browser for ALL frontend testing** — E2E flows, Canvas UI verification, auth flows, visual checks. It saves snapshots/screenshots to disk (not into LLM context), making it token-efficient for agent-driven testing.
-
-```bash
-agent-browser             # CLI entry point (globally installed)
-```
-
----
-
-## Key Reminders
-
-1. **Three codebases:** `frontend/`, `bridge/`, `sprite/` — know which you're working in
-2. **Protocol types are shared** — changes to message types must update TS and Python
-3. **Supabase is platform-only in v2** — user data lives on Sprite SQLite + filesystem
-4. **OCR is cached on Sprite** — `/workspace/ocr/{doc_id}.md` persists across sessions
-5. **Sprites sleep after 30s** — Bridge keepalive prevents this during active sessions. Processes survive sleep (checkpoint), only TCP connections die.
-6. **Pre-compaction flush is post-MVP** — claude-agent-sdk doesn't expose compaction controls
-7. **Ask before adding** — No extra features without explicit request
-8. **Inspector bloat findings are not optional** — If a review/Inspector agent reports bloat (excessive lines, over-engineering, comment density), do NOT rationalize it away. Flag it to the user immediately and ask if they want a cleanup pass before continuing. Design targets (e.g. "~300 lines") are real constraints, not suggestions.
+**Inspector bloat findings are not optional:** If a review agent reports bloat, flag it immediately. Design targets are constraints, not suggestions.

@@ -8,6 +8,7 @@ import {
   GlassContextMenuContent,
 } from '@/components/ui/glass-context-menu'
 import { WALLPAPERS, useWallpaperStore } from '@/lib/stores/wallpaper-store'
+import { WallpaperThumbnail } from '@/components/desktop/wallpaper-thumbnail'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 
 const ZOOM_STEP = 0.25
@@ -83,22 +84,16 @@ export function DesktopMenuBody() {
       <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
         Environment
       </p>
-      {WALLPAPERS.map((wp) => (
-        <button
-          key={wp.id}
-          onClick={() => setWallpaper(wp.id)}
-          className="relative flex w-full cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-        >
-          <div
-            className="size-7 shrink-0 rounded-full bg-cover bg-center ring-1 ring-white/20"
-            style={{ backgroundImage: `url(${wp.url})` }}
+      <div className="grid grid-cols-3 place-items-center gap-3 px-1 py-2">
+        {WALLPAPERS.map((wp) => (
+          <WallpaperThumbnail
+            key={wp.id}
+            wallpaper={wp}
+            selected={wallpaperId === wp.id}
+            onSelect={() => setWallpaper(wp.id)}
           />
-          <span className="flex-1 text-left">{wp.name}</span>
-          {wallpaperId === wp.id && (
-            <Icons.Check className="size-3 text-white/50" />
-          )}
-        </button>
-      ))}
+        ))}
+      </div>
     </>
   )
 }
