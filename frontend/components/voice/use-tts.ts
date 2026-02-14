@@ -104,7 +104,6 @@ export function useTTS(): TTSControls {
 
         const node = new AudioWorkletNode(ctx, 'pcm-stream-player')
         workletNodeRef.current = node
-        node.connect(ctx.destination)
         node.port.onmessage = (e) => {
           if (e.data.type === 'done') {
             node.disconnect()
@@ -115,6 +114,9 @@ export function useTTS(): TTSControls {
 
         const reader = res.body.getReader()
         let carry: number | null = null
+        let connected = false
+        let bufferedSamples = 0
+        const PRE_BUFFER = 4800 // ~200ms at 24kHz
 
         while (true) {
           const { done, value } = await reader.read()
@@ -138,8 +140,18 @@ export function useTTS(): TTSControls {
           const float32 = new Float32Array(int16.length)
           for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
           node.port.postMessage({ type: 'audio', samples: float32 }, [float32.buffer])
+
+          if (!connected) {
+            bufferedSamples += int16.length
+            if (bufferedSamples >= PRE_BUFFER) {
+              node.connect(ctx.destination)
+              connected = true
+            }
+          }
         }
 
+        // Connect if stream ended before pre-buffer filled (short text)
+        if (!connected) node.connect(ctx.destination)
         node.port.postMessage({ type: 'end' })
       } catch (err: any) {
         if (err?.name !== 'AbortError') setIsSpeaking(false)
