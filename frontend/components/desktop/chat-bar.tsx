@@ -115,6 +115,9 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                   onKeyDown={handleKeyDown}
                   onBlur={handleBlur}
                   rows={1}
+                  autoComplete="off"
+                  data-1p-ignore
+                  data-lpignore="true"
                   className="w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30"
                 />
               </div>
