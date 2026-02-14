@@ -3151,3 +3151,43 @@ Unstaged out-of-scope changes from Builder agents:
 - Continue with remaining work: m7b.4.14 (chat history disappears on refresh), stackdocs-sm2 (spriteExec CLI bug)
 
 ---
+
+## [2026-02-15 09:00] Session 165
+
+**Branch:** main | **Git:** uncommitted (prior session leftovers — wallpapers, bridge, sprite)
+
+### What Happened
+
+**Voice controls cleanup — chat bar layout reorganization.**
+
+Cleaned up the sloppy voice integration layout from session 164. The mic/TTS toggles were inside PersonaOrb as a vertical stack hanging below the orb, breaking the chat bar's horizontal action row.
+
+**Changes made (6 files, committed as `74e0e93`):**
+
+1. **`persona-orb.tsx`** — Stripped mic/TTS toggle buttons and Icons import. PersonaOrb is now just transcript preview + orb tap target. Removed 29 lines.
+2. **`chat-bar.tsx`** — Added mic/TTS as inline `GlassIconButton` instances to the LEFT of the orb. Layout: `[+] [Ask anything...] [Mic] [TTS] [Orb]`. Removed PanelRight button entirely.
+3. **`desktop-top-bar.tsx`** — Added panel toggle to far-right of system tray pill (after User icon). Icon swaps between `PanelRight` (bar mode) and `LayoutBottombar` (panel mode). Click toggles between modes.
+4. **`chat-panel.tsx`** — Removed close button from panel header. Removed empty header via `showHeader={false}`. Messages fill top-to-bottom. ChatBar rendered as **sibling** to GlassSidePanel (not child) to fix backdrop-blur.
+5. **`glass-side-panel.tsx`** — Added `showHeader` and `showClose` props (both default `true`).
+6. **`persona-orb.test.tsx`** — Removed 2 tests for deleted toggle buttons. 70/70 tests pass.
+
+### Decisions Made
+
+- **Mic/TTS as GlassIconButtons** — consistent with other action bar buttons, same size-10 circular style
+- **Panel toggle far-right in top bar** — User icon left of it, matching OS-style tray layout. Icon swaps to show current action (open panel vs dock to bottom).
+- **ChatBar as sibling to GlassSidePanel** — nested `backdrop-filter` is broken in browsers (known Chromium bug). Rendering ChatBar outside the panel as a fixed sibling gives it its own blur context, matching the standalone bottom bar's frost quality.
+- **No close button in chat panel** — top bar toggle handles mode switching, redundant close removed.
+
+### Gotchas
+
+- **Nested `backdrop-filter: blur()` doesn't work** — when an ancestor has `backdrop-filter`, descendant elements' `backdrop-filter` silently fails. The ChatBar inside GlassSidePanel had zero blur effect. Fix: render as DOM sibling, not child.
+- **TS diagnostics for `embedded` prop are phantom** — `chat-panel.tsx` shows `Type '{ embedded: true; }' is not assignable to type 'IntrinsicAttributes'` but the prop is clearly defined and tests pass. Stale editor module resolution.
+- **Unstaged changes from session 164 still present** — wallpapers, bridge state_sync, chat-store persist, sprite gateway/runtime. Not committed this session, not related to this work.
+
+### Next Action
+
+- Review/commit or discard the remaining unstaged changes from session 164 (wallpapers, bridge, sprite, chat-store)
+- Fix bugs: stackdocs-sm2 (spriteExec CLI), m7b.4.14 (chat history refresh), m7b.4.13 (agent size param)
+- Test voice end-to-end with real Sprite agent responses
+
+---
