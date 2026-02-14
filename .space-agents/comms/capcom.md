@@ -2999,3 +2999,88 @@ Ran full Pathfinder → Builder → Inspector cycle for each task. All Bridge an
 - Then: `/plan` on voice-integration spec
 
 ---
+
+## [2026-02-14 09:45] Session 164
+
+**Branch:** main | **Git:** uncommitted (frontend + bridge + CLAUDE.md changes)
+
+### What Happened
+
+**Closed m7b.12 — One Sprite Per User (17/17 tasks)**
+- Wrote `bridge/tests/e2e-user-sprite.test.ts` — 8 E2E integration tests validating the full per-user refactor: state_sync, mission context routing, multi-tab sharing (single TCP connection), broadcast to all tabs, Sprite disconnect on last tab close. Fixed cross-test interference in full suite by adding `resetSpriteConnections()`/`resetKeepalives()`/`resetReconnectState()` to `beforeEach`. 136/136 bridge tests passing.
+
+**Deployed Bridge to Fly.io**
+- Applied Supabase migration 012 (`sprite_name`/`sprite_status` moved from `stacks` to `users` table) via Supabase MCP.
+- Deployed updated Bridge with `flyctl deploy`. Verified health check + 2 active connections from Fraser's browser.
+- Confirmed ANTHROPIC_API_KEY, MISTRAL_API_KEY, SPRITES_PROXY_TOKEN all set as Fly secrets.
+
+**Built Debug Panel (new feature)**
+- Created `frontend/components/debug/` — types.ts, use-debug-panel.ts, debug-panel.tsx
+- Toggle: `Cmd+Shift+D` + localStorage persistence (`stackdocs:debug`)
+- Left-side glass panel (420px wide, z-50) with 3 tabs: Messages, Connection, Agent
+- Taps WebSocket traffic via `useRef<DebugLogEntry[]>` in ws-provider (inbound/outbound/status)
+- 500ms polling interval, ring buffer (200 entries), click-to-expand JSON payloads
+- Auth token redacted in outbound log. Zero TypeScript errors, build passes.
+
+**Updated CLAUDE.md files**
+- Root `CLAUDE.md` rewritten: 287→171 lines. Architecture updated for per-user model, memory system corrected (6 md files not journals), Canvas corrected (custom viewport not React Flow), database schema updated.
+- Created `bridge/CLAUDE.md` (~319 lines) and `sprite/CLAUDE.md` (~286 lines) with expanded codebase docs.
+
+**Created 2 Beads**
+- stackdocs-m7b.4.14 (P2 bug): Chat history disappears on refresh — chat-store missing persist middleware
+- stackdocs-inb (P3 feature): Daemon activity feed in debug panel — needs daemon_event WS message type
+
+### Decisions Made
+- Debug panel positioned on LEFT side (not bottom drawer) so both ChatBar and ChatPanel remain visible
+- Used `useRef` for debug log instead of Zustand store — avoids re-renders in main UI
+- Daemon output NOT available in debug panel yet — ObservationProcessor runs entirely on-Sprite with no WS output. Tracked as future bead.
+
+### Next Action
+- Supabase RLS security review (Fraser requested)
+- Fix chat history persistence (m7b.4.14)
+- Continue Phase 3 Canvas UI or Phase 4 Upload+Extraction
+
+---
+
+## [2026-02-14 12:00] Session 163
+
+**Branch:** main | **Git:** committed
+
+### What Happened
+
+**Voice integration planning — full plan.md + 8 Beads tasks created.**
+
+Planned the voice integration feature (m7b.13) from the Session 162 brainstorm spec. Three-phase planning council:
+
+1. **Task Planner** broke spec into 11 tasks with files, deps, and test criteria.
+2. **Sequencer** analyzed dependencies, merged to 8 tasks (API routes combined, feature flag moved early, WS status absorbed into integration), identified 5 risks (Deepgram SSR compat, Rive bundle size, iOS Safari autoplay, TTS buffering, component tree nesting).
+3. **Implementer** produced full TDD breakdown with test code sketches, caught missing Vitest setup, identified conditional hooks problem (solved with MaybeVoiceProvider pattern).
+
+Walked through all 8 tasks with Fraser one by one via AskUserQuestion. All approved as-is.
+
+**Final 8 tasks (m7b.13.1-m7b.13.8):**
+1. Setup — deps, Vitest, Persona, voice-config, feature flag
+2. Voice store (Zustand state machine with enforced transitions)
+3. API routes (Deepgram temp token GET + TTS proxy POST)
+4. use-stt hook (Deepgram streaming, MediaRecorder, real-time transcript)
+5. use-tts hook (AudioContext playback, queue, interrupt)
+6. Voice provider (React context composing STT+TTS, wiring chat-voice)
+7. Persona orb (Rive animation, tap interactions, toggle buttons)
+8. Chat integration + feature gate (wire into chat-bar, MaybeVoiceProvider)
+
+Dependencies set up. Critical path: 6 tasks. Plan + spec moved to mission/staged/m7b.13-voice-integration/.
+
+### Decisions Made
+
+- **Full-response-then-speak for TTS MVP** — no sentence-level chunking. Optimize later.
+- **Default personaState is 'asleep'** — store initializes before WS connects.
+- **Feature flag early (Task 1)** — build with gate from start, not bolted on at end.
+- **MaybeVoiceProvider pattern** — solves React conditional hooks problem cleanly.
+- **No rate limiting on API routes for MVP** — Clerk auth is sufficient gating.
+
+### Next Action
+
+- Run /mission on m7b.13 to begin implementation (start with Tasks 1+2 in parallel)
+- Or continue with remaining work: m7b.12.17 (E2E test), m7b.4.14 (chat history bug)
+
+---
