@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } from 'vitest'
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { useVoiceStore } from '@/lib/stores/voice-store'
 
 const { mockStartVoice, mockStopVoice, mockInterruptTTS } = vi.hoisted(() => ({
@@ -8,13 +8,14 @@ const { mockStartVoice, mockStopVoice, mockInterruptTTS } = vi.hoisted(() => ({
   mockInterruptTTS: vi.fn(),
 }))
 
-// Mock next/dynamic to render the component synchronously
+let capturedOnReady: (() => void) | undefined
+
 vi.mock('next/dynamic', () => ({
   default: (_loader: () => Promise<any>) => {
-    // Return a component that renders a div with the state prop as data attr
-    const MockPersona = (props: any) => (
-      <div data-testid="persona" data-state={props.state} className={props.className} />
-    )
+    function MockPersona(props: any) {
+      capturedOnReady = props.onReady
+      return <div data-testid="persona" data-state={props.state} className={props.className} />
+    }
     MockPersona.displayName = 'MockPersona'
     return MockPersona
   },
@@ -37,9 +38,19 @@ const DEFAULTS = {
   transcript: '',
 }
 
+// In test env, requestAnimationFrame is async — stub to fire sync so Rive mounts immediately
+const origRAF = globalThis.requestAnimationFrame
+beforeAll(() => {
+  globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 0 }
+})
+afterAll(() => {
+  globalThis.requestAnimationFrame = origRAF
+})
+
 describe('PersonaOrb', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    capturedOnReady = undefined
     useVoiceStore.setState(DEFAULTS)
   })
 
@@ -47,10 +58,26 @@ describe('PersonaOrb', () => {
     cleanup()
   })
 
-  // Test: Persona animation reflects personaState
-  it('passes personaState to Persona component', () => {
+  // --- Placeholder ---
+
+  it('shows placeholder before Rive is ready', () => {
     render(<PersonaOrb />)
-    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('idle')
+    expect(screen.getByTestId('persona-placeholder')).toBeTruthy()
+  })
+
+  it('hides placeholder after Rive fires onReady', () => {
+    render(<PersonaOrb />)
+    expect(screen.getByTestId('persona-placeholder')).toBeTruthy()
+    act(() => capturedOnReady?.())
+    expect(screen.queryByTestId('persona-placeholder')).toBeNull()
+  })
+
+  // --- Rive state mapping ---
+
+  it('maps voice state to visible Rive animation state', () => {
+    render(<PersonaOrb />)
+    // idle maps to thinking (idle is invisible in Rive)
+    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('thinking')
 
     cleanup()
     useVoiceStore.setState({ personaState: 'listening' })
@@ -61,9 +88,15 @@ describe('PersonaOrb', () => {
     useVoiceStore.setState({ personaState: 'speaking' })
     render(<PersonaOrb />)
     expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('speaking')
+
+    cleanup()
+    useVoiceStore.setState({ personaState: 'thinking' })
+    render(<PersonaOrb />)
+    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('thinking')
   })
 
-  // Test: Tap idle -> starts voice
+  // --- Tap actions ---
+
   it('tap when idle calls startVoice', () => {
     useVoiceStore.setState({ personaState: 'idle' })
     render(<PersonaOrb />)
@@ -71,7 +104,6 @@ describe('PersonaOrb', () => {
     expect(mockStartVoice).toHaveBeenCalledOnce()
   })
 
-  // Test: Tap listening -> stops voice
   it('tap when listening calls stopVoice', () => {
     useVoiceStore.setState({ personaState: 'listening' })
     render(<PersonaOrb />)
@@ -79,7 +111,6 @@ describe('PersonaOrb', () => {
     expect(mockStopVoice).toHaveBeenCalledOnce()
   })
 
-  // Test: Tap speaking -> interrupts TTS
   it('tap when speaking calls interruptTTS', () => {
     useVoiceStore.setState({ personaState: 'speaking' })
     render(<PersonaOrb />)
@@ -87,7 +118,6 @@ describe('PersonaOrb', () => {
     expect(mockInterruptTTS).toHaveBeenCalledOnce()
   })
 
-  // Test: Tap asleep -> does nothing (disabled)
   it('tap when asleep does nothing', () => {
     useVoiceStore.setState({ personaState: 'asleep' })
     render(<PersonaOrb />)
@@ -97,7 +127,8 @@ describe('PersonaOrb', () => {
     expect(mockInterruptTTS).not.toHaveBeenCalled()
   })
 
-  // Test: Transcript preview shows during listening
+  // --- Transcript preview ---
+
   it('shows transcript preview when listening with non-empty transcript', () => {
     useVoiceStore.setState({ personaState: 'listening', transcript: 'hello world' })
     render(<PersonaOrb />)
@@ -116,11 +147,19 @@ describe('PersonaOrb', () => {
     expect(screen.queryByTestId('transcript-preview')).toBeNull()
   })
 
-  it('renders as disabled/greyed when asleep', () => {
+  // --- Asleep state ---
+
+  it('blocks pointer events when asleep but stays fully visible', () => {
     useVoiceStore.setState({ personaState: 'asleep' })
     render(<PersonaOrb />)
     const orb = screen.getByTestId('persona-orb')
-    expect(orb.className).toContain('opacity-50')
     expect(orb.className).toContain('pointer-events-none')
+    expect(orb.className).not.toContain('opacity')
+  })
+
+  it('shows thinking animation when asleep', () => {
+    useVoiceStore.setState({ personaState: 'asleep' })
+    render(<PersonaOrb />)
+    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('thinking')
   })
 })

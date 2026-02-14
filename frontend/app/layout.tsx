@@ -47,6 +47,9 @@ export default function RootLayout({
       signUpFallbackRedirectUrl="/desktop"
     >
       <html lang="en" suppressHydrationWarning>
+        <head>
+          <link rel="preload" href="/persona/obsidian.riv" as="fetch" crossOrigin="anonymous" />
+        </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <NextTopLoader
             color="var(--primary)"

@@ -78,7 +78,7 @@ export function DesktopTopBar() {
           />
         ) : (
           <div className="flex h-10 items-center rounded-full border border-white/20 bg-white/10 px-4 backdrop-blur-2xl">
-            <span className="text-sm text-white/40">Loading...</span>
+            <span className="text-sm text-white/40">Stackdocs</span>
           </div>
         )}
         <GlassIconButton

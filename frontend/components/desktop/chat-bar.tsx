@@ -20,7 +20,8 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const [inputValue, setInputValue] = useState('')
   const [inputActive, setInputActive] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const { send } = useWebSocket()
+  const { send, status } = useWebSocket()
+  const isConnected = status === 'connected'
   const { chips, mode, isAgentStreaming, addMessage } = useChatStore()
   const activeStackId = useDesktopStore((s) => s.activeStackId)
   const voiceActive = isVoiceEnabled()
@@ -38,12 +39,12 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
   const handleSend = useCallback(() => {
     const text = inputValue.trim()
-    if (!text) return
+    if (!text || !isConnected) return
     sendMessage(text)
     setInputValue('')
     setInputActive(false)
     inputRef.current?.blur()
-  }, [inputValue, sendMessage])
+  }, [inputValue, sendMessage, isConnected])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -62,6 +63,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   }
 
   const hasText = inputValue.trim().length > 0
+  const canSend = hasText && isConnected
   const isHidden = !embedded && mode === 'panel'
 
   // ─── Shared inner content (glass bar + chips) ───────────────────────
@@ -125,16 +127,16 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
             </div>
           </div>
 
-          {/* Send button — fades in when text present */}
+          {/* Send button — fades in when text present and connected */}
           <div className={cn(
             'absolute right-3 top-3 transition-opacity duration-200',
-            hasText && inputActive
+            canSend && inputActive
               ? 'opacity-100'
               : 'opacity-0 pointer-events-none'
           )}>
             <GlassIconButton
               icon={<Icons.ArrowUp className="text-white" />}
-              tooltip="Send"
+              tooltip={isConnected ? 'Send' : 'Connecting...'}
               tooltipSide="right"
               onClick={handleSend}
               className="bg-white/15 hover:bg-white/25"

@@ -63,8 +63,7 @@ const sources = {
   obsidian: {
     dynamicColor: true,
     hasModel: true,
-    source:
-      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/obsidian-2.0.riv",
+    source: "/persona/obsidian.riv",
   },
   opal: {
     dynamicColor: false,
@@ -271,7 +270,7 @@ export const Persona: FC<PersonaProps> = memo(
 
     return (
       <Component rive={rive} source={source}>
-        <RiveComponent className={cn("size-16 shrink-0", className)} />
+        <RiveComponent className={cn("size-16", className)} />
       </Component>
     );
   }

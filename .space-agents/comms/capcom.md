@@ -3248,3 +3248,49 @@ Four areas of work this session:
 - Commit this session's changes and push
 
 ---
+
+## [2026-02-15 10:00] Session 167
+
+**Branch:** main | **Git:** uncommitted (frontend persona/chat-bar/top-bar changes)
+
+### What Happened
+
+**PersonaOrb rendering fix + UI startup performance investigation.**
+
+Deep investigation into why the desktop UI felt "blocked" for 4-12 seconds on page refresh. Traced through the entire component chain and found two independent issues:
+
+1. **Rive WebGL2 blocking main thread.** The `@rive-app/react-webgl2` `useRive()` hook creates a WebGL2 context synchronously on mount, freezing the entire UI for 2-3 seconds. Fixed with `requestIdleCallback` — Rive now mounts only when the browser is idle. Confirmed by toggling `NEXT_PUBLIC_VOICE_ENABLED=false` which made the page instant.
+
+2. **Sprite wake cycle (4s CRIU cold start)** causes the UI to feel inert — no stacks/cards until `state_sync` arrives. This is infrastructure, not frontend. Mitigated by: gating send button on connection status (`chat-bar.tsx`), replacing "Loading..." with "Stackdocs" in top bar (`desktop-top-bar.tsx`).
+
+**PersonaOrb changes (6 iterations this session):**
+- `persona-orb.tsx` — Removed `next/dynamic` → direct import → back to `dynamic` + `requestIdleCallback` to defer mount. Removed all `opacity-50` styling. Added `toRiveState()` mapping (idle/asleep → thinking, since those Rive states are invisible in obsidian variant). Added CSS gradient placeholder visible from first render until `onReady` fires.
+- `persona.tsx` — Removed `shrink-0` from RiveComponent to allow size override. Changed obsidian source from CDN URL to local `/persona/obsidian.riv`.
+- `app/layout.tsx` — Added `<link rel="preload">` for local `.riv` file.
+- `chat-bar.tsx` — Send button gated on `status === 'connected'`. Enter key blocked when disconnected.
+- `desktop-top-bar.tsx` — "Loading..." → "Stackdocs" when stacks empty.
+- Downloaded `obsidian-2.0.riv` (7.8KB) to `public/persona/obsidian.riv`.
+- Tests: 73 passing across 9 files. Both persona-orb and chat-bar test mocks updated.
+
+### Decisions Made
+
+- **`requestIdleCallback` for Rive** — Perplexity confirmed WebGL2 context creation is inherently blocking. Deferring to idle time is the standard fix. Fallback to `requestAnimationFrame` for browsers without it.
+- **Local `.riv` file** — Downloaded from Vercel CDN to `public/persona/`. Eliminates cross-origin fetch, 7.8KB.
+- **Always show thinking animation** — Rive obsidian idle/asleep states invisible. `toRiveState()` maps everything to thinking except listening/speaking.
+- **No opacity on orb ever** — User explicitly requested. Asleep state only gets `pointer-events-none`.
+- **Send button disabled until connected** — Simpler than message queue. Honest UX.
+
+### Gotchas
+
+- **Rive `shrink-0` prevents size override** — `persona.tsx` had `cn("size-16 shrink-0", className)` preventing `size-10`. Removed `shrink-0`.
+- **`next/dynamic` loading fallback only covers chunk load** — Not the `.riv` fetch or WebGL2 init. Need `onReady`-based placeholder.
+- **Direct Rive import blocks entire page** — `useRive()` WebGL2 context creation is synchronous. Must use dynamic import + requestIdleCallback.
+- **`bg-white/15` invisible on glass** — Glass bar is `bg-white/10`, placeholder blends in. Need gradient or higher contrast.
+- **Test env lacks `requestIdleCallback`** — Falls through to `requestAnimationFrame`, stubbed to fire sync.
+
+### Next Action
+
+- Test orb size match after `shrink-0` removal
+- Continue design work on desktop UI
+
+---
