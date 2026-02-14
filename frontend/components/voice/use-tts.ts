@@ -116,7 +116,7 @@ export function useTTS(): TTSControls {
         let carry: number | null = null
         let connected = false
         let bufferedSamples = 0
-        const PRE_BUFFER = 4800 // ~200ms at 24kHz
+        const PRE_BUFFER = 1200 // ~50ms at 24kHz — just enough to prevent initial stutter
 
         while (true) {
           const { done, value } = await reader.read()
