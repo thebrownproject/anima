@@ -9,8 +9,9 @@ See root `CLAUDE.md` for project overview, tech stack, and development workflow.
 - **Components**: shadcn/ui (new-york style) + Ein UI glass components
 - **Auth**: Clerk (modal sign-in/sign-up)
 - **Data**: Supabase (platform data only — users/stacks), WebSocket to Bridge/Sprite
-- **State**: Zustand stores for desktop + chat + wallpaper state
-- **Animation**: framer-motion (used by Ein UI glass-tabs)
+- **State**: Zustand stores for desktop + chat + wallpaper + voice state
+- **Animation**: framer-motion (used by Ein UI glass-tabs), Rive (Persona orb)
+- **Voice**: Deepgram Nova-3 STT + OpenAI gpt-4o-mini-tts (feature-flagged)
 
 ## Current State
 
@@ -25,26 +26,34 @@ frontend/
 │   │   ├── layout.tsx              # Minimal inset shell (dark bg, rounded-xl)
 │   │   └── test-chat/page.tsx      # Glass desktop prototype
 │   ├── (desktop)/                  # v2 glass desktop route group
-│   │   └── stacks/[id]/page.tsx    # Desktop workspace page
+│   │   └── desktop/page.tsx        # Desktop workspace page
 │   ├── layout.tsx                  # Root — Clerk, ThemeProvider, Toaster
 │   ├── page.tsx                    # Landing page (sign in → /desktop)
 │   ├── globals.css                 # Global styles + Ein UI CSS vars + glass tokens
-│   └── api/webhooks/clerk/         # Clerk webhook for user sync to Supabase
+│   ├── api/webhooks/clerk/         # Clerk webhook for user sync to Supabase
+│   └── api/voice/                 # Voice API routes (auth + feature-gated)
+│       ├── deepgram-token/route.ts # GET — temp Deepgram browser token (30s TTL)
+│       └── tts/route.ts           # POST — OpenAI TTS proxy (streams PCM audio)
 ├── components/
-│   ├── ai-elements/                # AI Elements (Vercel) — FileTree
+│   ├── ai-elements/                # AI Elements (Vercel) — FileTree, Persona
 │   ├── desktop/                    # v2 glass desktop components
 │   │   ├── desktop-viewport.tsx    # Infinite canvas with pan/zoom/momentum
 │   │   ├── desktop-card.tsx        # Draggable card with momentum physics
 │   │   ├── desktop-top-bar.tsx     # Top bar with workspace tabs
 │   │   ├── desktop-context-menu.tsx # Right-click context menu
 │   │   ├── chat-panel.tsx          # Side panel chat (uses GlassSidePanel)
-│   │   ├── chat-bar.tsx            # Bottom chat bar + embedded mode
+│   │   ├── chat-bar.tsx            # Bottom chat bar + embedded mode + voice orb
 │   │   ├── documents-panel.tsx     # File tree side panel
 │   │   ├── glass-side-panel.tsx    # Reusable sliding glass panel
 │   │   ├── glass-tab-switcher.tsx  # Workspace tab switcher
 │   │   ├── block-renderer.tsx      # Card content block renderer
 │   │   ├── auto-placer.ts          # Auto-position new cards on canvas
 │   │   └── ws-provider.tsx         # WebSocket React context provider
+│   ├── voice/                      # Voice integration (feature-flagged)
+│   │   ├── use-stt.ts             # Deepgram streaming STT hook
+│   │   ├── use-tts.ts             # OpenAI audio playback hook
+│   │   ├── voice-provider.tsx     # React context composing STT+TTS+store
+│   │   └── persona-orb.tsx        # Rive animation orb with tap actions
 │   ├── icons/                      # Tabler icon barrel export
 │   ├── providers/                  # ThemeProvider (next-themes)
 │   ├── ui/                         # shadcn/ui primitives + glass components
@@ -68,7 +77,9 @@ frontend/
 │   ├── stores/
 │   │   ├── chat-store.ts          # Chat messages, mode, streaming state
 │   │   ├── desktop-store.ts       # Cards, tabs, active workspace
+│   │   ├── voice-store.ts         # Voice state machine (5 states, validated transitions)
 │   │   └── wallpaper-store.ts     # Wallpaper selection + persistence
+│   ├── voice-config.ts            # Voice feature flag + env validation
 │   ├── supabase.ts                # Supabase client (browser)
 │   ├── supabase-server.ts         # Supabase client (server components)
 │   ├── websocket.ts               # v2 WebSocketManager (auto-reconnect, routing)
@@ -147,6 +158,27 @@ Registry configured in `components.json` as `@einui` → `https://ui.eindev.ir/r
 ### WebSocket Protocol
 
 Types in `types/ws-protocol.ts` are a copy of `bridge/src/protocol.ts` (source of truth). Update bridge first, then copy here.
+
+## Voice Integration
+
+Feature-flagged via `NEXT_PUBLIC_VOICE_ENABLED`. When `true`, the chat bar mic button becomes a Persona orb with STT/TTS.
+
+**Required env vars** (`.env.local`):
+```
+NEXT_PUBLIC_VOICE_ENABLED=true   # Feature flag (build-time, requires restart)
+DEEPGRAM_API_KEY=...             # Server-side only — STT temp tokens
+OPENAI_API_KEY=...               # Server-side only — TTS proxy
+```
+
+**Architecture:** Browser-only I/O layer. Raw audio never touches Bridge or Sprite.
+- STT: Deepgram Nova-3 via browser WebSocket (temp token from `/api/voice/deepgram-token`)
+- TTS: OpenAI gpt-4o-mini-tts via `/api/voice/tts` proxy (streams audio/mpeg)
+- State: `voice-store.ts` — 5-state machine (`asleep → idle → listening → thinking → speaking`)
+- Provider nesting: `WebSocketProvider > MaybeVoiceProvider > GlassTooltipProvider`
+- `MaybeVoiceProvider` renders children-only when voice disabled (zero overhead)
+- `useVoiceMaybe()` returns `null` outside VoiceProvider (safe for conditional voice features)
+
+**Tests:** 74 tests across 9 files. Run with `npm run test:run` from `frontend/`.
 
 ## shadcn/ui Components
 

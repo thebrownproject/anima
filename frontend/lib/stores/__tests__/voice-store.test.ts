@@ -25,7 +25,7 @@ describe('default state', () => {
 describe('valid transitions', () => {
   it.each(
     Object.entries(VALID_TRANSITIONS).flatMap(([from, targets]) =>
-      targets.map((to) => [from, to])
+      (targets as PersonaState[]).map((to) => [from, to])
     )
   )('%s -> %s succeeds', (from, to) => {
     useVoiceStore.setState({ personaState: from as PersonaState })

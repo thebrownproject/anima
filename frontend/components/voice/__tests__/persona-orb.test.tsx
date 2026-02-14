@@ -10,7 +10,7 @@ const { mockStartVoice, mockStopVoice, mockInterruptTTS } = vi.hoisted(() => ({
 
 // Mock next/dynamic to render the component synchronously
 vi.mock('next/dynamic', () => ({
-  default: (loader: () => Promise<any>) => {
+  default: (_loader: () => Promise<any>) => {
     // Return a component that renders a div with the state prop as data attr
     const MockPersona = (props: any) => (
       <div data-testid="persona" data-state={props.state} className={props.className} />

@@ -37,7 +37,12 @@ export function useTTS(): TTSControls {
 
       const ctx = audioContextRef.current!
       const arrayBuf = await res.arrayBuffer()
-      const audioBuffer = await ctx.decodeAudioData(arrayBuf)
+      // OpenAI PCM: 24kHz mono 16-bit signed little-endian
+      const int16 = new Int16Array(arrayBuf)
+      const float32 = new Float32Array(int16.length)
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
+      const audioBuffer = ctx.createBuffer(1, int16.length, 24000)
+      audioBuffer.getChannelData(0).set(float32)
       const source = ctx.createBufferSource()
       source.buffer = audioBuffer
       source.connect(ctx.destination)
@@ -79,6 +84,8 @@ export function useTTS(): TTSControls {
       try { sourceRef.current?.stop() } catch { /* noop */ }
       sourceRef.current = null
       playingRef.current = false
+      audioContextRef.current?.close()
+      audioContextRef.current = null
     }
   }, [])
 

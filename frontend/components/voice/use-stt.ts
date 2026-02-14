@@ -70,7 +70,9 @@ export function useSTT(): STTControls {
     }) => {
       const text = data.channel.alternatives[0]?.transcript
       if (text && data.is_final) {
-        useVoiceStore.getState().setTranscript(text)
+        const store = useVoiceStore.getState()
+        const prev = store.transcript
+        store.setTranscript(prev ? `${prev} ${text}` : text)
       }
     })
 

@@ -47,7 +47,7 @@ describe('POST /api/voice/tts', () => {
     expect(res.status).toBe(400)
   })
 
-  it('returns 200 with audio/mpeg content type', async () => {
+  it('returns 200 with application/octet-stream content type', async () => {
     mockAuth.mockResolvedValue({ userId: 'user_123' })
     vi.stubEnv('OPENAI_API_KEY', 'sk-test')
 
@@ -62,7 +62,7 @@ describe('POST /api/voice/tts', () => {
     })
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(res.headers.get('Content-Type')).toBe('audio/mpeg')
+    expect(res.headers.get('Content-Type')).toBe('application/octet-stream')
   })
 
   it('streams response as ReadableStream pass-through', async () => {

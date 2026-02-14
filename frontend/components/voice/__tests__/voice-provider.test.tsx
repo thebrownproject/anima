@@ -51,7 +51,7 @@ vi.mock('@/lib/voice-config', () => ({
   isVoiceEnabled: () => true,
 }))
 
-import { VoiceProvider, useVoice, MaybeVoiceProvider } from '../voice-provider'
+import { VoiceProvider, useVoice } from '../voice-provider'
 
 // --- Helpers ---
 
@@ -110,21 +110,23 @@ describe('VoiceProvider', () => {
     )
   })
 
-  it('agent completion triggers TTS when ttsEnabled', () => {
+  it('agent completion triggers TTS with sentence chunking when ttsEnabled', () => {
     useVoiceStore.setState({ ttsEnabled: true, personaState: 'thinking' })
     useChatStore.setState({
-      messages: [{ id: '1', role: 'agent', content: 'Here is the answer', timestamp: Date.now() }],
+      messages: [{ id: '1', role: 'agent', content: 'First sentence. Second sentence! Third?', timestamp: Date.now() }],
       isAgentStreaming: true,
     })
 
     renderHook(() => useVoice(), { wrapper })
 
-    // Simulate agent completion: isAgentStreaming true -> false
     act(() => {
       useChatStore.setState({ isAgentStreaming: false })
     })
 
-    expect(mockSpeak).toHaveBeenCalledWith('Here is the answer')
+    expect(mockSpeak).toHaveBeenCalledTimes(3)
+    expect(mockSpeak).toHaveBeenNthCalledWith(1, 'First sentence.')
+    expect(mockSpeak).toHaveBeenNthCalledWith(2, 'Second sentence!')
+    expect(mockSpeak).toHaveBeenNthCalledWith(3, 'Third?')
   })
 
   it('agent completion does NOT trigger TTS when ttsEnabled false', () => {
@@ -157,20 +159,19 @@ describe('VoiceProvider', () => {
     await act(() => result.current.stopVoice())
     expect(useVoiceStore.getState().personaState).toBe('thinking')
 
-    // thinking -> speaking (via agent completion with tts)
+    // thinking -> speaking (via agent completion with tts, single sentence = 1 speak call)
     useVoiceStore.setState({ ttsEnabled: true })
-    // Set streaming true first so prevRef captures it
     act(() => {
       useChatStore.setState({
         messages: [{ id: '1', role: 'agent', content: 'response', timestamp: Date.now() }],
         isAgentStreaming: true,
       })
     })
-    // Then flip to false -- prevRef was true, now false triggers TTS
     act(() => {
       useChatStore.setState({ isAgentStreaming: false })
     })
     expect(useVoiceStore.getState().personaState).toBe('speaking')
+    expect(mockSpeak).toHaveBeenCalledWith('response')
 
     // speaking -> idle (via interruptTTS)
     act(() => result.current.interruptTTS())

@@ -8,8 +8,15 @@ export async function POST(req: Request) {
     return Response.json({ error: 'TTS service unavailable' }, { status: 503 })
   }
 
-  const { text } = await req.json()
-  if (!text) return Response.json({ error: 'Missing text' }, { status: 400 })
+  let text: string
+  try {
+    const body = await req.json()
+    text = body.text
+  } catch {
+    return Response.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+  if (!text || typeof text !== 'string') return Response.json({ error: 'Missing text' }, { status: 400 })
+  if (text.length > 4096) return Response.json({ error: 'Text too long (max 4096 chars)' }, { status: 400 })
 
   const upstream = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
@@ -21,7 +28,7 @@ export async function POST(req: Request) {
       model: 'gpt-4o-mini-tts',
       input: text,
       voice: 'fable',
-      response_format: 'mp3',
+      response_format: 'pcm',
     }),
   })
 
@@ -30,6 +37,6 @@ export async function POST(req: Request) {
   }
 
   return new Response(upstream.body, {
-    headers: { 'Content-Type': 'audio/mpeg' },
+    headers: { 'Content-Type': 'application/octet-stream' },
   })
 }

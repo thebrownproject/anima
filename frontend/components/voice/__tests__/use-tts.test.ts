@@ -12,10 +12,13 @@ const { mockAudioContext, mockSource, mockFetch } = vi.hoisted(() => {
     buffer: null as unknown,
   }
 
+  const mockAudioBuffer = { getChannelData: vi.fn(() => ({ set: vi.fn() })) }
+
   const mockAudioContext = {
-    decodeAudioData: vi.fn(),
+    createBuffer: vi.fn(() => mockAudioBuffer),
     createBufferSource: vi.fn(() => mockSource),
     destination: {},
+    close: vi.fn(),
   }
 
   return {
@@ -35,11 +38,11 @@ import { useTTS } from '../use-tts'
 // --- Helpers ---
 
 function mockTTSResponse() {
+  // Return raw PCM bytes (4 bytes = 2 Int16 samples)
   mockFetch.mockResolvedValueOnce({
     ok: true,
-    arrayBuffer: async () => new ArrayBuffer(8),
+    arrayBuffer: async () => new ArrayBuffer(4),
   })
-  mockAudioContext.decodeAudioData.mockResolvedValueOnce('decoded-buffer')
 }
 
 // --- Tests ---
@@ -82,7 +85,7 @@ describe('useTTS', () => {
     mockTTSResponse()
 
     const { result } = renderHook(() => useTTS())
-    await act(() => {
+    await act(async () => {
       result.current.speak('first')
       result.current.speak('second')
     })
@@ -110,7 +113,7 @@ describe('useTTS', () => {
     mockTTSResponse()
 
     const { result } = renderHook(() => useTTS())
-    await act(() => {
+    await act(async () => {
       result.current.speak('first')
       result.current.speak('second')
     })

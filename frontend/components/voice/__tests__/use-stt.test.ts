@@ -125,7 +125,7 @@ describe('useSTT', () => {
 
     // Find the Transcript event handler registered via connection.on
     const transcriptCall = mockConnection.on.mock.calls.find(
-      ([event]: [string]) => event === 'Results'
+      (call: unknown[]) => call[0] === 'Results'
     )
     expect(transcriptCall).toBeDefined()
 
