@@ -3084,3 +3084,70 @@ Dependencies set up. Critical path: 6 tasks. Plan + spec moved to mission/staged
 - Or continue with remaining work: m7b.12.17 (E2E test), m7b.4.14 (chat history bug)
 
 ---
+
+## [2026-02-14 23:25] Session 164
+
+**Branch:** main | **Git:** clean (voice work committed, some out-of-scope Builder changes unstaged)
+
+### What Happened
+
+**Voice integration feature (m7b.13) — COMPLETE. 8/8 tasks implemented via orchestrated mode.**
+
+Executed full Pathfinder → Builder → Inspector cycle for each task, sequentially (user preference: no background agents).
+
+**Tasks completed this session:**
+1. **m7b.13.1** Setup — Vitest config, voice-config.ts (feature flag + env validation), Persona component, env placeholders. 6 tests.
+2. **m7b.13.2** Voice store — Zustand 5-state machine (asleep/idle/listening/thinking/speaking) with validated transitions. 20 tests.
+3. **m7b.13.3** API routes — `GET /api/voice/deepgram-token` (temp browser token) + `POST /api/voice/tts` (OpenAI proxy, streams PCM). 12 tests.
+4. **m7b.13.4** use-stt hook — Deepgram Nova-3 streaming STT via browser WebSocket, MediaRecorder 250ms chunks, mic permission handling. 6 tests.
+5. **m7b.13.5** use-tts hook — AudioWorklet streaming playback with 50ms pre-buffer, AbortController interruption, lazy AudioContext. 4 tests.
+6. **m7b.13.6** Voice provider — React context composing STT+TTS+store, persona state orchestration, MaybeVoiceProvider passthrough. 6 tests.
+7. **m7b.13.7** Persona orb — Rive animation wrapper with tap actions (idle→start, listening→stop, speaking→interrupt), mic/TTS toggles, transcript preview. 11 tests.
+8. **m7b.13.8** Chat integration — PersonaOrb replaces mic button when enabled, useVoiceMaybe() null-safe pattern, typing-cancels-listening. 7 tests.
+
+**Post-implementation optimization (3 iterations):**
+- **Review agent** found: TTS route missing input length limit, STT only storing last transcript segment (not accumulating), AudioContext not closed on unmount. All fixed.
+- **PCM format switch**: Changed mp3→pcm, eliminating server encoding + client decoding overhead.
+- **Sentence-level chunking**: Split agent response into sentences, queue each as separate TTS call. Later reverted in favor of full-text streaming.
+- **AudioWorklet streaming**: Replaced buffered `arrayBuffer()` + `AudioBufferSourceNode` with true streaming `ReadableStream` + `AudioWorkletNode`. Audio starts ~50ms after first chunk arrives.
+- **Pre-buffer tuning**: Started at 200ms (4800 samples), reduced to 50ms (1200 samples) after user reported slowness.
+
+**Live testing confirmed:** TTS working, STT working, feature flag gating working. Two minor UI bugs identified but not yet fixed (reverted attempted fix).
+
+### Decisions Made
+
+- **Orchestrated mode, sequential agents** — user preference, no background agents
+- **Full-text single stream over sentence chunking** — simpler, faster with AudioWorklet streaming
+- **PCM format (24kHz 16-bit signed LE)** — fastest OpenAI TTS format, no encode/decode overhead
+- **AudioWorklet via Blob URL** — no separate file needed, inline processor string
+- **AudioContext({ sampleRate: 24000 })** — match OpenAI output natively, browser handles device resampling
+- **50ms pre-buffer** — prevents initial stutter without noticeable delay
+- **Always act on Inspector findings** — user explicitly requested no dismissing review findings, especially bloat/redundancy
+
+### Gotchas
+
+- **Builder agents sometimes commit out-of-scope changes** — m7b.13.2 Builder added state_sync_request to bridge/index.ts and persist middleware to chat-store.ts. These are still unstaged. Future sessions: explicitly warn Builders about scope.
+- **`@rive-app/react-webgl2`** needed, not `react-canvas` — AI Elements CLI installs WebGL2 variant, spec was wrong.
+- **Inspector can hallucinate scope creep** — claimed d5ecb35 had 6 extra files, but `git diff --stat` showed only voice-store files. Verify Inspector claims before acting.
+- **TS diagnostics for test imports are almost always stale** — `Cannot find module '../use-tts'` etc. appear constantly but tests pass fine. Editor module resolution lag.
+
+### In Progress
+
+Two minor UI bugs identified but NOT fixed (attempted fix reverted):
+1. **UI blocked on page refresh** until Persona loads and WS connects — dynamic import loading fallback didn't help, needs deeper investigation
+2. **Password autofill popup** on chat textarea in side panel — `autoComplete="off"` didn't suppress it
+
+Unstaged out-of-scope changes from Builder agents:
+- `bridge/src/index.ts` — state_sync_request forwarding
+- `frontend/lib/stores/chat-store.ts` — persist middleware added
+- `bridge/tests/*` — mock updates for state_sync_request
+- `sprite/src/gateway.py` — state_sync_request handler
+
+### Next Action
+
+- Fix the two UI bugs (persona loading block + autofill popup) — needs proper investigation
+- Test voice end-to-end with real Sprite agent responses
+- Review/commit or discard the out-of-scope Builder changes (bridge state_sync, chat-store persist)
+- Continue with remaining work: m7b.4.14 (chat history disappears on refresh), stackdocs-sm2 (spriteExec CLI bug)
+
+---
