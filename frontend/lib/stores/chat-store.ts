@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 // =============================================================================
 // Types
@@ -36,45 +37,54 @@ interface ChatActions {
 }
 
 // =============================================================================
-// Store (NOT persisted — ephemeral chat state)
+// Store (persisted — messages cached in localStorage, reconciled by state_sync)
 // =============================================================================
 
-export const useChatStore = create<ChatState & ChatActions>()((set) => ({
-  // State
-  messages: [],
-  chips: [],
-  mode: 'bar',
-  isAgentStreaming: false,
+export const useChatStore = create<ChatState & ChatActions>()(
+  persist(
+    (set) => ({
+      // State
+      messages: [],
+      chips: [],
+      mode: 'bar',
+      isAgentStreaming: false,
 
-  // Actions
-  addMessage: (message) =>
-    set((state) => ({
-      messages: [...state.messages, { ...message, id: message.id || crypto.randomUUID() }],
-    })),
+      // Actions
+      addMessage: (message) =>
+        set((state) => ({
+          messages: [...state.messages, { ...message, id: message.id || crypto.randomUUID() }],
+        })),
 
-  setMessages: (messages) => set({ messages, chips: [] }),
+      setMessages: (messages) => set({ messages, chips: [] }),
 
-  appendToLastAgent: (content) =>
-    set((state) => {
-      const last = state.messages[state.messages.length - 1]
-      if (last?.role === 'agent') {
-        return {
-          messages: [
-            ...state.messages.slice(0, -1),
-            { ...last, content: last.content + content },
-          ],
-        }
-      }
-      return {
-        messages: [
-          ...state.messages,
-          { id: crypto.randomUUID(), role: 'agent' as const, content, timestamp: Date.now() },
-        ],
-      }
+      appendToLastAgent: (content) =>
+        set((state) => {
+          const last = state.messages[state.messages.length - 1]
+          if (last?.role === 'agent') {
+            return {
+              messages: [
+                ...state.messages.slice(0, -1),
+                { ...last, content: last.content + content },
+              ],
+            }
+          }
+          return {
+            messages: [
+              ...state.messages,
+              { id: crypto.randomUUID(), role: 'agent' as const, content, timestamp: Date.now() },
+            ],
+          }
+        }),
+
+      setChips: (chips) => set({ chips }),
+      setMode: (mode) => set({ mode }),
+      setAgentStreaming: (isStreaming) => set({ isAgentStreaming: isStreaming }),
+      clearMessages: () => set({ messages: [], chips: [] }),
     }),
-
-  setChips: (chips) => set({ chips }),
-  setMode: (mode) => set({ mode }),
-  setAgentStreaming: (isStreaming) => set({ isAgentStreaming: isStreaming }),
-  clearMessages: () => set({ messages: [], chips: [] }),
-}))
+    {
+      name: 'stackdocs-chat',
+      version: 1,
+      partialize: (state) => ({ messages: state.messages }),
+    }
+  )
+)

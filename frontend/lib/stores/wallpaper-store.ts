@@ -8,16 +8,18 @@ export interface Wallpaper {
 }
 
 export const WALLPAPERS: Wallpaper[] = [
-  { id: 'purple-waves', name: 'Purple Waves', url: '/wallpapers/purple-waves.jpg' },
-  { id: 'neon-silk', name: 'Neon Silk', url: '/wallpapers/neon-silk.jpg' },
-  { id: 'amethyst-tide', name: 'Amethyst Tide', url: '/wallpapers/amethyst-tide.jpg' },
-  { id: 'electric-dusk', name: 'Electric Dusk', url: '/wallpapers/electric-dusk.jpg' },
-  { id: 'ocean-breeze', name: 'Ocean Breeze', url: '/wallpapers/ocean-breeze.jpg' },
-  { id: 'cosmic-spiral', name: 'Cosmic Spiral', url: '/wallpapers/cosmic-spiral.jpg' },
-  { id: 'neon-ribbon', name: 'Neon Ribbon', url: '/wallpapers/neon-ribbon.jpg' },
-  { id: 'crimson-wave', name: 'Crimson Wave', url: '/wallpapers/crimson-wave.jpg' },
-  { id: 'scarlet-bloom', name: 'Scarlet Bloom', url: '/wallpapers/scarlet-bloom.jpg' },
-  { id: 'coral-tide', name: 'Coral Tide', url: '/wallpapers/coral-tide.jpg' },
+  { id: 'purple-blue-grain', name: 'Purple Blue Grain', url: '/wallpapers/purple-blue-grain.jpg' },
+  { id: 'deep-purple-gradient', name: 'Deep Purple Gradient', url: '/wallpapers/deep-purple-gradient.jpg' },
+  { id: 'blue-pink-gradient', name: 'Blue Pink Gradient', url: '/wallpapers/blue-pink-gradient.jpg' },
+  { id: 'dynamic-grain', name: 'Dynamic Grain', url: '/wallpapers/dynamic-grain.jpg' },
+  { id: 'purple-haze', name: 'Purple Haze', url: '/wallpapers/purple-haze.jpg' },
+  { id: 'blues-to-purple', name: 'Blues to Purple', url: '/wallpapers/blues-to-purple.jpg' },
+  { id: 'blue-beige-glow', name: 'Blue Beige Glow', url: '/wallpapers/blue-beige-glow.jpg' },
+  { id: 'deep-blue-purple', name: 'Deep Blue Purple', url: '/wallpapers/deep-blue-purple.jpg' },
+  { id: 'colorful-grain', name: 'Colorful Grain', url: '/wallpapers/colorful-grain.jpg' },
+  { id: 'purple-fabric', name: 'Purple Fabric', url: '/wallpapers/purple-fabric.jpg' },
+  { id: 'purple-grey-soft', name: 'Purple Grey Soft', url: '/wallpapers/purple-grey-soft.jpg' },
+  { id: 'lavender-white', name: 'Lavender White', url: '/wallpapers/lavender-white.jpg' },
 ]
 
 interface WallpaperState {
