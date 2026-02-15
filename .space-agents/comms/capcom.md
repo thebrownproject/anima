@@ -3406,3 +3406,56 @@ Major rework of the PersonaOrb interaction model. Previously a click-to-talk but
 - More STT refinements next session (user noted). Consider interim transcript display in persona-orb pill for live streaming feedback.
 
 ---
+
+## [2026-02-15 15:30] Session 170
+
+**Branch:** main | **Git:** uncommitted (prior session changes + new exploration docs)
+
+### What Happened
+
+**Brainstorm + planning session for chat bar & voice interaction redesign.**
+
+Explored the bottom chat bar, voice recording, and persona orb UX. Three research agents audited the codebase (component hierarchy, flow consistency, code quality). Key design decisions made through iterative discussion.
+
+**Exploration (brainstorm):**
+- Decided to move STT transcript from floating pill above orb INTO the textarea where users normally type. Unifies input surface, lets users edit STT mistakes before sending.
+- Hover pill repositioned from ABOVE orb to LEFT of orb, inline with the chat bar action row.
+- Pill contents simplified: idle = speaker toggle only (mic toggle removed — orb IS the mic). Recording = speaker + stop button + voice bars.
+- Three send/stop paths: orb tap = send immediately, stop button/Escape = stop recording but keep text for editing.
+
+**Code audit findings (2 research agents):**
+- STT race condition: rapid tap orphans mic streams, Deepgram connections, keepAlive intervals (no generation counter, no double-invocation guard)
+- WS disconnect doesn't stop STT (mic stays on, orb unclickable)
+- TTS triggers on ALL agent responses when ttsEnabled, not just voice-initiated ones
+- Deepgram token TTL 30s silently kills long recordings
+- TTS hook has no error state (failures silently swallowed)
+- VoiceBars calls setLevels() every rAF frame (~60fps React re-renders)
+- persona-orb.test.tsx lines 80 and 162 have wrong assertions (expect 'thinking' but toRiveState returns 'idle')
+- Zero keyboard accessibility on voice components
+
+**Planning (spec → plan → beads):**
+- Wrote spec.md with full requirements, architecture, and success criteria
+- Sent scout agent for comprehensive codebase report, fed to planning council (task-planner + sequencer)
+- 8 tasks created: 4 parallel bug fixes (STT, TTS, VoiceBars perf, test assertions) + 4 sequential UX tasks (voice-provider functions → strip orb pill → build chatbar pill → integration test)
+- All tasks have full descriptions with goals, file lists, step-by-step implementation, code snippets, and test checklists
+- Dependencies wired: E→F→G→H sequential chain, A-D independent
+
+**Feature created:** `stackdocs-m7b.4.15` — Chat Bar & Voice Interaction Redesign (8 tasks)
+**Folder:** `.space-agents/mission/staged/m7b.4.15-chat-bar-voice-redesign/` (spec.md + plan.md)
+
+### Decisions Made
+
+- **Transcript in textarea, not floating pill** — single input surface, users can edit STT mistakes, less visual noise
+- **Pill to LEFT of orb (not above)** — inline with chat bar, consistent position across states, no floating elements
+- **Mic toggle removed** — orb IS the mic button, mic toggle was redundant
+- **Three interaction paths** — orb tap (send fast), stop button (edit), Escape key (keyboard edit)
+- **Tasks 1+2 merged** — both modify same use-stt.ts function, avoids editing same code twice
+- **Task H (mic toggle verification) merged into Task G** — naturally part of building the new pill
+- **voiceSessionActive ref** — discriminates voice vs text interactions so TTS doesn't fire on text messages
+- **stopRecordingOnly vs stopVoice** — edit path (keep text) vs send path (send + clear)
+
+### Next Action
+
+- Run `/mission` to execute the 8 tasks. Start with `bd ready` — tasks A-E are all unblocked. Recommended single-worker order: A → B → C → D → E → F → G → H.
+
+---
