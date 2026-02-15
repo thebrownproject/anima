@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { useVoiceStore } from '@/lib/stores/voice-store'
+import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
+import type { ReactNode } from 'react'
 
 const { mockStartVoice, mockStopVoice, mockInterruptTTS } = vi.hoisted(() => ({
   mockStartVoice: vi.fn(),
@@ -30,6 +32,14 @@ vi.mock('../voice-provider', () => ({
 }))
 
 import { PersonaOrb } from '../persona-orb'
+
+function Wrapper({ children }: { children: ReactNode }) {
+  return <GlassTooltipProvider>{children}</GlassTooltipProvider>
+}
+
+function renderOrb(props?: Parameters<typeof PersonaOrb>[0]) {
+  return render(<PersonaOrb {...props} />, { wrapper: Wrapper })
+}
 
 const DEFAULTS = {
   personaState: 'idle' as const,
@@ -61,12 +71,12 @@ describe('PersonaOrb', () => {
   // --- Placeholder ---
 
   it('shows placeholder before Rive is ready', () => {
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.getByTestId('persona-placeholder')).toBeTruthy()
   })
 
   it('hides placeholder after Rive fires onReady', () => {
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.getByTestId('persona-placeholder')).toBeTruthy()
     act(() => capturedOnReady?.())
     expect(screen.queryByTestId('persona-placeholder')).toBeNull()
@@ -75,23 +85,23 @@ describe('PersonaOrb', () => {
   // --- Rive state mapping ---
 
   it('maps voice state to visible Rive animation state', () => {
-    render(<PersonaOrb />)
-    // idle maps to thinking (idle is invisible in Rive)
-    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('thinking')
+    renderOrb()
+    // idle passes through as idle
+    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('idle')
 
     cleanup()
     useVoiceStore.setState({ personaState: 'listening' })
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('listening')
 
     cleanup()
     useVoiceStore.setState({ personaState: 'speaking' })
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('speaking')
 
     cleanup()
     useVoiceStore.setState({ personaState: 'thinking' })
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('thinking')
   })
 
@@ -99,28 +109,28 @@ describe('PersonaOrb', () => {
 
   it('tap when idle calls startVoice', () => {
     useVoiceStore.setState({ personaState: 'idle' })
-    render(<PersonaOrb />)
+    renderOrb()
     fireEvent.click(screen.getByTestId('persona-orb'))
     expect(mockStartVoice).toHaveBeenCalledOnce()
   })
 
   it('tap when listening calls stopVoice', () => {
     useVoiceStore.setState({ personaState: 'listening' })
-    render(<PersonaOrb />)
+    renderOrb()
     fireEvent.click(screen.getByTestId('persona-orb'))
     expect(mockStopVoice).toHaveBeenCalledOnce()
   })
 
   it('tap when speaking calls interruptTTS', () => {
     useVoiceStore.setState({ personaState: 'speaking' })
-    render(<PersonaOrb />)
+    renderOrb()
     fireEvent.click(screen.getByTestId('persona-orb'))
     expect(mockInterruptTTS).toHaveBeenCalledOnce()
   })
 
   it('tap when asleep does nothing', () => {
     useVoiceStore.setState({ personaState: 'asleep' })
-    render(<PersonaOrb />)
+    renderOrb()
     fireEvent.click(screen.getByTestId('persona-orb'))
     expect(mockStartVoice).not.toHaveBeenCalled()
     expect(mockStopVoice).not.toHaveBeenCalled()
@@ -131,19 +141,19 @@ describe('PersonaOrb', () => {
 
   it('shows transcript preview when listening with non-empty transcript', () => {
     useVoiceStore.setState({ personaState: 'listening', transcript: 'hello world' })
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.getByText('hello world')).toBeTruthy()
   })
 
   it('hides transcript preview when not listening', () => {
     useVoiceStore.setState({ personaState: 'idle', transcript: 'hello world' })
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.queryByText('hello world')).toBeNull()
   })
 
   it('hides transcript preview when transcript is empty', () => {
     useVoiceStore.setState({ personaState: 'listening', transcript: '' })
-    render(<PersonaOrb />)
+    renderOrb()
     expect(screen.queryByTestId('transcript-preview')).toBeNull()
   })
 
@@ -151,15 +161,16 @@ describe('PersonaOrb', () => {
 
   it('blocks pointer events when asleep but stays fully visible', () => {
     useVoiceStore.setState({ personaState: 'asleep' })
-    render(<PersonaOrb />)
+    renderOrb()
     const orb = screen.getByTestId('persona-orb')
     expect(orb.className).toContain('pointer-events-none')
     expect(orb.className).not.toContain('opacity')
   })
 
-  it('shows thinking animation when asleep', () => {
+  it('maps asleep to idle Rive state', () => {
     useVoiceStore.setState({ personaState: 'asleep' })
-    render(<PersonaOrb />)
-    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('thinking')
+    renderOrb()
+    // toRiveState('asleep') returns 'idle'
+    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('idle')
   })
 })
