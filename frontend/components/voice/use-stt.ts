@@ -44,6 +44,8 @@ export function useDeepgramSTT(): STTControls {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRef = useRef(0)
+  const audioBufferRef = useRef<Blob[]>([])
+  const wsOpenRef = useRef(false)
 
   const stopListening = useCallback(() => {
     if (keepAliveRef.current) {
@@ -58,6 +60,8 @@ export function useDeepgramSTT(): STTControls {
     streamRef.current = null
     audioCtxRef.current = null
     connectionRef.current = null
+    audioBufferRef.current = []
+    wsOpenRef.current = false
     setAnalyser(null)
     setIsListening(false)
   }, [])
@@ -94,20 +98,17 @@ export function useDeepgramSTT(): STTControls {
     }
 
     // Handle failures — clean up whichever succeeded if the other failed
-    const tokenFailed = tokenResult.status === 'rejected'
-    const micFailed = micResult.status === 'rejected'
-
-    if (tokenFailed || micFailed) {
+    if (tokenResult.status === 'rejected' || micResult.status === 'rejected') {
       if (micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
 
-      if (tokenFailed) {
+      if (tokenResult.status === 'rejected') {
         const err = tokenResult.reason
         if (err instanceof DOMException && err.name === 'AbortError') {
           setError('Voice connection timed out')
         } else {
           setError('Failed to get voice token')
         }
-      } else {
+      } else if (micResult.status === 'rejected') {
         const err = micResult.reason
         setError(
           err instanceof DOMException && err.name === 'NotAllowedError'
@@ -121,9 +122,6 @@ export function useDeepgramSTT(): STTControls {
     const stream = micResult.value
     streamRef.current = stream
 
-    const recorder = new MediaRecorder(stream)
-    recorderRef.current = recorder
-
     // 3. AnalyserNode for voice bars
     const audio = createAnalyser(stream)
     if (audio) {
@@ -131,7 +129,7 @@ export function useDeepgramSTT(): STTControls {
       setAnalyser(audio.node)
     }
 
-    // 4. Connect to Deepgram
+    // 4. Connect to Deepgram (start WS handshake)
     const client = createClient({ accessToken: token })
     const connection = client.listen.live({
       model: 'nova-3',
@@ -143,22 +141,37 @@ export function useDeepgramSTT(): STTControls {
     })
     connectionRef.current = connection
 
-    // 5. Start recording when connection opens
+    // 5. Start recording immediately — buffer audio until Deepgram WS opens
+    const recorder = new MediaRecorder(stream)
+    recorderRef.current = recorder
+    recorder.addEventListener('dataavailable', (e: BlobEvent) => {
+      if (e.data.size === 0) return
+      if (wsOpenRef.current) {
+        connection.send(e.data)
+      } else {
+        audioBufferRef.current.push(e.data)
+        if (audioBufferRef.current.length > 40) {
+          setError('Voice connection took too long')
+          stopListening()
+        }
+      }
+    })
+    try {
+      recorder.start(250)
+    } catch {
+      setError('Microphone recording failed to start')
+      stopListening()
+      return
+    }
+    setIsListening(true)
+
+    // 6. Flush buffered audio when connection opens
     connection.addListener(LiveTranscriptionEvents.Open, () => {
       if (generationRef.current !== thisGen) { stopListening(); return }
-      // Guard: stream may have been stopped between MediaRecorder creation and WS open
       if (!stream.active) { stopListening(); return }
-      setIsListening(true)
-      recorder.addEventListener('dataavailable', (e: BlobEvent) => {
-        if (e.data.size > 0) connection.send(e.data)
-      })
-      try {
-        recorder.start(250)
-      } catch {
-        setError('Microphone recording failed to start')
-        stopListening()
-        return
-      }
+      for (const chunk of audioBufferRef.current) connection.send(chunk)
+      audioBufferRef.current = []
+      wsOpenRef.current = true
       keepAliveRef.current = setInterval(() => connection.keepAlive(), 10000)
     })
 
@@ -191,6 +204,8 @@ export function useDeepgramSTT(): STTControls {
       streamRef.current = null
       audioCtxRef.current = null
       connectionRef.current = null
+      audioBufferRef.current = []
+      wsOpenRef.current = false
       setAnalyser(null)
       setIsListening(false)
     })

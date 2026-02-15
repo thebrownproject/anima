@@ -87,6 +87,13 @@ function getEventHandler(event: string) {
   return call?.[1]
 }
 
+function getRecorderHandler(event: string) {
+  const call = mockMediaRecorder.addEventListener.mock.calls.find(
+    (c: unknown[]) => c[0] === event
+  )
+  return call?.[1]
+}
+
 // --- Tests ---
 
 describe('useSTT', () => {
@@ -165,7 +172,7 @@ describe('useSTT', () => {
     const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    // Trigger Open handler to set up MediaRecorder
+    // Trigger Open so wsOpenRef is set
     triggerOpen()
     mockMediaRecorder.state = 'recording'
 
@@ -183,7 +190,7 @@ describe('useSTT', () => {
     const { result, unmount } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    // Trigger Open handler to set up MediaRecorder
+    // Trigger Open so wsOpenRef is set
     triggerOpen()
     mockMediaRecorder.state = 'recording'
 
@@ -322,5 +329,65 @@ describe('useSTT', () => {
     expect(result.current.isListening).toBe(false)
     // requestClose should NOT be called (connection already closed)
     expect(mockConnection.requestClose).not.toHaveBeenCalled()
+  })
+
+  // --- Audio buffering tests (stackdocs-fb9) ---
+
+  it('buffers audio chunks before WebSocket opens and flushes on open', async () => {
+    mockTokenResponse()
+    mockMicStream()
+
+    const { result } = renderHook(() => useSTT())
+    await act(() => result.current.startListening())
+
+    // Recorder starts immediately — dataavailable handler is registered before Open
+    expect(mockMediaRecorder.start).toHaveBeenCalledWith(250)
+    const dataHandler = getRecorderHandler('dataavailable')
+    expect(dataHandler).toBeDefined()
+
+    // Simulate audio chunks arriving before WS opens
+    const chunk1 = new Blob(['audio1'], { type: 'audio/webm' })
+    const chunk2 = new Blob(['audio2'], { type: 'audio/webm' })
+    act(() => {
+      dataHandler({ data: chunk1 })
+      dataHandler({ data: chunk2 })
+    })
+
+    // Chunks should NOT have been sent yet (WS not open)
+    expect(mockConnection.send).not.toHaveBeenCalled()
+
+    // Now trigger Open — should flush buffered chunks
+    triggerOpen()
+
+    expect(mockConnection.send).toHaveBeenCalledTimes(2)
+    expect(mockConnection.send).toHaveBeenNthCalledWith(1, chunk1)
+    expect(mockConnection.send).toHaveBeenNthCalledWith(2, chunk2)
+
+    // After Open, new chunks should be sent directly
+    mockConnection.send.mockClear()
+    const chunk3 = new Blob(['audio3'], { type: 'audio/webm' })
+    act(() => dataHandler({ data: chunk3 }))
+    expect(mockConnection.send).toHaveBeenCalledWith(chunk3)
+  })
+
+  it('stops listening if audio buffer overflows', async () => {
+    mockTokenResponse()
+    mockMicStream()
+
+    const { result } = renderHook(() => useSTT())
+    await act(() => result.current.startListening())
+
+    const dataHandler = getRecorderHandler('dataavailable')
+    expect(dataHandler).toBeDefined()
+
+    // Push 41 chunks (exceeds 40-chunk limit) without triggering Open
+    act(() => {
+      for (let i = 0; i <= 40; i++) {
+        dataHandler({ data: new Blob([`chunk-${i}`]) })
+      }
+    })
+
+    expect(result.current.error).toBe('Voice connection took too long')
+    expect(result.current.isListening).toBe(false)
   })
 })
