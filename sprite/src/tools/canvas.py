@@ -166,9 +166,14 @@ async def _send_canvas_update(send_fn: SendFn, message: CanvasUpdate, action: st
 def create_canvas_tools(
     send_fn: SendFn,
     workspace_db: WorkspaceDB | None = None,
-    stack_id: str | None = None,
+    stack_id_fn: Callable[[], str | None] | None = None,
 ) -> list:
-    """Create canvas tools scoped with WebSocket send function and optional DB persistence."""
+    """Create canvas tools scoped with WebSocket send function and optional DB persistence.
+
+    stack_id_fn is a callable that returns the CURRENT active stack_id.
+    This avoids stale closure capture — the stack_id can change between
+    tool invocations (e.g., when the user switches stacks).
+    """
 
     @tool(
         "create_card",
@@ -211,7 +216,7 @@ def create_canvas_tools(
             type="canvas_update",
             payload=CanvasUpdatePayload(
                 command="create_card", card_id=card_id, title=title,
-                blocks=block_dataclasses, size=size, stack_id=stack_id,
+                blocks=block_dataclasses, size=size, stack_id=stack_id_fn() if stack_id_fn else None,
             ),
         )
 
@@ -219,8 +224,9 @@ def create_canvas_tools(
         if error:
             return error
 
-        if workspace_db and stack_id:
-            await workspace_db.upsert_card(card_id, stack_id, title, blocks, size)
+        current_stack_id = stack_id_fn() if stack_id_fn else None
+        if workspace_db and current_stack_id:
+            await workspace_db.upsert_card(card_id, current_stack_id, title, blocks, size)
 
         logger.info(f"Created card {card_id}: {title} ({len(blocks)} blocks)")
         return {"content": [{"type": "text", "text": f"Card created: {title} (ID: {card_id})"}]}

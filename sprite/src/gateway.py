@@ -9,6 +9,7 @@ from typing import Any, Callable, Awaitable, TYPE_CHECKING
 
 from .protocol import SystemMessage, SystemPayload, _new_id, to_json, is_websocket_message
 from .runtime import AgentRuntime
+from .state_sync import send_state_sync
 
 if TYPE_CHECKING:
     from .database import WorkspaceDB
@@ -19,7 +20,7 @@ SendFn = Callable[[str], Awaitable[None]]
 
 _ROUTED_TYPES = frozenset({
     "mission", "file_upload", "canvas_interaction",
-    "heartbeat", "auth", "system",
+    "heartbeat", "auth", "system", "state_sync_request",
 })
 
 
@@ -88,6 +89,8 @@ class SpriteGateway:
                 await self._handle_auth(parsed, request_id)
             case "system":
                 await self._handle_system(parsed, request_id)
+            case "state_sync_request":
+                await self._handle_state_sync_request(request_id)
 
     # -- Stub handlers (log + ack) -------------------------------------------
 
@@ -160,6 +163,13 @@ class SpriteGateway:
     async def _handle_system(self, msg: dict[str, Any], req_id: str | None) -> None:
         logger.info("System message: %s", msg.get("payload", {}).get("event", "?"))
         await self._send_ack("system_received", req_id)
+
+    async def _handle_state_sync_request(self, req_id: str | None) -> None:
+        logger.info("State sync requested")
+        if self._workspace_db:
+            await send_state_sync(self._workspace_db, self.send)
+        else:
+            await self._send_error("WorkspaceDB not available for state sync")
 
     # -- Outbound helpers ----------------------------------------------------
 

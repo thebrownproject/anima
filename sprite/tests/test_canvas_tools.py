@@ -34,7 +34,7 @@ async def workspace_db(tmp_path):
 @pytest.fixture
 def db_canvas_tools(mock_send, workspace_db):
     """Canvas tools with workspace_db and stack_id for persistence tests."""
-    return create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id="stack-1")
+    return create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id_fn=lambda: "stack-1")
 
 
 @pytest.mark.asyncio
@@ -460,8 +460,8 @@ async def test_close_card_archives_not_deletes(db_canvas_tools, mock_send, works
 
 @pytest.mark.asyncio
 async def test_stack_id_from_closure(mock_send, workspace_db):
-    """stack_id is captured from factory closure, not from tool args."""
-    tools_a = create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id="stack-a")
+    """stack_id is resolved dynamically via stack_id_fn callable."""
+    tools_a = create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id_fn=lambda: "stack-a")
     await workspace_db.create_stack("stack-a", "Stack A")
 
     await tools_a[0].handler({

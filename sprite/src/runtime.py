@@ -172,10 +172,28 @@ class AgentRuntime:
         except OSError:
             pass
 
-        # --- Resume path: SDK has full context, skip local setup ---
+        # --- Build tools + system prompt (needed for both resume and fresh paths) ---
+        # Tools are local Python closures — never stored server-side, must always re-register.
+        # Memory files may have been updated by daemon — always reload for current context.
+        canvas_tools = create_canvas_tools(
+            self._indirect_send,
+            workspace_db=self._workspace_db,
+            stack_id_fn=lambda: self._active_stack_id,
+        )
+        memory_tools = create_memory_tools(self._memory_db) if self._memory_db else []
+        sprite_server = create_sdk_mcp_server(
+            name="sprite", tools=canvas_tools + memory_tools
+        )
+        system_prompt = await load_memory(self._memory_db)
+
+        # --- Resume path: restore conversation context + fresh tools + fresh system prompt ---
         if resume_id:
             logger.info("Attempting resume from session %s", resume_id)
-            options = self._build_options(resume=resume_id)
+            options = self._build_options(
+                resume=resume_id,
+                system_prompt=system_prompt,
+                mcp_servers={"sprite": sprite_server},
+            )
             try:
                 self._client = ClaudeSDKClient(options=options)
                 await self._client.__aenter__()
@@ -190,18 +208,7 @@ class AgentRuntime:
                 except OSError:
                     pass
 
-        # --- Fresh path: load memory, register tools, build system prompt ---
-        system_prompt = await load_memory(self._memory_db)
-
-        canvas_tools = create_canvas_tools(
-            self._indirect_send,
-            workspace_db=self._workspace_db,
-            stack_id=self._active_stack_id,
-        )
-        memory_tools = create_memory_tools(self._memory_db) if self._memory_db else []
-        sprite_server = create_sdk_mcp_server(
-            name="sprite", tools=canvas_tools + memory_tools
-        )
+        # --- Fresh path ---
 
         session_id = f"session-{int(time.time())}"
         if self._transcript_db:

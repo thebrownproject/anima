@@ -1,12 +1,26 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { useDesktopStore, WORLD_WIDTH, WORLD_HEIGHT } from '@/lib/stores/desktop-store'
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
 
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.0
+
+/** Clamp viewport so the screen center always points inside the world.
+ *  At low zoom (world fits on screen): you can pan but never lose the world.
+ *  At high zoom (world larger than screen): standard bounded panning.
+ *  Never fights drag gestures — no forced centering.
+ */
+function clampView(x: number, y: number, scale: number): { x: number; y: number } {
+  const sw = typeof window !== 'undefined' ? window.innerWidth : 1920
+  const sh = typeof window !== 'undefined' ? window.innerHeight : 1080
+  return {
+    x: Math.max(sw / 2 - WORLD_WIDTH * scale, Math.min(sw / 2, x)),
+    y: Math.max(sh / 2 - WORLD_HEIGHT * scale, Math.min(sh / 2, y)),
+  }
+}
 const SYNC_DELAY = 150
 const SHARP_DELAY = 200
 
@@ -37,12 +51,14 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
   const sharpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSettled = useRef(true)
 
-  // Seed from Zustand on mount
+  // Seed from Zustand on mount — clamp any persisted out-of-bounds position
   useEffect(() => {
     const v = useDesktopStore.getState().view
-    current.current = { ...v }
-    target.current = { ...v }
-    applySharpMode(v)
+    const clamped = clampView(v.x, v.y, v.scale)
+    const seeded = { x: clamped.x, y: clamped.y, scale: v.scale }
+    current.current = { ...seeded }
+    target.current = { ...seeded }
+    applySharpMode(seeded)
   }, [])
 
   const applyAnimationMode = (v: ViewSnapshot) => {
@@ -130,9 +146,10 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       const worldX = (cx - target.current.x) / target.current.scale
       const worldY = (cy - target.current.y) / target.current.scale
 
+      const extClamped = clampView(cx - worldX * clamped, cy - worldY * clamped, clamped)
       target.current = {
-        x: cx - worldX * clamped,
-        y: cy - worldY * clamped,
+        x: extClamped.x,
+        y: extClamped.y,
         scale: clamped,
       }
 
@@ -150,8 +167,9 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
   // Pan momentum via shared hook
   const momentum = useMomentum({
     onFrame: (vx, vy) => {
-      current.current.x += vx
-      current.current.y += vy
+      const clamped = clampView(current.current.x + vx, current.current.y + vy, current.current.scale)
+      current.current.x = clamped.x
+      current.current.y = clamped.y
       applyAnimationMode(current.current)
     },
     onStop: () => {
@@ -183,9 +201,10 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       const worldX = (e.clientX - t.x) / t.scale
       const worldY = (e.clientY - t.y) / t.scale
 
+      const zClamped = clampView(e.clientX - worldX * newZoom, e.clientY - worldY * newZoom, newZoom)
       target.current = {
-        x: e.clientX - worldX * newZoom,
-        y: e.clientY - worldY * newZoom,
+        x: zClamped.x,
+        y: zClamped.y,
         scale: newZoom,
       }
 
@@ -223,10 +242,11 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
 
       momentum.trackVelocity(dx, dy)
 
-      current.current.x += dx
-      current.current.y += dy
-      target.current.x += dx
-      target.current.y += dy
+      const clamped = clampView(current.current.x + dx, current.current.y + dy, current.current.scale)
+      current.current.x = clamped.x
+      current.current.y = clamped.y
+      target.current.x = clamped.x
+      target.current.y = clamped.y
 
       applyAnimationMode(current.current)
     },

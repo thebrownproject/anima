@@ -133,7 +133,7 @@ async def test_agent_and_user_archive_same_db_method(workspace_db, mock_send):
     await workspace_db.create_stack("s1", "Stack")
 
     # Agent-initiated: create card then close it
-    tools = create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id="s1")
+    tools = create_canvas_tools(mock_send, workspace_db=workspace_db, stack_id_fn=lambda: "s1")
     await tools[0].handler({"title": "Agent Card", "blocks": [{"type": "text", "content": "hi"}]})
     agent_card_id = json.loads(mock_send.call_args[0][0])["payload"]["card_id"]
     await tools[2].handler({"card_id": agent_card_id})

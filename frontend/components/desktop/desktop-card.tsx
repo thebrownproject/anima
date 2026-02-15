@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
-import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { useDesktopStore, clampCardPosition } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
@@ -38,8 +38,10 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
   const momentum = useMomentum({
     onFrame: (vx, vy) => {
       const { view } = useDesktopStore.getState()
-      localPos.current.x += vx / view.scale
-      localPos.current.y += vy / view.scale
+      localPos.current = clampCardPosition(
+        localPos.current.x + vx / view.scale,
+        localPos.current.y + vy / view.scale,
+      )
       applyPosition()
     },
     onStop: syncToStore,
@@ -79,8 +81,11 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       e.stopPropagation()
 
       const { view } = useDesktopStore.getState()
-      localPos.current.x += e.movementX / view.scale
-      localPos.current.y += e.movementY / view.scale
+      const clamped = clampCardPosition(
+        localPos.current.x + e.movementX / view.scale,
+        localPos.current.y + e.movementY / view.scale,
+      )
+      localPos.current = clamped
 
       momentum.trackVelocity(e.movementX, e.movementY)
       applyPosition()

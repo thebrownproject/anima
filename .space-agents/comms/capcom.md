@@ -3513,3 +3513,63 @@ Sent Explore agent to scout all voice files (use-stt.ts, use-tts.ts, voice-bars.
 - Continue `/mission solo m7b.4.15` — start with Task E (stopRecordingOnly, voiceSessionActive, WS disconnect cleanup), then F → G → H sequentially.
 
 ---
+
+## [2026-02-15 16:10] Session 172
+
+**Branch:** main | **Git:** uncommitted (sprite runtime fixes, frontend canvas clamp, test updates)
+
+### What Happened
+
+**Three critical Sprite agent bugs fixed + canvas bounds clamping added.**
+
+Investigated and fixed the Sprite agent's broken session resume, missing system context, card persistence failure, and added world bounds to the canvas viewport.
+
+**Bug 1 — Resume path missing MCP tools (`sprite/src/runtime.py:175-184`):**
+- `_start_session()` resume path created SDK client with `resume=session_id` but never registered MCP tools (canvas + memory). Tools are local Python closures — not stored server-side.
+- Fix: moved `create_canvas_tools()` + `create_memory_tools()` + `create_sdk_mcp_server()` above the resume/fresh branch so both paths register tools.
+- Agent could chat but had zero tool access — no create_card, no search_memory, nothing.
+
+**Bug 2 — Resume path missing system prompt (`sprite/src/runtime.py:189-195`):**
+- Session 166 assumption was wrong: "SDK stores system prompt server-side, no reload needed on resume." In practice, the agent lost its Stackdocs identity — didn't know it was a document assistant, didn't know about Canvas.
+- Fix: added `system_prompt=system_prompt` to resume path's `_build_options()`. Memory files (soul.md, os.md, etc.) now loaded on BOTH resume and fresh paths.
+
+**Bug 3 — Card persistence silently skipped (`sprite/src/tools/canvas.py:166-228`):**
+- `create_canvas_tools()` captured `stack_id` as a plain closure value at tool creation time. `set_active_stack_id()` updated the runtime field but NOT the closure.
+- The E2E test script sends missions without `context.stack_id`, so when it started the server, `_start_session()` captured `stack_id=None` permanently. All subsequent `create_card` calls hit `if workspace_db and stack_id:` → silently skipped DB persist.
+- Cards appeared on screen (WebSocket sent first) but were never saved to SQLite → state_sync always returned 0 cards.
+- Fix: changed `stack_id` param to `stack_id_fn: Callable[[], str | None]` — a lambda that reads `self._active_stack_id` at call time. Same indirection pattern as `_indirect_send` for send_fn.
+- Updated `runtime.py` to pass `stack_id_fn=lambda: self._active_stack_id`.
+- Updated test fixtures in `test_canvas_tools.py` and `test_gateway_canvas.py`.
+
+**Canvas bounds clamping (frontend):**
+- Added `WORLD_WIDTH=4000`, `WORLD_HEIGHT=3000` constants and `clampCardPosition()` to `desktop-store.ts`.
+- Clamped card positions in `addCard`, `moveCard` (store level), drag + momentum in `desktop-card.tsx`, and auto-placer output.
+- Added `clampView()` to `desktop-viewport.tsx` — screen center must always point inside the world. Viewport clamped on pan, zoom, momentum, and mount.
+- Still needs tuning — viewport bounds feel slightly off at low zoom levels.
+
+**Three new bugs discovered and filed:**
+- `stackdocs-oan` (P2): Session memory lost on every deploy (session_id cleared)
+- `stackdocs-aq3` (P1): Cards load at (0,0) — position not persisted to WorkspaceDB
+- `stackdocs-zxh` (P1): Reconnect stuck on sprite_waking — Bridge never completes TCP proxy reconnection
+
+### Decisions Made
+
+- **Always load memory + tools on resume** — the Session 166 optimization of skipping memory/tools on resume was wrong. Both are local-only (closures + markdown files) and must be re-created every time.
+- **Lambda for stack_id** — same indirection pattern as `_indirect_send`. Closures capture a callable, not a value, so the stack_id is always current.
+- **Screen-center-in-world clamp** — simpler than force-centering or elastic snap-back. Never fights drag gestures.
+
+### Gotchas
+
+- **CRIU restores killed processes** — killing the server on a Sprite, then running another exec command can wake the Sprite and CRIU restores the old checkpoint (including the killed process). Need to kill and start in rapid succession or same session.
+- **Zombie server processes accumulate** — repeated kill/start cycles left 8+ orphaned Python server processes on the Sprite. Use `for pid in $(ps aux | grep "[p]ython3 -m src.server" | awk "{print \$2}"); do kill -9 $pid; done` to clean.
+- **E2E test poisons stack_id** — test-e2e-v2.ts sends missions without `context.stack_id`, which means the first `_start_session()` captured `stack_id=None` permanently. Any test that starts the server must either send a stack_id or use the new lambda pattern.
+- **state_sync hardcodes position to (0,0)** — cards table has no position columns. Frontend localStorage is the only source of card positions. Need DB columns or merge strategy.
+
+### Next Action
+
+- Commit and push all changes from this session
+- Fix card position persistence (stackdocs-aq3) — add position/z_index columns to cards table
+- Fix reconnect (stackdocs-zxh) — investigate Bridge reconnect.ts
+- Continue m7b.4.15 tasks E-H (voice redesign)
+
+---

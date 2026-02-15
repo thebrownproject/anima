@@ -3,6 +3,19 @@ import { persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 import type { Block, CardSize, StackInfo } from '@/types/ws-protocol'
 
+// World bounds — cards and viewport are clamped to this area
+export const WORLD_WIDTH = 4000
+export const WORLD_HEIGHT = 3000
+const CARD_W = 320
+
+/** Clamp a card position within world bounds. */
+export function clampCardPosition(x: number, y: number): { x: number; y: number } {
+  return {
+    x: Math.max(0, Math.min(WORLD_WIDTH - CARD_W, x)),
+    y: Math.max(0, Math.min(WORLD_HEIGHT - 100, y)),
+  }
+}
+
 export interface DesktopCard {
   id: string
   stackId: string
@@ -115,7 +128,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
 
       addCard: (card) =>
         set((state) => ({
-          cards: { ...state.cards, [card.id]: card },
+          cards: { ...state.cards, [card.id]: { ...card, position: clampCardPosition(card.position.x, card.position.y) } },
           maxZIndex: Math.max(state.maxZIndex, card.zIndex),
         })),
 
@@ -139,7 +152,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
           const existing = state.cards[id]
           if (!existing) return state
           return {
-            cards: { ...state.cards, [id]: { ...existing, position } },
+            cards: { ...state.cards, [id]: { ...existing, position: clampCardPosition(position.x, position.y) } },
           }
         }),
 
