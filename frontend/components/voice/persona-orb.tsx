@@ -8,6 +8,7 @@ import { useVoice } from './voice-provider'
 import { GlassPill } from '@/components/ui/glass-pill'
 import { GlassIconButton } from '@/components/ui/glass-icon-button'
 import { GlassTooltip, GlassTooltipTrigger, GlassTooltipContent } from '@/components/ui/glass-tooltip'
+import { VoiceBars } from './voice-bars'
 import * as Icons from '@/components/icons'
 
 // Async load — prevents Rive WebGL2 from blocking the main thread
@@ -38,7 +39,7 @@ export function PersonaOrb({ hasText, inputActive, onSendMessage }: PersonaOrbPr
   const ttsEnabled = useVoiceStore((s) => s.ttsEnabled)
   const toggleMic = useVoiceStore((s) => s.toggleMic)
   const toggleTts = useVoiceStore((s) => s.toggleTts)
-  const { startVoice, stopVoice, interruptTTS } = useVoice()
+  const { startVoice, stopVoice, interruptTTS, analyser } = useVoice()
   const [riveReady, setRiveReady] = useState(false)
   const [mountRive, setMountRive] = useState(false)
   const [showPill, setShowPill] = useState(false)
@@ -71,7 +72,9 @@ export function PersonaOrb({ hasText, inputActive, onSendMessage }: PersonaOrbPr
     hoverTimer.current = setTimeout(() => setShowPill(false), HOVER_DELAY)
   }, [])
 
-  const showTranscript = personaState === 'listening' && transcript.length > 0
+  const isListening = personaState === 'listening'
+  // Pill is always visible when listening, otherwise controlled by hover
+  const pillVisible = isListening || showPill
 
   function handleTap(): void {
     // Send message when text is present
@@ -100,41 +103,41 @@ export function PersonaOrb({ hasText, inputActive, onSendMessage }: PersonaOrbPr
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {showTranscript && (
-        <div
-          data-testid="transcript-preview"
-          className="max-w-[240px] truncate rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs text-white/70 backdrop-blur-xl"
-        >
-          {transcript}
-        </div>
-      )}
-
-      {/* Hover bar — voice controls (pb-2 creates continuous hover zone to orb) */}
+      {/* Pill — shows voice controls on hover, transcript + bars when listening */}
       <div
         className={cn(
           'absolute bottom-full left-1/2 z-10 -translate-x-1/2 pb-2',
           'transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-          showPill
+          pillVisible
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none translate-y-1 scale-95 opacity-0',
         )}
       >
-        <GlassPill className="h-10">
-          <GlassIconButton
-            icon={micEnabled ? <Icons.Microphone /> : <Icons.MicrophoneOff />}
-            tooltip={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
-            tooltipSide="top"
-            onClick={toggleMic}
-            className="size-8"
-          />
-          <GlassIconButton
-            icon={ttsEnabled ? <Icons.Volume /> : <Icons.VolumeOff />}
-            tooltip={ttsEnabled ? 'Mute speaker' : 'Unmute speaker'}
-            tooltipSide="top"
-            onClick={toggleTts}
-            className="size-8"
-          />
-        </GlassPill>
+        {isListening ? (
+          <GlassPill className="w-[400px] flex-col items-center gap-2 px-4 py-3 transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]">
+            <span className="w-full text-center text-xs leading-relaxed text-white/70">
+              {transcript || 'Listening...'}
+            </span>
+            <VoiceBars analyser={analyser} />
+          </GlassPill>
+        ) : (
+          <GlassPill className="h-10">
+            <GlassIconButton
+              icon={micEnabled ? <Icons.Microphone /> : <Icons.MicrophoneOff />}
+              tooltip={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
+              tooltipSide="top"
+              onClick={toggleMic}
+              className="size-8"
+            />
+            <GlassIconButton
+              icon={ttsEnabled ? <Icons.Volume /> : <Icons.VolumeOff />}
+              tooltip={ttsEnabled ? 'Mute speaker' : 'Unmute speaker'}
+              tooltipSide="top"
+              onClick={toggleTts}
+              className="size-8"
+            />
+          </GlassPill>
+        )}
       </div>
 
       <GlassTooltip open={hasText ? undefined : false}>

@@ -20,6 +20,7 @@ interface VoiceContextValue {
   startVoice: () => Promise<void>
   stopVoice: () => Promise<void>
   interruptTTS: () => void
+  analyser: AnalyserNode | null
 }
 
 const VoiceContext = createContext<VoiceContextValue | null>(null)
@@ -35,7 +36,7 @@ export function useVoiceMaybe(): VoiceContextValue | null {
 }
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
-  const { startListening, stopListening } = useSTT()
+  const { startListening, stopListening, analyser } = useSTT()
   const { speak, interrupt, isSpeaking } = useTTS()
   const { status, send } = useWebSocket()
 
@@ -110,7 +111,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   }, [stopListening, interrupt])
 
   return (
-    <VoiceContext.Provider value={{ startVoice, stopVoice, interruptTTS }}>
+    <VoiceContext.Provider value={{ startVoice, stopVoice, interruptTTS, analyser }}>
       {children}
     </VoiceContext.Provider>
   )

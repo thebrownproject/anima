@@ -3294,3 +3294,63 @@ Deep investigation into why the desktop UI felt "blocked" for 4-12 seconds on pa
 - Continue design work on desktop UI
 
 ---
+
+## [2026-02-15 11:20] Session 168
+
+**Branch:** main | **Git:** uncommitted (voice system changes)
+
+### What Happened
+
+**PersonaOrb redesign — hover pill bar, send-on-click, Web Speech API, voice bars.**
+
+Major rework of the PersonaOrb interaction model. Previously a click-to-talk button; now a dual-purpose orb with hover controls and message sending.
+
+**Structural changes:**
+- Extracted `GlassPill` to `components/ui/glass-pill.tsx` (shared between top bar and orb hover pill).
+- Moved PersonaOrb outside overflow-hidden glass bar in `chat-bar.tsx` — absolute sibling with spacer div.
+- Removed dedicated send button. Orb click sends message when text present.
+- Removed inline mic/TTS toggles from chat-bar. All voice controls in hover pill.
+
+**PersonaOrb (`persona-orb.tsx`) new features:**
+- `hasText`, `inputActive`, `onSendMessage` props from chat-bar.
+- Hover pill: mic toggle + TTS toggle (400ms delay, 800ms when typing).
+- Pop-in animation: scale-95→100, translate-y-1→0, opacity with Apple easing.
+- Contextual tooltip: "Send message" only when hasText.
+- Pill switches: voice controls on hover, transcript + voice bars when listening.
+
+**Web Speech API rewrite (`use-stt.ts`):**
+- Replaced Deepgram SDK with native Web Speech API. No API keys needed.
+- Added parallel getUserMedia + AudioContext + AnalyserNode for visualisation.
+- Exposes `analyser` through voice-provider context.
+
+**Voice bars (`voice-bars.tsx` — new):**
+- Reads AnalyserNode frequency data via requestAnimationFrame. 4 bars, smoothed.
+
+**Rive state mapping:** Changed to passthrough. Only `asleep` → `idle`.
+
+### Decisions Made
+
+- **Web Speech API over Deepgram** — Native browser API works immediately. No cost, no keys, no server round-trip.
+- **Orb outside overflow-hidden** — Fixes pill clipping and backdrop-blur stacking.
+- **JS hover over CSS group-hover** — Needed for delayed show/hide timers.
+- **Send button removed** — Orb replaces it. Enter key still works.
+
+### Gotchas
+
+- **Nested backdrop-blur breaks glass effect** — Pill inside glass bar lost blur. Fix: render outside container.
+- **Rive canvas ignores className size** — Fix: `absolute inset-[-15%]` with `size-full`.
+- **Web Speech API `no-speech` error is non-fatal** — Must not kill session on silence.
+- **First frequency bin dominates voice bars** — Low-frequency bin has most energy.
+
+### In Progress
+
+- Voice bars layout: bars inside pill with text above, pill expanding, bar distribution
+- Persona-orb tests need TooltipProvider wrapper + new prop tests
+- chat-bar tests may need updates for removed send button
+
+### Next Action
+
+- Polish listening pill (vertical layout, expanding height, bar distribution)
+- Update and run test suite
+
+---

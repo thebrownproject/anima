@@ -51,15 +51,25 @@ interface STTControls {
   stopListening: () => void
   isListening: boolean
   error: string | null
+  analyser: AnalyserNode | null
 }
 
 export function useSTT(): STTControls {
   const [isListening, setIsListening] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop()
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    audioCtxRef.current?.close()
+    recognitionRef.current = null
+    streamRef.current = null
+    audioCtxRef.current = null
+    setAnalyser(null)
     setIsListening(false)
   }, [])
 
@@ -70,6 +80,21 @@ export function useSTT(): STTControls {
     if (!SpeechRecognitionCtor) {
       setError('Speech recognition not supported in this browser')
       return
+    }
+
+    // Parallel mic stream for audio visualisation
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const ctx = new AudioContext()
+      audioCtxRef.current = ctx
+      const source = ctx.createMediaStreamSource(stream)
+      const node = ctx.createAnalyser()
+      node.fftSize = 64
+      source.connect(node)
+      setAnalyser(node)
+    } catch {
+      // Visualiser is optional — continue without it
     }
 
     const recognition = new SpeechRecognitionCtor()
@@ -125,5 +150,5 @@ export function useSTT(): STTControls {
     return () => stopListening()
   }, [stopListening])
 
-  return { startListening, stopListening, isListening, error }
+  return { startListening, stopListening, isListening, error, analyser }
 }
