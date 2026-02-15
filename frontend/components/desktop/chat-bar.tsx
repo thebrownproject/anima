@@ -1,11 +1,10 @@
 'use client'
 
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useCallback, useEffect, useState } from 'react'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { GlassIconButton } from '@/components/ui/glass-icon-button'
-import { GlassPill } from '@/components/ui/glass-pill'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useWebSocket } from './ws-provider'
 import { isVoiceEnabled } from '@/lib/voice-config'
@@ -14,22 +13,24 @@ import { useVoiceMaybe } from '@/components/voice/voice-provider'
 import { PersonaOrb } from '@/components/voice/persona-orb'
 import { VoiceBars } from '@/components/voice/voice-bars'
 
-const HOVER_DELAY = 400 // ms — pill show/hide delay
+const HOVER_DELAY = 200 // ms — voice controls show delay
+const LINGER_DELAY = 1000 // ms — voice controls hide delay (after stop or mouse leave)
 
 interface ChatBarProps {
   embedded?: boolean
 }
 
 export function ChatBar({ embedded = false }: ChatBarProps) {
-  const [inputValue, setInputValue] = useState('')
-  const [inputActive, setInputActive] = useState(false)
-  const [showPill, setShowPill] = useState(false)
+  const [showControls, setShowControls] = useState(false)
+  const [lingerVisible, setLingerVisible] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(null)
+  const lingerTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const prevTranscriptRef = useRef('')
+  const wasListeningRef = useRef(false)
   const { send, status } = useWebSocket()
   const isConnected = status === 'connected'
-  const { chips, mode, isAgentStreaming, addMessage } = useChatStore()
+  const { chips, mode, isAgentStreaming, addMessage, draft: inputValue, setDraft: setInputValue, clearDraft, inputActive, setInputActive } = useChatStore()
   const activeStackId = useDesktopStore((s) => s.activeStackId)
   const voiceActive = isVoiceEnabled()
   const voice = useVoiceMaybe()
@@ -46,18 +47,21 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   }, [addMessage, send, activeStackId])
 
   const handleSend = useCallback(() => {
-    // If recording, stop STT first and clear transcript
-    if (voice && isListening) {
-      voice.stopRecordingOnly()
-      useVoiceStore.getState().clearTranscript()
-    }
+    // If recording, stop STT but keep voice session alive for TTS
+    if (voice && isListening) voice.stopRecordingForSend()
     const text = inputValue.trim()
     if (!text || !isConnected) return
     sendMessage(text)
-    setInputValue('')
+    clearDraft()
     setInputActive(false)
+    useVoiceStore.getState().clearTranscript()
+    // Show thinking state while waiting for agent response
+    const { personaState: ps } = useVoiceStore.getState()
+    if (voiceActive && ps !== 'asleep') {
+      useVoiceStore.getState().setPersonaState('thinking')
+    }
     inputRef.current?.blur()
-  }, [inputValue, sendMessage, isConnected, voice, isListening])
+  }, [inputValue, sendMessage, clearDraft, isConnected, voice, isListening, voiceActive])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -81,43 +85,63 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
   // --- Transcript → textarea wiring ---
 
-  // Auto-expand textarea when recording starts
+  // Expand textarea on voice start (no focus — hides cursor), focus or collapse when done
   useEffect(() => {
     if (isListening) {
+      wasListeningRef.current = true
       setInputActive(true)
+      inputRef.current?.blur()
       prevTranscriptRef.current = ''
-      setTimeout(() => inputRef.current?.focus(), 250)
+      setLingerVisible(false)
+      if (lingerTimer.current) clearTimeout(lingerTimer.current)
+    } else if (wasListeningRef.current) {
+      // Only run linger logic on listening → not-listening transition
+      wasListeningRef.current = false
+      if (inputValue.trim()) {
+        setTimeout(() => inputRef.current?.focus(), 250)
+        setLingerVisible(true)
+        lingerTimer.current = setTimeout(() => setLingerVisible(false), LINGER_DELAY)
+      } else {
+        setLingerVisible(true)
+        lingerTimer.current = setTimeout(() => {
+          setLingerVisible(false)
+          if (!inputRef.current?.value?.trim()) setInputActive(false)
+        }, LINGER_DELAY)
+      }
     }
-  }, [isListening])
+  }, [isListening]) // eslint-disable-line react-hooks/exhaustive-deps -- transition-only effect
 
-  // Delta-append transcript to inputValue as STT produces text
+  // Delta-append transcript to draft as STT produces text (one instance only to prevent double-append)
   useEffect(() => {
-    if (!isListening) return
+    if (embedded || !isListening) return
     const prev = prevTranscriptRef.current
     if (transcript.length > prev.length && transcript.startsWith(prev)) {
       const delta = transcript.slice(prev.length)
       setInputValue((v) => v + delta)
     }
     prevTranscriptRef.current = transcript
-  }, [transcript, isListening])
+  }, [transcript, isListening, embedded, setInputValue])
 
-  // --- Pill hover logic ---
+  // --- Voice controls hover logic ---
 
   useEffect(() => {
-    return () => { if (hoverTimer.current) clearTimeout(hoverTimer.current) }
+    return () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current)
+      if (lingerTimer.current) clearTimeout(lingerTimer.current)
+    }
   }, [])
 
-  const handlePillMouseEnter = useCallback(() => {
+  const handleControlsMouseEnter = useCallback(() => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current)
-    hoverTimer.current = setTimeout(() => setShowPill(true), HOVER_DELAY)
+    hoverTimer.current = setTimeout(() => setShowControls(true), HOVER_DELAY)
   }, [])
 
-  const handlePillMouseLeave = useCallback(() => {
+  const handleControlsMouseLeave = useCallback(() => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current)
-    hoverTimer.current = setTimeout(() => setShowPill(false), HOVER_DELAY)
+    hoverTimer.current = setTimeout(() => setShowControls(false), LINGER_DELAY)
   }, [])
 
-  const pillVisible = isListening || showPill
+  const controlsVisible = isListening || showControls || lingerVisible
 
   const hasText = inputValue.trim().length > 0
   const isHidden = !embedded && mode === 'panel'
@@ -177,7 +201,10 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
                     rows={1}
-                    className="w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30"
+                    className={cn(
+                      'w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30',
+                      isListening && 'caret-transparent',
+                    )}
                   />
                 </div>
               </div>
@@ -196,7 +223,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
               {!inputActive ? (
                 <button
                   onClick={activateInput}
-                  className="mx-2 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-white/10"
+                  className="mx-3 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-white/10"
                 >
                   <span className="text-[15px] leading-none text-white/30">Ask anything...</span>
                 </button>
@@ -204,46 +231,58 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                 <div className="flex-1" />
               )}
 
-              {/* Right — pill + orb spacer (orb rendered outside overflow-hidden) */}
+              {/* Right — voice controls + orb spacer */}
               {voiceActive ? (
                 <div
-                  className="flex items-center gap-1"
-                  onMouseEnter={handlePillMouseEnter}
-                  onMouseLeave={handlePillMouseLeave}
+                  data-testid="voice-controls"
+                  className="flex items-center"
+                  onMouseEnter={handleControlsMouseEnter}
+                  onMouseLeave={handleControlsMouseLeave}
                 >
-                  {/* Inline pill — speaker toggle, stop button, voice bars */}
+                  {/* Speaker toggle — slides out first (farthest from orb) */}
                   <div
-                    data-testid="voice-pill"
                     className={cn(
-                      'transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      pillVisible
-                        ? 'pointer-events-auto scale-100 opacity-100'
-                        : 'pointer-events-none w-0 scale-95 opacity-0',
+                      'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+                      controlsVisible
+                        ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-100'
+                        : 'pointer-events-none w-0 translate-x-6 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
                   >
-                    <GlassPill className="h-10">
-                      <GlassIconButton
-                        icon={ttsEnabled ? <Icons.Volume /> : <Icons.VolumeOff />}
-                        tooltip={ttsEnabled ? 'Mute speaker' : 'Unmute speaker'}
-                        tooltipSide="top"
-                        onClick={toggleTts}
-                        className="size-8"
-                      />
-                      {isListening && (
-                        <>
-                          <div data-testid="stop-recording-button">
-                            <GlassIconButton
-                              icon={<Icons.PlayerStopFilled className="size-3.5" />}
-                              tooltip="Stop recording"
-                              tooltipSide="top"
-                              onClick={() => voice?.stopRecordingOnly()}
-                              className="size-8"
-                            />
-                          </div>
-                          <VoiceBars analyser={voice?.analyser ?? null} className="mx-1" />
-                        </>
-                      )}
-                    </GlassPill>
+                    <GlassIconButton
+                      icon={ttsEnabled ? <Icons.Volume /> : <Icons.VolumeOff />}
+                      tooltip={ttsEnabled ? 'Mute speaker' : 'Unmute speaker'}
+                      tooltipSide="top"
+                      onClick={toggleTts}
+                    />
+                  </div>
+                  {/* Stop button — visible when listening or lingering */}
+                  <div
+                    data-testid="stop-recording-button"
+                    className={cn(
+                      'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+                      controlsVisible && (isListening || lingerVisible)
+                        ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-50'
+                        : 'pointer-events-none w-0 translate-x-4 overflow-hidden opacity-0 duration-150 delay-0',
+                    )}
+                  >
+                    <GlassIconButton
+                      icon={<Icons.PlayerStopFilled className="size-3.5" />}
+                      tooltip="Stop recording"
+                      tooltipSide="top"
+                      onClick={() => voice?.stopRecordingOnly()}
+                    />
+                  </div>
+                  {/* Voice bars — visible when listening or lingering */}
+                  <div
+                    className={cn(
+                      'flex items-center justify-center',
+                      'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+                      controlsVisible && (isListening || lingerVisible)
+                        ? 'mr-1.5 h-10 w-10 translate-x-0 opacity-100 duration-250'
+                        : 'pointer-events-none h-10 w-0 translate-x-2 overflow-hidden opacity-0 duration-150 delay-0',
+                    )}
+                  >
+                    <VoiceBars analyser={voice?.analyser ?? null} />
                   </div>
                   <div className="size-10" />
                 </div>
@@ -260,9 +299,13 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
           </div>
         </div>
 
-        {/* Persona orb — outside overflow-hidden so hover bar isn't clipped */}
+        {/* Persona orb + voice bars — outside overflow-hidden so they aren't clipped */}
         {voiceActive && (
-          <div className="absolute bottom-2.5 right-3">
+          <div
+            className="absolute bottom-2.5 right-3 flex flex-col items-center gap-1.5"
+            onMouseEnter={handleControlsMouseEnter}
+            onMouseLeave={handleControlsMouseLeave}
+          >
             <PersonaOrb hasText={hasText} onSendMessage={handleSend} />
           </div>
         )}

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { type ReactNode } from 'react'
 import { useVoiceStore } from '@/lib/stores/voice-store'
+import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 
 const { mockStartVoice, mockStopRecordingOnly, mockInterruptTTS } = vi.hoisted(() => ({
   mockStartVoice: vi.fn(),
@@ -31,8 +33,12 @@ vi.mock('../voice-provider', () => ({
 
 import { PersonaOrb } from '../persona-orb'
 
+function Wrapper({ children }: { children: ReactNode }) {
+  return <GlassTooltipProvider>{children}</GlassTooltipProvider>
+}
+
 function renderOrb(props?: Parameters<typeof PersonaOrb>[0]) {
-  return render(<PersonaOrb {...props} />)
+  return render(<PersonaOrb {...props} />, { wrapper: Wrapper })
 }
 
 const DEFAULTS = {
@@ -76,9 +82,9 @@ describe('PersonaOrb', () => {
     expect(screen.queryByTestId('persona-placeholder')).toBeNull()
   })
 
-  // --- No pill UI ---
+  // --- No inline UI ---
 
-  it('does not render GlassPill, VoiceBars, or transcript elements', () => {
+  it('does not render inline controls or transcript text', () => {
     useVoiceStore.setState({ personaState: 'listening', transcript: 'hello world' })
     renderOrb()
     expect(screen.queryByText('hello world')).toBeNull()
@@ -87,11 +93,20 @@ describe('PersonaOrb', () => {
 
   // --- Tap actions ---
 
-  it('tap when idle calls startVoice', () => {
+  it('tap when idle + no text calls startVoice', () => {
     useVoiceStore.setState({ personaState: 'idle' })
     renderOrb()
     fireEvent.click(screen.getByTestId('persona-orb'))
     expect(mockStartVoice).toHaveBeenCalledOnce()
+  })
+
+  it('tap when idle + hasText calls onSendMessage', () => {
+    useVoiceStore.setState({ personaState: 'idle' })
+    const mockSend = vi.fn()
+    renderOrb({ hasText: true, onSendMessage: mockSend })
+    fireEvent.click(screen.getByTestId('persona-orb'))
+    expect(mockSend).toHaveBeenCalledOnce()
+    expect(mockStartVoice).not.toHaveBeenCalled()
   })
 
   it('tap when listening + no text calls stopRecordingOnly', () => {

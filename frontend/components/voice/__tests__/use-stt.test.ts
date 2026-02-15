@@ -67,7 +67,7 @@ function mockTokenResponse(token = 'tmp-tok-123') {
 
 function mockMicStream() {
   const track = { stop: vi.fn() }
-  const stream = { getTracks: () => [track] }
+  const stream = { getTracks: () => [track], active: true }
   mockGetUserMedia.mockResolvedValueOnce(stream)
   return { stream, track }
 }

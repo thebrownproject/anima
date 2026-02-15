@@ -5,8 +5,9 @@ import { useVoiceStore } from '@/lib/stores/voice-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 
-const { mockStopRecordingOnly } = vi.hoisted(() => ({
+const { mockStopRecordingOnly, mockStopRecordingForSend } = vi.hoisted(() => ({
   mockStopRecordingOnly: vi.fn(),
+  mockStopRecordingForSend: vi.fn(),
 }))
 
 let mockVoiceEnabled = false
@@ -16,7 +17,7 @@ vi.mock('@/lib/voice-config', () => ({
 }))
 
 const mockVoiceCtx = () => mockVoiceEnabled
-  ? { startVoice: vi.fn(), stopVoice: vi.fn(), stopRecordingOnly: mockStopRecordingOnly, interruptTTS: vi.fn(), analyser: null }
+  ? { startVoice: vi.fn(), stopRecordingOnly: mockStopRecordingOnly, stopRecordingForSend: mockStopRecordingForSend, interruptTTS: vi.fn(), analyser: null }
   : null
 
 vi.mock('../../voice/voice-provider', () => ({
@@ -67,6 +68,8 @@ const CHAT_STORE_DEFAULTS = {
   chips: [],
   mode: 'bar' as const,
   isAgentStreaming: false,
+  draft: '',
+  inputActive: false,
 }
 
 describe('ChatBar voice integration', () => {
@@ -204,7 +207,7 @@ describe('ChatBar transcript wiring', () => {
     expect(mockStopRecordingOnly).toHaveBeenCalledOnce()
   })
 
-  it('handleSend during recording stops STT first', () => {
+  it('handleSend during recording stops STT first (keeps voice session)', () => {
     useVoiceStore.setState({ personaState: 'listening', transcript: 'voice text' })
     render(<ChatBar />, { wrapper: Wrapper })
 
@@ -215,14 +218,14 @@ describe('ChatBar transcript wiring', () => {
     // Send message
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
 
-    expect(mockStopRecordingOnly).toHaveBeenCalled()
+    expect(mockStopRecordingForSend).toHaveBeenCalled()
     const msgs = useChatStore.getState().messages
     expect(msgs).toHaveLength(1)
     expect(msgs[0].content).toBe('voice text')
   })
 })
 
-describe('ChatBar inline pill', () => {
+describe('ChatBar voice controls', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockVoiceEnabled = true
@@ -234,18 +237,21 @@ describe('ChatBar inline pill', () => {
     cleanup()
   })
 
-  it('pill hidden when not hovered and not recording', () => {
+  it('controls hidden when not hovered and not recording', () => {
     render(<ChatBar />, { wrapper: Wrapper })
-    const pill = screen.getByTestId('voice-pill')
-    expect(pill.className).toContain('opacity-0')
+    const controls = screen.getByTestId('voice-controls')
+    // Speaker toggle should be hidden (opacity-0)
+    const firstChild = controls.children[0] as HTMLElement
+    expect(firstChild.className).toContain('opacity-0')
   })
 
-  it('pill shows speaker+stop+bars during recording', () => {
+  it('shows speaker+stop+bars during recording', () => {
     useVoiceStore.setState({ personaState: 'listening' })
     render(<ChatBar />, { wrapper: Wrapper })
 
-    const pill = screen.getByTestId('voice-pill')
-    expect(pill.className).toContain('opacity-100')
+    const controls = screen.getByTestId('voice-controls')
+    const firstChild = controls.children[0] as HTMLElement
+    expect(firstChild.className).toContain('opacity-100')
     expect(screen.getByTestId('stop-recording-button')).toBeTruthy()
   })
 
@@ -259,47 +265,46 @@ describe('ChatBar inline pill', () => {
     expect(mockStopRecordingOnly).toHaveBeenCalledOnce()
   })
 
-  it('pill becomes visible on hover after delay', () => {
+  it('controls become visible on hover after delay', () => {
     vi.useFakeTimers()
     render(<ChatBar />, { wrapper: Wrapper })
 
-    const pill = screen.getByTestId('voice-pill')
-    expect(pill.className).toContain('opacity-0')
+    const controls = screen.getByTestId('voice-controls')
+    const firstChild = controls.children[0] as HTMLElement
+    expect(firstChild.className).toContain('opacity-0')
 
-    // Hover over the pill area
-    fireEvent.mouseEnter(pill.parentElement!)
+    // Hover over controls area
+    fireEvent.mouseEnter(controls)
+    expect(firstChild.className).toContain('opacity-0')
 
-    // Not visible yet (400ms delay)
-    expect(pill.className).toContain('opacity-0')
+    // Advance past 200ms delay
+    act(() => { vi.advanceTimersByTime(200) })
+    expect(firstChild.className).toContain('opacity-100')
 
-    // Advance past delay
-    act(() => { vi.advanceTimersByTime(400) })
-
-    expect(pill.className).toContain('opacity-100')
-
-    // Mouse leave + delay hides it
-    fireEvent.mouseLeave(pill.parentElement!)
-    act(() => { vi.advanceTimersByTime(400) })
-
-    expect(pill.className).toContain('opacity-0')
+    // Mouse leave + linger delay (1000ms) hides them
+    fireEvent.mouseLeave(controls)
+    act(() => { vi.advanceTimersByTime(200) })
+    expect(firstChild.className).toContain('opacity-100') // still lingering
+    act(() => { vi.advanceTimersByTime(800) })
+    expect(firstChild.className).toContain('opacity-0')
 
     vi.useRealTimers()
   })
 
-  it('no mic toggle rendered in pill', () => {
+  it('no mic toggle rendered in controls', () => {
     useVoiceStore.setState({ personaState: 'listening' })
     render(<ChatBar />, { wrapper: Wrapper })
 
-    // Check no microphone icons exist inside pill
-    const pill = screen.getByTestId('voice-pill')
-    expect(pill.querySelector('[data-testid="mic-button"]')).toBeNull()
+    const controls = screen.getByTestId('voice-controls')
+    expect(controls.querySelector('[data-testid="mic-button"]')).toBeNull()
   })
 
   it('embedded mode renders correctly', () => {
     useVoiceStore.setState({ personaState: 'listening' })
     render(<ChatBar embedded />, { wrapper: Wrapper })
 
-    const pill = screen.getByTestId('voice-pill')
-    expect(pill.className).toContain('opacity-100')
+    const controls = screen.getByTestId('voice-controls')
+    const firstChild = controls.children[0] as HTMLElement
+    expect(firstChild.className).toContain('opacity-100')
   })
 })

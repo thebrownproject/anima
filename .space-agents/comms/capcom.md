@@ -3620,3 +3620,63 @@ Two Session 172 bugs remain with full root cause analyses ready:
 - **stackdocs-zxh** (P1): Fix keepalive gap during reconnect + buffer drain bug
 
 ---
+
+## [2026-02-15 19:57] Session 176
+
+**Branch:** main | **Git:** uncommitted (17 files across frontend voice/chat/store)
+
+### What Happened
+
+**Major chat bar & voice system cleanup + bug fixes across 7 areas.**
+
+**1. Code review & cleanup (code-simplifier agent):**
+- Fixed `lingerVisible` mount bug — added `wasListeningRef` guard so voice controls don't flash on page load (`chat-bar.tsx:85-109`)
+- Renamed 6 stale "pill" identifiers to "controls" (`showPill` → `showControls`, `pillVisible` → `controlsVisible`, etc.)
+- Removed dead `stopVoice()` from voice-provider + interface + all tests (~15 lines)
+- Fixed test description referencing removed `GlassPill` in persona-orb.test.tsx
+- Added missing `stopListening` dependency in voice-provider WS status effect
+
+**2. Voice controls layout fix (`chat-bar.tsx:231-283`):**
+- Hidden elements now collapse to `w-0 overflow-hidden` instead of just `opacity-0` — prevents invisible stop/bars from pushing speaker icon far from orb
+- Added `delay-0` to all hidden states so speaker/stop/bars disappear together
+
+**3. Shared draft state (`chat-store.ts` + `chat-bar.tsx`):**
+- Moved `inputValue` and `inputActive` from local useState to shared store in chat-store
+- Both dock bar and sidebar ChatBar now share same draft text and expanded/collapsed state
+- Transcript wiring only runs on standalone bar (`!embedded`) to prevent double-append
+
+**4. Orb state machine improvements:**
+- Added `idle → thinking` as valid transition in voice-store
+- `handleSend` sets persona to `thinking` after sending
+- Agent completion → `speaking` state for 10s visual animation (even without TTS) via `speakingTimerRef`
+
+**5. Orb tooltips (`persona-orb.tsx`):**
+- Added state-dependent tooltips (Start listening / Send message / Thinking... / Stop speaking / Connecting...)
+
+**6. TTS fixes (partially working — filed stackdocs-m7b.4.15.9):**
+- Added `stopRecordingForSend()` — stops STT but keeps voiceSessionRef alive for TTS
+- Added `ctx.resume()` in use-tts.ts for suspended AudioContext
+- Added `prevSpeakingRef` guard to isSpeaking effect
+- Removed `voiceSessionRef` gating — TTS triggers for ALL agent responses when speaker ON
+- **TTS still not producing audio** — OpenAI API returns valid PCM but no sound output
+
+**7. STT race condition fix (`use-stt.ts:135-148`):**
+- Added `stream.active` guard + try/catch around `recorder.start()` — prevents NotSupportedError
+
+### Decisions Made
+
+- **Shared draft in chat-store** — both ChatBar instances share same input. Prevents stale text after switching views.
+- **Speaker toggle = TTS for all** — removed voiceSessionRef gating. Speaker ON = hear all agent replies.
+- **Visual speaking animation** — 10s timer when TTS off, real duration when on.
+- **stopRecordingForSend vs stopRecordingOnly** — send preserves voice session, cancel resets it.
+
+### In Progress
+
+- **TTS audio not playing (stackdocs-m7b.4.15.9)** — P1 bug. speak() called, API returns data, but no sound. Needs browser console debugging.
+
+### Next Action
+
+- Debug TTS audio (stackdocs-m7b.4.15.9) with console breadcrumbs in speak()
+- Close m7b.4.15 once TTS working and smoke test passes
+
+---

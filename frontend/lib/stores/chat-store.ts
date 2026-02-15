@@ -22,6 +22,8 @@ interface ChatState {
   chips: SuggestionChip[]
   mode: 'bar' | 'panel'
   isAgentStreaming: boolean
+  draft: string
+  inputActive: boolean
 }
 
 type ChatMessageInput = Omit<ChatMessage, 'id'> & { id?: string }
@@ -34,6 +36,9 @@ interface ChatActions {
   setMode: (mode: 'bar' | 'panel') => void
   setAgentStreaming: (isStreaming: boolean) => void
   clearMessages: () => void
+  setDraft: (text: string | ((prev: string) => string)) => void
+  clearDraft: () => void
+  setInputActive: (active: boolean) => void
 }
 
 // =============================================================================
@@ -48,6 +53,8 @@ export const useChatStore = create<ChatState & ChatActions>()(
       chips: [],
       mode: 'bar',
       isAgentStreaming: false,
+      draft: '',
+      inputActive: false,
 
       // Actions
       addMessage: (message) =>
@@ -80,6 +87,12 @@ export const useChatStore = create<ChatState & ChatActions>()(
       setMode: (mode) => set({ mode }),
       setAgentStreaming: (isStreaming) => set({ isAgentStreaming: isStreaming }),
       clearMessages: () => set({ messages: [], chips: [] }),
+      setDraft: (text) =>
+        set((state) => ({
+          draft: typeof text === 'function' ? text(state.draft) : text,
+        })),
+      clearDraft: () => set({ draft: '' }),
+      setInputActive: (active) => set({ inputActive: active }),
     }),
     {
       name: 'stackdocs-chat',

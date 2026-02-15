@@ -67,6 +67,7 @@ export function useTTS(): TTSControls {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 })
     }
     const ctx = audioContextRef.current
+    if (ctx.state === 'suspended') await ctx.resume()
     if (!moduleLoadedRef.current) {
       const blob = new Blob([PROCESSOR_CODE], { type: 'application/javascript' })
       blobUrlRef.current = URL.createObjectURL(blob)

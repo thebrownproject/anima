@@ -52,7 +52,7 @@ export function VoiceBars({ analyser, className }: VoiceBarsProps) {
   }, [analyser])
 
   return (
-    <div className={cn('flex items-end gap-[3px]', className)}>
+    <div className={cn('flex items-center gap-[3px]', className)} style={{ height: `${MAX_PX}px` }}>
       {levels.map((level, i) => (
         <div
           key={i}

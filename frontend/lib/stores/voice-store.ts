@@ -4,7 +4,7 @@ export type PersonaState = 'asleep' | 'idle' | 'listening' | 'thinking' | 'speak
 
 export const VALID_TRANSITIONS: Record<PersonaState, PersonaState[]> = {
   asleep: ['idle'],
-  idle: ['listening'],
+  idle: ['listening', 'thinking'],
   listening: ['thinking', 'idle'],
   thinking: ['speaking', 'idle'],
   speaking: ['idle'],

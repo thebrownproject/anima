@@ -13,13 +13,12 @@ import { useTTS } from './use-tts'
 import { useVoiceStore } from '@/lib/stores/voice-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { useWebSocket } from '@/components/desktop/ws-provider'
-import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { isVoiceEnabled } from '@/lib/voice-config'
 
 interface VoiceContextValue {
   startVoice: () => Promise<void>
-  stopVoice: () => Promise<void>
   stopRecordingOnly: () => void
+  stopRecordingForSend: () => void
   interruptTTS: () => void
   analyser: AnalyserNode | null
 }
@@ -39,32 +38,21 @@ export function useVoiceMaybe(): VoiceContextValue | null {
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const { startListening, stopListening, analyser } = useSTT()
   const { speak, interrupt, isSpeaking } = useTTS()
-  const { status, send } = useWebSocket()
+  const { status } = useWebSocket()
 
   const prevStreamingRef = useRef(false)
+  const prevSpeakingRef = useRef(false)
   const voiceSessionRef = useRef(false)
+  const speakingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const SPEAKING_DISPLAY_MS = 10_000 // visual speaking duration when TTS is off
 
   const startVoice = useCallback(async () => {
     voiceSessionRef.current = true
+    useVoiceStore.getState().clearTranscript()
     useVoiceStore.getState().setPersonaState('listening')
     await startListening()
   }, [startListening])
-
-  const stopVoice = useCallback(async () => {
-    stopListening()
-    const { transcript, clearTranscript, setPersonaState } = useVoiceStore.getState()
-
-    if (transcript.trim()) {
-      const activeStackId = useDesktopStore.getState().activeStackId
-      useChatStore.getState().addMessage({ role: 'user', content: transcript, timestamp: Date.now() })
-      send({ type: 'mission', payload: { text: transcript, context: { stack_id: activeStackId } } })
-      clearTranscript()
-      setPersonaState('thinking')
-    } else {
-      clearTranscript()
-      setPersonaState('idle')
-    }
-  }, [stopListening, send])
 
   const stopRecordingOnly = useCallback(() => {
     stopListening()
@@ -72,8 +60,17 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     useVoiceStore.getState().setPersonaState('idle')
   }, [stopListening])
 
+  // Stop STT but keep voiceSessionRef alive so TTS fires after agent responds
+  const stopRecordingForSend = useCallback(() => {
+    stopListening()
+  }, [stopListening])
+
   const interruptTTS = useCallback(() => {
     interrupt()
+    if (speakingTimerRef.current) {
+      clearTimeout(speakingTimerRef.current)
+      speakingTimerRef.current = null
+    }
     useVoiceStore.getState().setPersonaState('idle')
   }, [interrupt])
 
@@ -83,7 +80,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (prevStreamingRef.current && !isAgentStreaming) {
       const { ttsEnabled, personaState, setPersonaState } = useVoiceStore.getState()
-      if (ttsEnabled && voiceSessionRef.current) {
+      if (ttsEnabled) {
+        // Speaker is on — play TTS for all agent responses
         const messages = useChatStore.getState().messages
         const last = messages[messages.length - 1]
         if (last?.role === 'agent' && last.content) {
@@ -92,7 +90,14 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         }
       } else if (personaState === 'thinking') {
         voiceSessionRef.current = false
-        setPersonaState('idle')
+        // Visual speaking animation (no TTS) — show for a few seconds then idle
+        setPersonaState('speaking')
+        if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
+        speakingTimerRef.current = setTimeout(() => {
+          if (useVoiceStore.getState().personaState === 'speaking') {
+            useVoiceStore.getState().setPersonaState('idle')
+          }
+        }, SPEAKING_DISPLAY_MS)
       }
     }
     prevStreamingRef.current = isAgentStreaming
@@ -107,14 +112,19 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     } else if (useVoiceStore.getState().personaState === 'asleep') {
       useVoiceStore.getState().setPersonaState('idle')
     }
-  }, [status])
+  }, [status, stopListening])
 
-  // isSpeaking false + personaState 'speaking' -> idle
+  // Real TTS finished: isSpeaking true->false + personaState 'speaking' -> idle
   useEffect(() => {
-    if (!isSpeaking && useVoiceStore.getState().personaState === 'speaking') {
+    if (prevSpeakingRef.current && !isSpeaking && useVoiceStore.getState().personaState === 'speaking') {
+      if (speakingTimerRef.current) {
+        clearTimeout(speakingTimerRef.current)
+        speakingTimerRef.current = null
+      }
       voiceSessionRef.current = false
       useVoiceStore.getState().setPersonaState('idle')
     }
+    prevSpeakingRef.current = isSpeaking
   }, [isSpeaking])
 
   // Cleanup on unmount
@@ -122,11 +132,12 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     return () => {
       stopListening()
       interrupt()
+      if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
     }
   }, [stopListening, interrupt])
 
   return (
-    <VoiceContext.Provider value={{ startVoice, stopVoice, stopRecordingOnly, interruptTTS, analyser }}>
+    <VoiceContext.Provider value={{ startVoice, stopRecordingOnly, stopRecordingForSend, interruptTTS, analyser }}>
       {children}
     </VoiceContext.Provider>
   )

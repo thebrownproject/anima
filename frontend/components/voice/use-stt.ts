@@ -134,11 +134,19 @@ export function useDeepgramSTT(): STTControls {
     // 5. Start recording when connection opens
     connection.addListener(LiveTranscriptionEvents.Open, () => {
       if (generationRef.current !== thisGen) { stopListening(); return }
+      // Guard: stream may have been stopped between MediaRecorder creation and WS open
+      if (!stream.active) { stopListening(); return }
       setIsListening(true)
       recorder.addEventListener('dataavailable', (e: BlobEvent) => {
         if (e.data.size > 0) connection.send(e.data)
       })
-      recorder.start(250)
+      try {
+        recorder.start(250)
+      } catch {
+        setError('Microphone recording failed to start')
+        stopListening()
+        return
+      }
       keepAliveRef.current = setInterval(() => connection.keepAlive(), 10000)
     })
 
