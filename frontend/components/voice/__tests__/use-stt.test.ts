@@ -7,17 +7,17 @@ import { useVoiceStore } from '@/lib/stores/voice-store'
 const { mockListenLive, mockConnection, mockFetch, mockMediaRecorder, mockGetUserMedia } =
   vi.hoisted(() => {
     const mockConnection = {
-      on: vi.fn(),
+      addListener: vi.fn(),
       send: vi.fn(),
       requestClose: vi.fn(),
-      removeAllListeners: vi.fn(),
+      keepAlive: vi.fn(),
     }
     const mockListenLive = vi.fn(() => mockConnection)
 
     const mockMediaRecorder = {
       start: vi.fn(),
       stop: vi.fn(),
-      ondataavailable: null as ((e: { data: Blob }) => void) | null,
+      addEventListener: vi.fn(),
       state: 'inactive' as string,
     }
 
@@ -34,6 +34,7 @@ const { mockListenLive, mockConnection, mockFetch, mockMediaRecorder, mockGetUse
 
 vi.mock('@deepgram/sdk', () => ({
   createClient: () => ({ listen: { live: mockListenLive } }),
+  LiveConnectionState: { OPEN: 1, CLOSED: 0 },
   LiveTranscriptionEvents: {
     Open: 'open',
     Close: 'close',
@@ -71,13 +72,21 @@ function mockMicStream() {
   return { stream, track }
 }
 
+function triggerOpen() {
+  const openCall = mockConnection.addListener.mock.calls.find(
+    (call: unknown[]) => call[0] === 'open'
+  )
+  expect(openCall).toBeDefined()
+  act(() => openCall![1]())
+}
+
 // --- Tests ---
 
 describe('useSTT', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMediaRecorder.state = 'inactive'
-    mockMediaRecorder.ondataavailable = null
+    mockMediaRecorder.addEventListener.mockReset()
     useVoiceStore.setState({ transcript: '' })
   })
 
@@ -102,7 +111,9 @@ describe('useSTT', () => {
     const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    expect(mockGetUserMedia).toHaveBeenCalledWith({ audio: true })
+    expect(mockGetUserMedia).toHaveBeenCalledWith({
+      audio: { noiseSuppression: true, echoCancellation: true },
+    })
   })
 
   it('mic permission denied sets error message', async () => {
@@ -123,8 +134,8 @@ describe('useSTT', () => {
     const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    // Find the Transcript event handler registered via connection.on
-    const transcriptCall = mockConnection.on.mock.calls.find(
+    // Find the Transcript event handler registered via addListener
+    const transcriptCall = mockConnection.addListener.mock.calls.find(
       (call: unknown[]) => call[0] === 'Results'
     )
     expect(transcriptCall).toBeDefined()
@@ -143,10 +154,14 @@ describe('useSTT', () => {
   it('stopListening stops tracks and closes connection', async () => {
     mockTokenResponse()
     const { track } = mockMicStream()
-    mockMediaRecorder.state = 'recording'
 
     const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
+
+    // Trigger Open handler to set up MediaRecorder
+    triggerOpen()
+    mockMediaRecorder.state = 'recording'
+
     act(() => result.current.stopListening())
 
     expect(mockMediaRecorder.stop).toHaveBeenCalled()
@@ -157,10 +172,13 @@ describe('useSTT', () => {
   it('cleanup on unmount stops active session', async () => {
     mockTokenResponse()
     const { track } = mockMicStream()
-    mockMediaRecorder.state = 'recording'
 
     const { result, unmount } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
+
+    // Trigger Open handler to set up MediaRecorder
+    triggerOpen()
+    mockMediaRecorder.state = 'recording'
 
     unmount()
 

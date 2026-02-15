@@ -55,10 +55,12 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       const activeStackId = useDesktopStore.getState().activeStackId
       useChatStore.getState().addMessage({ role: 'user', content: transcript, timestamp: Date.now() })
       send({ type: 'mission', payload: { text: transcript, context: { stack_id: activeStackId } } })
+      clearTranscript()
+      setPersonaState('thinking')
+    } else {
+      clearTranscript()
+      setPersonaState('idle')
     }
-
-    clearTranscript()
-    setPersonaState('thinking')
   }, [stopListening, send])
 
   const interruptTTS = useCallback(() => {

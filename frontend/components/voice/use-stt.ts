@@ -1,7 +1,153 @@
+'use client'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  createClient,
+  LiveTranscriptionEvents,
+  type LiveTranscriptionEvent,
+} from '@deepgram/sdk'
 import { useVoiceStore } from '@/lib/stores/voice-store'
 
-// Web Speech API types (not in all TS libs)
+interface STTControls {
+  startListening: () => Promise<void>
+  stopListening: () => void
+  isListening: boolean
+  error: string | null
+  analyser: AnalyserNode | null
+}
+
+// ─── Shared: mic stream + AnalyserNode setup ────────────────────────────────
+
+function createAnalyser(stream: MediaStream): { ctx: AudioContext; node: AnalyserNode } | null {
+  try {
+    const ctx = new AudioContext()
+    const source = ctx.createMediaStreamSource(stream)
+    const node = ctx.createAnalyser()
+    node.fftSize = 64
+    source.connect(node)
+    return { ctx, node }
+  } catch {
+    return null
+  }
+}
+
+// ─── Deepgram Nova-3 STT (primary) ─────────────────────────────────────────
+
+export function useDeepgramSTT(): STTControls {
+  const [isListening, setIsListening] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
+
+  const connectionRef = useRef<ReturnType<ReturnType<typeof createClient>['listen']['live']> | null>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopListening = useCallback(() => {
+    if (keepAliveRef.current) {
+      clearInterval(keepAliveRef.current)
+      keepAliveRef.current = null
+    }
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    audioCtxRef.current?.close()
+    connectionRef.current?.requestClose()
+    recorderRef.current = null
+    streamRef.current = null
+    audioCtxRef.current = null
+    connectionRef.current = null
+    setAnalyser(null)
+    setIsListening(false)
+  }, [])
+
+  const startListening = useCallback(async () => {
+    setError(null)
+
+    // 1. Fetch temp token
+    let token: string
+    try {
+      const res = await fetch('/api/voice/deepgram-token')
+      if (!res.ok) { setError('Failed to get voice token'); return }
+      const data = await res.json()
+      token = data.token
+    } catch {
+      setError('Failed to get voice token')
+      return
+    }
+
+    // 2. Get mic stream + MediaRecorder
+    let stream: MediaStream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { noiseSuppression: true, echoCancellation: true },
+      })
+    } catch (err) {
+      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
+        ? 'Microphone access denied' : 'Microphone unavailable'
+      setError(msg)
+      return
+    }
+    streamRef.current = stream
+
+    const recorder = new MediaRecorder(stream)
+    recorderRef.current = recorder
+
+    // 3. AnalyserNode for voice bars
+    const audio = createAnalyser(stream)
+    if (audio) {
+      audioCtxRef.current = audio.ctx
+      setAnalyser(audio.node)
+    }
+
+    // 4. Connect to Deepgram
+    const client = createClient({ accessToken: token })
+    const connection = client.listen.live({
+      model: 'nova-3',
+      interim_results: true,
+      smart_format: true,
+      utterance_end_ms: 1000,
+      endpointing: 300,
+      vad_events: true,
+    })
+    connectionRef.current = connection
+
+    // 5. Start recording when connection opens
+    connection.addListener(LiveTranscriptionEvents.Open, () => {
+      setIsListening(true)
+      recorder.addEventListener('dataavailable', (e: BlobEvent) => {
+        if (e.data.size > 0) connection.send(e.data)
+      })
+      recorder.start(250)
+      keepAliveRef.current = setInterval(() => connection.keepAlive(), 10000)
+    })
+
+    connection.addListener(LiveTranscriptionEvents.Transcript, (data: LiveTranscriptionEvent) => {
+      const text = data.channel.alternatives[0]?.transcript
+      if (text && data.is_final) {
+        const store = useVoiceStore.getState()
+        const prev = store.transcript
+        store.setTranscript(prev ? `${prev} ${text}` : text)
+      }
+    })
+
+    connection.addListener(LiveTranscriptionEvents.Error, (err: unknown) => {
+      console.error('[deepgram] error:', err)
+      setError('Speech recognition error')
+    })
+
+    connection.addListener(LiveTranscriptionEvents.Close, () => {
+      setIsListening(false)
+    })
+  }, [])
+
+  useEffect(() => { return () => stopListening() }, [stopListening])
+
+  return { startListening, stopListening, isListening, error, analyser }
+}
+
+// ─── Web Speech API STT (fallback — Chrome/Edge only, no API keys) ──────────
+
 interface SpeechRecognition extends EventTarget {
   continuous: boolean
   interimResults: boolean
@@ -46,15 +192,7 @@ declare global {
   }
 }
 
-interface STTControls {
-  startListening: () => Promise<void>
-  stopListening: () => void
-  isListening: boolean
-  error: string | null
-  analyser: AnalyserNode | null
-}
-
-export function useSTT(): STTControls {
+export function useWebSpeechSTT(): STTControls {
   const [isListening, setIsListening] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
@@ -82,19 +220,17 @@ export function useSTT(): STTControls {
       return
     }
 
-    // Parallel mic stream for audio visualisation
+    // Mic stream for AnalyserNode (voice bars)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-      const ctx = new AudioContext()
-      audioCtxRef.current = ctx
-      const source = ctx.createMediaStreamSource(stream)
-      const node = ctx.createAnalyser()
-      node.fftSize = 64
-      source.connect(node)
-      setAnalyser(node)
+      const audio = createAnalyser(stream)
+      if (audio) {
+        audioCtxRef.current = audio.ctx
+        setAnalyser(audio.node)
+      }
     } catch {
-      // Visualiser is optional — continue without it
+      // Visualiser is optional
     }
 
     const recognition = new SpeechRecognitionCtor()
@@ -102,25 +238,16 @@ export function useSTT(): STTControls {
     recognition.interimResults = true
     recognition.lang = 'en-US'
 
-    recognition.onstart = () => {
-      setIsListening(true)
-    }
-
-    recognition.onend = () => {
-      setIsListening(false)
-    }
+    recognition.onstart = () => setIsListening(true)
+    recognition.onend = () => setIsListening(false)
 
     recognition.onresult = (event: Event) => {
       const e = event as SpeechRecognitionEvent
       let finalTranscript = ''
-
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i]
-        if (result.isFinal) {
-          finalTranscript += result[0]?.transcript ?? ''
-        }
+        if (result.isFinal) finalTranscript += result[0]?.transcript ?? ''
       }
-
       if (finalTranscript) {
         const store = useVoiceStore.getState()
         const prev = store.transcript
@@ -130,14 +257,9 @@ export function useSTT(): STTControls {
 
     recognition.onerror = (event: Event) => {
       const e = event as SpeechRecognitionErrorEvent
-      if (e.error === 'not-allowed') {
-        setError('Microphone access denied')
-      } else if (e.error === 'no-speech') {
-        // Not an error — just no speech detected, keep listening
-        return
-      } else {
-        setError(`Speech recognition error: ${e.error}`)
-      }
+      if (e.error === 'no-speech') return
+      if (e.error === 'not-allowed') setError('Microphone access denied')
+      else setError(`Speech recognition error: ${e.error}`)
       setIsListening(false)
     }
 
@@ -145,10 +267,11 @@ export function useSTT(): STTControls {
     recognition.start()
   }, [])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => stopListening()
-  }, [stopListening])
+  useEffect(() => { return () => stopListening() }, [stopListening])
 
   return { startListening, stopListening, isListening, error, analyser }
 }
+
+// ─── Default: Deepgram (swap to useWebSpeechSTT if Deepgram unavailable) ────
+
+export const useSTT = useDeepgramSTT
