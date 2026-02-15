@@ -19,6 +19,7 @@ import { isVoiceEnabled } from '@/lib/voice-config'
 interface VoiceContextValue {
   startVoice: () => Promise<void>
   stopVoice: () => Promise<void>
+  stopRecordingOnly: () => void
   interruptTTS: () => void
   analyser: AnalyserNode | null
 }
@@ -41,8 +42,10 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const { status, send } = useWebSocket()
 
   const prevStreamingRef = useRef(false)
+  const voiceSessionRef = useRef(false)
 
   const startVoice = useCallback(async () => {
+    voiceSessionRef.current = true
     useVoiceStore.getState().setPersonaState('listening')
     await startListening()
   }, [startListening])
@@ -63,6 +66,12 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     }
   }, [stopListening, send])
 
+  const stopRecordingOnly = useCallback(() => {
+    stopListening()
+    voiceSessionRef.current = false
+    useVoiceStore.getState().setPersonaState('idle')
+  }, [stopListening])
+
   const interruptTTS = useCallback(() => {
     interrupt()
     useVoiceStore.getState().setPersonaState('idle')
@@ -74,7 +83,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (prevStreamingRef.current && !isAgentStreaming) {
       const { ttsEnabled, personaState, setPersonaState } = useVoiceStore.getState()
-      if (ttsEnabled) {
+      if (ttsEnabled && voiceSessionRef.current) {
         const messages = useChatStore.getState().messages
         const last = messages[messages.length - 1]
         if (last?.role === 'agent' && last.content) {
@@ -82,6 +91,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           speak(last.content)
         }
       } else if (personaState === 'thinking') {
+        voiceSessionRef.current = false
         setPersonaState('idle')
       }
     }
@@ -91,6 +101,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   // WS status -> personaState sync
   useEffect(() => {
     if (status !== 'connected') {
+      stopListening()
+      voiceSessionRef.current = false
       useVoiceStore.getState().setPersonaState('asleep')
     } else if (useVoiceStore.getState().personaState === 'asleep') {
       useVoiceStore.getState().setPersonaState('idle')
@@ -100,6 +112,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   // isSpeaking false + personaState 'speaking' -> idle
   useEffect(() => {
     if (!isSpeaking && useVoiceStore.getState().personaState === 'speaking') {
+      voiceSessionRef.current = false
       useVoiceStore.getState().setPersonaState('idle')
     }
   }, [isSpeaking])
@@ -113,7 +126,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   }, [stopListening, interrupt])
 
   return (
-    <VoiceContext.Provider value={{ startVoice, stopVoice, interruptTTS, analyser }}>
+    <VoiceContext.Provider value={{ startVoice, stopVoice, stopRecordingOnly, interruptTTS, analyser }}>
       {children}
     </VoiceContext.Provider>
   )

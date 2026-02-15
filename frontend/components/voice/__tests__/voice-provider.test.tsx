@@ -110,14 +110,23 @@ describe('VoiceProvider', () => {
     )
   })
 
-  it('agent completion triggers TTS with full text when ttsEnabled', () => {
-    useVoiceStore.setState({ ttsEnabled: true, personaState: 'thinking' })
-    useChatStore.setState({
-      messages: [{ id: '1', role: 'agent', content: 'First sentence. Second sentence! Third?', timestamp: Date.now() }],
-      isAgentStreaming: true,
-    })
+  it('agent completion triggers TTS with full text when ttsEnabled and voice session active', async () => {
+    useVoiceStore.setState({ ttsEnabled: true, personaState: 'idle' })
 
-    renderHook(() => useVoice(), { wrapper })
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    // Start a voice session so voiceSessionRef is true
+    await act(() => result.current.startVoice())
+    // Simulate stopVoice with transcript (sets thinking, keeps voiceSessionRef true)
+    useVoiceStore.setState({ transcript: 'hello', personaState: 'listening' })
+    await act(() => result.current.stopVoice())
+
+    act(() => {
+      useChatStore.setState({
+        messages: [{ id: '1', role: 'agent', content: 'First sentence. Second sentence! Third?', timestamp: Date.now() }],
+        isAgentStreaming: true,
+      })
+    })
 
     act(() => {
       useChatStore.setState({ isAgentStreaming: false })
@@ -143,22 +152,21 @@ describe('VoiceProvider', () => {
     expect(mockSpeak).not.toHaveBeenCalled()
   })
 
-  it('personaState transitions correctly through full flow', async () => {
-    useVoiceStore.setState({ personaState: 'idle' })
+  it('personaState transitions correctly through full voice flow', async () => {
+    useVoiceStore.setState({ personaState: 'idle', ttsEnabled: true })
 
     const { result } = renderHook(() => useVoice(), { wrapper })
 
-    // idle -> listening
+    // idle -> listening (starts voice session)
     await act(() => result.current.startVoice())
     expect(useVoiceStore.getState().personaState).toBe('listening')
 
-    // listening -> thinking (via stopVoice with transcript)
+    // listening -> thinking (via stopVoice with transcript, voiceSessionRef stays true)
     useVoiceStore.setState({ transcript: 'test message', personaState: 'listening' })
     await act(() => result.current.stopVoice())
     expect(useVoiceStore.getState().personaState).toBe('thinking')
 
-    // thinking -> speaking (via agent completion with tts, single sentence = 1 speak call)
-    useVoiceStore.setState({ ttsEnabled: true })
+    // thinking -> speaking (via agent completion with tts + voice session active)
     act(() => {
       useChatStore.setState({
         messages: [{ id: '1', role: 'agent', content: 'response', timestamp: Date.now() }],
@@ -196,6 +204,159 @@ describe('VoiceProvider', () => {
     const { unmount } = renderHook(() => useVoice(), { wrapper })
     expect(useVoiceStore.getState().personaState).toBe('asleep')
     unmount()
+  })
+
+  it('stopRecordingOnly calls stopListening, sets idle, does NOT send message', () => {
+    useVoiceStore.setState({ personaState: 'listening', transcript: 'partial input' })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    act(() => result.current.stopRecordingOnly())
+
+    expect(mockStopListening).toHaveBeenCalled()
+    expect(useVoiceStore.getState().personaState).toBe('idle')
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('stopRecordingOnly does NOT clear voiceStore transcript', () => {
+    useVoiceStore.setState({ personaState: 'listening', transcript: 'keep this' })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    act(() => result.current.stopRecordingOnly())
+
+    expect(useVoiceStore.getState().transcript).toBe('keep this')
+  })
+
+  it('TTS does NOT trigger for text-typed messages (no voice session)', () => {
+    // Simulate agent completing response to a typed message (voiceSessionRef is false)
+    useVoiceStore.setState({ ttsEnabled: true, personaState: 'thinking' })
+    useChatStore.setState({
+      messages: [{ id: '1', role: 'agent', content: 'Response to typed message', timestamp: Date.now() }],
+      isAgentStreaming: true,
+    })
+
+    renderHook(() => useVoice(), { wrapper })
+
+    act(() => {
+      useChatStore.setState({ isAgentStreaming: false })
+    })
+
+    expect(mockSpeak).not.toHaveBeenCalled()
+    // Should still transition thinking -> idle
+    expect(useVoiceStore.getState().personaState).toBe('idle')
+  })
+
+  it('TTS DOES trigger for voice-initiated messages', async () => {
+    useVoiceStore.setState({ personaState: 'idle', ttsEnabled: true })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    // Start voice session (sets voiceSessionRef = true)
+    await act(() => result.current.startVoice())
+
+    // stopVoice sends transcript, transitions to thinking, keeps voiceSessionRef true
+    useVoiceStore.setState({ transcript: 'hello', personaState: 'listening' })
+    await act(() => result.current.stopVoice())
+    expect(useVoiceStore.getState().personaState).toBe('thinking')
+
+    // Agent responds and completes streaming — TTS should fire
+    act(() => {
+      useChatStore.setState({
+        messages: [{ id: '1', role: 'agent', content: 'Voice response', timestamp: Date.now() }],
+        isAgentStreaming: true,
+      })
+    })
+
+    act(() => {
+      useChatStore.setState({ isAgentStreaming: false })
+    })
+
+    expect(mockSpeak).toHaveBeenCalledWith('Voice response')
+  })
+
+  it('WS disconnect calls stopListening', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+
+    renderHook(() => useVoice(), { wrapper })
+
+    cleanup()
+    mockStatus = 'disconnected'
+
+    renderHook(() => useVoice(), { wrapper })
+
+    expect(mockStopListening).toHaveBeenCalled()
+    expect(useVoiceStore.getState().personaState).toBe('asleep')
+  })
+
+  it('voiceSessionRef resets after stopRecordingOnly (no TTS fires)', async () => {
+    useVoiceStore.setState({ personaState: 'idle', ttsEnabled: true })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    // Start voice -> stopRecordingOnly -> voiceSessionRef is false
+    await act(() => result.current.startVoice())
+    act(() => result.current.stopRecordingOnly())
+
+    // Simulate agent completing — TTS should NOT fire (voiceSessionRef is false)
+    act(() => {
+      useVoiceStore.setState({ personaState: 'thinking', ttsEnabled: true })
+    })
+    act(() => {
+      useChatStore.setState({
+        messages: [{ id: '1', role: 'agent', content: 'Should not speak', timestamp: Date.now() }],
+        isAgentStreaming: true,
+      })
+    })
+    act(() => {
+      useChatStore.setState({ isAgentStreaming: false })
+    })
+
+    expect(mockSpeak).not.toHaveBeenCalled()
+  })
+
+  it('voiceSessionRef resets when agent completes without TTS (thinking->idle)', async () => {
+    useVoiceStore.setState({ personaState: 'idle', ttsEnabled: false })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    // Start voice session, send message, but TTS is disabled
+    await act(() => result.current.startVoice())
+    useVoiceStore.setState({ transcript: 'test', personaState: 'listening' })
+    await act(() => result.current.stopVoice())
+    expect(useVoiceStore.getState().personaState).toBe('thinking')
+
+    // Agent completes — TTS disabled, so thinking->idle resets voiceSessionRef
+    act(() => {
+      useChatStore.setState({
+        messages: [{ id: '1', role: 'agent', content: 'Response', timestamp: Date.now() }],
+        isAgentStreaming: true,
+      })
+    })
+    act(() => {
+      useChatStore.setState({ isAgentStreaming: false })
+    })
+
+    expect(mockSpeak).not.toHaveBeenCalled()
+    expect(useVoiceStore.getState().personaState).toBe('idle')
+
+    // Now enable TTS and start another agent cycle — should NOT speak
+    // because voiceSessionRef was reset by the thinking->idle transition
+    vi.clearAllMocks()
+    act(() => {
+      useVoiceStore.setState({ personaState: 'thinking', ttsEnabled: true })
+    })
+    act(() => {
+      useChatStore.setState({
+        messages: [{ id: '2', role: 'agent', content: 'Should not speak', timestamp: Date.now() }],
+        isAgentStreaming: true,
+      })
+    })
+    act(() => {
+      useChatStore.setState({ isAgentStreaming: false })
+    })
+
+    expect(mockSpeak).not.toHaveBeenCalled()
   })
 
   it('cleanup on unmount stops listening and interrupts TTS', async () => {
