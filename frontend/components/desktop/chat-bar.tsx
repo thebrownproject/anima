@@ -111,7 +111,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                     value={inputValue}
                     onChange={(e) => {
                       setInputValue(e.target.value)
-                      if (voice && personaState === 'listening') voice.stopVoice()
+                      if (voice && personaState === 'listening') voice.stopRecordingOnly()
                     }}
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
@@ -162,7 +162,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
         {/* Persona orb — outside overflow-hidden so hover bar isn't clipped */}
         {voiceActive && (
           <div className="absolute bottom-2.5 right-3">
-            <PersonaOrb hasText={hasText} inputActive={inputActive} onSendMessage={handleSend} />
+            <PersonaOrb hasText={hasText} onSendMessage={handleSend} />
           </div>
         )}
       </div>

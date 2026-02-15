@@ -5,8 +5,8 @@ import { useVoiceStore } from '@/lib/stores/voice-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 
-const { mockStopVoice } = vi.hoisted(() => ({
-  mockStopVoice: vi.fn(),
+const { mockStopRecordingOnly } = vi.hoisted(() => ({
+  mockStopRecordingOnly: vi.fn(),
 }))
 
 let mockVoiceEnabled = false
@@ -16,7 +16,7 @@ vi.mock('@/lib/voice-config', () => ({
 }))
 
 const mockVoiceCtx = () => mockVoiceEnabled
-  ? { startVoice: vi.fn(), stopVoice: mockStopVoice, interruptTTS: vi.fn() }
+  ? { startVoice: vi.fn(), stopVoice: vi.fn(), stopRecordingOnly: mockStopRecordingOnly, interruptTTS: vi.fn() }
   : null
 
 vi.mock('../../voice/voice-provider', () => ({
@@ -95,7 +95,7 @@ describe('ChatBar voice integration', () => {
     expect(screen.queryByTestId('mic-button')).toBeTruthy()
   })
 
-  it('typing during listening calls stopVoice', () => {
+  it('typing during listening calls stopRecordingOnly', () => {
     mockVoiceEnabled = true
     useVoiceStore.setState({ personaState: 'listening' })
     render(<ChatBar />, { wrapper: Wrapper })
@@ -108,10 +108,10 @@ describe('ChatBar voice integration', () => {
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'hello' } })
 
-    expect(mockStopVoice).toHaveBeenCalledOnce()
+    expect(mockStopRecordingOnly).toHaveBeenCalledOnce()
   })
 
-  it('typing when not listening does not call stopVoice', () => {
+  it('typing when not listening does not call stopRecordingOnly', () => {
     mockVoiceEnabled = true
     useVoiceStore.setState({ personaState: 'idle' })
     render(<ChatBar />, { wrapper: Wrapper })
@@ -122,7 +122,7 @@ describe('ChatBar voice integration', () => {
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'hello' } })
 
-    expect(mockStopVoice).not.toHaveBeenCalled()
+    expect(mockStopRecordingOnly).not.toHaveBeenCalled()
   })
 
   it('typing when voice disabled does not throw', () => {
