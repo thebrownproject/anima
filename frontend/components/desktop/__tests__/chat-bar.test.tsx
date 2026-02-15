@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { useVoiceStore } from '@/lib/stores/voice-store'
 import { useChatStore } from '@/lib/stores/chat-store'
@@ -16,7 +16,7 @@ vi.mock('@/lib/voice-config', () => ({
 }))
 
 const mockVoiceCtx = () => mockVoiceEnabled
-  ? { startVoice: vi.fn(), stopVoice: vi.fn(), stopRecordingOnly: mockStopRecordingOnly, interruptTTS: vi.fn() }
+  ? { startVoice: vi.fn(), stopVoice: vi.fn(), stopRecordingOnly: mockStopRecordingOnly, interruptTTS: vi.fn(), analyser: null }
   : null
 
 vi.mock('../../voice/voice-provider', () => ({
@@ -91,7 +91,6 @@ describe('ChatBar voice integration', () => {
     mockVoiceEnabled = false
     render(<ChatBar />, { wrapper: Wrapper })
     expect(screen.queryByTestId('persona-orb')).toBeNull()
-    // Mic GlassIconButton renders — no persona-orb testid
     expect(screen.queryByTestId('mic-button')).toBeTruthy()
   })
 
@@ -100,11 +99,6 @@ describe('ChatBar voice integration', () => {
     useVoiceStore.setState({ personaState: 'listening' })
     render(<ChatBar />, { wrapper: Wrapper })
 
-    // Activate the input
-    const placeholder = screen.getByText('Ask anything...')
-    fireEvent.click(placeholder)
-
-    // Type in the textarea
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'hello' } })
 
@@ -165,5 +159,147 @@ describe('ChatBar voice integration', () => {
 
     const msgs = useChatStore.getState().messages
     expect(msgs).toHaveLength(0)
+  })
+})
+
+describe('ChatBar transcript wiring', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockVoiceEnabled = true
+    useVoiceStore.setState({ ...VOICE_STORE_DEFAULTS, personaState: 'idle' })
+    useChatStore.setState(CHAT_STORE_DEFAULTS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('transcript appears in textarea during recording', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    // Simulate STT producing text
+    act(() => {
+      useVoiceStore.setState({ transcript: 'hello' })
+    })
+
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
+    expect(textarea.value).toBe('hello')
+
+    // More text arrives
+    act(() => {
+      useVoiceStore.setState({ transcript: 'hello world' })
+    })
+
+    expect(textarea.value).toBe('hello world')
+  })
+
+  it('Escape during recording calls stopRecordingOnly', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    const textarea = screen.getByRole('textbox')
+    fireEvent.keyDown(textarea, { key: 'Escape' })
+
+    expect(mockStopRecordingOnly).toHaveBeenCalledOnce()
+  })
+
+  it('handleSend during recording stops STT first', () => {
+    useVoiceStore.setState({ personaState: 'listening', transcript: 'voice text' })
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    // Transcript populates textarea
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
+    expect(textarea.value).toBe('voice text')
+
+    // Send message
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+
+    expect(mockStopRecordingOnly).toHaveBeenCalled()
+    const msgs = useChatStore.getState().messages
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0].content).toBe('voice text')
+  })
+})
+
+describe('ChatBar inline pill', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockVoiceEnabled = true
+    useVoiceStore.setState({ ...VOICE_STORE_DEFAULTS, personaState: 'idle' })
+    useChatStore.setState(CHAT_STORE_DEFAULTS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('pill hidden when not hovered and not recording', () => {
+    render(<ChatBar />, { wrapper: Wrapper })
+    const pill = screen.getByTestId('voice-pill')
+    expect(pill.className).toContain('opacity-0')
+  })
+
+  it('pill shows speaker+stop+bars during recording', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    const pill = screen.getByTestId('voice-pill')
+    expect(pill.className).toContain('opacity-100')
+    expect(screen.getByTestId('stop-recording-button')).toBeTruthy()
+  })
+
+  it('stop button calls stopRecordingOnly', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    const stopBtn = screen.getByTestId('stop-recording-button')
+    fireEvent.click(stopBtn.querySelector('button')!)
+
+    expect(mockStopRecordingOnly).toHaveBeenCalledOnce()
+  })
+
+  it('pill becomes visible on hover after delay', () => {
+    vi.useFakeTimers()
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    const pill = screen.getByTestId('voice-pill')
+    expect(pill.className).toContain('opacity-0')
+
+    // Hover over the pill area
+    fireEvent.mouseEnter(pill.parentElement!)
+
+    // Not visible yet (400ms delay)
+    expect(pill.className).toContain('opacity-0')
+
+    // Advance past delay
+    act(() => { vi.advanceTimersByTime(400) })
+
+    expect(pill.className).toContain('opacity-100')
+
+    // Mouse leave + delay hides it
+    fireEvent.mouseLeave(pill.parentElement!)
+    act(() => { vi.advanceTimersByTime(400) })
+
+    expect(pill.className).toContain('opacity-0')
+
+    vi.useRealTimers()
+  })
+
+  it('no mic toggle rendered in pill', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    // Check no microphone icons exist inside pill
+    const pill = screen.getByTestId('voice-pill')
+    expect(pill.querySelector('[data-testid="mic-button"]')).toBeNull()
+  })
+
+  it('embedded mode renders correctly', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+    render(<ChatBar embedded />, { wrapper: Wrapper })
+
+    const pill = screen.getByTestId('voice-pill')
+    expect(pill.className).toContain('opacity-100')
   })
 })
