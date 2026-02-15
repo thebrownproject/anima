@@ -10,7 +10,7 @@ export async function GET() {
   if (!env.valid) return Response.json({ error: 'Voice service unavailable' }, { status: 503 })
 
   const deepgram = createClient(process.env.DEEPGRAM_API_KEY!)
-  const { result, error } = await deepgram.auth.grantToken({ ttl_seconds: 30 })
+  const { result, error } = await deepgram.auth.grantToken({ ttl_seconds: 120 })
 
   if (error || !result) {
     return Response.json({ error: 'Token generation failed' }, { status: 502 })

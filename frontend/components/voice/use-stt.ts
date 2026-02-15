@@ -43,6 +43,7 @@ export function useDeepgramSTT(): STTControls {
   const streamRef = useRef<MediaStream | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const generationRef = useRef(0)
 
   const stopListening = useCallback(() => {
     if (keepAliveRef.current) {
@@ -62,17 +63,31 @@ export function useDeepgramSTT(): STTControls {
   }, [])
 
   const startListening = useCallback(async () => {
-    setError(null)
+    // Double-invocation guard
+    if (connectionRef.current || recorderRef.current) return
 
-    // 1. Fetch temp token
+    setError(null)
+    generationRef.current += 1
+    const thisGen = generationRef.current
+
+    // 1. Fetch temp token (with timeout)
     let token: string
+    const fetchCtrl = new AbortController()
+    const fetchTimeout = setTimeout(() => fetchCtrl.abort(), 10_000)
     try {
-      const res = await fetch('/api/voice/deepgram-token')
+      const res = await fetch('/api/voice/deepgram-token', { signal: fetchCtrl.signal })
+      clearTimeout(fetchTimeout)
+      if (generationRef.current !== thisGen) return
       if (!res.ok) { setError('Failed to get voice token'); return }
       const data = await res.json()
       token = data.token
-    } catch {
-      setError('Failed to get voice token')
+    } catch (err) {
+      clearTimeout(fetchTimeout)
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Voice connection timed out')
+      } else {
+        setError('Failed to get voice token')
+      }
       return
     }
 
@@ -86,6 +101,10 @@ export function useDeepgramSTT(): STTControls {
       const msg = err instanceof DOMException && err.name === 'NotAllowedError'
         ? 'Microphone access denied' : 'Microphone unavailable'
       setError(msg)
+      return
+    }
+    if (generationRef.current !== thisGen) {
+      stream.getTracks().forEach(t => t.stop())
       return
     }
     streamRef.current = stream
@@ -114,6 +133,7 @@ export function useDeepgramSTT(): STTControls {
 
     // 5. Start recording when connection opens
     connection.addListener(LiveTranscriptionEvents.Open, () => {
+      if (generationRef.current !== thisGen) { stopListening(); return }
       setIsListening(true)
       recorder.addEventListener('dataavailable', (e: BlobEvent) => {
         if (e.data.size > 0) connection.send(e.data)
@@ -133,13 +153,28 @@ export function useDeepgramSTT(): STTControls {
 
     connection.addListener(LiveTranscriptionEvents.Error, (err: unknown) => {
       console.error('[deepgram] error:', err)
-      setError('Speech recognition error')
+      setError('Voice transcription error')
+      stopListening()
     })
 
     connection.addListener(LiveTranscriptionEvents.Close, () => {
+      // Connection closed (token expired, network issue, etc.)
+      // Clean up mic and recorder — don't call requestClose since already closed
+      if (keepAliveRef.current) {
+        clearInterval(keepAliveRef.current)
+        keepAliveRef.current = null
+      }
+      if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+      streamRef.current?.getTracks().forEach(t => t.stop())
+      audioCtxRef.current?.close()
+      recorderRef.current = null
+      streamRef.current = null
+      audioCtxRef.current = null
+      connectionRef.current = null
+      setAnalyser(null)
       setIsListening(false)
     })
-  }, [])
+  }, [stopListening])
 
   useEffect(() => { return () => stopListening() }, [stopListening])
 

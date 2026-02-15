@@ -17,6 +17,7 @@ export function VoiceBars({ analyser, className }: VoiceBarsProps) {
   const [levels, setLevels] = useState<number[]>(() => Array(BAR_COUNT).fill(0))
   const rafRef = useRef<number>(0)
   const prevLevels = useRef<number[]>(Array(BAR_COUNT).fill(0))
+  const lastUpdateRef = useRef<number>(0)
 
   useEffect(() => {
     if (!analyser) return
@@ -38,7 +39,11 @@ export function VoiceBars({ analyser, className }: VoiceBarsProps) {
       }
 
       prevLevels.current = raw
-      setLevels(raw)
+      const now = performance.now()
+      if (now - lastUpdateRef.current >= 66) { // ~15fps
+        setLevels(raw)
+        lastUpdateRef.current = now
+      }
       rafRef.current = requestAnimationFrame(tick)
     }
 
@@ -51,7 +56,7 @@ export function VoiceBars({ analyser, className }: VoiceBarsProps) {
       {levels.map((level, i) => (
         <div
           key={i}
-          className="w-[3px] rounded-full bg-white/70 transition-[height] duration-75"
+          className="w-[3px] rounded-full bg-white/70"
           style={{ height: `${MIN_PX + Math.round(level * (MAX_PX - MIN_PX))}px` }}
         />
       ))}

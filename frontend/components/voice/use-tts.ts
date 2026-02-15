@@ -4,6 +4,7 @@ interface TTSControls {
   speak: (text: string) => void
   interrupt: () => void
   isSpeaking: boolean
+  error: string | null
 }
 
 const PROCESSOR_CODE = `
@@ -53,6 +54,7 @@ registerProcessor('pcm-stream-player', PcmStreamPlayer)
 
 export function useTTS(): TTSControls {
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const audioContextRef = useRef<AudioContext | null>(null)
   const workletNodeRef = useRef<AudioWorkletNode | null>(null)
@@ -83,6 +85,7 @@ export function useTTS(): TTSControls {
       workletNodeRef.current = null
     }
 
+    setError(null)
     setIsSpeaking(true)
 
     const controller = new AbortController()
@@ -98,6 +101,7 @@ export function useTTS(): TTSControls {
           signal: controller.signal,
         })
         if (!res.ok || !res.body) {
+          setError('Speech generation failed')
           setIsSpeaking(false)
           return
         }
@@ -154,7 +158,10 @@ export function useTTS(): TTSControls {
         if (!connected) node.connect(ctx.destination)
         node.port.postMessage({ type: 'end' })
       } catch (err: any) {
-        if (err?.name !== 'AbortError') setIsSpeaking(false)
+        if (err?.name !== 'AbortError') {
+          setError('Speech playback error')
+          setIsSpeaking(false)
+        }
       }
     })()
   }, [ensureContext])
@@ -177,5 +184,5 @@ export function useTTS(): TTSControls {
     }
   }, [])
 
-  return { speak, interrupt, isSpeaking }
+  return { speak, interrupt, isSpeaking, error }
 }

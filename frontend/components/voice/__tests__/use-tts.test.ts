@@ -134,4 +134,45 @@ describe('useTTS', () => {
     expect(globalThis.AudioContext).toHaveBeenCalledWith({ sampleRate: 24000 })
     expect(mockAudioContext.audioWorklet.addModule).toHaveBeenCalledWith('blob:mock-url')
   })
+
+  // --- Task B: error state tests ---
+
+  it('error is initially null', () => {
+    const { result } = renderHook(() => useTTS())
+    expect(result.current.error).toBeNull()
+  })
+
+  it('non-ok fetch response sets error and isSpeaking false', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, body: null })
+
+    const { result } = renderHook(() => useTTS())
+    await act(async () => {
+      result.current.speak('hello')
+      await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    })
+
+    expect(result.current.error).toBe('Speech generation failed')
+    expect(result.current.isSpeaking).toBe(false)
+  })
+
+  it('error resets to null on next speak() call', async () => {
+    // First call fails
+    mockFetch.mockResolvedValueOnce({ ok: false, body: null })
+
+    const { result } = renderHook(() => useTTS())
+    await act(async () => {
+      result.current.speak('hello')
+    })
+    // Wait for async IIFE to set error
+    await vi.waitFor(() => expect(result.current.error).toBe('Speech generation failed'))
+
+    // Second call should reset error synchronously before async work
+    mockTTSResponse()
+    await act(async () => {
+      result.current.speak('world')
+      await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+    })
+
+    expect(result.current.error).toBeNull()
+  })
 })

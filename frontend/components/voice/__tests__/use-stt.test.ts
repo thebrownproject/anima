@@ -61,7 +61,7 @@ import { useSTT } from '../use-stt'
 function mockTokenResponse(token = 'tmp-tok-123') {
   mockFetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ token, expires_in: 30 }),
+    json: async () => ({ token, expires_in: 120 }),
   })
 }
 
@@ -78,6 +78,13 @@ function triggerOpen() {
   )
   expect(openCall).toBeDefined()
   act(() => openCall![1]())
+}
+
+function getEventHandler(event: string) {
+  const call = mockConnection.addListener.mock.calls.find(
+    (c: unknown[]) => c[0] === event
+  )
+  return call?.[1]
 }
 
 // --- Tests ---
@@ -101,7 +108,7 @@ describe('useSTT', () => {
     const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token')
+    expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token', expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
   it('startListening requests microphone access', async () => {
@@ -185,5 +192,81 @@ describe('useSTT', () => {
     expect(mockMediaRecorder.stop).toHaveBeenCalled()
     expect(track.stop).toHaveBeenCalled()
     expect(mockConnection.requestClose).toHaveBeenCalled()
+  })
+
+  // --- New tests for Task A fixes ---
+
+  it('double-invocation guard: second startListening returns immediately', async () => {
+    mockTokenResponse()
+    mockMicStream()
+
+    const { result } = renderHook(() => useSTT())
+    await act(() => result.current.startListening())
+
+    // Second call should be a no-op (no second fetch)
+    await act(() => result.current.startListening())
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('token fetch timeout sets error', async () => {
+    vi.useFakeTimers()
+    // Mock fetch that never resolves
+    mockFetch.mockImplementationOnce((_url: string, opts: { signal: AbortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+      })
+    })
+
+    const { result } = renderHook(() => useSTT())
+    const startPromise = act(() => result.current.startListening())
+
+    // Advance past the 10s timeout
+    await act(async () => { vi.advanceTimersByTime(10_000) })
+    await startPromise
+
+    expect(result.current.error).toBe('Voice connection timed out')
+    vi.useRealTimers()
+  })
+
+  it('Deepgram error event triggers full cleanup', async () => {
+    mockTokenResponse()
+    const { track } = mockMicStream()
+
+    const { result } = renderHook(() => useSTT())
+    await act(() => result.current.startListening())
+    triggerOpen()
+    mockMediaRecorder.state = 'recording'
+
+    const errorHandler = getEventHandler('error')
+    expect(errorHandler).toBeDefined()
+
+    act(() => errorHandler(new Error('connection failed')))
+
+    expect(result.current.error).toBe('Voice transcription error')
+    expect(mockMediaRecorder.stop).toHaveBeenCalled()
+    expect(track.stop).toHaveBeenCalled()
+    expect(result.current.isListening).toBe(false)
+  })
+
+  it('Deepgram close event releases mic and recorder', async () => {
+    mockTokenResponse()
+    const { track } = mockMicStream()
+
+    const { result } = renderHook(() => useSTT())
+    await act(() => result.current.startListening())
+    triggerOpen()
+    mockMediaRecorder.state = 'recording'
+
+    const closeHandler = getEventHandler('close')
+    expect(closeHandler).toBeDefined()
+
+    act(() => closeHandler())
+
+    expect(mockMediaRecorder.stop).toHaveBeenCalled()
+    expect(track.stop).toHaveBeenCalled()
+    expect(result.current.isListening).toBe(false)
+    // requestClose should NOT be called (connection already closed)
+    expect(mockConnection.requestClose).not.toHaveBeenCalled()
   })
 })
