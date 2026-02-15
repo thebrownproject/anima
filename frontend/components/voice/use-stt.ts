@@ -69,17 +69,26 @@ export function useDeepgramSTT(): STTControls {
     return () => { cancelled = true }
   }, [])
 
+  // Full cleanup — release mic stream + audio context (unmount only)
+  const releaseStream = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    audioCtxRef.current?.close()
+    streamRef.current = null
+    audioCtxRef.current = null
+    setAnalyser(null)
+  }, [])
+
+  // Stop recording session but keep mic stream warm for next recording
+  // Close AudioContext (frees speaker for TTS) — recreated cheaply on next record
   const stopListening = useCallback(() => {
     if (keepAliveRef.current) {
       clearInterval(keepAliveRef.current)
       keepAliveRef.current = null
     }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-    streamRef.current?.getTracks().forEach((t) => t.stop())
     audioCtxRef.current?.close()
     connectionRef.current?.requestClose()
     recorderRef.current = null
-    streamRef.current = null
     audioCtxRef.current = null
     connectionRef.current = null
     audioBufferRef.current = []
@@ -96,9 +105,12 @@ export function useDeepgramSTT(): STTControls {
     generationRef.current += 1
     const thisGen = generationRef.current
 
-    // 1+2. Use cached token (or fetch fresh) + acquire mic in parallel
+    // 1. Resolve token (cached or fresh)
     const cached = tokenCacheRef.current
     const tokenIsFresh = cached && cached.expiresAt > Date.now()
+
+    // 2. Reuse warm mic stream, or acquire fresh
+    const hasWarmStream = streamRef.current?.active
 
     const fetchCtrl = new AbortController()
     const fetchTimeout = tokenIsFresh ? null : setTimeout(() => fetchCtrl.abort(), 10_000)
@@ -107,20 +119,23 @@ export function useDeepgramSTT(): STTControls {
       tokenIsFresh
         ? Promise.resolve(cached.token)
         : fetchDeepgramToken(fetchCtrl.signal).then(c => { tokenCacheRef.current = c; return c.token }),
-      navigator.mediaDevices.getUserMedia({
-        audio: { noiseSuppression: true, echoCancellation: true },
-      }),
+      hasWarmStream
+        ? Promise.resolve(streamRef.current!)
+        : navigator.mediaDevices.getUserMedia({
+            audio: { noiseSuppression: true, echoCancellation: true },
+          }),
     ])
     if (fetchTimeout) clearTimeout(fetchTimeout)
 
     if (generationRef.current !== thisGen) {
-      if (micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
+      // Only stop tracks if we just acquired them (don't kill warm stream)
+      if (!hasWarmStream && micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
       return
     }
 
     // Handle failures — clean up whichever succeeded if the other failed
     if (tokenResult.status === 'rejected' || micResult.status === 'rejected') {
-      if (micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
+      if (!hasWarmStream && micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
 
       if (tokenResult.status === 'rejected') {
         const err = tokenResult.reason
@@ -142,6 +157,11 @@ export function useDeepgramSTT(): STTControls {
     const token = tokenResult.value
     const stream = micResult.value
     streamRef.current = stream
+
+    // Background-refresh token when past half-life (so next recording has a fresh one)
+    if (cached && cached.expiresAt - Date.now() < 55_000) {
+      fetchDeepgramToken().then(c => { tokenCacheRef.current = c }).catch(() => {})
+    }
 
     // 3. AnalyserNode for voice bars
     const audio = createAnalyser(stream)
@@ -213,26 +233,22 @@ export function useDeepgramSTT(): STTControls {
 
     connection.addListener(LiveTranscriptionEvents.Close, () => {
       // Connection closed (token expired, network issue, etc.)
-      // Clean up mic and recorder — don't call requestClose since already closed
+      // Clean up recorder + connection, keep mic stream warm
       if (keepAliveRef.current) {
         clearInterval(keepAliveRef.current)
         keepAliveRef.current = null
       }
       if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-      streamRef.current?.getTracks().forEach(t => t.stop())
-      audioCtxRef.current?.close()
       recorderRef.current = null
-      streamRef.current = null
-      audioCtxRef.current = null
       connectionRef.current = null
       audioBufferRef.current = []
       wsOpenRef.current = false
-      setAnalyser(null)
       setIsListening(false)
     })
   }, [stopListening])
 
-  useEffect(() => { return () => stopListening() }, [stopListening])
+  // On unmount: stop session + release mic stream
+  useEffect(() => { return () => { stopListening(); releaseStream() } }, [stopListening, releaseStream])
 
   return { startListening, stopListening, isListening, error, analyser }
 }

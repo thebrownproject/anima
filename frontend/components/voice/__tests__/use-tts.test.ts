@@ -17,6 +17,8 @@ const { mockAudioContext, mockWorkletNode, mockFetch } = vi.hoisted(() => {
     audioWorklet: { addModule: vi.fn().mockResolvedValue(undefined) },
     destination: {},
     close: vi.fn(),
+    state: 'running' as AudioContextState,
+    resume: vi.fn().mockResolvedValue(undefined),
   }
 
   return {
@@ -118,21 +120,15 @@ describe('useTTS', () => {
     expect(result.current.isSpeaking).toBe(false)
   })
 
-  it('AudioContext created lazily on first speak()', async () => {
-    mockTTSResponse()
-
-    const { result } = renderHook(() => useTTS())
-
-    expect(globalThis.AudioContext).not.toHaveBeenCalled()
-
-    await act(async () => {
-      result.current.speak('hello')
-      await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled())
-    })
+  it('pre-loads AudioContext and worklet module on mount (stays suspended)', async () => {
+    renderHook(() => useTTS())
+    await act(async () => {}) // flush mount effect
 
     expect(globalThis.AudioContext).toHaveBeenCalledTimes(1)
     expect(globalThis.AudioContext).toHaveBeenCalledWith({ sampleRate: 24000 })
     expect(mockAudioContext.audioWorklet.addModule).toHaveBeenCalledWith('blob:mock-url')
+    // resume() NOT called on mount — requires user gesture
+    expect(mockAudioContext.resume).not.toHaveBeenCalled()
   })
 
   // --- Task B: error state tests ---
@@ -143,9 +139,10 @@ describe('useTTS', () => {
   })
 
   it('non-ok fetch response sets error and isSpeaking false', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, body: null })
-
     const { result } = renderHook(() => useTTS())
+    await act(async () => {}) // flush mount ensureContext
+
+    mockFetch.mockResolvedValueOnce({ ok: false, body: null })
     await act(async () => {
       result.current.speak('hello')
       await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled())
@@ -156,14 +153,14 @@ describe('useTTS', () => {
   })
 
   it('error resets to null on next speak() call', async () => {
+    const { result } = renderHook(() => useTTS())
+    await act(async () => {}) // flush mount ensureContext
+
     // First call fails
     mockFetch.mockResolvedValueOnce({ ok: false, body: null })
-
-    const { result } = renderHook(() => useTTS())
     await act(async () => {
       result.current.speak('hello')
     })
-    // Wait for async IIFE to set error
     await vi.waitFor(() => expect(result.current.error).toBe('Speech generation failed'))
 
     // Second call should reset error synchronously before async work

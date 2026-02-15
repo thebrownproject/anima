@@ -14,6 +14,8 @@ class PcmStreamPlayer extends AudioWorkletProcessor {
     this.chunks = []
     this.offset = 0
     this.streamDone = false
+    this.fadeInSamples = 480  // 20ms fade-in at 24kHz
+    this.samplesPlayed = 0
     this.port.onmessage = (e) => {
       if (e.data.type === 'audio') {
         this.chunks.push(e.data.samples)
@@ -42,6 +44,16 @@ class PcmStreamPlayer extends AudioWorkletProcessor {
         this.offset = 0
       }
     }
+    // Apply fade-in ramp to prevent start-of-playback click
+    if (this.samplesPlayed < this.fadeInSamples) {
+      for (let i = 0; i < written; i++) {
+        const s = this.samplesPlayed + i
+        if (s < this.fadeInSamples) {
+          out[i] *= s / this.fadeInSamples
+        }
+      }
+    }
+    this.samplesPlayed += written
     if (this.streamDone && this.chunks.length === 0) {
       this.port.postMessage({ type: 'done' })
       return false
@@ -49,7 +61,7 @@ class PcmStreamPlayer extends AudioWorkletProcessor {
     return true
   }
 }
-registerProcessor('pcm-stream-player', PcmStreamPlayer)
+try { registerProcessor('pcm-stream-player', PcmStreamPlayer) } catch(e) {}
 `
 
 export function useTTS(): TTSControls {
@@ -62,20 +74,27 @@ export function useTTS(): TTSControls {
   const blobUrlRef = useRef<string | null>(null)
   const moduleLoadedRef = useRef(false)
 
-  const ensureContext = useCallback(async () => {
+  // Pre-load worklet module (works on suspended context, no user gesture needed)
+  const preloadModule = useCallback(async () => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 })
     }
     const ctx = audioContextRef.current
-    if (ctx.state === 'suspended') await ctx.resume()
     if (!moduleLoadedRef.current) {
       const blob = new Blob([PROCESSOR_CODE], { type: 'application/javascript' })
       blobUrlRef.current = URL.createObjectURL(blob)
       await ctx.audioWorklet.addModule(blobUrlRef.current)
       moduleLoadedRef.current = true
     }
-    return ctx
   }, [])
+
+  // Resume context (requires user gesture) + ensure module loaded
+  const ensureContext = useCallback(async () => {
+    await preloadModule()
+    const ctx = audioContextRef.current!
+    if (ctx.state === 'suspended') await ctx.resume()
+    return ctx
+  }, [preloadModule])
 
   const speak = useCallback((text: string) => {
     // Interrupt any current playback
@@ -176,14 +195,16 @@ export function useTTS(): TTSControls {
     setIsSpeaking(false)
   }, [])
 
+  // Pre-load worklet module on mount (context stays suspended until user gesture)
   useEffect(() => {
+    preloadModule().catch(() => {})
     return () => {
       abortRef.current?.abort()
       workletNodeRef.current?.disconnect()
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
       audioContextRef.current?.close()
     }
-  }, [])
+  }, [preloadModule])
 
   return { speak, interrupt, isSpeaking, error }
 }

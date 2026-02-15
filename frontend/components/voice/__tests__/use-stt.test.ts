@@ -126,14 +126,16 @@ describe('useSTT', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token', expect.any(Object))
   })
 
-  it('uses cached token — no fetch during startListening', async () => {
+  it('uses cached token then pre-fetches replacement in background', async () => {
     const { result } = await renderSTTHook()
     mockMicStream()
+    mockTokenResponse('refresh-tok') // for the background refresh
 
     await act(() => result.current.startListening())
 
-    // startListening should NOT have called fetch (used cache)
-    expect(mockFetch).not.toHaveBeenCalled()
+    // startListening used cache for Deepgram, then triggered background refresh
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token', expect.any(Object))
   })
 
   it('startListening requests microphone access', async () => {
@@ -178,7 +180,7 @@ describe('useSTT', () => {
     expect(useVoiceStore.getState().transcript).toBe('hello world')
   })
 
-  it('stopListening stops tracks and closes connection', async () => {
+  it('stopListening keeps mic warm but stops recorder and connection', async () => {
     const { result } = await renderSTTHook()
     const { track } = mockMicStream()
 
@@ -189,11 +191,12 @@ describe('useSTT', () => {
     act(() => result.current.stopListening())
 
     expect(mockMediaRecorder.stop).toHaveBeenCalled()
-    expect(track.stop).toHaveBeenCalled()
     expect(mockConnection.requestClose).toHaveBeenCalled()
+    // Mic stream stays alive for next recording
+    expect(track.stop).not.toHaveBeenCalled()
   })
 
-  it('cleanup on unmount stops active session', async () => {
+  it('cleanup on unmount releases mic stream', async () => {
     const { result, unmount } = await renderSTTHook()
     const { track } = mockMicStream()
 

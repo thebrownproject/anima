@@ -3728,3 +3728,70 @@ Root cause: `turn_count` in `sprite/src/memory/hooks.py:68` was a closure variab
 - Remaining bugs: m7b.4.14 (chat history lost on refresh), sm2 (spriteExec missing on Fly.io), iic (auth timeout cold start)
 
 ---
+
+## [2026-02-15 22:50] Session 178
+
+**Branch:** main | **Git:** uncommitted (voice STT/TTS optimizations)
+
+### What Happened
+
+**STT startup latency optimization + TTS fixes for voice pipeline (m7b.4.15.10).**
+
+**1. STT startup lag — parallelize token + mic (stackdocs-e2p, CLOSED):**
+- `use-stt.ts:81-113`: Changed sequential token fetch → getUserMedia to `Promise.allSettled` running both in parallel. Saves ~300-800ms on STT startup.
+- Error handling: cross-failure cleanup (mic tracks stopped if token fails), TypeScript narrowing via direct `status === 'rejected'` checks.
+
+**2. Audio buffering before WS opens (stackdocs-fb9, CLOSED):**
+- `use-stt.ts:144-184`: MediaRecorder now starts immediately after getUserMedia (not inside Deepgram Open handler). Audio chunks buffered in `audioBufferRef` until WebSocket opens, then flushed in order. Overflow guard at 100 chunks (10s at 100ms timeslice).
+
+**3. Token pre-fetch on mount (use-stt.ts:63-70):**
+- `fetchDeepgramToken()` called in useEffect on mount, cached in `tokenCacheRef`. First recording uses cached token (no network wait). Background refresh when token past half-life (55s remaining).
+
+**4. Timeslice reduced from 250ms to 100ms** — first audio chunk arrives faster.
+
+**5. Warm mic stream between recordings (use-stt.ts:81-94, 108-110):**
+- `stopListening` no longer stops stream tracks — mic stays warm for instant re-recording.
+- `startListening` checks `hasWarmStream = streamRef.current?.active`, skips getUserMedia if stream is alive.
+- `releaseStream()` only called on unmount.
+
+**6. Speaker (TTS) toggle persistence (voice-store.ts):**
+- Added `zustand/persist` with `partialize` — only `ttsEnabled` saved to localStorage (`stackdocs-voice`). Ephemeral state resets on refresh.
+
+**7. TTS AudioContext fixes (use-tts.ts):**
+- Split `ensureContext` into `preloadModule` (runs on mount, suspended OK) + `ensureContext` (resumes on user gesture). Prevents Chrome autoplay policy error.
+- `registerProcessor` wrapped in try-catch — handles React strict mode / HMR double-registration.
+- 20ms fade-in ramp in AudioWorklet processor to prevent start-of-playback click.
+
+**8. Dual AudioContext conflict (stackdocs-m7b.4.15.11, OPEN):**
+- STT creates AudioContext (for VoiceBars analyser) that competes with TTS AudioContext (24kHz) for speaker. After STT use, TTS produces no audio. Closing STT context in stopListening didn't fully resolve — filed as P1 bug for next session.
+
+### Decisions Made
+
+- **Warm mic stream** — keep stream alive between recordings, only close AudioContext. Mic indicator shows in browser but eliminates ~200-500ms getUserMedia latency.
+- **Token half-life refresh** — background-refresh only when token past 50% of TTL. Avoids unnecessary fetches while ensuring fresh tokens.
+- **`partialize` for voice store** — only persist ttsEnabled, not ephemeral voice state.
+
+### Gotchas
+
+- **Deepgram tokens appear multi-use** — invalidating after use caused regression. Reused tokens work fine within TTL.
+- **Chrome autoplay policy** — `AudioContext.resume()` on mount triggers error. Must defer to user gesture.
+- **`registerProcessor` not idempotent** — throws if name already registered. Try-catch needed for HMR/strict mode.
+- **Dual AudioContext = silent TTS failure** — no error thrown, just no audio output. Hard to debug without knowing to look for competing contexts.
+
+### In Progress
+
+- **stackdocs-m7b.4.15.11** (P1 bug) — TTS blocked after STT use. Likely fix: share single AudioContext between STT and TTS via voice-provider. Filed for next session.
+- **9 STT tests failing** — warm stream + token caching changes broke test setup. Builder agent was fixing in background (may have completed).
+
+### Cleanup Needed
+
+Several iterative changes in `use-stt.ts` and `use-tts.ts` didn't fully resolve the issues (warm stream, token invalidation/refresh, fade-in ramp). The codebase has accumulated partial fixes that need review and likely simplification before continuing. Recommend starting next session with a code review of both files to identify dead code and revert unsuccessful changes before tackling m7b.4.15.11.
+
+### Next Action
+
+- **Clean up use-stt.ts and use-tts.ts** — review iterative changes, revert unsuccessful ones, simplify
+- Fix dual AudioContext conflict (m7b.4.15.11) — likely share one context from voice-provider
+- Fix remaining STT tests
+- Close m7b.4.15 once TTS+STT both work reliably
+
+---
