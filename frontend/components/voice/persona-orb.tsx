@@ -158,7 +158,7 @@ export function PersonaOrb({ hasText, inputActive, onSendMessage }: PersonaOrbPr
               />
             )}
             {mountRive && (
-              <div className="absolute inset-[-15%]">
+              <div className="absolute inset-[-13%]">
                 <Persona
                   state={toRiveState(personaState)}
                   onReady={() => setRiveReady(true)}

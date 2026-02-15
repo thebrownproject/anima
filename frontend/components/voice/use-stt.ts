@@ -23,7 +23,7 @@ function createAnalyser(stream: MediaStream): { ctx: AudioContext; node: Analyse
     const ctx = new AudioContext()
     const source = ctx.createMediaStreamSource(stream)
     const node = ctx.createAnalyser()
-    node.fftSize = 64
+    node.fftSize = 256
     source.connect(node)
     return { ctx, node }
   } catch {

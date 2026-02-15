@@ -248,6 +248,12 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
     [isPanning, momentum, scheduleSync],
   )
 
+  // Safety net: if pointer capture is lost (tab switch, DevTools, touch cancel),
+  // reset panning state to prevent stuck cursor
+  const handleLostPointerCapture = useCallback(() => {
+    if (isPanning) setIsPanning(false)
+  }, [isPanning])
+
   useEffect(() => {
     return () => {
       if (zoomRafId.current) cancelAnimationFrame(zoomRafId.current)
@@ -264,8 +270,9 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onLostPointerCapture={handleLostPointerCapture}
     >
-      <div id="desktop-canvas-bg" className="absolute inset-0 cursor-grab active:cursor-grabbing" />
+      <div id="desktop-canvas-bg" className="absolute inset-0" style={{ cursor: isPanning ? 'grabbing' : 'grab' }} />
 
       <div
         ref={transformRef}

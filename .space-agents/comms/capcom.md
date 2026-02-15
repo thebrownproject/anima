@@ -3354,3 +3354,55 @@ Major rework of the PersonaOrb interaction model. Previously a click-to-talk but
 - Update and run test suite
 
 ---
+
+## [2026-02-15 12:55] Session 169
+
+**Branch:** main | **Git:** uncommitted changes
+
+### What Happened
+
+**Deepgram Nova-3 STT integration — replaced Web Speech API, debugged API key, fixed state machine bug, cursor fix.**
+
+**STT engine swap (`frontend/components/voice/use-stt.ts`):**
+- Replaced Web Speech API with Deepgram Nova-3 streaming as primary STT engine.
+- Cloned Deepgram's official reference repo (`docs/reference/nextjs-live-transcription`) and compared implementation patterns.
+- Matched reference patterns: `addListener` (not `on`), no mimeType on MediaRecorder, `requestClose()` (not deprecated `finish()`), mic setup before Deepgram connection, `noiseSuppression`/`echoCancellation` on mic.
+- Kept Web Speech API as `useWebSpeechSTT()` named export fallback. Default `useSTT` = `useDeepgramSTT`.
+- Shared `createAnalyser()` helper extracted for both implementations.
+- `fftSize` bumped from 64 to 256 for finer frequency resolution.
+
+**Root cause of STT never working:** `DEEPGRAM_API_KEY` in `.env.local` had insufficient permissions — 403 on `auth.grantToken()`. New key (`c5e35f54...`) with Member scope fixes it. Token endpoint (`/api/voice/deepgram-token`) was returning 502 all along.
+
+**State machine bug fix (`voice-provider.tsx:50-62`):**
+- `stopVoice()` always set `personaState: 'thinking'` even with empty transcript. No agent response would come, so orb got stuck permanently. Fix: go to `'idle'` when transcript is empty, only `'thinking'` when message actually sent.
+
+**Cursor stuck bug fix (`desktop-viewport.tsx`):**
+- Known Chromium bug: `active:cursor-grabbing` CSS pseudo-class + `setPointerCapture()` causes `:active` to get stuck. Cursor locked as grab hand across entire page.
+- Fix: replaced CSS `cursor-grab active:cursor-grabbing` with JS state-driven `style={{ cursor: isPanning ? 'grabbing' : 'grab' }}` (same pattern `desktop-card.tsx` uses).
+- Added `onLostPointerCapture` safety net to reset `isPanning` if pointer capture lost unexpectedly.
+
+**Voice bars tuning (`voice-bars.tsx`):**
+- Skipped bottom 10% of frequency bins to reduce bass-heavy first bar.
+- Separated idle height (fixed 3px via `MIN_PX`) from dynamic range (`MAX_PX = 20px`) so scaling changes don't affect idle appearance.
+- Tried RMS volume approach but reverted — frequency-based bars looked more natural.
+
+**Persona orb:** Rive canvas inset adjusted from -14% to -13%.
+
+### Decisions Made
+
+- **Deepgram over Web Speech API** — Better accuracy (Nova-3), cross-browser, streaming with smart_format. Web Speech API kept as fallback export.
+- **No auto-fallback composing hook** — React state updates are async, can't reliably detect Deepgram failure in a composing hook. Simple alias (`useSTT = useDeepgramSTT`) instead.
+- **JS cursor over CSS :active** — Immune to Chromium `:active` stuck bug. Matches pattern already used by desktop-card.tsx.
+
+### Gotchas
+
+- **Deepgram API key permissions** — `grantToken()` requires "Member" scope or higher. Default API keys don't have it. This was the ONLY reason STT never worked — code was fine all along.
+- **Chromium `:active` + `setPointerCapture` bug** — Well-documented (issues.chromium.org #40300816). No `lostpointercapture` handler meant no recovery path.
+- **`finish()` deprecated in `@deepgram/sdk` v4.11.3** — Use `requestClose()`. Reference repo uses v4.5.1 where `finish()` was current.
+- **Voice bars frequency bin 0** — Dominates with bass energy. Must skip bottom bins for balanced visualization.
+
+### Next Action
+
+- More STT refinements next session (user noted). Consider interim transcript display in persona-orb pill for live streaming feedback.
+
+---
