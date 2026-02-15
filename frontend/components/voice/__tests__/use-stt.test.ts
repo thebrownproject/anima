@@ -209,23 +209,77 @@ describe('useSTT', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('token fetch timeout sets error', async () => {
+  it('token fetch and getUserMedia run in parallel', async () => {
+    // Both should be called before either resolves
+    let resolveToken: (v: unknown) => void
+    let resolveMic: (v: unknown) => void
+    let tokenCalled = false
+    let micCalled = false
+
+    mockFetch.mockImplementationOnce(() => {
+      tokenCalled = true
+      // At this point, mic should also have been called (parallel)
+      return new Promise((r) => { resolveToken = r })
+    })
+    mockGetUserMedia.mockImplementationOnce(() => {
+      micCalled = true
+      return new Promise((r) => { resolveMic = r })
+    })
+
+    const { result } = renderHook(() => useSTT())
+    const startPromise = act(async () => {
+      const p = result.current.startListening()
+      // Let microtasks flush so both promises are initiated
+      await Promise.resolve()
+      expect(tokenCalled).toBe(true)
+      expect(micCalled).toBe(true)
+      // Now resolve both
+      resolveToken!({ ok: true, json: async () => ({ token: 'tok', expires_in: 120 }) })
+      resolveMic!({ getTracks: () => [{ stop: vi.fn() }], active: true })
+      return p
+    })
+    await startPromise
+  })
+
+  it('token fetch fails — mic stream tracks are stopped', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false })
+    const { track } = mockMicStream()
+
+    const { result } = renderHook(() => useSTT())
+    await act(() => result.current.startListening())
+
+    expect(result.current.error).toBe('Failed to get voice token')
+    expect(track.stop).toHaveBeenCalled()
+  })
+
+  it('mic fails — sets microphone error (token result unused)', async () => {
+    mockTokenResponse()
+    mockGetUserMedia.mockRejectedValueOnce(new DOMException('Denied', 'NotAllowedError'))
+
+    const { result } = renderHook(() => useSTT())
+    await act(() => result.current.startListening())
+
+    expect(result.current.error).toBe('Microphone access denied')
+  })
+
+  it('token fetch timeout sets error and stops mic tracks', async () => {
     vi.useFakeTimers()
-    // Mock fetch that never resolves
     mockFetch.mockImplementationOnce((_url: string, opts: { signal: AbortSignal }) => {
       return new Promise((_resolve, reject) => {
         opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
       })
     })
+    // Mic resolves quickly even though token times out
+    const { track } = mockMicStream()
 
     const { result } = renderHook(() => useSTT())
     const startPromise = act(() => result.current.startListening())
 
-    // Advance past the 10s timeout
     await act(async () => { vi.advanceTimersByTime(10_000) })
     await startPromise
 
     expect(result.current.error).toBe('Voice connection timed out')
+    expect(track.stop).toHaveBeenCalled()
     vi.useRealTimers()
   })
 

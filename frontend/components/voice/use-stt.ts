@@ -70,43 +70,55 @@ export function useDeepgramSTT(): STTControls {
     generationRef.current += 1
     const thisGen = generationRef.current
 
-    // 1. Fetch temp token (with timeout)
-    let token: string
+    // 1+2. Fetch token and acquire mic in parallel (~300-800ms saved)
     const fetchCtrl = new AbortController()
     const fetchTimeout = setTimeout(() => fetchCtrl.abort(), 10_000)
-    try {
-      const res = await fetch('/api/voice/deepgram-token', { signal: fetchCtrl.signal })
-      clearTimeout(fetchTimeout)
-      if (generationRef.current !== thisGen) return
-      if (!res.ok) { setError('Failed to get voice token'); return }
-      const data = await res.json()
-      token = data.token
-    } catch (err) {
-      clearTimeout(fetchTimeout)
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        setError('Voice connection timed out')
+
+    const [tokenResult, micResult] = await Promise.allSettled([
+      fetch('/api/voice/deepgram-token', { signal: fetchCtrl.signal })
+        .then(async (res) => {
+          clearTimeout(fetchTimeout)
+          if (!res.ok) throw new Error('token-failed')
+          const data = await res.json()
+          return data.token as string
+        }),
+      navigator.mediaDevices.getUserMedia({
+        audio: { noiseSuppression: true, echoCancellation: true },
+      }),
+    ])
+    clearTimeout(fetchTimeout)
+
+    if (generationRef.current !== thisGen) {
+      if (micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
+      return
+    }
+
+    // Handle failures — clean up whichever succeeded if the other failed
+    const tokenFailed = tokenResult.status === 'rejected'
+    const micFailed = micResult.status === 'rejected'
+
+    if (tokenFailed || micFailed) {
+      if (micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
+
+      if (tokenFailed) {
+        const err = tokenResult.reason
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          setError('Voice connection timed out')
+        } else {
+          setError('Failed to get voice token')
+        }
       } else {
-        setError('Failed to get voice token')
+        const err = micResult.reason
+        setError(
+          err instanceof DOMException && err.name === 'NotAllowedError'
+            ? 'Microphone access denied' : 'Microphone unavailable'
+        )
       }
       return
     }
 
-    // 2. Get mic stream + MediaRecorder
-    let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { noiseSuppression: true, echoCancellation: true },
-      })
-    } catch (err) {
-      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
-        ? 'Microphone access denied' : 'Microphone unavailable'
-      setError(msg)
-      return
-    }
-    if (generationRef.current !== thisGen) {
-      stream.getTracks().forEach(t => t.stop())
-      return
-    }
+    const token = tokenResult.value
+    const stream = micResult.value
     streamRef.current = stream
 
     const recorder = new MediaRecorder(stream)
