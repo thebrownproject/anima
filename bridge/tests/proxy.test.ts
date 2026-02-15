@@ -277,6 +277,31 @@ describe('proxy module', () => {
     proxyModule.disconnectSprite('user-1')
     expect(proxyModule.getSpriteConnection('user-1')).toBeUndefined()
   })
+
+  it('stale onClose from replaced connection does not remove newer connection', async () => {
+    // Establish connA for user-1
+    await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
+    const connA = proxyModule.getSpriteConnection('user-1')!
+    expect(connA.state).toBe('connected')
+
+    // Close connA (simulates verify-fail path calling conn.close())
+    // The onClose callback is async — fires on next tick
+    connA.close()
+
+    // Before connA's onClose fires, establish connB (same user).
+    // ensureSpriteConnection sees connA as stale (state !== 'connected'),
+    // removes it from map, and creates connB.
+    const connB = await proxyModule.ensureSpriteConnection('user-1', 'sprite-a', 'token')
+    expect(connB).not.toBe(connA)
+    expect(proxyModule.getSpriteConnection('user-1')).toBe(connB)
+
+    // Wait for connA's delayed onClose to fire
+    await new Promise((r) => setTimeout(r, 300))
+
+    // Guard: connA's onClose should NOT have removed connB from the map
+    expect(proxyModule.getSpriteConnection('user-1')).toBe(connB)
+    expect(proxyModule.getSpriteConnection('user-1')?.state).toBe('connected')
+  })
 })
 
 // Mock updater module before proxy imports it

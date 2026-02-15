@@ -3680,3 +3680,51 @@ Two Session 172 bugs remain with full root cause analyses ready:
 - Close m7b.4.15 once TTS working and smoke test passes
 
 ---
+
+## [2026-02-15 21:45] Session 177
+
+**Branch:** main | **Git:** uncommitted (bridge reconnect + proxy + protocol, sprite hooks + protocol, frontend protocol)
+
+### What Happened
+
+**Fixed two bugs via /exploration-debug: stackdocs-zxh (P1 reconnect) and stackdocs-oan (P2 memory).**
+
+**stackdocs-zxh — Reconnect stuck on sprite_waking (3 sub-bugs fixed):**
+
+1. **No retry on `createConnection`** (root cause) — `handleDisconnect` in `bridge/src/reconnect.ts:150` had ONE attempt at TCP proxy connection. During deploy (server killed, new server not yet up), it threw and gave up permanently. Browser stuck on `sprite_waking` forever. **Fix:** Added `connectWithRetry()` function (reconnect.ts:134-151) — 5 attempts with 2s delay, only retries on "TCP Proxy closed during init". If all fail, calls `restartServer()` then one final attempt.
+
+2. **No failure message to browser** — catch block only logged to console. **Fix:** Added `broadcastSystem(userId, 'reconnect_failed', msg)` on all failure paths (reconnect.ts:172, 207). Added `reconnect_failed` to `SystemEvent` in protocol.ts, ws-protocol.ts, protocol.py.
+
+3. **Race condition: stale `onClose` deletes new connection** — When verify fails and `conn.close()` is called in reconnect, the async `onClose` callback fires later and blindly deletes from `spriteConnections` — even if a newer replacement connection was already registered. **Fix:** Identity guard in proxy.ts:29: `if (spriteConnections.get(userId) !== conn) return`.
+
+4 new bridge tests (3 reconnect + 1 proxy race condition). All 132 bridge tests pass.
+
+**stackdocs-oan — Session memory lost on deploy (ObservationProcessor never fires):**
+
+Root cause: `turn_count` in `sprite/src/memory/hooks.py:68` was a closure variable, reset to 0 on every process restart. With 25-turn threshold and frequent deploys, never reached threshold. `user.md` stayed empty forever.
+
+**Fix:** Replaced ephemeral `turn_count` with DB query: `SELECT COUNT(*) FROM observations WHERE processed = 0` (hooks.py:108-111). Lowered `DEFAULT_BATCH_THRESHOLD` from 25 to 10. Count now accumulates across process restarts since observations persist in transcript.db.
+
+1 new sprite test (`test_unprocessed_count_survives_restart`). All 18 hooks tests pass.
+
+**Inspector agent reviewed all changes — PASS on both requirements (10/10) and quality.**
+
+### Decisions Made
+
+- **DB-based counting over file-based counter** — querying `observations WHERE processed = 0` is more robust than persisting a counter file. Naturally survives restarts, accurately represents actual unprocessed work.
+- **10-turn threshold** — balanced between too aggressive (3) and the broken 25. ~$0.001/batch via Haiku.
+- **`reconnect_failed` as new SystemEvent** — gives frontend a way to show "please refresh" instead of infinite spinner.
+- **soul.md/os.md overwrite on deploy is correct** — they're deploy-managed. Session resume breaking is expected. Memory files are the persistence layer.
+
+### Gotchas
+
+- **e2e-user-sprite.test.ts** has 3 pre-existing flaky multi-tab tests (message timeout + afterAll hook timeout). Not related to our changes.
+- **test_runtime.py** has 15 pre-existing failures locally due to missing `anthropic`/`websockets` modules (Sprite-only deps).
+- **Reconnect tests are slow (~20s)** due to real 2s `setTimeout` delays in `connectWithRetry`. Inspector noted this could be improved with injectable delay.
+
+### Next Action
+
+- Deploy bridge changes to Fly.io (`flyctl deploy`) and sprite changes via `/sprite-deploy` to verify in production
+- Remaining bugs: m7b.4.14 (chat history lost on refresh), sm2 (spriteExec missing on Fly.io), iic (auth timeout cold start)
+
+---

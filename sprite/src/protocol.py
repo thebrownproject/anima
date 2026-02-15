@@ -63,7 +63,7 @@ CardSize = Literal["small", "medium", "large", "full"]
 AgentEventType = Literal["text", "tool", "complete", "error"]
 BadgeVariant = Literal["default", "success", "warning", "destructive"]
 DocumentStatus = Literal["processing", "ocr_complete", "completed", "failed"]
-SystemEvent = Literal["connected", "sprite_waking", "sprite_ready", "error"]
+SystemEvent = Literal["connected", "sprite_waking", "sprite_ready", "reconnect_failed", "error"]
 
 
 # =============================================================================
@@ -530,7 +530,7 @@ def is_system_message(value: Any) -> bool:
     if not is_websocket_message(value) or not _has_payload(value):
         return False
     p = value["payload"]
-    valid_events = ("connected", "sprite_waking", "sprite_ready", "error")
+    valid_events = ("connected", "sprite_waking", "sprite_ready", "reconnect_failed", "error")
     return (
         value["type"] == "system"
         and p.get("event") in valid_events

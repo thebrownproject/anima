@@ -11,6 +11,8 @@ const BUFFER_TTL_MS = 60_000
 const POLL_INTERVAL_MS = 1_000
 const MAX_POLL_ATTEMPTS = 30
 const SERVER_PING_TIMEOUT_MS = 5_000
+const MAX_CONNECT_ATTEMPTS = 5
+const CONNECT_RETRY_MS = 2_000
 
 interface BufferedMessage {
   data: string
@@ -57,7 +59,7 @@ function drainBuffer(userId: string): string[] {
   return valid
 }
 
-function broadcastSystem(userId: string, event: 'sprite_waking' | 'sprite_ready', message?: string): void {
+function broadcastSystem(userId: string, event: 'sprite_waking' | 'sprite_ready' | 'reconnect_failed', message?: string): void {
   const msg: SystemMessage = {
     type: 'system',
     id: uuidv4(),
@@ -126,8 +128,31 @@ export interface ReconnectDeps {
 }
 
 /**
+ * Try to connect to the Sprite TCP Proxy with retries.
+ * Handles the deploy scenario where the server isn't listening yet.
+ */
+async function connectWithRetry(
+  userId: string,
+  deps: ReconnectDeps,
+): Promise<SpriteConnection | null> {
+  for (let attempt = 1; attempt <= MAX_CONNECT_ATTEMPTS; attempt++) {
+    try {
+      return await deps.createConnection(deps.spriteName, deps.token)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!msg.includes('TCP Proxy closed during init')) throw err
+      console.warn(`[reconnect:${userId}] Connection attempt ${attempt}/${MAX_CONNECT_ATTEMPTS} failed (server not ready)`)
+      if (attempt < MAX_CONNECT_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, CONNECT_RETRY_MS))
+      }
+    }
+  }
+  return null
+}
+
+/**
  * Handle a Sprite TCP Proxy connection drop.
- * Wakes the Sprite, reconnects, verifies server, replays buffered messages.
+ * Wakes the Sprite, reconnects (with retries), verifies server, replays buffered messages.
  * Coalesces concurrent calls — only one reconnect runs per user.
  */
 export async function handleDisconnect(userId: string, deps: ReconnectDeps): Promise<boolean> {
@@ -144,10 +169,19 @@ export async function handleDisconnect(userId: string, deps: ReconnectDeps): Pro
     const running = await waitForRunning(deps.spriteName)
     if (!running) {
       console.error(`[reconnect:${userId}] Sprite ${deps.spriteName} failed to reach running state`)
+      broadcastSystem(userId, 'reconnect_failed', 'Sprite failed to wake')
       return false
     }
 
-    const conn = await deps.createConnection(deps.spriteName, deps.token)
+    let conn = await connectWithRetry(userId, deps)
+
+    // All connection attempts failed — start server and try once more
+    if (!conn) {
+      console.warn(`[reconnect:${userId}] Server not running after ${MAX_CONNECT_ATTEMPTS} attempts, starting via exec...`)
+      await restart(deps.spriteName, deps.token)
+      conn = await deps.createConnection(deps.spriteName, deps.token)
+    }
+
     state.connection = conn
 
     const alive = await verify(conn)
@@ -170,6 +204,7 @@ export async function handleDisconnect(userId: string, deps: ReconnectDeps): Pro
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`[reconnect:${userId}] Reconnection failed:`, msg)
+    broadcastSystem(userId, 'reconnect_failed', `Reconnection failed: ${msg}`)
     return false
   } finally {
     state.inProgress = false

@@ -15,7 +15,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 TOOL_RESPONSE_MAX = 2000
-DEFAULT_BATCH_THRESHOLD = 25
+DEFAULT_BATCH_THRESHOLD = 10
 
 
 class TurnBuffer:
@@ -65,7 +65,6 @@ def create_hook_callbacks(
     Returns a dict of named callbacks. runtime.py maps these into
     ClaudeAgentOptions hooks with HookMatcher.
     """
-    turn_count = 0
     sequence_num = 0
 
     async def on_user_prompt_submit(input_data, tool_use_id, context) -> dict:
@@ -87,7 +86,7 @@ def create_hook_callbacks(
         return {}
 
     async def on_stop(input_data, tool_use_id, context) -> dict:
-        nonlocal turn_count, sequence_num
+        nonlocal sequence_num
         try:
             sequence_num += 1
             snap = buffer.snapshot()
@@ -105,9 +104,12 @@ def create_hook_callbacks(
                 ),
             )
             buffer.clear()
-            turn_count += 1
-            if turn_count >= batch_threshold:
-                turn_count = 0
+            # Count unprocessed observations from DB (survives process restarts)
+            row = await transcript_db.fetchone(
+                "SELECT COUNT(*) as c FROM observations WHERE processed = 0"
+            )
+            unprocessed = row["c"] if row else 0
+            if unprocessed >= batch_threshold:
                 await processor.flush_all()
         except Exception:
             logger.exception("Hook error: stop")

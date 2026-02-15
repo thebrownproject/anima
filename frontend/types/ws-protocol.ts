@@ -265,6 +265,7 @@ export type SystemEvent =
   | 'connected'
   | 'sprite_waking'
   | 'sprite_ready'
+  | 'reconnect_failed'
   | 'error'
 
 export interface SystemMessage extends WebSocketMessageBase {
@@ -434,6 +435,7 @@ export function isSystemMessage(value: unknown): value is SystemMessage {
     'connected',
     'sprite_waking',
     'sprite_ready',
+    'reconnect_failed',
     'error',
   ]
   return (

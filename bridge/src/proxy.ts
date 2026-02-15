@@ -23,6 +23,11 @@ async function createAndRegister(userId: string, spriteName: string, token: stri
     token,
     onMessage: (data) => broadcastToBrowsers(userId, data),
     onClose: (_code, _reason) => {
+      // Guard: only act if this connection is still the active one for this user.
+      // Prevents race where an old connection's delayed close event removes
+      // a newer replacement connection (e.g. during verify-fail reconnect).
+      if (spriteConnections.get(userId) !== conn) return
+
       spriteConnections.delete(userId)
       // Only attempt reconnection if browsers are still connected
       if (getConnectionsByUser(userId).length > 0) {

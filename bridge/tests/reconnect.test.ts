@@ -162,4 +162,72 @@ describe('reconnect', () => {
     // createConnection called twice: initial reconnect + retry after restart
     expect(createConnection).toHaveBeenCalledTimes(2)
   })
+
+  it('retries createConnection when server is not yet listening (deploy scenario)', async () => {
+    const mockConn = {
+      state: 'connected' as const,
+      spriteName: 'test-sprite',
+      send: vi.fn().mockReturnValue(true),
+      close: vi.fn(),
+    }
+
+    // Fail twice (server not up yet), then succeed
+    const createConnection = vi.fn()
+      .mockRejectedValueOnce(new Error('TCP Proxy closed during init: 1011'))
+      .mockRejectedValueOnce(new Error('TCP Proxy closed during init: 1011'))
+      .mockResolvedValueOnce(mockConn)
+
+    const deps = makeDeps({ createConnection })
+    const result = await handleDisconnect('user-1', deps)
+
+    expect(result).toBe(true)
+    expect(createConnection).toHaveBeenCalledTimes(3)
+
+    // Should still send sprite_ready
+    const calls = mockBrowsers[0].ws.send.mock.calls
+    const lastMsg = JSON.parse(calls[calls.length - 1][0])
+    expect(lastMsg.payload.event).toBe('sprite_ready')
+  })
+
+  it('starts server and retries when all connection attempts fail', async () => {
+    const mockConn = {
+      state: 'connected' as const,
+      spriteName: 'test-sprite',
+      send: vi.fn().mockReturnValue(true),
+      close: vi.fn(),
+    }
+
+    // Fail all initial attempts, then succeed after server restart
+    const createConnection = vi.fn()
+      .mockRejectedValueOnce(new Error('TCP Proxy closed during init: 1011'))
+      .mockRejectedValueOnce(new Error('TCP Proxy closed during init: 1011'))
+      .mockRejectedValueOnce(new Error('TCP Proxy closed during init: 1011'))
+      .mockRejectedValueOnce(new Error('TCP Proxy closed during init: 1011'))
+      .mockRejectedValueOnce(new Error('TCP Proxy closed during init: 1011'))
+      .mockResolvedValueOnce(mockConn) // succeeds after restartServer
+
+    const restartServer = vi.fn().mockResolvedValue(undefined)
+    const deps = makeDeps({ createConnection, restartServer })
+    const result = await handleDisconnect('user-1', deps)
+
+    expect(result).toBe(true)
+    expect(restartServer).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends reconnect_failed to browser when all retries exhausted', async () => {
+    const createConnection = vi.fn()
+      .mockRejectedValue(new Error('TCP Proxy closed during init: 1011'))
+
+    const restartServer = vi.fn().mockResolvedValue(undefined)
+    const deps = makeDeps({ createConnection, restartServer })
+    const result = await handleDisconnect('user-1', deps)
+
+    expect(result).toBe(false)
+
+    // Should send reconnect_failed system message
+    const calls = mockBrowsers[0].ws.send.mock.calls
+    const lastMsg = JSON.parse(calls[calls.length - 1][0])
+    expect(lastMsg.type).toBe('system')
+    expect(lastMsg.payload.event).toBe('reconnect_failed')
+  })
 })

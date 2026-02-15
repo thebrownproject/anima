@@ -9,7 +9,7 @@ import pytest
 from src.database import TranscriptDB
 from src.memory.hooks import TurnBuffer, create_hook_callbacks
 
-BATCH_THRESHOLD = 25
+BATCH_THRESHOLD = 10
 
 
 # -- Fixtures ----------------------------------------------------------------
@@ -244,3 +244,27 @@ async def test_sequence_numbers_increment(transcript_db, mock_processor):
         "SELECT sequence_num FROM observations ORDER BY sequence_num"
     )
     assert [r["sequence_num"] for r in rows] == [1, 2, 3]
+
+
+async def test_unprocessed_count_survives_restart(transcript_db, mock_processor):
+    """DB-based counting accumulates across hook callback recreations (simulated restart)."""
+    # First "process lifetime": 2 turns
+    buffer1 = TurnBuffer()
+    hooks1 = create_hook_callbacks(transcript_db, mock_processor, buffer1, batch_threshold=5)
+    for i in range(2):
+        buffer1.set_user_message(f"session1 msg {i}")
+        buffer1.append_agent_response(f"reply {i}")
+        await hooks1["on_stop"]({}, None, {})
+    assert mock_processor.flushed is False  # only 2 turns, threshold is 5
+
+    # Simulate restart: create NEW hooks with same DB (like new process)
+    mock_processor.flushed = False
+    buffer2 = TurnBuffer()
+    hooks2 = create_hook_callbacks(transcript_db, mock_processor, buffer2, batch_threshold=5)
+    for i in range(3):
+        buffer2.set_user_message(f"session2 msg {i}")
+        buffer2.append_agent_response(f"reply {i}")
+        await hooks2["on_stop"]({}, None, {})
+
+    # 2 + 3 = 5 unprocessed observations → should trigger flush
+    assert mock_processor.flushed is True
