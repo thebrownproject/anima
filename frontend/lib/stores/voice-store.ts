@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export type PersonaState = 'asleep' | 'idle' | 'listening' | 'thinking' | 'speaking'
 
@@ -25,22 +26,30 @@ interface VoiceActions {
   clearTranscript: () => void
 }
 
-export const useVoiceStore = create<VoiceState & VoiceActions>()((set) => ({
-  personaState: 'asleep',
-  micEnabled: false,
-  ttsEnabled: false,
-  transcript: '',
+export const useVoiceStore = create<VoiceState & VoiceActions>()(
+  persist(
+    (set) => ({
+      personaState: 'asleep',
+      micEnabled: false,
+      ttsEnabled: false,
+      transcript: '',
 
-  setPersonaState: (to) =>
-    set((state) => {
-      if (to === 'asleep') return { personaState: 'asleep' }
-      if (VALID_TRANSITIONS[state.personaState].includes(to)) return { personaState: to }
-      console.warn(`[voice] invalid transition: ${state.personaState} -> ${to}`)
-      return state
+      setPersonaState: (to) =>
+        set((state) => {
+          if (to === 'asleep') return { personaState: 'asleep' }
+          if (VALID_TRANSITIONS[state.personaState].includes(to)) return { personaState: to }
+          console.warn(`[voice] invalid transition: ${state.personaState} -> ${to}`)
+          return state
+        }),
+
+      toggleMic: () => set((state) => ({ micEnabled: !state.micEnabled })),
+      toggleTts: () => set((state) => ({ ttsEnabled: !state.ttsEnabled })),
+      setTranscript: (text) => set({ transcript: text }),
+      clearTranscript: () => set({ transcript: '' }),
     }),
-
-  toggleMic: () => set((state) => ({ micEnabled: !state.micEnabled })),
-  toggleTts: () => set((state) => ({ ttsEnabled: !state.ttsEnabled })),
-  setTranscript: (text) => set({ transcript: text }),
-  clearTranscript: () => set({ transcript: '' }),
-}))
+    {
+      name: 'stackdocs-voice',
+      partialize: (state) => ({ ttsEnabled: state.ttsEnabled }),
+    }
+  )
+)

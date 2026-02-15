@@ -33,6 +33,18 @@ function createAnalyser(stream: MediaStream): { ctx: AudioContext; node: Analyse
 
 // ─── Deepgram Nova-3 STT (primary) ─────────────────────────────────────────
 
+// ─── Token cache: fetch eagerly on mount, reuse until near expiry ───────────
+
+interface CachedToken { token: string; expiresAt: number }
+
+async function fetchDeepgramToken(signal?: AbortSignal): Promise<CachedToken> {
+  const res = await fetch('/api/voice/deepgram-token', { signal })
+  if (!res.ok) throw new Error('token-failed')
+  const data = await res.json()
+  // Expire 10s early to avoid using a nearly-expired token
+  return { token: data.token, expiresAt: Date.now() + (data.expires_in - 10) * 1000 }
+}
+
 export function useDeepgramSTT(): STTControls {
   const [isListening, setIsListening] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +58,16 @@ export function useDeepgramSTT(): STTControls {
   const generationRef = useRef(0)
   const audioBufferRef = useRef<Blob[]>([])
   const wsOpenRef = useRef(false)
+  const tokenCacheRef = useRef<CachedToken | null>(null)
+
+  // Pre-fetch token on mount so it's ready when user presses record
+  useEffect(() => {
+    let cancelled = false
+    fetchDeepgramToken().then(cached => {
+      if (!cancelled) tokenCacheRef.current = cached
+    }).catch(() => { /* will fetch on-demand in startListening */ })
+    return () => { cancelled = true }
+  }, [])
 
   const stopListening = useCallback(() => {
     if (keepAliveRef.current) {
@@ -74,23 +96,22 @@ export function useDeepgramSTT(): STTControls {
     generationRef.current += 1
     const thisGen = generationRef.current
 
-    // 1+2. Fetch token and acquire mic in parallel (~300-800ms saved)
+    // 1+2. Use cached token (or fetch fresh) + acquire mic in parallel
+    const cached = tokenCacheRef.current
+    const tokenIsFresh = cached && cached.expiresAt > Date.now()
+
     const fetchCtrl = new AbortController()
-    const fetchTimeout = setTimeout(() => fetchCtrl.abort(), 10_000)
+    const fetchTimeout = tokenIsFresh ? null : setTimeout(() => fetchCtrl.abort(), 10_000)
 
     const [tokenResult, micResult] = await Promise.allSettled([
-      fetch('/api/voice/deepgram-token', { signal: fetchCtrl.signal })
-        .then(async (res) => {
-          clearTimeout(fetchTimeout)
-          if (!res.ok) throw new Error('token-failed')
-          const data = await res.json()
-          return data.token as string
-        }),
+      tokenIsFresh
+        ? Promise.resolve(cached.token)
+        : fetchDeepgramToken(fetchCtrl.signal).then(c => { tokenCacheRef.current = c; return c.token }),
       navigator.mediaDevices.getUserMedia({
         audio: { noiseSuppression: true, echoCancellation: true },
       }),
     ])
-    clearTimeout(fetchTimeout)
+    if (fetchTimeout) clearTimeout(fetchTimeout)
 
     if (generationRef.current !== thisGen) {
       if (micResult.status === 'fulfilled') micResult.value.getTracks().forEach(t => t.stop())
@@ -150,14 +171,14 @@ export function useDeepgramSTT(): STTControls {
         connection.send(e.data)
       } else {
         audioBufferRef.current.push(e.data)
-        if (audioBufferRef.current.length > 40) {
+        if (audioBufferRef.current.length > 100) {
           setError('Voice connection took too long')
           stopListening()
         }
       }
     })
     try {
-      recorder.start(250)
+      recorder.start(100)
     } catch {
       setError('Microphone recording failed to start')
       stopListening()

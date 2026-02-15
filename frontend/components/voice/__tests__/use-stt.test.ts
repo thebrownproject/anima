@@ -72,6 +72,15 @@ function mockMicStream() {
   return { stream, track }
 }
 
+/** Render hook and flush the pre-fetch useEffect so token is cached */
+async function renderSTTHook() {
+  mockTokenResponse('prefetch-tok')
+  const hook = renderHook(() => useSTT())
+  await act(async () => {}) // flush pre-fetch
+  mockFetch.mockClear() // reset call count so tests only see startListening calls
+  return hook
+}
+
 function triggerOpen() {
   const openCall = mockConnection.addListener.mock.calls.find(
     (call: unknown[]) => call[0] === 'open'
@@ -108,21 +117,29 @@ describe('useSTT', () => {
     cleanup()
   })
 
-  it('startListening fetches temp token', async () => {
+  it('pre-fetches token on mount', async () => {
     mockTokenResponse()
+
+    renderHook(() => useSTT())
+    await act(async () => {}) // flush pre-fetch
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token', expect.any(Object))
+  })
+
+  it('uses cached token — no fetch during startListening', async () => {
+    const { result } = await renderSTTHook()
     mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token', expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    // startListening should NOT have called fetch (used cache)
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('startListening requests microphone access', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
     expect(mockGetUserMedia).toHaveBeenCalledWith({
@@ -131,24 +148,20 @@ describe('useSTT', () => {
   })
 
   it('mic permission denied sets error message', async () => {
-    mockTokenResponse()
-    const permError = new DOMException('Permission denied', 'NotAllowedError')
-    mockGetUserMedia.mockRejectedValueOnce(permError)
+    const { result } = await renderSTTHook()
+    mockGetUserMedia.mockRejectedValueOnce(new DOMException('Permission denied', 'NotAllowedError'))
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
     expect(result.current.error).toMatch(/microphone/i)
   })
 
   it('transcript events update voice-store.transcript', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    // Find the Transcript event handler registered via addListener
     const transcriptCall = mockConnection.addListener.mock.calls.find(
       (call: unknown[]) => call[0] === 'Results'
     )
@@ -166,13 +179,10 @@ describe('useSTT', () => {
   })
 
   it('stopListening stops tracks and closes connection', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     const { track } = mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
-
-    // Trigger Open so wsOpenRef is set
     triggerOpen()
     mockMediaRecorder.state = 'recording'
 
@@ -184,13 +194,10 @@ describe('useSTT', () => {
   })
 
   it('cleanup on unmount stops active session', async () => {
-    mockTokenResponse()
+    const { result, unmount } = await renderSTTHook()
     const { track } = mockMicStream()
 
-    const { result, unmount } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
-
-    // Trigger Open so wsOpenRef is set
     triggerOpen()
     mockMediaRecorder.state = 'recording'
 
@@ -201,69 +208,53 @@ describe('useSTT', () => {
     expect(mockConnection.requestClose).toHaveBeenCalled()
   })
 
-  // --- New tests for Task A fixes ---
-
   it('double-invocation guard: second startListening returns immediately', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    // Second call should be a no-op (no second fetch)
+    // Second call should be a no-op (no second getUserMedia)
     await act(() => result.current.startListening())
 
-    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockGetUserMedia).toHaveBeenCalledTimes(1)
   })
 
-  it('token fetch and getUserMedia run in parallel', async () => {
-    // Both should be called before either resolves
-    let resolveToken: (v: unknown) => void
-    let resolveMic: (v: unknown) => void
-    let tokenCalled = false
-    let micCalled = false
+  it('fetches fresh token when cache is missing', async () => {
+    // Don't use renderSTTHook — let pre-fetch fail so cache is empty
+    mockFetch.mockResolvedValueOnce({ ok: false }) // pre-fetch fails
+    const hook = renderHook(() => useSTT())
+    await act(async () => {})
+    mockFetch.mockClear()
 
-    mockFetch.mockImplementationOnce(() => {
-      tokenCalled = true
-      // At this point, mic should also have been called (parallel)
-      return new Promise((r) => { resolveToken = r })
-    })
-    mockGetUserMedia.mockImplementationOnce(() => {
-      micCalled = true
-      return new Promise((r) => { resolveMic = r })
-    })
+    // Now startListening should fetch fresh
+    mockTokenResponse()
+    mockMicStream()
+    await act(() => hook.result.current.startListening())
 
-    const { result } = renderHook(() => useSTT())
-    const startPromise = act(async () => {
-      const p = result.current.startListening()
-      // Let microtasks flush so both promises are initiated
-      await Promise.resolve()
-      expect(tokenCalled).toBe(true)
-      expect(micCalled).toBe(true)
-      // Now resolve both
-      resolveToken!({ ok: true, json: async () => ({ token: 'tok', expires_in: 120 }) })
-      resolveMic!({ getTracks: () => [{ stop: vi.fn() }], active: true })
-      return p
-    })
-    await startPromise
+    expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token', expect.any(Object))
   })
 
   it('token fetch fails — mic stream tracks are stopped', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false })
+    // Pre-fetch fails, then startListening fetch also fails
+    mockFetch.mockResolvedValueOnce({ ok: false }) // pre-fetch
+    const hook = renderHook(() => useSTT())
+    await act(async () => {})
+    mockFetch.mockClear()
+
+    mockFetch.mockResolvedValueOnce({ ok: false }) // startListening fetch
     const { track } = mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
-    await act(() => result.current.startListening())
+    await act(() => hook.result.current.startListening())
 
-    expect(result.current.error).toBe('Failed to get voice token')
+    expect(hook.result.current.error).toBe('Failed to get voice token')
     expect(track.stop).toHaveBeenCalled()
   })
 
   it('mic fails — sets microphone error (token result unused)', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     mockGetUserMedia.mockRejectedValueOnce(new DOMException('Denied', 'NotAllowedError'))
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
     expect(result.current.error).toBe('Microphone access denied')
@@ -271,30 +262,33 @@ describe('useSTT', () => {
 
   it('token fetch timeout sets error and stops mic tracks', async () => {
     vi.useFakeTimers()
+    // Pre-fetch: make it hang (won't resolve during test)
+    mockFetch.mockImplementationOnce(() => new Promise(() => {}))
+    const hook = renderHook(() => useSTT())
+    await act(async () => { vi.advanceTimersByTime(100) })
+    mockFetch.mockClear()
+
+    // startListening fetch: hangs until abort
     mockFetch.mockImplementationOnce((_url: string, opts: { signal: AbortSignal }) => {
       return new Promise((_resolve, reject) => {
         opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
       })
     })
-    // Mic resolves quickly even though token times out
     const { track } = mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
-    const startPromise = act(() => result.current.startListening())
-
+    const startPromise = act(() => hook.result.current.startListening())
     await act(async () => { vi.advanceTimersByTime(10_000) })
     await startPromise
 
-    expect(result.current.error).toBe('Voice connection timed out')
+    expect(hook.result.current.error).toBe('Voice connection timed out')
     expect(track.stop).toHaveBeenCalled()
     vi.useRealTimers()
   })
 
   it('Deepgram error event triggers full cleanup', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     const { track } = mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
     triggerOpen()
     mockMediaRecorder.state = 'recording'
@@ -311,10 +305,9 @@ describe('useSTT', () => {
   })
 
   it('Deepgram close event releases mic and recorder', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     const { track } = mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
     triggerOpen()
     mockMediaRecorder.state = 'recording'
@@ -327,21 +320,19 @@ describe('useSTT', () => {
     expect(mockMediaRecorder.stop).toHaveBeenCalled()
     expect(track.stop).toHaveBeenCalled()
     expect(result.current.isListening).toBe(false)
-    // requestClose should NOT be called (connection already closed)
     expect(mockConnection.requestClose).not.toHaveBeenCalled()
   })
 
-  // --- Audio buffering tests (stackdocs-fb9) ---
+  // --- Audio buffering tests ---
 
   it('buffers audio chunks before WebSocket opens and flushes on open', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
-    // Recorder starts immediately — dataavailable handler is registered before Open
-    expect(mockMediaRecorder.start).toHaveBeenCalledWith(250)
+    // Recorder starts immediately with 100ms timeslice
+    expect(mockMediaRecorder.start).toHaveBeenCalledWith(100)
     const dataHandler = getRecorderHandler('dataavailable')
     expect(dataHandler).toBeDefined()
 
@@ -371,18 +362,17 @@ describe('useSTT', () => {
   })
 
   it('stops listening if audio buffer overflows', async () => {
-    mockTokenResponse()
+    const { result } = await renderSTTHook()
     mockMicStream()
 
-    const { result } = renderHook(() => useSTT())
     await act(() => result.current.startListening())
 
     const dataHandler = getRecorderHandler('dataavailable')
     expect(dataHandler).toBeDefined()
 
-    // Push 41 chunks (exceeds 40-chunk limit) without triggering Open
+    // Push 101 chunks (exceeds 100-chunk limit at 100ms timeslice = 10s)
     act(() => {
-      for (let i = 0; i <= 40; i++) {
+      for (let i = 0; i <= 100; i++) {
         dataHandler({ data: new Blob([`chunk-${i}`]) })
       }
     })
