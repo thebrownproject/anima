@@ -174,7 +174,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           }
           idx++
         }
-        store.setCards(cardRecord)
+        store.mergeCards(cardRecord)
 
         // Map chat history — Sprite stores "assistant", frontend uses "agent"
         const roleMap: Record<string, 'user' | 'agent' | 'system'> = {

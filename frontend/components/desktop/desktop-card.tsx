@@ -8,6 +8,7 @@ import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
+import { useWebSocket } from './ws-provider'
 
 interface DesktopCardProps {
   card: DesktopCardType
@@ -20,13 +21,26 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const positionRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const { send } = useWebSocket()
 
   // Local position tracked in ref during drag (no re-renders)
   const localPos = useRef({ x: card.position.x, y: card.position.y })
 
   const syncToStore = useCallback(() => {
     useDesktopStore.getState().moveCard(card.id, { ...localPos.current })
-  }, [card.id])
+    send({
+      type: 'canvas_interaction',
+      payload: {
+        card_id: card.id,
+        action: 'move',
+        data: {
+          position_x: localPos.current.x,
+          position_y: localPos.current.y,
+          z_index: useDesktopStore.getState().cards[card.id]?.zIndex ?? 0,
+        },
+      },
+    })
+  }, [card.id, send])
 
   const applyPosition = useCallback(() => {
     if (positionRef.current) {
@@ -132,6 +146,7 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
     >
       <div
         ref={cardRef}
+        data-testid="card-drag-handle"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -55,6 +55,7 @@ interface DesktopActions {
 
   // Card actions
   setCards: (cards: Record<string, DesktopCard>) => void
+  mergeCards: (cards: Record<string, DesktopCard>) => void
   addCard: (card: DesktopCard) => void
   updateCard: (id: string, updates: Partial<Omit<DesktopCard, 'id'>>) => void
   removeCard: (id: string) => void
@@ -125,6 +126,21 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
         }
         set({ cards, maxZIndex: maxZ })
       },
+
+      mergeCards: (incoming) =>
+        set((state) => {
+          const merged: Record<string, DesktopCard> = {}
+          let maxZ = 0
+          for (const [id, card] of Object.entries(incoming)) {
+            const existing = state.cards[id]
+            const hasPosition = existing && (existing.position.x !== 0 || existing.position.y !== 0)
+            merged[id] = hasPosition
+              ? { ...card, position: existing.position, zIndex: existing.zIndex }
+              : card
+            if (merged[id].zIndex > maxZ) maxZ = merged[id].zIndex
+          }
+          return { cards: merged, maxZIndex: maxZ }
+        }),
 
       addCard: (card) =>
         set((state) => ({
