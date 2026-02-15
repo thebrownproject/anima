@@ -3459,3 +3459,57 @@ Explored the bottom chat bar, voice recording, and persona orb UX. Three researc
 - Run `/mission` to execute the 8 tasks. Start with `bd ready` — tasks A-E are all unblocked. Recommended single-worker order: A → B → C → D → E → F → G → H.
 
 ---
+
+## [2026-02-15 16:10] Session 171
+
+**Branch:** main | **Git:** uncommitted (prior session changes in bridge/desktop/sprite)
+
+### What Happened
+
+**Mission solo execution of Chat Bar & Voice Redesign (m7b.4.15) — completed 4 of 8 tasks.**
+
+Sent Explore agent to scout all voice files (use-stt.ts, use-tts.ts, voice-bars.tsx, persona-orb.tsx, voice-provider.tsx, chat-bar.tsx, voice-store.ts, all test files). Full codebase context gathered before implementation.
+
+**Task A (m7b.4.15.1) — Fix STT bugs:**
+- Added `generationRef` counter to `useDeepgramSTT` in `use-stt.ts` — stale async continuations now bail out when generation has advanced
+- Added double-invocation guard at top of `startListening` — returns immediately if `connectionRef` or `recorderRef` already set
+- Added 10s `AbortController` timeout on `/api/voice/deepgram-token` fetch
+- Deepgram `Error` event now calls `stopListening()` for full cleanup (was just `setError`)
+- Deepgram `Close` event now releases mic tracks, MediaRecorder, AudioContext, keepAlive interval (was just `setIsListening(false)`)
+- Changed token TTL from 30s to 120s in `deepgram-token/route.ts`
+- Added 4 new tests: double-invocation guard, fetch timeout, error cleanup, close cleanup (10 total, all pass)
+
+**Task B (m7b.4.15.2) — Fix TTS error surfacing:**
+- Added `error` state to `useTTS` in `use-tts.ts`
+- Non-ok fetch response sets `'Speech generation failed'`, catch block sets `'Speech playback error'`
+- Error resets to null on next `speak()` call
+- Updated `TTSControls` interface to include `error: string | null`
+- Added 3 new tests: initial null, fetch failure error, error reset (7 total, all pass)
+
+**Task C (m7b.4.15.3) — Fix VoiceBars performance:**
+- Added `lastUpdateRef` timestamp tracker to `voice-bars.tsx`
+- `setLevels()` now only fires when 66ms+ have elapsed (~15fps) — frequency sampling still runs at full rAF speed for smooth data
+- Removed `transition-[height] duration-75` CSS class that conflicted with the 66ms update interval
+- Created `voice-bars.test.tsx` with 3 tests: renders 4 bars, no transition class, min height when null analyser
+
+**Task D (m7b.4.15.4) — Fix persona-orb test assertions:**
+- Line 80: Changed assertion from `'thinking'` to `'idle'` — `toRiveState('idle')` returns `'idle'`
+- Line 163: Changed assertion from `'thinking'` to `'idle'` — `toRiveState('asleep')` returns `'idle'`
+- Also fixed pre-existing `TooltipProvider` context error: added `GlassTooltipProvider` wrapper to all 12 tests (they were all broken before this session)
+- All 12 persona-orb tests now pass
+
+### Gotchas
+
+- All 12 persona-orb tests were pre-existing failures (missing `TooltipProvider` wrapper) — not just the 2 assertion fixes. Had to fix the wrapper to verify the assertion changes worked.
+- There are uncommitted changes from prior sessions in bridge/, desktop/, and sprite/ dirs — not related to this session's work. Committed only voice-related files.
+
+### In Progress
+
+- Feature `m7b.4.15` is 4/8 tasks complete. Remaining: E (voice provider functions), F (strip orb pill), G (build chatbar pill), H (integration test).
+- Task E is the gateway — F and G depend on it.
+
+### Next Action
+
+- Continue `/mission solo m7b.4.15` — start with Task E (stopRecordingOnly, voiceSessionActive, WS disconnect cleanup), then F → G → H sequentially.
+
+---
