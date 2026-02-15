@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ensureResumed, loadWorkletModule, destroy } from './audio-engine'
 
 interface TTSControls {
   speak: (text: string) => void
@@ -7,94 +8,12 @@ interface TTSControls {
   error: string | null
 }
 
-const PROCESSOR_CODE = `
-class PcmStreamPlayer extends AudioWorkletProcessor {
-  constructor() {
-    super()
-    this.chunks = []
-    this.offset = 0
-    this.streamDone = false
-    this.fadeInSamples = 480  // 20ms fade-in at 24kHz
-    this.samplesPlayed = 0
-    this.port.onmessage = (e) => {
-      if (e.data.type === 'audio') {
-        this.chunks.push(e.data.samples)
-      } else if (e.data.type === 'end') {
-        this.streamDone = true
-      } else if (e.data.type === 'clear') {
-        this.chunks = []
-        this.offset = 0
-        this.streamDone = true
-      }
-    }
-  }
-  process(inputs, outputs) {
-    const out = outputs[0][0]
-    let written = 0
-    while (written < out.length && this.chunks.length > 0) {
-      const chunk = this.chunks[0]
-      const available = chunk.length - this.offset
-      const needed = out.length - written
-      const toCopy = Math.min(available, needed)
-      out.set(chunk.subarray(this.offset, this.offset + toCopy), written)
-      written += toCopy
-      this.offset += toCopy
-      if (this.offset >= chunk.length) {
-        this.chunks.shift()
-        this.offset = 0
-      }
-    }
-    // Apply fade-in ramp to prevent start-of-playback click
-    if (this.samplesPlayed < this.fadeInSamples) {
-      for (let i = 0; i < written; i++) {
-        const s = this.samplesPlayed + i
-        if (s < this.fadeInSamples) {
-          out[i] *= s / this.fadeInSamples
-        }
-      }
-    }
-    this.samplesPlayed += written
-    if (this.streamDone && this.chunks.length === 0) {
-      this.port.postMessage({ type: 'done' })
-      return false
-    }
-    return true
-  }
-}
-try { registerProcessor('pcm-stream-player', PcmStreamPlayer) } catch(e) {}
-`
-
 export function useTTS(): TTSControls {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const audioContextRef = useRef<AudioContext | null>(null)
   const workletNodeRef = useRef<AudioWorkletNode | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const blobUrlRef = useRef<string | null>(null)
-  const moduleLoadedRef = useRef(false)
-
-  // Pre-load worklet module (works on suspended context, no user gesture needed)
-  const preloadModule = useCallback(async () => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 })
-    }
-    const ctx = audioContextRef.current
-    if (!moduleLoadedRef.current) {
-      const blob = new Blob([PROCESSOR_CODE], { type: 'application/javascript' })
-      blobUrlRef.current = URL.createObjectURL(blob)
-      await ctx.audioWorklet.addModule(blobUrlRef.current)
-      moduleLoadedRef.current = true
-    }
-  }, [])
-
-  // Resume context (requires user gesture) + ensure module loaded
-  const ensureContext = useCallback(async () => {
-    await preloadModule()
-    const ctx = audioContextRef.current!
-    if (ctx.state === 'suspended') await ctx.resume()
-    return ctx
-  }, [preloadModule])
 
   const speak = useCallback((text: string) => {
     // Interrupt any current playback
@@ -113,7 +32,10 @@ export function useTTS(): TTSControls {
 
     ;(async () => {
       try {
-        const ctx = await ensureContext()
+        // Lazy init — context + worklet only created on first speak()
+        await loadWorkletModule()
+        const ctx = await ensureResumed()
+
         const res = await fetch('/api/voice/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -140,7 +62,7 @@ export function useTTS(): TTSControls {
         let carry: number | null = null
         let connected = false
         let bufferedSamples = 0
-        const PRE_BUFFER = 1200 // ~50ms at 24kHz — just enough to prevent initial stutter
+        const PRE_BUFFER = 1200 // ~50ms at 24kHz
 
         while (true) {
           const { done, value } = await reader.read()
@@ -174,7 +96,6 @@ export function useTTS(): TTSControls {
           }
         }
 
-        // Connect if stream ended before pre-buffer filled (short text)
         if (!connected) node.connect(ctx.destination)
         node.port.postMessage({ type: 'end' })
       } catch (err: any) {
@@ -184,7 +105,7 @@ export function useTTS(): TTSControls {
         }
       }
     })()
-  }, [ensureContext])
+  }, [])
 
   const interrupt = useCallback(() => {
     abortRef.current?.abort()
@@ -195,16 +116,14 @@ export function useTTS(): TTSControls {
     setIsSpeaking(false)
   }, [])
 
-  // Pre-load worklet module on mount (context stays suspended until user gesture)
+  // Cleanup on unmount
   useEffect(() => {
-    preloadModule().catch(() => {})
     return () => {
       abortRef.current?.abort()
       workletNodeRef.current?.disconnect()
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-      audioContextRef.current?.close()
+      destroy()
     }
-  }, [preloadModule])
+  }, [])
 
   return { speak, interrupt, isSpeaking, error }
 }

@@ -50,9 +50,11 @@ frontend/
 │   │   ├── auto-placer.ts          # Auto-position new cards on canvas
 │   │   └── ws-provider.tsx         # WebSocket React context provider
 │   ├── voice/                      # Voice integration (feature-flagged)
-│   │   ├── use-stt.ts             # Deepgram streaming STT hook
-│   │   ├── use-tts.ts             # OpenAI audio playback hook
+│   │   ├── audio-engine.ts        # Shared 24kHz AudioContext singleton
+│   │   ├── use-stt.ts             # Deepgram Nova-3 STT hook
+│   │   ├── use-tts.ts             # OpenAI TTS AudioWorklet hook
 │   │   ├── voice-provider.tsx     # React context composing STT+TTS+store
+│   │   ├── voice-bars.tsx         # Frequency visualizer (AnalyserNode)
 │   │   └── persona-orb.tsx        # Rive animation orb with tap actions
 │   ├── icons/                      # Tabler icon barrel export
 │   ├── providers/                  # ThemeProvider (next-themes)
@@ -171,14 +173,36 @@ OPENAI_API_KEY=...               # Server-side only — TTS proxy
 ```
 
 **Architecture:** Browser-only I/O layer. Raw audio never touches Bridge or Sprite.
+- **Shared Audio Engine** (`audio-engine.ts`): Single 24kHz `AudioContext` for both STT and TTS
+  - Two independent subgraphs: mic → analyser (dead end) and TTS worklet → destination
+  - `MediaRecorder` reads from `MediaStream` directly (independent of audio graph)
+  - Context never closes between recordings — `disconnectAnalyser()` unhooks without destroying
+  - Lazy init — no AudioContext created until first user interaction (fixes page load lag)
 - STT: Deepgram Nova-3 via browser WebSocket (temp token from `/api/voice/deepgram-token`)
-- TTS: OpenAI gpt-4o-mini-tts via `/api/voice/tts` proxy (streams audio/mpeg)
+- TTS: OpenAI gpt-4o-mini-tts via `/api/voice/tts` proxy (streams PCM audio)
 - State: `voice-store.ts` — 5-state machine (`asleep → idle → listening → thinking → speaking`)
 - Provider nesting: `WebSocketProvider > MaybeVoiceProvider > GlassTooltipProvider`
 - `MaybeVoiceProvider` renders children-only when voice disabled (zero overhead)
 - `useVoiceMaybe()` returns `null` outside VoiceProvider (safe for conditional voice features)
 
-**Tests:** 74 tests across 9 files. Run with `npm run test:run` from `frontend/`.
+**Key files:**
+| File | Purpose |
+|------|---------|
+| `voice/audio-engine.ts` | Shared AudioContext singleton, mic management, analyser, worklet loading |
+| `voice/use-stt.ts` | Deepgram Nova-3 STT hook (token cache, buffer+flush, engine-managed mic) |
+| `voice/use-tts.ts` | OpenAI TTS hook (AudioWorklet PCM streaming, lazy engine init) |
+| `voice/voice-provider.tsx` | React context composing STT+TTS, auto-TTS on agent completion |
+| `voice/voice-store.ts` | Zustand 5-state persona FSM + TTS toggle persistence |
+| `voice/voice-bars.tsx` | Frequency visualizer (AnalyserNode, ~15fps) |
+| `voice/persona-orb.tsx` | Rive animation orb (deferred mount via requestIdleCallback) |
+
+**Known issues (Session 179):**
+- TTS silent after STT use — shared AudioContext should fix but needs browser verification
+- STT slow on 2nd+ use — engine keeps mic warm, but Deepgram WS handshake still adds ~200-500ms
+- UI lag on page load — lazy init should fix but needs browser verification
+- Tests need updating for audio-engine mocks (9 STT tests failing)
+
+**Tests:** Run with `npm run test:run` from `frontend/`.
 
 ## shadcn/ui Components
 

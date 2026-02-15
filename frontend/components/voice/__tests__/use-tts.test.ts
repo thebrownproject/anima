@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
 
-const { mockAudioContext, mockWorkletNode, mockFetch } = vi.hoisted(() => {
+const { mockAudioContext, mockWorkletNode, mockFetch, mockEnsureResumed, mockLoadWorkletModule, mockDestroy } = vi.hoisted(() => {
   const mockPort = {
     postMessage: vi.fn(),
     onmessage: null as ((e: MessageEvent) => void) | null,
@@ -14,25 +14,33 @@ const { mockAudioContext, mockWorkletNode, mockFetch } = vi.hoisted(() => {
   }
 
   const mockAudioContext = {
-    audioWorklet: { addModule: vi.fn().mockResolvedValue(undefined) },
     destination: {},
-    close: vi.fn(),
     state: 'running' as AudioContextState,
-    resume: vi.fn().mockResolvedValue(undefined),
   }
+
+  const mockEnsureResumed = vi.fn().mockResolvedValue(mockAudioContext)
+  const mockLoadWorkletModule = vi.fn().mockResolvedValue(undefined)
+  const mockDestroy = vi.fn()
 
   return {
     mockAudioContext,
     mockWorkletNode,
     mockFetch: vi.fn(),
+    mockEnsureResumed,
+    mockLoadWorkletModule,
+    mockDestroy,
   }
 })
 
+vi.mock('../audio-engine', () => ({
+  ensureResumed: (...args: unknown[]) => mockEnsureResumed(...args),
+  loadWorkletModule: (...args: unknown[]) => mockLoadWorkletModule(...args),
+  destroy: (...args: unknown[]) => mockDestroy(...args),
+  getOrCreateContext: () => mockAudioContext,
+}))
+
 beforeEach(() => {
-  globalThis.AudioContext = vi.fn(() => mockAudioContext) as unknown as typeof AudioContext
   globalThis.AudioWorkletNode = vi.fn(() => mockWorkletNode) as unknown as typeof AudioWorkletNode
-  globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-url')
-  globalThis.URL.revokeObjectURL = vi.fn()
   globalThis.fetch = mockFetch
 })
 
@@ -67,7 +75,15 @@ describe('useTTS', () => {
     cleanup()
   })
 
-  it('speak() starts streaming and sets isSpeaking true', async () => {
+  it('does NOT create AudioContext on mount (lazy init)', async () => {
+    renderHook(() => useTTS())
+    await act(async () => {}) // flush mount
+
+    expect(mockLoadWorkletModule).not.toHaveBeenCalled()
+    expect(mockEnsureResumed).not.toHaveBeenCalled()
+  })
+
+  it('speak() lazily inits engine and starts streaming', async () => {
     mockTTSResponse()
 
     const { result } = renderHook(() => useTTS())
@@ -76,6 +92,8 @@ describe('useTTS', () => {
       await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled())
     })
 
+    expect(mockLoadWorkletModule).toHaveBeenCalledTimes(1)
+    expect(mockEnsureResumed).toHaveBeenCalledTimes(1)
     expect(mockFetch).toHaveBeenCalledWith('/api/voice/tts', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -112,26 +130,12 @@ describe('useTTS', () => {
 
     expect(result.current.isSpeaking).toBe(true)
 
-    // Simulate processor signaling playback complete
     await act(async () => {
       mockWorkletNode.port.onmessage?.({ data: { type: 'done' } } as MessageEvent)
     })
 
     expect(result.current.isSpeaking).toBe(false)
   })
-
-  it('pre-loads AudioContext and worklet module on mount (stays suspended)', async () => {
-    renderHook(() => useTTS())
-    await act(async () => {}) // flush mount effect
-
-    expect(globalThis.AudioContext).toHaveBeenCalledTimes(1)
-    expect(globalThis.AudioContext).toHaveBeenCalledWith({ sampleRate: 24000 })
-    expect(mockAudioContext.audioWorklet.addModule).toHaveBeenCalledWith('blob:mock-url')
-    // resume() NOT called on mount — requires user gesture
-    expect(mockAudioContext.resume).not.toHaveBeenCalled()
-  })
-
-  // --- Task B: error state tests ---
 
   it('error is initially null', () => {
     const { result } = renderHook(() => useTTS())
@@ -140,7 +144,6 @@ describe('useTTS', () => {
 
   it('non-ok fetch response sets error and isSpeaking false', async () => {
     const { result } = renderHook(() => useTTS())
-    await act(async () => {}) // flush mount ensureContext
 
     mockFetch.mockResolvedValueOnce({ ok: false, body: null })
     await act(async () => {
@@ -154,7 +157,6 @@ describe('useTTS', () => {
 
   it('error resets to null on next speak() call', async () => {
     const { result } = renderHook(() => useTTS())
-    await act(async () => {}) // flush mount ensureContext
 
     // First call fails
     mockFetch.mockResolvedValueOnce({ ok: false, body: null })
@@ -163,7 +165,7 @@ describe('useTTS', () => {
     })
     await vi.waitFor(() => expect(result.current.error).toBe('Speech generation failed'))
 
-    // Second call should reset error synchronously before async work
+    // Second call should reset error
     mockTTSResponse()
     await act(async () => {
       result.current.speak('world')
@@ -171,5 +173,13 @@ describe('useTTS', () => {
     })
 
     expect(result.current.error).toBeNull()
+  })
+
+  it('unmount calls destroy() on audio engine', () => {
+    const { unmount } = renderHook(() => useTTS())
+
+    unmount()
+
+    expect(mockDestroy).toHaveBeenCalledTimes(1)
   })
 })
