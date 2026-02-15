@@ -145,6 +145,16 @@ class SpriteGateway:
             elif action == "restore_stack":
                 sid = data.get("stack_id", card_id)
                 await self._workspace_db.restore_stack(sid)
+            elif action == "move":
+                result = await self._workspace_db.update_card_position(
+                    card_id,
+                    float(data.get("position_x", 0.0)),
+                    float(data.get("position_y", 0.0)),
+                    int(data.get("z_index", 0)),
+                )
+                if result is None:
+                    await self._send_error(f"Card not found: {card_id}")
+                    return
         except Exception as e:
             logger.error("Canvas %s failed: %s", action, e)
             await self._send_error(f"Canvas operation failed: {e}")

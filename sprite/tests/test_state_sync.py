@@ -95,7 +95,7 @@ async def test_state_sync_contains_cards_grouped_by_stack(workspace_db):
     assert len(msg.payload.cards) == 5
     for c in msg.payload.cards:
         assert c.stack_id in {stacks[0]["id"], stacks[1]["id"]}
-        # Default position/z_index since DB lacks those columns
+        # Cards seeded without position params default to 0,0,0
         assert c.position.x == 0.0
         assert c.position.y == 0.0
         assert c.z_index == 0
@@ -183,3 +183,66 @@ async def test_send_state_sync_sends_valid_json(workspace_db):
     parsed = json.loads(sent[0])
     assert is_state_sync(parsed)
     assert parsed["type"] == "state_sync"
+
+
+# -- Test: state_sync returns real positions from DB --
+
+async def test_state_sync_returns_real_positions(workspace_db):
+    """Cards with stored positions should appear in state_sync with those values."""
+    stacks = await _seed_stacks(workspace_db, count=1)
+    sid = stacks[0]["id"]
+
+    await workspace_db.upsert_card(
+        card_id="pos-card",
+        stack_id=sid,
+        title="Positioned",
+        blocks=[],
+        position_x=150.5,
+        position_y=300.0,
+        z_index=7,
+    )
+
+    msg = await build_state_sync_message(workspace_db)
+
+    card = next(c for c in msg.payload.cards if c.id == "pos-card")
+    assert card.position.x == 150.5
+    assert card.position.y == 300.0
+    assert card.z_index == 7
+
+
+async def test_state_sync_defaults_position_for_cards_without_position(workspace_db):
+    """Cards created without explicit position should default to (0, 0, 0)."""
+    stacks = await _seed_stacks(workspace_db, count=1)
+    cards = await _seed_cards(workspace_db, stacks[0]["id"], count=1)
+
+    msg = await build_state_sync_message(workspace_db)
+
+    card = msg.payload.cards[0]
+    assert card.position.x == 0.0
+    assert card.position.y == 0.0
+    assert card.z_index == 0
+
+
+# -- Test: round-trip position persistence --
+
+async def test_round_trip_upsert_position_then_state_sync(workspace_db):
+    """Upsert a card with position, then verify state_sync returns the same values."""
+    stacks = await _seed_stacks(workspace_db, count=1)
+    sid = stacks[0]["id"]
+
+    await workspace_db.upsert_card(
+        card_id="rt-card",
+        stack_id=sid,
+        title="Round Trip",
+        blocks=[{"id": "b1", "type": "text", "content": "hello"}],
+        position_x=42.0,
+        position_y=99.9,
+        z_index=3,
+    )
+
+    msg = await build_state_sync_message(workspace_db)
+
+    card = next(c for c in msg.payload.cards if c.id == "rt-card")
+    assert card.position.x == 42.0
+    assert card.position.y == 99.9
+    assert card.z_index == 3

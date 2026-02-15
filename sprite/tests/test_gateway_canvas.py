@@ -153,3 +153,46 @@ async def test_agent_and_user_archive_same_db_method(workspace_db, mock_send):
     # Both archived the same way — status + archived_at set
     assert agent_row["archived_at"] is not None
     assert user_row["archived_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_gateway_move_card(gateway, workspace_db, mock_send):
+    """Gateway handles 'move' canvas_interaction — persists position to DB."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Card 1", [])
+
+    msg = _make_canvas_msg("move", card_id="c1", data={
+        "position_x": 100.0,
+        "position_y": 200.0,
+        "z_index": 3,
+    })
+    await gateway.route(msg)
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert row["position_x"] == 100.0
+    assert row["position_y"] == 200.0
+    assert row["z_index"] == 3
+
+    # Should receive ack (not error)
+    last_call = mock_send.call_args[0][0]
+    parsed = json.loads(last_call)
+    assert parsed["type"] == "system"
+    assert parsed["payload"]["event"] == "connected"  # ack uses event=connected
+
+
+@pytest.mark.asyncio
+async def test_gateway_move_invalid_card_returns_error(gateway, workspace_db, mock_send):
+    """Gateway 'move' with nonexistent card_id returns error."""
+    await workspace_db.create_stack("s1", "Stack")
+
+    msg = _make_canvas_msg("move", card_id="no-such-card", data={
+        "position_x": 50.0,
+        "position_y": 60.0,
+        "z_index": 1,
+    })
+    await gateway.route(msg)
+
+    last_call = mock_send.call_args[0][0]
+    parsed = json.loads(last_call)
+    assert parsed["type"] == "system"
+    assert parsed["payload"]["event"] == "error"

@@ -53,8 +53,8 @@ async def build_state_sync_message(db: WorkspaceDB) -> StateSyncMessage:
                 title=r["title"],
                 blocks=blocks,
                 size=r["size"] or "medium",
-                position=CardPosition(x=0.0, y=0.0),
-                z_index=0,
+                position=CardPosition(x=r["position_x"], y=r["position_y"]),
+                z_index=r["z_index"],
             ))
 
     # Last 50 chat messages, converting seconds->ms and int->str id
