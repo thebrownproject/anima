@@ -3573,3 +3573,50 @@ Investigated and fixed the Sprite agent's broken session resume, missing system 
 - Continue m7b.4.15 tasks E-H (voice redesign)
 
 ---
+
+## [2026-02-15 19:10] Session 173
+
+**Branch:** main | **Git:** uncommitted (voice/chatbar from prior sessions + sprite-deploy skill update)
+
+### What Happened
+
+**Fixed stackdocs-aq3: Card positions now persist through reconnects (full round-trip).**
+
+Dispatched 3 debug agents in parallel to investigate Session 172 bugs (aq3, oan, zxh). All returned HIGH confidence root cause analyses:
+
+- **aq3** (cards at 0,0): Position was never designed for server persistence. DB has no position columns, `state_sync.py:56` hardcodes (0,0), `ws-provider.tsx:177` does full store replacement. Protocol has "move" action but nothing sends/handles it.
+- **oan** (session memory lost): Initial hypothesis WRONG — no `rm -f session_id` in deploy skill. Real cause: resume fails on changed system prompt/tools, `runtime.py:207` deletes session_id on failure, ObservationProcessor never fired (25-turn threshold). `user.md` still empty template.
+- **zxh** (reconnect stuck): Primary cause is keepalive gap during reconnect — `spriteConnections.delete()` removes connection, keepalive pings silently fail during 1-12s reconnect window, Sprite can re-sleep before first ping arrives. Also found buffer drain re-buffer bug (data loss) and no recovery after failed reconnect.
+
+Ran orchestrated mission on aq3 — 3 tasks with Pathfinder/Builder/Inspector per task:
+
+1. **aq3.1** (`451670d`): Added `position_x`, `position_y`, `z_index` columns to WorkspaceDB cards table. Idempotent ALTER TABLE migration in `WorkspaceDB.connect()` for existing Sprites. Updated `upsert_card()` with position params, added `update_card_position()`. 6 new tests.
+2. **aq3.2** (`1c98448`): `state_sync.py` reads real positions from DB instead of hardcoding. `gateway.py` handles `"move"` canvas_interaction — calls `update_card_position()`. 5 new tests.
+3. **aq3.3** (`0e6ec83`): `desktop-card.tsx` sends `canvas_interaction` move on drag end via `syncToStore()`. `desktop-store.ts` adds `mergeCards()` that preserves existing positions on state_sync. `ws-provider.tsx` uses `mergeCards` instead of `setCards`. 9 new tests. Builder hit rate limit mid-task — HOUSTON finished manually (mocked `useMomentum` in test, wired ws-provider merge).
+
+**Deployed to sd-e2e-test Sprite.** Migration ran live — added position columns to existing DB. Confirmed via E2E test: state_sync now returns real card positions. Confirmed in browser: debug panel shows canvas_interaction move messages with position_x/position_y being sent and acknowledged.
+
+**Discovered deploy env var issue:** Manual server restart via `sprite exec` doesn't inject `ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` — agent responds "Not logged in · Please run /login". Bridge normally sets these during provisioning. Fixed by restarting with explicit env vars. Updated `sprite-deploy` skill with Option B (manual start with env vars) and troubleshooting entry.
+
+**Also observed:** Agent thinks user's name is "Rich" due to polluted session context from multiple voice test users (Justin, Samuel, Daniel). This is oan bug — `user.md` still empty, ObservationProcessor never extracted learnings.
+
+### Decisions Made
+
+- **Option 1 (full DB persistence) for card positions** — bidirectional: drag saves to DB, state_sync reads from DB. Enables multi-device in future.
+- **mergeCards preserves positions by checking (0,0) default** — if existing card has non-zero position, keep it. Incoming position only wins for new cards or cards at origin.
+- **useMomentum mock in desktop-card tests** — momentum `releaseWithFlick()` returns true in jsdom (events fire instantly, within 60ms window), deferring `syncToStore` to RAF-based onStop which never fires. Mocked to return false.
+
+### Gotchas
+
+- **sprite-deploy doesn't inject API env vars** — server started via `sprite exec` lacks `ANTHROPIC_API_KEY`. Must use `source bridge/.env` and pass env vars explicitly. Updated skill.
+- **test-e2e-v2.ts tries to start a new server even if one is running** — if you manually start the server first, the script's server start hits "address in use", times out, then connects to the existing (possibly broken) server. Always ensure port is free before running.
+- **Sprite Python version mismatch** — local tests use Python 3.13.3, Sprite has 3.13.7. No issues found but worth noting.
+- **test_e2e_hooks.py has sys.exit() at module level** — kills pytest when collected. Must exclude with `--ignore`.
+
+### Next Action
+
+Two Session 172 bugs remain with full root cause analyses ready:
+- **stackdocs-oan** (P2): Fix resume failure handling + lower ObservationProcessor threshold
+- **stackdocs-zxh** (P1): Fix keepalive gap during reconnect + buffer drain bug
+
+---

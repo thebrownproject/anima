@@ -56,10 +56,11 @@ Update the VERSION file (replace `X.Y.Z` with CURRENT_VERSION from `bridge/src/b
 sprite exec -s <SPRITE> -- bash -c 'echo -n "X.Y.Z" > /workspace/.os/VERSION && echo "VERSION: $(cat /workspace/.os/VERSION)"'
 ```
 
-### 4. Start server + verify
+### 4. Start server with env vars
 
-Start via exec WS API (`max_run_after_disconnect=0` for persistence) and run a test mission:
+**CRITICAL:** The server MUST have `ANTHROPIC_API_KEY` and `ANTHROPIC_BASE_URL` set. Without these, the Claude SDK cannot authenticate and the agent responds "Not logged in · Please run /login".
 
+**Option A: Start via test script (starts server + runs test mission)**
 ```bash
 cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) && npx tsx scripts/test-e2e-v2.ts <SPRITE>
 ```
@@ -69,6 +70,11 @@ Expect:
 - `Proxy connected`
 - Agent response event (e.g. `"content": "4"`)
 - `=== Done ===`
+
+**Option B: Start server manually (when you need more control)**
+```bash
+source /Users/fraserbrown/stackdocs/bridge/.env && sprite exec -s <SPRITE> -- bash -c "export ANTHROPIC_API_KEY='${SPRITES_PROXY_TOKEN}' ANTHROPIC_BASE_URL='https://ws.stackdocs.io/v1/proxy/anthropic' MISTRAL_API_KEY='${SPRITES_PROXY_TOKEN}' MISTRAL_BASE_URL='https://ws.stackdocs.io/v1/proxy/mistral' && cd /workspace/.os && nohup /workspace/.venv/bin/python -m src.server > /tmp/server.log 2>&1 & sleep 3 && ss -tlnp | grep 8765 && echo 'SERVER STARTED' || echo 'FAILED - check /tmp/server.log'"
+```
 
 **If proxy timeout or address-in-use:** The port was not fully freed before starting. Go back to Step 1 — verify port is free, then retry.
 
@@ -96,6 +102,7 @@ cd /Users/fraserbrown/stackdocs/bridge && export $(grep -v '^#' .env | xargs) &&
 | Permission denied | Re-run Step 3 ownership fix |
 | `pkill` exit code 137 | Don't use `pkill -f` — it kills the exec session. Use port-based kill (Step 1) |
 | `pgrep` shows PIDs but no Python running | False positive — `pgrep -f` matches its own exec bash. Use `ss -tlnp` instead |
+| "Not logged in · Please run /login" | Server started without API env vars. Kill and restart using Step 4 Option B (includes env vars) |
 
 ## Key Lessons
 
