@@ -484,6 +484,106 @@ async def test_get_all_cards_includes_archived(workspace_db):
     assert statuses["c2"] == "archived"
 
 
+# -- WorkspaceDB card position ---------------------------------------------
+
+async def test_upsert_card_with_position(workspace_db):
+    """upsert_card with position stores position_x, position_y, z_index."""
+    await workspace_db.create_stack("s1", "Stack")
+    card = await workspace_db.upsert_card(
+        "c1", "s1", "Positioned Card", [], position_x=150.5, position_y=300.0, z_index=3
+    )
+    assert card["position_x"] == 150.5
+    assert card["position_y"] == 300.0
+    assert card["z_index"] == 3
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert row["position_x"] == 150.5
+    assert row["position_y"] == 300.0
+    assert row["z_index"] == 3
+
+
+async def test_upsert_card_without_position_defaults(workspace_db):
+    """upsert_card without position defaults to 0.0, 0.0, 0."""
+    await workspace_db.create_stack("s1", "Stack")
+    card = await workspace_db.upsert_card("c1", "s1", "Default Card", [])
+    assert card["position_x"] == 0.0
+    assert card["position_y"] == 0.0
+    assert card["z_index"] == 0
+
+
+async def test_update_card_position_existing(workspace_db):
+    """update_card_position updates position for an existing card."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Card", [])
+
+    result = await workspace_db.update_card_position("c1", 200.0, 400.0, 5)
+    assert result["position_x"] == 200.0
+    assert result["position_y"] == 400.0
+    assert result["z_index"] == 5
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert row["position_x"] == 200.0
+    assert row["position_y"] == 400.0
+    assert row["z_index"] == 5
+
+
+async def test_update_card_position_nonexistent(workspace_db):
+    """update_card_position returns None for non-existent card."""
+    await workspace_db.create_stack("s1", "Stack")
+    result = await workspace_db.update_card_position("no-such-card", 100.0, 200.0, 1)
+    assert result is None
+
+
+async def test_get_cards_by_stack_returns_position(workspace_db):
+    """get_cards_by_stack (used by state_sync) returns position columns."""
+    await workspace_db.create_stack("s1", "Stack")
+    await workspace_db.upsert_card("c1", "s1", "Card", [], position_x=50.0, position_y=75.0, z_index=2)
+
+    cards = await workspace_db.get_cards_by_stack("s1")
+    assert len(cards) == 1
+    assert cards[0]["position_x"] == 50.0
+    assert cards[0]["position_y"] == 75.0
+    assert cards[0]["z_index"] == 2
+
+
+async def test_position_columns_migration(tmp_path):
+    """Existing DB without position columns gets them via ALTER TABLE migration."""
+    import sqlite3 as stdlib_sqlite
+    path = str(tmp_path / "legacy.db")
+
+    # Create a legacy DB with the old schema (no position columns)
+    conn = stdlib_sqlite.connect(path)
+    conn.executescript("""\
+        CREATE TABLE stacks (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT,
+            sort_order INTEGER DEFAULT 0, status TEXT DEFAULT 'active',
+            archived_at REAL, created_at REAL
+        );
+        CREATE TABLE cards (
+            card_id TEXT PRIMARY KEY, stack_id TEXT NOT NULL, title TEXT NOT NULL,
+            blocks TEXT, size TEXT DEFAULT 'medium', status TEXT DEFAULT 'active',
+            archived_at REAL, updated_at REAL,
+            FOREIGN KEY (stack_id) REFERENCES stacks(id)
+        );
+        CREATE TABLE chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL,
+            content TEXT NOT NULL, timestamp REAL
+        );
+        INSERT INTO stacks (id, name) VALUES ('s1', 'Stack');
+        INSERT INTO cards (card_id, stack_id, title, blocks) VALUES ('c1', 's1', 'Old Card', '[]');
+    """)
+    conn.close()
+
+    # Open with WorkspaceDB — migration should add position columns
+    db = WorkspaceDB(db_path=path)
+    await db.connect()
+    card = await db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert card["position_x"] == 0.0
+    assert card["position_y"] == 0.0
+    assert card["z_index"] == 0
+    await db.close()
+
+
 # -- WorkspaceDB chat CRUD -------------------------------------------------
 
 async def test_add_chat_message_persists(workspace_db):

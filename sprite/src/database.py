@@ -156,6 +156,9 @@ CREATE TABLE IF NOT EXISTS cards (
     status TEXT DEFAULT 'active',
     archived_at REAL,
     updated_at REAL,
+    position_x REAL DEFAULT 0.0,
+    position_y REAL DEFAULT 0.0,
+    z_index INTEGER DEFAULT 0,
     FOREIGN KEY (stack_id) REFERENCES stacks(id)
 );
 CREATE TABLE IF NOT EXISTS chat_messages (
@@ -172,6 +175,24 @@ class WorkspaceDB(_BaseDB):
 
     _schema = WORKSPACE_SCHEMA
     _default_path = "/workspace/.os/workspace.db"
+
+    async def connect(self) -> None:
+        await super().connect()
+        await self._migrate_card_position_columns()
+
+    async def _migrate_card_position_columns(self) -> None:
+        """Add position columns to existing cards tables (CREATE TABLE IF NOT EXISTS won't)."""
+        for col, typedef in [
+            ("position_x", "REAL DEFAULT 0.0"),
+            ("position_y", "REAL DEFAULT 0.0"),
+            ("z_index", "INTEGER DEFAULT 0"),
+        ]:
+            try:
+                await self._conn.execute(f"ALTER TABLE cards ADD COLUMN {col} {typedef}")
+                await self._conn.commit()
+                logger.info("Migrated cards table: added %s", col)
+            except Exception:
+                pass  # Column already exists
 
     # -- Stacks ----------------------------------------------------------------
 
@@ -230,16 +251,23 @@ class WorkspaceDB(_BaseDB):
         title: str,
         blocks: list,
         size: str = "medium",
+        position_x: float = 0.0,
+        position_y: float = 0.0,
+        z_index: int = 0,
     ) -> dict:
         now = time.time()
         blocks_json = json.dumps(blocks)
         await self.execute(
-            "INSERT INTO cards (card_id, stack_id, title, blocks, size, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?) "
+            "INSERT INTO cards (card_id, stack_id, title, blocks, size, updated_at, "
+            "position_x, position_y, z_index) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(card_id) DO UPDATE SET "
             "title = excluded.title, blocks = excluded.blocks, "
-            "size = excluded.size, updated_at = excluded.updated_at",
-            (card_id, stack_id, title, blocks_json, size, now),
+            "size = excluded.size, updated_at = excluded.updated_at, "
+            "position_x = excluded.position_x, position_y = excluded.position_y, "
+            "z_index = excluded.z_index",
+            (card_id, stack_id, title, blocks_json, size, now,
+             position_x, position_y, z_index),
         )
         return await self.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
 
@@ -258,6 +286,20 @@ class WorkspaceDB(_BaseDB):
                 "UPDATE cards SET blocks = ?, updated_at = ? WHERE card_id = ?",
                 (json.dumps(blocks), now, card_id),
             )
+        return await self.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
+
+    async def update_card_position(
+        self, card_id: str, position_x: float, position_y: float, z_index: int
+    ) -> dict | None:
+        """Update only position on an existing card. Returns None if card not found."""
+        now = time.time()
+        cursor = await self.execute(
+            "UPDATE cards SET position_x = ?, position_y = ?, z_index = ?, updated_at = ? "
+            "WHERE card_id = ?",
+            (position_x, position_y, z_index, now, card_id),
+        )
+        if cursor.rowcount == 0:
+            return None
         return await self.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
 
     async def archive_card(self, card_id: str) -> None:
