@@ -41,6 +41,12 @@ describe('invalid transitions', () => {
     expect(useVoiceStore.getState().personaState).toBe('asleep')
   })
 
+  it('rejects idle -> listening (must go through connecting)', () => {
+    useVoiceStore.setState({ personaState: 'idle' })
+    useVoiceStore.getState().setPersonaState('listening')
+    expect(useVoiceStore.getState().personaState).toBe('idle')
+  })
+
   it('rejects idle -> speaking', () => {
     useVoiceStore.setState({ personaState: 'idle' })
     useVoiceStore.getState().setPersonaState('speaking')
@@ -55,7 +61,7 @@ describe('invalid transitions', () => {
 })
 
 describe('any state -> asleep', () => {
-  const allStates: PersonaState[] = ['asleep', 'idle', 'listening', 'thinking', 'speaking']
+  const allStates: PersonaState[] = ['asleep', 'idle', 'connecting', 'listening', 'thinking', 'speaking']
 
   it.each(allStates)('%s -> asleep always succeeds', (from) => {
     useVoiceStore.setState({ personaState: from })

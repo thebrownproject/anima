@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type PersonaState = 'asleep' | 'idle' | 'listening' | 'thinking' | 'speaking'
+export type PersonaState = 'asleep' | 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking'
 
 export const VALID_TRANSITIONS: Record<PersonaState, PersonaState[]> = {
   asleep: ['idle'],
-  idle: ['listening', 'thinking'],
+  idle: ['connecting', 'thinking'],
+  connecting: ['listening', 'idle'],
   listening: ['thinking', 'idle'],
   thinking: ['speaking', 'idle'],
   speaking: ['idle'],
