@@ -9,17 +9,27 @@ import { setWallpaperTransform } from '@/components/wallpaper/wallpaper-layer'
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.0
 
-/** Clamp viewport so the screen center always points inside the world.
- *  At low zoom (world fits on screen): you can pan but never lose the world.
- *  At high zoom (world larger than screen): standard bounded panning.
- *  Never fights drag gestures — no forced centering.
+/** Max empty-space pixels visible past any world edge. */
+const VIEW_PADDING = 100
+
+/** Clamp viewport so at most VIEW_PADDING px of empty space shows past world edges.
+ *  At high zoom (world larger than screen): bounded panning with padding.
+ *  At low zoom (world + padding fits on screen): centers the world.
  */
 function clampView(x: number, y: number, scale: number): { x: number; y: number } {
   const sw = typeof window !== 'undefined' ? window.innerWidth : 1920
   const sh = typeof window !== 'undefined' ? window.innerHeight : 1080
+  const worldW = WORLD_WIDTH * scale
+  const worldH = WORLD_HEIGHT * scale
+
+  const minX = sw - worldW - VIEW_PADDING
+  const maxX = VIEW_PADDING
+  const minY = sh - worldH - VIEW_PADDING
+  const maxY = VIEW_PADDING
+
   return {
-    x: Math.max(sw / 2 - WORLD_WIDTH * scale, Math.min(sw / 2, x)),
-    y: Math.max(sh / 2 - WORLD_HEIGHT * scale, Math.min(sh / 2, y)),
+    x: minX > maxX ? (sw - worldW) / 2 : Math.max(minX, Math.min(maxX, x)),
+    y: minY > maxY ? (sh - worldH) / 2 : Math.max(minY, Math.min(maxY, y)),
   }
 }
 const SYNC_DELAY = 150

@@ -76,6 +76,8 @@ export function useMomentum({ onFrame, onStop }: MomentumCallbacks): MomentumCon
   }, [])
 
   const releaseWithFlick = useCallback((): boolean => {
+    if (rafId.current) return false // Already animating — prevent RAF handle leak
+
     const timeSinceLastMove = performance.now() - lastMoveTime.current
     const v = velocity.current
 

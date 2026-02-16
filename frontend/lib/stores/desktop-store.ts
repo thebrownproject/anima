@@ -3,16 +3,18 @@ import { persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 import type { Block, CardSize, StackInfo } from '@/types/ws-protocol'
 
-// World bounds — cards and viewport are clamped to this area
-export const WORLD_WIDTH = 4000
-export const WORLD_HEIGHT = 3000
-const CARD_W = 320
+// World bounds — cards and viewport are clamped to this area (16:9 for widescreen monitors)
+export const WORLD_WIDTH = 8000
+export const WORLD_HEIGHT = 4000
+export const CARD_WIDTH = 320
+const CARD_H_DEFAULT = 500 // Fallback when actual card height isn't known
 
-/** Clamp a card position within world bounds. */
-export function clampCardPosition(x: number, y: number): { x: number; y: number } {
+/** Clamp a card position within world bounds.
+ *  Pass cardHeight for pixel-perfect bottom clamping during drag. */
+export function clampCardPosition(x: number, y: number, cardHeight?: number): { x: number; y: number } {
   return {
-    x: Math.max(0, Math.min(WORLD_WIDTH - CARD_W, x)),
-    y: Math.max(0, Math.min(WORLD_HEIGHT - 100, y)),
+    x: Math.max(0, Math.min(WORLD_WIDTH - CARD_WIDTH, x)),
+    y: Math.max(0, Math.min(WORLD_HEIGHT - (cardHeight ?? CARD_H_DEFAULT), y)),
   }
 }
 
@@ -59,7 +61,7 @@ interface DesktopActions {
   addCard: (card: DesktopCard) => void
   updateCard: (id: string, updates: Partial<Omit<DesktopCard, 'id'>>) => void
   removeCard: (id: string) => void
-  moveCard: (id: string, position: { x: number; y: number }) => void
+  moveCard: (id: string, position: { x: number; y: number }, cardHeight?: number) => void
   bringToFront: (id: string) => void
 
   // View actions
@@ -163,12 +165,12 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
           return { cards: rest }
         }),
 
-      moveCard: (id, position) =>
+      moveCard: (id, position, cardHeight?) =>
         set((state) => {
           const existing = state.cards[id]
           if (!existing) return state
           return {
-            cards: { ...state.cards, [id]: { ...existing, position: clampCardPosition(position.x, position.y) } },
+            cards: { ...state.cards, [id]: { ...existing, position: clampCardPosition(position.x, position.y, cardHeight) } },
           }
         }),
 

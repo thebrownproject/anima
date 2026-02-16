@@ -3885,3 +3885,109 @@ No code written — pure exploration and planning.
 - Task 1 (voice-store FSM) is the only unblocked task — start there.
 
 ---
+
+## [2026-02-16 21:15] Session 180
+
+**Branch:** main | **Git:** uncommitted (wallpaper system rewrite)
+
+### What Happened
+
+**Complete wallpaper system overhaul — replaced 12 static JPGs (~158MB) with 12 animated mesh gradient wallpapers.**
+
+**1. Parallax panning (`wallpaper-layer.tsx`, `desktop-viewport.tsx`):**
+- Wallpaper now shifts subtly when panning the canvas, creating depth
+- Module-level ref pattern: `setWallpaperTransform(viewX, viewY, scale)` called from viewport's `applyAnimationMode` and `applySharpMode`
+- Normalized parallax centered on world midpoint, clamped to ±200px (250px buffer)
+- Switched from CSS `background-image` to `<img>` element for GPU compositing
+- Direct DOM manipulation — zero React re-renders during pan
+
+**2. Mesh gradient engine (`mesh-gradient.tsx` — NEW):**
+- Canvas 2D aurora bands: overlapping radial gradients along wave paths (12 points per band)
+- Each wallpaper has 4-6 bands with unique positions, colors, wave frequencies, drift speeds
+- 30fps throttle (aurora is slow, doesn't need 60fps)
+- Half-resolution rendering (RENDER_SCALE=0.5) — CSS scales up, gradients are smooth
+- Static grain overlay: full-res noise canvas → `toDataURL()` → `<img>` with `mix-blend-mode: overlay` at 75% opacity. Rendered ONCE on mount, composited by CSS for free.
+
+**3. 12 wallpaper palettes matching original JPG references:**
+- Dark: Purple Blue Grain, Deep Purple, Blue Pink, Dynamic, Deep Blue, Colorful
+- Medium: Blues to Purple, Purple Fabric, Grey Soft
+- Light: Purple Haze, Blue Beige, Lavender
+- Each has unique bg color, band positions, color values tuned to match the reference images
+
+**4. Wallpaper store cleanup (`wallpaper-store.ts`):**
+- Added `thumbnail` field to `Wallpaper` interface — CSS `background-image` for picker circles
+- Both `wallpaper-picker.tsx` and `wallpaper-thumbnail.tsx` (context menu) use same field
+- Deleted all 12 JPG files from `public/wallpapers/` (~158MB saved)
+- Removed JPG entries from store — only mesh gradients remain
+
+**5. Film grain overlay (`wallpaper-layer.tsx`):**
+- SVG `feTurbulence` at 3.5% opacity for JPGs (now unused), 0% for mesh (has own grain)
+- Mesh grain: 1.25x resolution data URL image, `mix-blend-mode: overlay`
+
+### Decisions Made
+
+- **Static grain as data URL image** — renders once on mount, CSS composites for free. Much better perf than drawing grain on canvas every frame.
+- **30fps throttle** — aurora drift is glacial, halves GPU work with no visual difference.
+- **Half-res canvas** — gradients are smooth, don't benefit from pixel-perfect rendering.
+- **Radial gradients instead of slices** — vertical slicing caused visible seams. Overlapping radial gradients along wave paths blend seamlessly with `screen` composite.
+- **`thumbnail` field on Wallpaper interface** — single source of truth for picker thumbnails, works for both JPGs and gradient CSS.
+- **Deleted all JPGs** — mesh gradients replace them entirely, saves ~158MB from repo.
+
+### Gotchas
+
+- **CSS `background-image` on large div = choppy panning** — switching to `<img>` element fixed it (better GPU compositing)
+- **Parallax overflow** — naive `viewX * factor` exceeded the buffer at extreme pan. Normalizing to world center and clamping to ±200px fixed it.
+- **Canvas grain per frame = performance killer** — 330K+ pixels × 60fps on main thread. Pre-rendering as static data URL and CSS compositing was the key insight.
+- **Vertical slice seams** — even with +1px overlap, adjacent gradient slices had visible boundaries. Radial gradient dots along the wave path eliminated this entirely.
+- **Animated grain was distracting** — changing `grainSeed = Math.floor(t * 8)` to fixed seed was all it took.
+
+### Next Action
+
+- Fine-tune individual wallpaper palettes if needed after browser testing
+- Continue with m7b.4.15 voice work (STT tests still failing from Session 179)
+- m7b.4.12.12 (source wallpaper images) can be closed — replaced by generative system
+
+---
+
+## [2026-02-16 22:00] Session 182
+
+**Branch:** main | **Git:** uncommitted (canvas extents + wallpaper changes from prior sessions)
+
+### What Happened
+
+**Canvas extents overhaul — fixed viewport clamping, card bounds, world dimensions, and code review cleanup.**
+
+**1. Viewport clamping rewrite (`desktop-viewport.tsx`):**
+- Replaced `clampView()` — old logic allowed `sw/2` overshoot (world origin could reach screen center, ~650px of empty space). New logic uses `VIEW_PADDING=100` — max 100px empty space past any world edge. When zoomed out so world fits on screen, auto-centers instead of allowing drift.
+- At 25% zoom on 1540px screen, X range went from [-350, 650] to [100, 200] — much tighter feel.
+
+**2. Card bottom clamping fix (`desktop-store.ts`, `desktop-card.tsx`):**
+- Old `clampCardPosition` used hardcoded `WORLD_HEIGHT - 100` for Y max — cards 400-500px tall extended 300-400px past world boundary.
+- Added optional `cardHeight` parameter to `clampCardPosition()`. During drag and momentum glide, `getCardHeight()` reads actual DOM element height for pixel-perfect bottom clamping. Store fallback remains 500px.
+- Fixed `moveCard()` to accept and pass `cardHeight` — previously `syncToStore` re-clamped with default 500, undoing the pixel-perfect drag clamping (card would snap upward on drop).
+- `syncToStore` now reads `positionRef.current.offsetHeight` and passes to `moveCard`.
+
+**3. World dimensions resized:**
+- Changed from 4000×3000 (4:3) → 8000×4000 (2:1) for widescreen monitors.
+- User-driven iterative sizing: 4000×3000 → 6400×3600 → 7000×3000 → 8000×4000.
+
+**4. Code review findings fixed (6 issues from review agent):**
+- **CRITICAL: Duplicated world constants** — `wallpaper-layer.tsx` had hardcoded `WORLD_W`/`WORLD_H`. Now imports `WORLD_WIDTH`/`WORLD_HEIGHT` from `desktop-store.ts`.
+- **CRITICAL: Card width constants unified** — `CARD_W` (store), `CARD_WIDTH` (auto-placer), `w-80` (Tailwind) were 3 separate definitions. Exported `CARD_WIDTH` from store, auto-placer imports it. Renamed auto-placer's `CARD_HEIGHT` to `CARD_GRID_HEIGHT` with explanatory comment.
+- **IMPORTANT: `releaseWithFlick` double-start guard** — added `if (rafId.current) return false` to prevent RAF handle leak if called while animation already running (`use-momentum.ts`).
+- **IMPORTANT: Card `onLostPointerCapture`** — viewport had this safety net but card didn't. Added handler to reset `isDragging` and call `syncToStore` on lost pointer capture (tab switch, DevTools).
+
+### Decisions Made
+
+- **VIEW_PADDING=100** (not 200) — 200 felt too generous, left large gaps between top bar and card area. 100 gives breathing room without wasting screen real estate.
+- **8000×4000 world** — sized for 27-32" widescreen monitors at 100% zoom. 2:1 aspect ratio fills 16:9 screens well at low zoom.
+- **Card height fallback stays at 500** — can't know rendered height for agent-created cards (no DOM at `addCard` time). 500 covers most card sizes conservatively.
+- **`replace_all` with substrings is dangerous** — replacing `CARD_W` with `CARD_WIDTH` also hits `CARD_WIDTH` → `CARD_WIDTHIDTH`. Same for `WORLD_H` → `WORLD_HEIGHT`. Need manual fix after. Lesson learned.
+
+### Next Action
+
+- Continue m7b.4.15 voice work (STT tasks .14-.17 still pending from Session 181 plan)
+- Consider adding resize handler to reclamp viewport on browser resize (suggestion from review)
+- m7b.4.12.12 (source wallpaper images) can be closed — mesh gradients replaced it
+
+---

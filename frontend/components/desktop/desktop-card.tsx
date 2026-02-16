@@ -27,7 +27,8 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
   const localPos = useRef({ x: card.position.x, y: card.position.y })
 
   const syncToStore = useCallback(() => {
-    useDesktopStore.getState().moveCard(card.id, { ...localPos.current })
+    const height = positionRef.current?.offsetHeight ?? undefined
+    useDesktopStore.getState().moveCard(card.id, { ...localPos.current }, height)
     send({
       type: 'canvas_interaction',
       payload: {
@@ -49,12 +50,15 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
     }
   }, [])
 
+  const getCardHeight = useCallback(() => positionRef.current?.offsetHeight ?? undefined, [])
+
   const momentum = useMomentum({
     onFrame: (vx, vy) => {
       const { view } = useDesktopStore.getState()
       localPos.current = clampCardPosition(
         localPos.current.x + vx / view.scale,
         localPos.current.y + vy / view.scale,
+        getCardHeight(),
       )
       applyPosition()
     },
@@ -98,6 +102,7 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       const clamped = clampCardPosition(
         localPos.current.x + e.movementX / view.scale,
         localPos.current.y + e.movementY / view.scale,
+        getCardHeight(),
       )
       localPos.current = clamped
 
@@ -121,6 +126,15 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
     },
     [isDragging, momentum, syncToStore],
   )
+
+  // Safety net: if pointer capture is lost (tab switch, DevTools, touch cancel),
+  // reset drag state to prevent stuck cursor
+  const handleLostPointerCapture = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false)
+      syncToStore()
+    }
+  }, [isDragging, syncToStore])
 
   const handleClose = useCallback(
     (e: React.MouseEvent) => {
@@ -150,6 +164,7 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onLostPointerCapture={handleLostPointerCapture}
         style={{
           touchAction: 'none',
           cursor: isDragging ? 'grabbing' : 'grab',
