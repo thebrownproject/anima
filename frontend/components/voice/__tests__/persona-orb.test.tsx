@@ -31,7 +31,7 @@ vi.mock('../voice-provider', () => ({
   }),
 }))
 
-import { PersonaOrb } from '../persona-orb'
+import { PersonaOrb, orbTooltip } from '../persona-orb'
 
 function Wrapper({ children }: { children: ReactNode }) {
   return <GlassTooltipProvider>{children}</GlassTooltipProvider>
@@ -154,5 +154,40 @@ describe('PersonaOrb', () => {
     useVoiceStore.setState({ personaState: 'asleep' })
     renderOrb()
     expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('idle')
+  })
+
+  // --- Connecting state ---
+
+  it('maps connecting to listening Rive state', () => {
+    useVoiceStore.setState({ personaState: 'connecting' })
+    renderOrb()
+    expect(screen.getByTestId('persona').getAttribute('data-state')).toBe('listening')
+  })
+
+  it('shows Connecting... tooltip for connecting state', () => {
+    expect(orbTooltip('connecting')).toBe('Connecting...')
+  })
+
+  it('tap when connecting + no text calls stopRecordingOnly', () => {
+    useVoiceStore.setState({ personaState: 'connecting' })
+    renderOrb()
+    fireEvent.click(screen.getByTestId('persona-orb'))
+    expect(mockStopRecordingOnly).toHaveBeenCalledOnce()
+  })
+
+  it('tap when connecting + hasText calls onSendMessage', () => {
+    useVoiceStore.setState({ personaState: 'connecting' })
+    const mockSend = vi.fn()
+    renderOrb({ hasText: true, onSendMessage: mockSend })
+    fireEvent.click(screen.getByTestId('persona-orb'))
+    expect(mockSend).toHaveBeenCalledOnce()
+    expect(mockStopRecordingOnly).not.toHaveBeenCalled()
+  })
+
+  it('orb is interactive during connecting (no pointer-events-none)', () => {
+    useVoiceStore.setState({ personaState: 'connecting' })
+    renderOrb()
+    const orb = screen.getByTestId('persona-orb')
+    expect(orb.className).not.toContain('pointer-events-none')
   })
 })

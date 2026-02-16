@@ -16,13 +16,16 @@ const Persona = dynamic(
 // Map voice store state to Rive animation state.
 function toRiveState(state: PersonaState): PersonaState {
   if (state === 'asleep') return 'idle'
+  if (state === 'connecting') return 'listening'
   return state
 }
 
-function orbTooltip(state: PersonaState, hasText?: boolean): string {
+export function orbTooltip(state: PersonaState, hasText?: boolean): string {
   switch (state) {
     case 'idle':
       return hasText ? 'Send message' : 'Start listening'
+    case 'connecting':
+      return 'Connecting...'
     case 'listening':
       return hasText ? 'Send message' : 'Stop listening'
     case 'thinking':
@@ -30,7 +33,7 @@ function orbTooltip(state: PersonaState, hasText?: boolean): string {
     case 'speaking':
       return 'Stop speaking'
     case 'asleep':
-      return 'Connecting...'
+      return 'Sleeping'
   }
 }
 
@@ -65,6 +68,7 @@ export function PersonaOrb({ hasText, onSendMessage }: PersonaOrbProps): React.J
           startVoice()
         }
         break
+      case 'connecting':
       case 'listening':
         if (hasText && onSendMessage) {
           onSendMessage()
