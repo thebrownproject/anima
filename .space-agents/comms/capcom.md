@@ -4042,3 +4042,41 @@ Files changed:
 - stackdocs-5it (rightmost voice bar never animates)
 
 ---
+## [2026-02-17 07:40] Session 183 (addendum)
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Persona load performance fix** — Removed `requestIdleCallback` deferred mount from `persona-orb.tsx` that added 0-3s delay before Rive even started loading. Added `useOffscreenRenderer: true` to `persona.tsx` to share a single WebGL2 context. Demo site at elements.ai-sdk.dev loads 6 personas instantly using these techniques.
+
+Files: `voice/persona-orb.tsx` (removed requestIdleCallback + mountRive state), `ai-elements/persona.tsx` (useOffscreenRenderer: true)
+
+**Voice bars fix (stackdocs-5it CLOSED)** — Rightmost bar never animated because it sampled a single frequency bin at ~9.3kHz (no speech energy). Replaced with averaged frequency bands within speech range (200Hz-4kHz). All 4 bars now respond.
+
+File: `voice/voice-bars.tsx` — bands replace single bins, `lo`/`hi` clamp to speech range
+
+**Chat bar UX improvements:**
+- Moved `+` (attach) from static left position into voice controls hover group — slides out on orb hover
+- `+` and speaker are hover-only (`hoverOnly` flag) — don't auto-show during recording or TTS playback. Stop button + voice bars still auto-show.
+- Removed textarea collapse after send — input stays open for next message (matches ChatGPT/Claude.ai behavior)
+- Hide "Ask anything..." placeholder during TTS speaking
+- Auto-scroll textarea to bottom during STT recording so new transcript text is always visible
+- Full-width textarea — removed `pr-16` right padding
+- Fixed "Ask anything..." left alignment after removing `+` from left side (`mx-3` → `mr-3`)
+
+File: `desktop/chat-bar.tsx`
+
+**Chat panel bottom padding** — Increased `pb-20` to `pb-28` so last message scrolls above the floating glass chat bar.
+
+File: `desktop/chat-panel.tsx`
+
+**Created bead:** stackdocs-m7b.4.16 (card content rendering artifacts — text overflow and layout issues, P2)
+
+### Next Action
+- m7b.4.15.11 (TTS blocked after STT use — dual AudioContext conflict)
+- m7b.4.15.8 (integration smoke test)
+- m7b.4.16 (card rendering artifacts)
+- m7b.4.12.12 (source wallpapers) can be closed — mesh gradients replaced it
+
+---

@@ -93,7 +93,7 @@ export function ChatPanel() {
         )}
 
         {/* Messages — scroll area with bottom padding for chat bar */}
-        <div className="relative flex flex-1 flex-col gap-3 overflow-y-auto p-4 pb-20">
+        <div className="relative flex flex-1 flex-col gap-3 overflow-y-auto p-4 pb-28">
           {messages.length === 0 && (
             <div className="flex-1" />
           )}

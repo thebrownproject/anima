@@ -27,13 +27,19 @@ export function VoiceBars({ analyser, className }: VoiceBarsProps) {
     function tick() {
       analyser!.getByteFrequencyData(data)
 
-      // Sample BAR_COUNT evenly-spaced frequency bins (skip bottom 10% — bass-heavy)
-      const skip = Math.floor(data.length * 0.1)
-      const binStep = Math.floor((data.length - skip) / BAR_COUNT)
+      // Average BAR_COUNT bands within speech range (~200Hz–4kHz)
+      // At 24kHz / fftSize 2048: each bin ≈ 23.4Hz, speech range ≈ bins 9–171
+      const lo = Math.max(1, Math.floor(data.length * 0.008))  // ~200Hz
+      const hi = Math.floor(data.length * 0.33)                // ~4kHz
+      const bandSize = Math.floor((hi - lo) / BAR_COUNT)
       const raw: number[] = []
       for (let i = 0; i < BAR_COUNT; i++) {
-        const val = data[skip + i * binStep] / 255 // normalise to 0–1
-        // Smooth with previous frame
+        let sum = 0
+        const start = lo + i * bandSize
+        for (let j = start; j < start + bandSize; j++) {
+          sum += data[j]
+        }
+        const val = sum / bandSize / 255
         const smoothed = prevLevels.current[i] * SMOOTHING + val * (1 - SMOOTHING)
         raw.push(smoothed)
       }

@@ -240,6 +240,7 @@ export const Persona: FC<PersonaProps> = memo(
       onStop: stableCallbacks.onStop,
       src: source.source,
       stateMachines: stateMachine,
+      useOffscreenRenderer: true,
     });
 
     const listeningInput = useStateMachineInput(
