@@ -3991,3 +3991,17 @@ No code written — pure exploration and planning.
 - m7b.4.12.12 (source wallpaper images) can be closed — mesh gradients replaced it
 
 ---
+
+## [2026-02-16 22:20] Session 182 (addendum)
+
+**Additional fix:** Removed pulsing cyan→blue→purple gradient glow from `glass-tab-switcher.tsx` (lines 70-75). Was a `motion.div` with `bg-linear-to-r` and `blur-lg` animating opacity. Caused purple bleed on right side of tab pill. Also removed unused `framer-motion` import. Closed stackdocs-53t.
+
+**Created beads:** stackdocs-5it (voice bars rightmost bar never animates) — left for next session.
+
+### Next Action
+
+- stackdocs-5it: Debug rightmost voice bar not animating (`voice-bars.tsx`)
+- Continue m7b.4.15 STT tasks (.14-.17)
+- m7b.4.12.12 (source wallpaper images) can be closed — mesh gradients replaced it
+
+---

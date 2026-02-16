@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import * as Icons from "@/components/icons"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
@@ -66,14 +65,6 @@ const GlassTabSwitcher = React.forwardRef<HTMLDivElement, GlassTabSwitcherProps>
 
     return (
       <div ref={ref} className={cn("relative", className)}>
-        {/* Pulsing glow (matches Ein UI glass-tabs) */}
-        <motion.div
-          className="absolute -inset-1 rounded-full bg-linear-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 blur-lg"
-          animate={{ opacity: [0.4, 0.6, 0.4] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          aria-hidden="true"
-        />
-
         <div
           ref={containerRef}
           className={cn(
