@@ -3795,3 +3795,52 @@ Several iterative changes in `use-stt.ts` and `use-tts.ts` didn't fully resolve 
 - Close m7b.4.15 once TTS+STT both work reliably
 
 ---
+
+## [2026-02-16 07:40] Session 180
+
+**Branch:** main | **Git:** uncommitted (lazy Deepgram import)
+
+### What Happened
+
+**Voice system debugging — 3 bugs investigated, 2 fixed, 1 in progress (m7b.4.15.9, m7b.4.15.11).**
+
+Session 179 handed over a rewritten voice system (shared AudioContext singleton in `audio-engine.ts`, STT 385→217 lines, TTS 211→129 lines). Session 180 focused on debugging the remaining runtime bugs.
+
+**1. TTS blocked after STT use (m7b.4.15.9, m7b.4.15.11 — FIXED):**
+- Root cause: `stopListening()` called `disconnectAnalyser()` which kept the mic stream alive (warm mic). Active `MediaStream` with `echoCancellation: true` interfered with TTS output through the shared AudioContext.
+- Fix: `use-stt.ts:72` — changed to `releaseMic()` which stops tracks, disconnects source, nulls stream. Mic icon disappears after recording, audio pipeline freed for TTS.
+
+**2. STT cutoff on 2nd+ recording (FIXED — race condition):**
+- Root cause: `connection.addListener(LiveTranscriptionEvents.Close, ...)` handler from recording N fired asynchronously AFTER recording N+1 started, wiping `audioBufferRef.current = []` and `wsOpenRef.current = false` — destroying the new recording's buffered audio.
+- Fix: `use-stt.ts:178,184,191,198` — added `generationRef.current !== thisGen` guards to Close, Error, and Transcript event handlers (Open handler already had the guard). Stale events from old connections now ignored.
+- Committed: `157a41c`
+
+**3. Page unusable for ~5s on refresh (IN PROGRESS):**
+- Sent debug agent to trace full component mount chain. Found: `@deepgram/sdk` is statically imported on critical path (`page.tsx → MaybeVoiceProvider → voice-provider → use-stt → @deepgram/sdk`). The SDK's `export *` barrel pulls in REST clients, Agent clients, `@deepgram/captions`, all enums — ~400KB parsed on every page load even when voice is disabled.
+- Fix applied but NOT committed: `use-stt.ts:7-12` — lazy `getDeepgramSDK()` singleton that loads SDK via `import()` on first `startListening()`. `import type { LiveTranscriptionEvent }` for TypeScript (erased at build time). Second generation check after `await getDeepgramSDK()`.
+- User wants to test before committing.
+
+### Decisions Made
+
+- **Remove warm mic** — user confirmed it wasn't helping (still had STT startup lag), and it was blocking TTS. Mic now released on every `stopListening()`, re-acquired on next `startListening()`.
+- **Lazy Deepgram import** — `import()` inside `startListening()` instead of static import. Tradeoff: first recording has ~100ms extra latency (SDK load), but page loads much faster. SDK cached after first load via singleton promise.
+
+### Gotchas
+
+- **Close event race condition** — Deepgram's `requestClose()` is async. The Close event fires AFTER refs are nulled in `stopListening()`. If user starts recording again quickly, the old Close handler wipes the new recording's state. Generation guards prevent this.
+- **`export *` defeats tree-shaking** — Deepgram SDK re-exports everything via barrel. Even importing just `createClient` pulls in the entire SDK at bundle level.
+- **`MaybeVoiceProvider` feature flag is render-time only** — the static import chain executes at module load regardless of whether `isVoiceEnabled()` returns true.
+
+### In Progress
+
+- **Lazy Deepgram import** — code applied in `use-stt.ts` but not committed. User testing page load improvement. If it works, commit as separate commit.
+- **9 STT tests failing** — test mocks need updating for: (a) `mockAcquireMic` default value after `clearAllMocks`, (b) fake timers for `setInterval(keepAlive)`, (c) token refresh threshold. Not blocking — production code works.
+
+### Next Action
+
+- Test page refresh speed with lazy Deepgram import. If good, commit.
+- Fix 9 STT tests (handover has exact fix strategy).
+- Browser-verify all 3 bugs are resolved, close m7b.4.15.9 and m7b.4.15.11.
+- Consider lazy-loading Rive WASM more aggressively (suspect #2 from debug agent).
+
+---

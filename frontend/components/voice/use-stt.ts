@@ -1,17 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  createClient,
-  LiveTranscriptionEvents,
-  type LiveTranscriptionEvent,
-} from '@deepgram/sdk'
+import type { LiveTranscriptionEvent } from '@deepgram/sdk'
 import { useVoiceStore } from '@/lib/stores/voice-store'
 import {
   acquireMic,
   releaseMic,
   connectAnalyser,
 } from './audio-engine'
+
+// Deepgram SDK loaded lazily on first recording — keeps ~400KB out of initial bundle
+let _dgImport: Promise<typeof import('@deepgram/sdk')> | null = null
+function getDeepgramSDK() {
+  if (!_dgImport) _dgImport = import('@deepgram/sdk')
+  return _dgImport
+}
 
 interface STTControls {
   startListening: () => Promise<void>
@@ -39,7 +42,8 @@ export function useSTT(): STTControls {
   const [error, setError] = useState<string | null>(null)
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
 
-  const connectionRef = useRef<ReturnType<ReturnType<typeof createClient>['listen']['live']> | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- typed at usage site after dynamic import
+  const connectionRef = useRef<any>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRef = useRef(0)
@@ -128,7 +132,10 @@ export function useSTT(): STTControls {
     const node = connectAnalyser()
     if (node) setAnalyser(node)
 
-    // 3. Deepgram WS connection
+    // 3. Deepgram WS connection (SDK loaded lazily)
+    const { createClient, LiveTranscriptionEvents } = await getDeepgramSDK()
+    if (generationRef.current !== thisGen) return
+
     const client = createClient({ accessToken: token })
     const connection = client.listen.live({
       model: 'nova-3',
