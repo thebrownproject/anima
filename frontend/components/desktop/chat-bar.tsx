@@ -12,6 +12,7 @@ import { useVoiceStore } from '@/lib/stores/voice-store'
 import { useVoiceMaybe } from '@/components/voice/voice-provider'
 import { PersonaOrb } from '@/components/voice/persona-orb'
 import { VoiceBars } from '@/components/voice/voice-bars'
+import { Spinner } from '@/components/ui/spinner'
 
 const HOVER_DELAY = 200 // ms — voice controls show delay
 const LINGER_DELAY = 1000 // ms — voice controls hide delay (after stop or mouse leave)
@@ -42,6 +43,8 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
   const isListening = personaState === 'listening'
   const isConnecting = personaState === 'connecting'
+  const isSpeaking = personaState === 'speaking'
+  const isVoiceActive = isListening || isConnecting
 
   const sendMessage = useCallback((text: string) => {
     addMessage({ role: 'user', content: text, timestamp: Date.now() })
@@ -49,26 +52,24 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   }, [addMessage, send, activeStackId])
 
   const handleSend = useCallback(() => {
-    if (voice && (isListening || isConnecting)) voice.stopRecordingForSend()
+    if (voice && (isVoiceActive)) voice.stopRecordingForSend()
     const text = inputValue.trim()
     if (!text || !isConnected) return
     sendMessage(text)
     clearDraft()
-    setInputActive(false)
     useVoiceStore.getState().clearTranscript()
     const { personaState: ps } = useVoiceStore.getState()
     if (voiceActive && ps !== 'asleep') {
       useVoiceStore.getState().setPersonaState('thinking')
     }
-    inputRef.current?.blur()
-  }, [inputValue, sendMessage, clearDraft, isConnected, voice, isListening, isConnecting, voiceActive])
+  }, [inputValue, sendMessage, clearDraft, isConnected, voice, isVoiceActive, voiceActive])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
-    if (e.key === 'Escape' && voice && (isListening || isConnecting)) {
+    if (e.key === 'Escape' && voice && (isVoiceActive)) {
       e.preventDefault()
       voice.stopRecordingOnly()
     }
@@ -87,7 +88,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
   // Expand textarea on voice start (no focus — hides cursor), focus or collapse when done
   useEffect(() => {
-    if (isListening || isConnecting) {
+    if (isVoiceActive) {
       if (isConnecting) wasConnectingRef.current = true
       if (isListening) wasListeningRef.current = true
       setInputActive(true)
@@ -96,12 +97,9 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
       setLingerVisible(false)
       if (lingerTimer.current) clearTimeout(lingerTimer.current)
     } else if (wasListeningRef.current || wasConnectingRef.current) {
-      // Linger on listening→done or connecting→idle (cancel)
-      // connecting→listening is NOT a cancel — wasConnectingRef cleared by the isListening branch above
-      const wasActive = wasListeningRef.current || wasConnectingRef.current
+      // Linger on stop/cancel. connecting→listening doesn't hit this branch (isVoiceActive stays true).
       wasListeningRef.current = false
       wasConnectingRef.current = false
-      if (!wasActive) return
       if (inputValue.trim()) {
         setTimeout(() => inputRef.current?.focus(), 250)
         setLingerVisible(true)
@@ -114,7 +112,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
         }, LINGER_DELAY)
       }
     }
-  }, [isListening, isConnecting]) // eslint-disable-line react-hooks/exhaustive-deps -- transition-only effect
+  }, [isVoiceActive, isListening, isConnecting]) // eslint-disable-line react-hooks/exhaustive-deps -- transition-only effect
 
   // Delta-append transcript to draft as STT produces text (one instance only to prevent double-append)
   useEffect(() => {
@@ -126,6 +124,13 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
     }
     prevTranscriptRef.current = transcript
   }, [transcript, isListening, embedded, setInputValue])
+
+  // Auto-scroll textarea to bottom during recording (cursor is blurred so browser won't auto-scroll)
+  useEffect(() => {
+    if (isListening && inputRef.current) {
+      inputRef.current.scrollTop = inputRef.current.scrollHeight
+    }
+  }, [inputValue, isListening])
 
   // --- Voice controls hover logic ---
 
@@ -146,7 +151,8 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
     hoverTimer.current = setTimeout(() => setShowControls(false), LINGER_DELAY)
   }, [])
 
-  const controlsVisible = isListening || isConnecting || showControls || lingerVisible
+  const controlsVisible = isVoiceActive || isSpeaking || showControls || lingerVisible
+  const hoverOnly = showControls || lingerVisible
 
   const hasText = inputValue.trim().length > 0
   const isHidden = !embedded && mode === 'panel'
@@ -195,20 +201,20 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                   ? 'opacity-100 delay-200 duration-150'
                   : 'opacity-0 duration-100'
               )}>
-                <div className="px-5 pt-4 pb-1 pr-16">
+                <div className="px-5 pt-4 pb-1">
                   <textarea
                     ref={inputRef}
                     value={inputValue}
                     onChange={(e) => {
                       setInputValue(e.target.value)
-                      if (voice && (isListening || isConnecting)) voice.stopRecordingOnly()
+                      if (voice && (isVoiceActive)) voice.stopRecordingOnly()
                     }}
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
                     rows={1}
                     className={cn(
                       'w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30',
-                      (isListening || isConnecting) && 'caret-transparent',
+                      (isVoiceActive) && 'caret-transparent',
                     )}
                   />
                 </div>
@@ -217,20 +223,15 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
             {/* Action bar */}
             <div className="flex items-center px-3 py-2.5">
-              {/* Left — Attach */}
-              <GlassIconButton
-                icon={<Icons.Plus  />}
-                tooltip="Upload file"
-                tooltipSide="right"
-              />
-
               {/* Center — clickable hover zone to activate text input */}
               {!inputActive ? (
                 <button
                   onClick={activateInput}
-                  className="mx-3 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-white/10"
+                  className="mr-3 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-white/10"
                 >
-                  <span className="text-[15px] leading-none text-white/30">Ask anything...</span>
+                  {!isSpeaking && (
+                    <span className="text-[15px] leading-none text-white/30">Ask anything...</span>
+                  )}
                 </button>
               ) : (
                 <div className="flex-1" />
@@ -244,11 +245,26 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                   onMouseEnter={handleControlsMouseEnter}
                   onMouseLeave={handleControlsMouseLeave}
                 >
-                  {/* Speaker toggle — slides out first (farthest from orb) */}
+                  {/* Attach — hover-only */}
                   <div
                     className={cn(
                       'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      controlsVisible
+                      hoverOnly
+                        ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-150'
+                        : 'pointer-events-none w-0 translate-x-8 overflow-hidden opacity-0 duration-150 delay-0',
+                    )}
+                  >
+                    <GlassIconButton
+                      icon={<Icons.Plus />}
+                      tooltip="Upload file"
+                      tooltipSide="top"
+                    />
+                  </div>
+                  {/* Speaker toggle — hover-only */}
+                  <div
+                    className={cn(
+                      'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+                      hoverOnly
                         ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-100'
                         : 'pointer-events-none w-0 translate-x-6 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
@@ -260,35 +276,35 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                       onClick={toggleTts}
                     />
                   </div>
-                  {/* Stop button — visible when connecting, listening, or lingering */}
+                  {/* Stop button — visible when recording, speaking, or lingering */}
                   <div
                     data-testid="stop-recording-button"
                     className={cn(
                       'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      controlsVisible && (isConnecting || isListening || lingerVisible)
+                      controlsVisible && (isConnecting || isListening || isSpeaking || lingerVisible)
                         ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-50'
                         : 'pointer-events-none w-0 translate-x-4 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
                   >
                     <GlassIconButton
-                      icon={<Icons.PlayerStopFilled className="size-3.5" />}
-                      tooltip="Stop recording"
+                      icon={<Icons.PlayerStop className="size-3.5" />}
+                      tooltip={isSpeaking ? 'Stop speaking' : 'Stop recording'}
                       tooltipSide="top"
-                      onClick={() => voice?.stopRecordingOnly()}
+                      onClick={() => isSpeaking ? voice?.interruptTTS() : voice?.stopRecordingOnly()}
                     />
                   </div>
-                  {/* Spinner (connecting) or voice bars (listening/lingering) */}
+                  {/* Spinner (connecting) or voice bars (listening/speaking/lingering) */}
                   <div
                     className={cn(
                       'flex items-center justify-center',
                       'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      controlsVisible && (isConnecting || isListening || lingerVisible)
+                      controlsVisible && (isConnecting || isListening || isSpeaking || lingerVisible)
                         ? 'mr-1.5 h-10 w-10 translate-x-0 opacity-100 duration-250'
                         : 'pointer-events-none h-10 w-0 translate-x-2 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
                   >
                     {isConnecting
-                      ? <Icons.Loader2 className="size-4 animate-spin text-white/70" />
+                      ? <Spinner className="size-5 text-white/70" />
                       : <VoiceBars analyser={voice?.analyser ?? null} />
                     }
                   </div>

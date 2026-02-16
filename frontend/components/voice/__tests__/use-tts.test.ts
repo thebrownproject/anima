@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
 
-const { mockAudioContext, mockWorkletNode, mockFetch, mockEnsureResumed, mockLoadWorkletModule, mockDestroy } = vi.hoisted(() => {
+const { mockAudioContext, mockAnalyser, mockWorkletNode, mockFetch, mockEnsureResumed, mockLoadWorkletModule, mockDestroy } = vi.hoisted(() => {
   const mockPort = {
     postMessage: vi.fn(),
     onmessage: null as ((e: MessageEvent) => void) | null,
@@ -13,9 +13,16 @@ const { mockAudioContext, mockWorkletNode, mockFetch, mockEnsureResumed, mockLoa
     disconnect: vi.fn(),
   }
 
+  const mockAnalyser = {
+    fftSize: 0,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  }
+
   const mockAudioContext = {
     destination: {},
     state: 'running' as AudioContextState,
+    createAnalyser: vi.fn(() => mockAnalyser),
   }
 
   const mockEnsureResumed = vi.fn().mockResolvedValue(mockAudioContext)
@@ -24,6 +31,7 @@ const { mockAudioContext, mockWorkletNode, mockFetch, mockEnsureResumed, mockLoa
 
   return {
     mockAudioContext,
+    mockAnalyser,
     mockWorkletNode,
     mockFetch: vi.fn(),
     mockEnsureResumed,
@@ -69,6 +77,7 @@ describe('useTTS', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockWorkletNode.port.onmessage = null
+    mockAudioContext.createAnalyser.mockReturnValue(mockAnalyser)
   })
 
   afterEach(() => {
@@ -100,7 +109,8 @@ describe('useTTS', () => {
       body: JSON.stringify({ text: 'hello world' }),
     }))
     expect(result.current.isSpeaking).toBe(true)
-    expect(mockWorkletNode.connect).toHaveBeenCalledWith(mockAudioContext.destination)
+    expect(mockWorkletNode.connect).toHaveBeenCalledWith(mockAnalyser)
+    expect(mockAnalyser.connect).toHaveBeenCalledWith(mockAudioContext.destination)
   })
 
   it('interrupt() aborts fetch and disconnects worklet', async () => {

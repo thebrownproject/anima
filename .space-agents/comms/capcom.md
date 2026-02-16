@@ -4005,3 +4005,40 @@ No code written — pure exploration and planning.
 - m7b.4.12.12 (source wallpaper images) can be closed — mesh gradients replaced it
 
 ---
+
+## [2026-02-17 07:15] Session 183
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Fixed TTS onset clipping (m7b.4.15.9)** — deep investigation with debug agent revealed two-part root cause:
+
+1. **AudioWorklet `process()` runs before `connect()`**: The worklet consumed pre-buffered PCM samples into an unconnected output. The 5 fix attempts from Session 182 all failed because they were consumed before audio reached speakers. Fix: moved pre-buffering INTO the worklet. Node connects immediately, worklet outputs silence until enough data accumulates (all on audio thread, no race conditions).
+
+2. **OpenAI TTS burst-then-pause streaming pattern**: After fixing the connect race, still clipping. Added underrun detection — discovered OpenAI sends an initial ~4800 sample burst then pauses ~370ms before continuous streaming. The 200ms pre-buffer was exhausted during the gap. Fix: increased pre-buffer to 14400 samples (600ms) to cover the gap.
+
+**Added TTS visualization + stop button** — real-time voice bars and stop button now appear during TTS playback.
+
+Files changed:
+- `voice/audio-engine.ts` — worklet now owns buffering: `preBuffer=14400` (600ms), `fadeInSamples=1200` (50ms), `started` flag gates playback, `clear` resets state
+- `voice/use-tts.ts` — simplified `streamPCMToWorklet()`: connects immediately, no main-thread buffer tracking. Added TTS `AnalyserNode` (fftSize 256) for real-time visualization.
+- `voice/voice-provider.tsx` — switches exposed `analyser` between mic (listening) and TTS (speaking) based on persona state
+- `desktop/chat-bar.tsx` — stop button + voice bars now visible during `speaking` state. Stop calls `interruptTTS()` during TTS, `stopRecordingOnly()` during recording.
+- `voice/__tests__/use-tts.test.ts` — updated mocks for analyser routing chain
+
+### Decisions Made
+- 600ms pre-buffer adds ~400ms perceived delay but eliminates stutter. Acceptable — total speak-to-audio is ~600-800ms.
+- TTS analyser is separate from mic analyser (different subgraphs, same AudioContext).
+- Voice provider switches analyser by persona state rather than exposing both.
+
+### Gotchas
+- Web Audio `process()` runs even on disconnected AudioWorkletNodes — confirmed by spec. This is why ALL previous fade-in/pre-buffer attempts failed.
+- OpenAI `gpt-4o-mini-tts` with `response_format: 'pcm'` has burst-then-pause delivery. First ~200ms arrives fast, then ~370ms gap before continuous streaming.
+
+### Next Action
+- Test TTS visualization and stop button in browser
+- m7b.4.15.11 (TTS blocked after STT use — dual AudioContext conflict)
+- stackdocs-5it (rightmost voice bar never animates)
+
+---

@@ -36,8 +36,8 @@ export function useVoiceMaybe(): VoiceContextValue | null {
 }
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
-  const { startListening, stopListening, analyser } = useSTT()
-  const { speak, interrupt, isSpeaking } = useTTS()
+  const { startListening, stopListening, analyser: micAnalyser } = useSTT()
+  const { speak, interrupt, isSpeaking, analyser: ttsAnalyser } = useTTS()
   const { status } = useWebSocket()
 
   const prevStreamingRef = useRef(false)
@@ -135,6 +135,10 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
     }
   }, [stopListening, interrupt])
+
+  // Expose the active analyser: TTS during speaking, mic otherwise
+  const personaState = useVoiceStore((s) => s.personaState)
+  const analyser = personaState === 'speaking' ? ttsAnalyser : micAnalyser
 
   return (
     <VoiceContext.Provider value={{ startVoice, stopRecordingOnly, stopRecordingForSend, interruptTTS, analyser }}>

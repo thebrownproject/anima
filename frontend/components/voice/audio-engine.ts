@@ -16,7 +16,9 @@ class PcmStreamPlayer extends AudioWorkletProcessor {
     this.chunks = []
     this.offset = 0
     this.streamDone = false
-    this.fadeInSamples = 480  // 20ms fade-in at 24kHz
+    this.fadeInSamples = 1200   // 50ms fade-in at 24kHz
+    this.preBuffer = 14400     // 600ms at 24kHz — covers OpenAI's burst-then-pause gap
+    this.started = false
     this.samplesPlayed = 0
     this.port.onmessage = (e) => {
       if (e.data.type === 'audio') {
@@ -26,12 +28,25 @@ class PcmStreamPlayer extends AudioWorkletProcessor {
       } else if (e.data.type === 'clear') {
         this.chunks = []
         this.offset = 0
+        this.started = false
+        this.samplesPlayed = 0
         this.streamDone = true
       }
     }
   }
   process(inputs, outputs) {
     const out = outputs[0][0]
+    // Pre-buffer: output silence until enough data has accumulated
+    if (!this.started) {
+      if (this.streamDone) { this.started = true }
+      else {
+        let queued = 0
+        for (let i = 0; i < this.chunks.length; i++) queued += this.chunks[i].length
+        queued -= this.offset
+        if (queued < this.preBuffer) return true
+        this.started = true
+      }
+    }
     let written = 0
     while (written < out.length && this.chunks.length > 0) {
       const chunk = this.chunks[0]
@@ -145,13 +160,6 @@ export function connectAnalyser(): AnalyserNode | null {
   }
 }
 
-/** Disconnect analyser (does NOT close context or release mic). */
-export function disconnectAnalyser(): void {
-  if (source) { try { source.disconnect() } catch { /* already disconnected */ } }
-  source = null
-  analyser = null
-}
-
 // ─── Cleanup ─────────────────────────────────────────────────────────────────
 
 /** Full teardown — close context, release mic, revoke blob URL. */
@@ -161,15 +169,4 @@ export function destroy(): void {
   if (ctx && ctx.state !== 'closed') { ctx.close().catch(() => {}) }
   ctx = null
   workletLoaded = false
-}
-
-// ─── Test helpers (not for production use) ───────────────────────────────────
-
-export function _reset(): void {
-  ctx = null
-  stream = null
-  source = null
-  analyser = null
-  workletLoaded = false
-  blobUrl = null
 }
