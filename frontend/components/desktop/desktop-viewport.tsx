@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 
 import { useDesktopStore, WORLD_WIDTH, WORLD_HEIGHT } from '@/lib/stores/desktop-store'
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
+import { setWallpaperTransform } from '@/components/wallpaper/wallpaper-layer'
 
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.0
@@ -66,6 +67,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
     const el = transformRef.current
     ;(el.style as unknown as Record<string, string>).zoom = ''
     el.style.transform = `translate3d(${v.x}px, ${v.y}px, 0) scale(${v.scale})`
+    setWallpaperTransform(v.x, v.y, v.scale)
     isSettled.current = false
     updateHud(v)
   }
@@ -75,6 +77,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
     const el = transformRef.current
     ;(el.style as unknown as Record<string, string>).zoom = `${v.scale}`
     el.style.transform = `translate3d(${v.x / v.scale}px, ${v.y / v.scale}px, 0)`
+    setWallpaperTransform(v.x, v.y, v.scale)
     isSettled.current = true
     updateHud(v)
   }
