@@ -3844,3 +3844,44 @@ Session 179 handed over a rewritten voice system (shared AudioContext singleton 
 - Consider lazy-loading Rive WASM more aggressively (suspect #2 from debug agent).
 
 ---
+
+## [2026-02-16 21:10] Session 181
+
+**Branch:** main | **Git:** uncommitted (bridge + wallpaper from prior sessions)
+
+### What Happened
+
+**Brainstorm + planning session for STT connecting UX + word-loss fix (m7b.4.15.12).**
+
+No code written — pure exploration and planning.
+
+**Brainstorm (spec.md created):**
+- Identified two problems: (1) words lost on 2nd+ recordings, (2) no visual feedback during Deepgram WS connection setup.
+- Root cause analysis: lazy Deepgram SDK import (~200-400ms) accidentally gives the audio pipeline's DSP (noiseSuppression, echoCancellation) time to warm up on first recording. On 2nd+ recordings, SDK is cached (0ms), so MediaRecorder starts immediately after `getUserMedia()` — before audio hardware stabilizes. First 1-3 chunks contain silence/garbled audio.
+- Solution: new `connecting` PersonaState between idle and listening. Show spinner (shadcn Loader2 in glass button) during WS handshake. Delay `MediaRecorder.start()` until Deepgram WS `Open` event. Remove entire audio buffer mechanism.
+- User chose: connection-aware spinner (not fixed duration), every recording start (not first only), Rive orb reuses listening animation during connecting.
+
+**Planning (plan.md + 6 Beads created):**
+- Convened planning council (task planner, sequencer, implementer).
+- HOUSTON merged Tasks 5+6 (both edit chat-bar.tsx, no parallelism benefit with solo worker).
+- Final: 5 tasks, ~80 min total, critical path ~70 min.
+- Feature: `m7b.4.15.12` (STT Connecting UX + Word-Loss Fix)
+- Tasks: `.13` (voice-store FSM) → `.14` (use-stt refactor) → `.15` (voice-provider) → `.17` (chat-bar); `.16` (persona-orb, parallel with .14-.15)
+- Dependencies set via `bd dep add`.
+- Folder moved to `mission/staged/m7b.4.15.12-stt-connecting-ux/`.
+
+### Decisions Made
+
+- **`connecting` state, not sub-state** — clean FSM addition rather than boolean on existing listening state.
+- **Delay recorder until WS Open** — no buffering at all. The spinner IS the honest signal that recording hasn't started.
+- **Remove buffer mechanism entirely** — audioBufferRef, wsOpenRef, flush loop, overflow check all deleted. Simpler code.
+- **Merge chat-bar tasks** — render logic (spinner vs bars) and behavior logic (Escape, Send, linger) done in one pass since both edit same file.
+- **`toRiveState('connecting') → 'listening'`** — not thinking. Listening animation is more intuitive for "getting ready to listen."
+- **MediaRecorder constructed eagerly, `.start()` delayed** — constructor errors caught outside async Open handler.
+
+### Next Action
+
+- Run `/mission solo` to execute the 5 tasks (m7b.4.15.13 through m7b.4.15.17).
+- Task 1 (voice-store FSM) is the only unblocked task — start there.
+
+---
