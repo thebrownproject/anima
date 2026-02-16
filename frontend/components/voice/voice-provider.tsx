@@ -50,8 +50,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const startVoice = useCallback(async () => {
     voiceSessionRef.current = true
     useVoiceStore.getState().clearTranscript()
-    useVoiceStore.getState().setPersonaState('listening')
-    await startListening()
+    useVoiceStore.getState().setPersonaState('connecting')
+    await startListening(() => useVoiceStore.getState().setPersonaState('listening'))
   }, [startListening])
 
   const stopRecordingOnly = useCallback(() => {

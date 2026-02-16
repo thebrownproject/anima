@@ -78,6 +78,8 @@ const CHAT_STORE_DEFAULTS = {
 describe('VoiceProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: simulate instant WS open so existing tests pass through connecting -> listening
+    mockStartListening.mockImplementation((onOpen?: () => void) => { onOpen?.() })
     mockStatus = 'connected'
     mockIsSpeaking = false
     useVoiceStore.setState(VOICE_STORE_DEFAULTS)
@@ -134,7 +136,7 @@ describe('VoiceProvider', () => {
 
     const { result } = renderHook(() => useVoice(), { wrapper })
 
-    // idle -> listening (starts voice session, sets voiceSessionRef true)
+    // idle -> connecting -> listening (onOpen fires synchronously in default mock)
     await act(() => result.current.startVoice())
     expect(useVoiceStore.getState().personaState).toBe('listening')
 
@@ -344,5 +346,73 @@ describe('VoiceProvider', () => {
 
     expect(mockStopListening).toHaveBeenCalled()
     expect(mockInterrupt).toHaveBeenCalled()
+  })
+
+  // --- Connecting state tests (m7b.4.15.15) ---
+
+  it('startVoice() sets personaState to connecting', async () => {
+    mockStartListening.mockImplementation(() => {}) // no onOpen
+    useVoiceStore.setState({ personaState: 'idle' })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    await act(() => result.current.startVoice())
+    expect(useVoiceStore.getState().personaState).toBe('connecting')
+  })
+
+  it('after WS opens (onOpen), personaState transitions to listening', async () => {
+    let capturedOnOpen: (() => void) | undefined
+    mockStartListening.mockImplementation((onOpen?: () => void) => { capturedOnOpen = onOpen })
+    useVoiceStore.setState({ personaState: 'idle' })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    await act(() => result.current.startVoice())
+    expect(useVoiceStore.getState().personaState).toBe('connecting')
+
+    act(() => { capturedOnOpen?.() })
+    expect(useVoiceStore.getState().personaState).toBe('listening')
+  })
+
+  it('stopRecordingOnly() from connecting transitions to idle', async () => {
+    mockStartListening.mockImplementation(() => {}) // no onOpen — stay in connecting
+    useVoiceStore.setState({ personaState: 'idle' })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    await act(() => result.current.startVoice())
+    expect(useVoiceStore.getState().personaState).toBe('connecting')
+
+    act(() => result.current.stopRecordingOnly())
+    expect(useVoiceStore.getState().personaState).toBe('idle')
+  })
+
+  it('full flow: idle -> connecting -> listening -> thinking -> speaking -> idle', async () => {
+    let capturedOnOpen: (() => void) | undefined
+    mockStartListening.mockImplementation((onOpen?: () => void) => { capturedOnOpen = onOpen })
+    useVoiceStore.setState({ personaState: 'idle', ttsEnabled: true })
+
+    const { result } = renderHook(() => useVoice(), { wrapper })
+
+    await act(() => result.current.startVoice())
+    expect(useVoiceStore.getState().personaState).toBe('connecting')
+
+    act(() => { capturedOnOpen?.() })
+    expect(useVoiceStore.getState().personaState).toBe('listening')
+
+    act(() => { useVoiceStore.getState().setPersonaState('thinking') })
+    expect(useVoiceStore.getState().personaState).toBe('thinking')
+
+    act(() => {
+      useChatStore.setState({
+        messages: [{ id: '1', role: 'agent', content: 'response', timestamp: Date.now() }],
+        isAgentStreaming: true,
+      })
+    })
+    act(() => { useChatStore.setState({ isAgentStreaming: false }) })
+    expect(useVoiceStore.getState().personaState).toBe('speaking')
+
+    act(() => result.current.interruptTTS())
+    expect(useVoiceStore.getState().personaState).toBe('idle')
   })
 })
