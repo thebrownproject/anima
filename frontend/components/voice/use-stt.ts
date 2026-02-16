@@ -17,7 +17,7 @@ function getDeepgramSDK() {
 }
 
 interface STTControls {
-  startListening: () => Promise<void>
+  startListening: (onOpen?: () => void) => Promise<void>
   stopListening: () => void
   isListening: boolean
   error: string | null
@@ -47,8 +47,6 @@ export function useSTT(): STTControls {
   const recorderRef = useRef<MediaRecorder | null>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRef = useRef(0)
-  const audioBufferRef = useRef<Blob[]>([])
-  const wsOpenRef = useRef(false)
   const tokenCacheRef = useRef<CachedToken | null>(null)
 
   // Pre-fetch token on mount
@@ -69,8 +67,6 @@ export function useSTT(): STTControls {
     connectionRef.current?.requestClose()
     recorderRef.current = null
     connectionRef.current = null
-    audioBufferRef.current = []
-    wsOpenRef.current = false
 
     // Release mic (stops tracks, disconnects analyser) — frees audio pipeline for TTS
     releaseMic()
@@ -78,7 +74,7 @@ export function useSTT(): STTControls {
     setIsListening(false)
   }, [])
 
-  const startListening = useCallback(async () => {
+  const startListening = useCallback(async (onOpen?: () => void) => {
     if (connectionRef.current || recorderRef.current) return
 
     setError(null)
@@ -147,38 +143,28 @@ export function useSTT(): STTControls {
     })
     connectionRef.current = connection
 
-    // 4. MediaRecorder — buffer audio until Deepgram WS opens
+    // 4. MediaRecorder — constructed eagerly, started when WS opens
     const recorder = new MediaRecorder(stream)
     recorderRef.current = recorder
     recorder.addEventListener('dataavailable', (e: BlobEvent) => {
       if (e.data.size === 0) return
-      if (wsOpenRef.current) {
-        connection.send(e.data)
-      } else {
-        audioBufferRef.current.push(e.data)
-        if (audioBufferRef.current.length > 100) {
-          setError('Voice connection took too long')
-          stopListening()
-        }
-      }
+      connection.send(e.data)
     })
-    try {
-      recorder.start(100)
-    } catch {
-      setError('Microphone recording failed to start')
-      stopListening()
-      return
-    }
-    setIsListening(true)
 
-    // 5. Flush buffer when Deepgram WS opens
+    // 5. Start recording only after Deepgram WS opens (prevents word loss)
     connection.addListener(LiveTranscriptionEvents.Open, () => {
       if (generationRef.current !== thisGen) { stopListening(); return }
       if (!stream.active) { stopListening(); return }
-      for (const chunk of audioBufferRef.current) connection.send(chunk)
-      audioBufferRef.current = []
-      wsOpenRef.current = true
+      try {
+        recorder.start(100)
+      } catch {
+        setError('Microphone recording failed to start')
+        stopListening()
+        return
+      }
+      setIsListening(true)
       keepAliveRef.current = setInterval(() => connection.keepAlive(), 10_000)
+      onOpen?.()
     })
 
     connection.addListener(LiveTranscriptionEvents.Transcript, (data: LiveTranscriptionEvent) => {
@@ -207,8 +193,6 @@ export function useSTT(): STTControls {
       if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
       recorderRef.current = null
       connectionRef.current = null
-      audioBufferRef.current = []
-      wsOpenRef.current = false
       setIsListening(false)
     })
   }, [stopListening])

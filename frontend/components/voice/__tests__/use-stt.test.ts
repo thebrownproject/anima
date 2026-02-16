@@ -235,6 +235,71 @@ describe('useSTT', () => {
     expect(mockAcquireMic).toHaveBeenCalledTimes(1)
   })
 
+  // --- Recorder delay + onOpen tests ---
+
+  it('MediaRecorder NOT started until WS Open', async () => {
+    const { result } = await renderSTTHook()
+    mockMicStream()
+
+    await act(() => result.current.startListening())
+
+    expect(globalThis.MediaRecorder).toHaveBeenCalled()
+    expect(mockMediaRecorder.start).not.toHaveBeenCalled()
+
+    triggerOpen()
+    expect(mockMediaRecorder.start).toHaveBeenCalledWith(100)
+  })
+
+  it('onOpen callback fires when WS opens', async () => {
+    const { result } = await renderSTTHook()
+    mockMicStream()
+    const onOpen = vi.fn()
+
+    await act(() => result.current.startListening(onOpen))
+
+    expect(onOpen).not.toHaveBeenCalled()
+    triggerOpen()
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it('ondataavailable sends directly without buffering', async () => {
+    const { result } = await renderSTTHook()
+    mockMicStream()
+
+    await act(() => result.current.startListening())
+    triggerOpen()
+
+    const dataHandler = getRecorderHandler('dataavailable')
+    expect(dataHandler).toBeDefined()
+
+    const chunk = new Blob(['audio'], { type: 'audio/webm' })
+    act(() => dataHandler({ data: chunk }))
+
+    expect(mockConnection.send).toHaveBeenCalledWith(chunk)
+  })
+
+  it('isListening true only after WS Open', async () => {
+    const { result } = await renderSTTHook()
+    mockMicStream()
+
+    await act(() => result.current.startListening())
+
+    expect(result.current.isListening).toBe(false)
+    triggerOpen()
+    expect(result.current.isListening).toBe(true)
+  })
+
+  it('audioBufferRef and wsOpenRef do not exist in source', async () => {
+    const path = await import('path')
+    const fs = await import('fs')
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../use-stt.ts'),
+      'utf-8'
+    )
+    expect(source).not.toContain('audioBufferRef')
+    expect(source).not.toContain('wsOpenRef')
+  })
+
   it('fetches fresh token when cache is missing', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false }) // pre-fetch fails
     const hook = renderHook(() => useSTT())
@@ -332,55 +397,4 @@ describe('useSTT', () => {
     expect(mockConnection.requestClose).not.toHaveBeenCalled()
   })
 
-  // --- Audio buffering tests ---
-
-  it('buffers audio chunks before WebSocket opens and flushes on open', async () => {
-    const { result } = await renderSTTHook()
-    mockMicStream()
-
-    await act(() => result.current.startListening())
-
-    expect(mockMediaRecorder.start).toHaveBeenCalledWith(100)
-    const dataHandler = getRecorderHandler('dataavailable')
-    expect(dataHandler).toBeDefined()
-
-    const chunk1 = new Blob(['audio1'], { type: 'audio/webm' })
-    const chunk2 = new Blob(['audio2'], { type: 'audio/webm' })
-    act(() => {
-      dataHandler({ data: chunk1 })
-      dataHandler({ data: chunk2 })
-    })
-
-    expect(mockConnection.send).not.toHaveBeenCalled()
-
-    triggerOpen()
-
-    expect(mockConnection.send).toHaveBeenCalledTimes(2)
-    expect(mockConnection.send).toHaveBeenNthCalledWith(1, chunk1)
-    expect(mockConnection.send).toHaveBeenNthCalledWith(2, chunk2)
-
-    mockConnection.send.mockClear()
-    const chunk3 = new Blob(['audio3'], { type: 'audio/webm' })
-    act(() => dataHandler({ data: chunk3 }))
-    expect(mockConnection.send).toHaveBeenCalledWith(chunk3)
-  })
-
-  it('stops listening if audio buffer overflows', async () => {
-    const { result } = await renderSTTHook()
-    mockMicStream()
-
-    await act(() => result.current.startListening())
-
-    const dataHandler = getRecorderHandler('dataavailable')
-    expect(dataHandler).toBeDefined()
-
-    act(() => {
-      for (let i = 0; i <= 100; i++) {
-        dataHandler({ data: new Blob([`chunk-${i}`]) })
-      }
-    })
-
-    expect(result.current.error).toBe('Voice connection took too long')
-    expect(result.current.isListening).toBe(false)
-  })
 })
