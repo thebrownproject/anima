@@ -50,6 +50,10 @@ vi.mock('../ws-provider', () => ({
   }),
 }))
 
+vi.mock('../../voice/voice-bars', () => ({
+  VoiceBars: () => <div data-testid="voice-bars" />,
+}))
+
 import { ChatBar } from '../chat-bar'
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -306,5 +310,88 @@ describe('ChatBar voice controls', () => {
     const controls = screen.getByTestId('voice-controls')
     const firstChild = controls.children[0] as HTMLElement
     expect(firstChild.className).toContain('opacity-100')
+  })
+})
+
+describe('ChatBar connecting state', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockVoiceEnabled = true
+    useVoiceStore.setState({ ...VOICE_STORE_DEFAULTS, personaState: 'connecting' })
+    useChatStore.setState(CHAT_STORE_DEFAULTS)
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows spinner during connecting', () => {
+    render(<ChatBar />, { wrapper: Wrapper })
+    const spinner = document.querySelector('.animate-spin')
+    expect(spinner).toBeTruthy()
+  })
+
+  it('shows VoiceBars during listening (not spinner)', () => {
+    useVoiceStore.setState({ personaState: 'listening' })
+    render(<ChatBar />, { wrapper: Wrapper })
+    expect(screen.getByTestId('voice-bars')).toBeTruthy()
+    expect(document.querySelector('.animate-spin')).toBeNull()
+  })
+
+  it('shows stop button during connecting', () => {
+    render(<ChatBar />, { wrapper: Wrapper })
+    const stopBtn = screen.getByTestId('stop-recording-button')
+    expect(stopBtn.className).toContain('opacity-100')
+  })
+
+  it('Escape cancels during connecting', () => {
+    render(<ChatBar />, { wrapper: Wrapper })
+    const textarea = screen.getByRole('textbox')
+    fireEvent.keyDown(textarea, { key: 'Escape' })
+    expect(mockStopRecordingOnly).toHaveBeenCalledOnce()
+  })
+
+  it('Send stops voice during connecting', () => {
+    useChatStore.setState({ draft: 'some text', inputActive: true })
+    render(<ChatBar />, { wrapper: Wrapper })
+    const textarea = screen.getByRole('textbox')
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+    expect(mockStopRecordingForSend).toHaveBeenCalledOnce()
+  })
+
+  it('textarea expands during connecting', () => {
+    render(<ChatBar />, { wrapper: Wrapper })
+    // inputActive should be true (expanded) during connecting
+    expect(useChatStore.getState().inputActive).toBe(true)
+  })
+
+  it('transcript not appended during connecting', () => {
+    render(<ChatBar />, { wrapper: Wrapper })
+    act(() => {
+      useVoiceStore.setState({ transcript: 'should not appear' })
+    })
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
+    expect(textarea.value).toBe('')
+  })
+
+  it('linger triggers on connecting → idle (cancel)', () => {
+    vi.useFakeTimers()
+    render(<ChatBar />, { wrapper: Wrapper })
+
+    // Cancel: connecting → idle
+    act(() => {
+      useVoiceStore.setState({ personaState: 'idle' })
+    })
+
+    // Controls should still be visible (linger period)
+    const controls = screen.getByTestId('voice-controls')
+    const firstChild = controls.children[0] as HTMLElement
+    expect(firstChild.className).toContain('opacity-100')
+
+    // After LINGER_DELAY (1000ms), controls should hide
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(firstChild.className).toContain('opacity-0')
+
+    vi.useRealTimers()
   })
 })

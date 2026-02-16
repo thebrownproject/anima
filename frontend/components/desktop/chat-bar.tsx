@@ -28,6 +28,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const prevTranscriptRef = useRef('')
   const wasListeningRef = useRef(false)
+  const wasConnectingRef = useRef(false)
   const { send, status } = useWebSocket()
   const isConnected = status === 'connected'
   const { chips, mode, isAgentStreaming, addMessage, draft: inputValue, setDraft: setInputValue, clearDraft, inputActive, setInputActive } = useChatStore()
@@ -40,6 +41,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const toggleTts = useVoiceStore((s) => s.toggleTts)
 
   const isListening = personaState === 'listening'
+  const isConnecting = personaState === 'connecting'
 
   const sendMessage = useCallback((text: string) => {
     addMessage({ role: 'user', content: text, timestamp: Date.now() })
@@ -47,28 +49,26 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   }, [addMessage, send, activeStackId])
 
   const handleSend = useCallback(() => {
-    // If recording, stop STT but keep voice session alive for TTS
-    if (voice && isListening) voice.stopRecordingForSend()
+    if (voice && (isListening || isConnecting)) voice.stopRecordingForSend()
     const text = inputValue.trim()
     if (!text || !isConnected) return
     sendMessage(text)
     clearDraft()
     setInputActive(false)
     useVoiceStore.getState().clearTranscript()
-    // Show thinking state while waiting for agent response
     const { personaState: ps } = useVoiceStore.getState()
     if (voiceActive && ps !== 'asleep') {
       useVoiceStore.getState().setPersonaState('thinking')
     }
     inputRef.current?.blur()
-  }, [inputValue, sendMessage, clearDraft, isConnected, voice, isListening, voiceActive])
+  }, [inputValue, sendMessage, clearDraft, isConnected, voice, isListening, isConnecting, voiceActive])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
-    if (e.key === 'Escape' && voice && isListening) {
+    if (e.key === 'Escape' && voice && (isListening || isConnecting)) {
       e.preventDefault()
       voice.stopRecordingOnly()
     }
@@ -87,16 +87,21 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
   // Expand textarea on voice start (no focus — hides cursor), focus or collapse when done
   useEffect(() => {
-    if (isListening) {
-      wasListeningRef.current = true
+    if (isListening || isConnecting) {
+      if (isConnecting) wasConnectingRef.current = true
+      if (isListening) wasListeningRef.current = true
       setInputActive(true)
       inputRef.current?.blur()
-      prevTranscriptRef.current = ''
+      if (isListening) prevTranscriptRef.current = ''
       setLingerVisible(false)
       if (lingerTimer.current) clearTimeout(lingerTimer.current)
-    } else if (wasListeningRef.current) {
-      // Only run linger logic on listening → not-listening transition
+    } else if (wasListeningRef.current || wasConnectingRef.current) {
+      // Linger on listening→done or connecting→idle (cancel)
+      // connecting→listening is NOT a cancel — wasConnectingRef cleared by the isListening branch above
+      const wasActive = wasListeningRef.current || wasConnectingRef.current
       wasListeningRef.current = false
+      wasConnectingRef.current = false
+      if (!wasActive) return
       if (inputValue.trim()) {
         setTimeout(() => inputRef.current?.focus(), 250)
         setLingerVisible(true)
@@ -109,7 +114,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
         }, LINGER_DELAY)
       }
     }
-  }, [isListening]) // eslint-disable-line react-hooks/exhaustive-deps -- transition-only effect
+  }, [isListening, isConnecting]) // eslint-disable-line react-hooks/exhaustive-deps -- transition-only effect
 
   // Delta-append transcript to draft as STT produces text (one instance only to prevent double-append)
   useEffect(() => {
@@ -141,7 +146,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
     hoverTimer.current = setTimeout(() => setShowControls(false), LINGER_DELAY)
   }, [])
 
-  const controlsVisible = isListening || showControls || lingerVisible
+  const controlsVisible = isListening || isConnecting || showControls || lingerVisible
 
   const hasText = inputValue.trim().length > 0
   const isHidden = !embedded && mode === 'panel'
@@ -196,14 +201,14 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                     value={inputValue}
                     onChange={(e) => {
                       setInputValue(e.target.value)
-                      if (voice && isListening) voice.stopRecordingOnly()
+                      if (voice && (isListening || isConnecting)) voice.stopRecordingOnly()
                     }}
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
                     rows={1}
                     className={cn(
                       'w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30',
-                      isListening && 'caret-transparent',
+                      (isListening || isConnecting) && 'caret-transparent',
                     )}
                   />
                 </div>
@@ -255,12 +260,12 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                       onClick={toggleTts}
                     />
                   </div>
-                  {/* Stop button — visible when listening or lingering */}
+                  {/* Stop button — visible when connecting, listening, or lingering */}
                   <div
                     data-testid="stop-recording-button"
                     className={cn(
                       'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      controlsVisible && (isListening || lingerVisible)
+                      controlsVisible && (isConnecting || isListening || lingerVisible)
                         ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-50'
                         : 'pointer-events-none w-0 translate-x-4 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
@@ -272,17 +277,20 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                       onClick={() => voice?.stopRecordingOnly()}
                     />
                   </div>
-                  {/* Voice bars — visible when listening or lingering */}
+                  {/* Spinner (connecting) or voice bars (listening/lingering) */}
                   <div
                     className={cn(
                       'flex items-center justify-center',
                       'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      controlsVisible && (isListening || lingerVisible)
+                      controlsVisible && (isConnecting || isListening || lingerVisible)
                         ? 'mr-1.5 h-10 w-10 translate-x-0 opacity-100 duration-250'
                         : 'pointer-events-none h-10 w-0 translate-x-2 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
                   >
-                    <VoiceBars analyser={voice?.analyser ?? null} />
+                    {isConnecting
+                      ? <Icons.Loader2 className="size-4 animate-spin text-white/70" />
+                      : <VoiceBars analyser={voice?.analyser ?? null} />
+                    }
                   </div>
                   <div className="size-10" />
                 </div>
