@@ -15,7 +15,8 @@ import { VoiceBars } from '@/components/voice/voice-bars'
 import { Spinner } from '@/components/ui/spinner'
 
 const HOVER_DELAY = 200 // ms — voice controls show delay
-const LINGER_DELAY = 1000 // ms — voice controls hide delay (after stop or mouse leave)
+const LINGER_DELAY = 1000 // ms — voice controls hide delay (after mouse leave)
+const POST_STT_DELAY = 2000 // ms — spinner shown after STT stops before controls hide
 
 interface ChatBarProps {
   embedded?: boolean
@@ -103,13 +104,13 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
       if (inputValue.trim()) {
         setTimeout(() => inputRef.current?.focus(), 250)
         setLingerVisible(true)
-        lingerTimer.current = setTimeout(() => setLingerVisible(false), LINGER_DELAY)
+        lingerTimer.current = setTimeout(() => setLingerVisible(false), POST_STT_DELAY)
       } else {
         setLingerVisible(true)
         lingerTimer.current = setTimeout(() => {
           setLingerVisible(false)
           if (!inputRef.current?.value?.trim()) setInputActive(false)
-        }, LINGER_DELAY)
+        }, POST_STT_DELAY)
       }
     }
   }, [isVoiceActive, isListening, isConnecting]) // eslint-disable-line react-hooks/exhaustive-deps -- transition-only effect
@@ -276,12 +277,12 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                       onClick={toggleTts}
                     />
                   </div>
-                  {/* Stop button — visible when recording, speaking, or lingering */}
+                  {/* Stop button — visible when recording or speaking (not during post-STT linger) */}
                   <div
                     data-testid="stop-recording-button"
                     className={cn(
                       'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      controlsVisible && (isConnecting || isListening || isSpeaking || lingerVisible)
+                      controlsVisible && (isConnecting || isListening || isSpeaking)
                         ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-50'
                         : 'pointer-events-none w-0 translate-x-4 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
@@ -303,7 +304,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                         : 'pointer-events-none h-10 w-0 translate-x-2 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
                   >
-                    {isConnecting
+                    {(isConnecting || (lingerVisible && !isListening && !isSpeaking))
                       ? <Spinner className="size-5 text-white/70" />
                       : <VoiceBars analyser={voice?.analyser ?? null} />
                     }

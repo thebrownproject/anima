@@ -4080,3 +4080,34 @@ File: `desktop/chat-panel.tsx`
 - m7b.4.12.12 (source wallpapers) can be closed — mesh gradients replaced it
 
 ---
+
+## [2026-02-17 21:15] Session 184
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Chat bar STT UX improvement** — Added post-recording spinner to `chat-bar.tsx`. When STT stops, instead of the stop button and voice bars disappearing instantly, a spinner shows for 2 seconds (`POST_STT_DELAY = 2000`). Stop button hides during this linger (nothing to stop), spinner replaces voice bars slot. Separated `POST_STT_DELAY` from hover `LINGER_DELAY` so they're independently tunable.
+
+Files: `frontend/components/desktop/chat-bar.tsx` (new constant, updated linger effect to use POST_STT_DELAY, stop button hides during linger, spinner shown when `lingerVisible && !isListening && !isSpeaking`)
+
+**Closed beads:**
+- stackdocs-m7b.4.15.11 (TTS blocked after STT) — already fixed by shared `audio-engine.ts` singleton AudioContext
+- stackdocs-m7b.4.12.12 (source wallpapers) — mesh gradients replaced static JPGs
+
+**Glass glow investigation (m7b.4.16)** — Extensive debugging of a visible lighter rectangular glow behind glass elements when rendered over mesh gradient canvas wallpaper. Confirmed: removing `backdrop-filter: blur()` eliminates the glow. The artifact is **position-dependent** (left side fine, right/bottom shows glow) with the SAME component and CSS. Attempted fixes that did NOT work: reducing blur radius, backdrop-brightness, backdrop-saturate, bg-black on page container, removing will-change:transform from wallpaper, removing grain overlay (mix-blend-mode), Tailwind arbitrary backdrop-filter values. Perplexity research confirmed this is a **known Chrome GPU compositing bug** — backdrop-filter rendering fails position-dependently due to GPU compositor calculating blur regions incorrectly at certain screen positions.
+
+### Decisions Made
+- Post-STT spinner delay set to 2s (user preference)
+- Glass glow is a Chrome compositor bug, not fixable via CSS — updated m7b.4.16 bead with full findings
+
+### Gotchas
+- Tailwind v4 `backdrop-brightness-*` utility classes may not compose correctly with `backdrop-blur-*` — neither Tailwind utility classes nor arbitrary value syntax `[backdrop-filter:blur()_brightness()]` had any visible effect. Possible Tailwind v4 bug or Chrome ignoring the brightness() function in this context.
+- Mesh gradient canvas at `RENDER_SCALE = 0.5` shows visible pixel grid when grain overlay is removed — grain was masking the low resolution.
+
+### Next Action
+- m7b.4.16 card content overflow fixes (text overflow, key-value pairs, break-words) — straightforward CSS, separate from the glass glow Chrome bug
+- m7b.4.15.8 integration smoke test
+- Consider option 2 (smaller blur) or option 3 (solid tinted glass) for the glow if it bothers users
+
+---
