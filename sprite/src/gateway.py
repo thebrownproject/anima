@@ -163,7 +163,24 @@ class SpriteGateway:
         await self.send(json.dumps(msg))
 
     async def _run_extraction(self, doc_id: str, filename: str, mime_type: str, file_path: str) -> None:
-        logger.info("Extraction triggered for %s (not yet implemented)", filename)
+        """Background task: hand file to agent for reading and extraction."""
+        try:
+            context = (
+                f"A file was just uploaded and saved to {file_path}.\n"
+                f"Filename: {filename}\n"
+                f"Please read the file, extract the key structured data, and create a canvas card "
+                f"with a table showing the main fields (e.g. invoice number, date, line items, total)."
+            )
+            async with self.mission_lock:
+                await self.runtime.handle_message(context)
+
+            if self._workspace_db:
+                await self._workspace_db.update_document_status(doc_id, "completed")
+
+        except Exception as e:
+            logger.error("Extraction failed for %s: %s", filename, e)
+            if self._workspace_db:
+                await self._workspace_db.update_document_status(doc_id, "failed")
 
     async def _handle_canvas(self, msg: dict[str, Any], req_id: str | None) -> None:
         payload = msg.get("payload", {})

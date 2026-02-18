@@ -196,3 +196,59 @@ async def test_gateway_move_invalid_card_returns_error(gateway, workspace_db, mo
     parsed = json.loads(last_call)
     assert parsed["type"] == "system"
     assert parsed["payload"]["event"] == "error"
+
+
+# -- Extraction tests ----------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_extraction_calls_runtime_and_completes(gateway, workspace_db):
+    """_run_extraction sends context to runtime and marks doc completed."""
+    gateway.runtime.handle_message = AsyncMock()
+
+    doc_id = "doc-123"
+    filename = "invoice.pdf"
+    await workspace_db.create_document(doc_id, filename, "application/pdf", "/workspace/uploads/doc-123_invoice.pdf")
+
+    await gateway._run_extraction(doc_id, filename, "application/pdf", "/workspace/uploads/doc-123_invoice.pdf")
+
+    gateway.runtime.handle_message.assert_called_once()
+    context_arg = gateway.runtime.handle_message.call_args[0][0]
+    assert "invoice.pdf" in context_arg
+    assert "/workspace/uploads/doc-123_invoice.pdf" in context_arg
+
+    row = await workspace_db.fetchone("SELECT * FROM documents WHERE doc_id = ?", (doc_id,))
+    assert row["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_run_extraction_marks_failed_on_error(gateway, workspace_db):
+    """_run_extraction marks doc failed when runtime raises."""
+    gateway.runtime.handle_message = AsyncMock(side_effect=RuntimeError("agent crashed"))
+
+    doc_id = "doc-456"
+    await workspace_db.create_document(doc_id, "bad.pdf", "application/pdf", "/workspace/uploads/doc-456_bad.pdf")
+
+    await gateway._run_extraction(doc_id, "bad.pdf", "application/pdf", "/workspace/uploads/doc-456_bad.pdf")
+
+    row = await workspace_db.fetchone("SELECT * FROM documents WHERE doc_id = ?", (doc_id,))
+    assert row["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_run_extraction_acquires_mission_lock(gateway, workspace_db):
+    """_run_extraction holds mission_lock during runtime call to prevent concurrent SDK access."""
+    lock_was_held = False
+
+    async def check_lock(*args, **kwargs):
+        nonlocal lock_was_held
+        lock_was_held = gateway.mission_lock.locked()
+
+    gateway.runtime.handle_message = AsyncMock(side_effect=check_lock)
+
+    doc_id = "doc-789"
+    await workspace_db.create_document(doc_id, "test.pdf", "application/pdf", "/tmp/test.pdf")
+
+    await gateway._run_extraction(doc_id, "test.pdf", "application/pdf", "/tmp/test.pdf")
+
+    assert lock_was_held, "mission_lock should be held during runtime.handle_message()"
