@@ -13,6 +13,7 @@ import { useVoiceMaybe } from '@/components/voice/voice-provider'
 import { PersonaOrb } from '@/components/voice/persona-orb'
 import { VoiceBars } from '@/components/voice/voice-bars'
 import { Spinner } from '@/components/ui/spinner'
+import { useFileUpload } from '@/hooks/use-file-upload'
 
 const HOVER_DELAY = 200 // ms — voice controls show delay
 const LINGER_DELAY = 1000 // ms — voice controls hide delay (after mouse leave)
@@ -26,12 +27,14 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const [showControls, setShowControls] = useState(false)
   const [lingerVisible, setLingerVisible] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const lingerTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const prevTranscriptRef = useRef('')
   const wasListeningRef = useRef(false)
   const wasConnectingRef = useRef(false)
   const { send, status } = useWebSocket()
+  const { sendUpload } = useFileUpload()
   const isConnected = status === 'connected'
   const { chips, mode, isAgentStreaming, addMessage, draft: inputValue, setDraft: setInputValue, clearDraft, inputActive, setInputActive } = useChatStore()
   const activeStackId = useDesktopStore((s) => s.activeStackId)
@@ -83,6 +86,12 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
   const handleBlur = () => {
     if (!inputValue) setInputActive(false)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) sendUpload(file)
+    e.target.value = ''
   }
 
   // --- Transcript → textarea wiring ---
@@ -222,6 +231,15 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
               </div>
             </div>
 
+            {/* Hidden file input */}
+            <input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
             {/* Action bar */}
             <div className="flex items-center px-3 py-2.5">
               {/* Center — clickable hover zone to activate text input */}
@@ -246,19 +264,13 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                   onMouseEnter={handleControlsMouseEnter}
                   onMouseLeave={handleControlsMouseLeave}
                 >
-                  {/* Attach — hover-only */}
-                  <div
-                    className={cn(
-                      'transition-all ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                      hoverOnly
-                        ? 'mr-1.5 w-10 translate-x-0 opacity-100 duration-250 delay-150'
-                        : 'pointer-events-none w-0 translate-x-8 overflow-hidden opacity-0 duration-150 delay-0',
-                    )}
-                  >
+                  {/* Attach — always visible */}
+                  <div className="mr-1.5">
                     <GlassIconButton
                       icon={<Icons.Plus />}
                       tooltip="Upload file"
                       tooltipSide="top"
+                      onClick={() => fileInputRef.current?.click()}
                     />
                   </div>
                   {/* Speaker toggle — hover-only */}
@@ -312,7 +324,13 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                   <div className="size-10" />
                 </div>
               ) : (
-                <div data-testid="mic-button">
+                <div className="flex items-center gap-1.5" data-testid="mic-button">
+                  <GlassIconButton
+                    icon={<Icons.Plus />}
+                    tooltip="Upload file"
+                    tooltipSide="top"
+                    onClick={() => fileInputRef.current?.click()}
+                  />
                   <GlassIconButton
                     icon={<Icons.Microphone />}
                     tooltip="Voice input"

@@ -167,6 +167,15 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     content TEXT NOT NULL,
     timestamp REAL
 );
+CREATE TABLE IF NOT EXISTS documents (
+    doc_id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL,
+    mime_type TEXT,
+    file_path TEXT NOT NULL,
+    card_id TEXT,
+    status TEXT DEFAULT 'processing',
+    created_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 
@@ -179,6 +188,7 @@ class WorkspaceDB(_BaseDB):
     async def connect(self) -> None:
         await super().connect()
         await self._migrate_card_position_columns()
+        await self._migrate_documents_table()
 
     async def _migrate_card_position_columns(self) -> None:
         """Add position columns to existing cards tables (CREATE TABLE IF NOT EXISTS won't)."""
@@ -193,6 +203,19 @@ class WorkspaceDB(_BaseDB):
                 logger.info("Migrated cards table: added %s", col)
             except Exception:
                 pass  # Column already exists
+
+    async def _migrate_documents_table(self) -> None:
+        """Create documents table on existing DBs that predate the schema addition."""
+        try:
+            await self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS documents ("
+                "doc_id TEXT PRIMARY KEY, filename TEXT NOT NULL, mime_type TEXT, "
+                "file_path TEXT NOT NULL, card_id TEXT, status TEXT DEFAULT 'processing', "
+                "created_at TEXT DEFAULT (datetime('now')))"
+            )
+            await self._conn.commit()
+        except Exception as e:
+            logger.warning("_migrate_documents_table: %s", e)
 
     # -- Stacks ----------------------------------------------------------------
 
@@ -342,3 +365,30 @@ class WorkspaceDB(_BaseDB):
             "LIMIT ? OFFSET MAX(0, (SELECT COUNT(*) FROM chat_messages) - ?)",
             (limit, limit),
         )
+
+    # -- Documents -------------------------------------------------------------
+
+    async def create_document(
+        self, doc_id: str, filename: str, mime_type: str, file_path: str, card_id: str | None = None
+    ) -> dict:
+        await self.execute(
+            "INSERT INTO documents (doc_id, filename, mime_type, file_path, card_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (doc_id, filename, mime_type, file_path, card_id),
+        )
+        return await self.fetchone("SELECT * FROM documents WHERE doc_id = ?", (doc_id,))
+
+    async def update_document_status(self, doc_id: str, status: str, card_id: str | None = None) -> None:
+        if card_id is not None:
+            await self.execute(
+                "UPDATE documents SET status = ?, card_id = ? WHERE doc_id = ?",
+                (status, card_id, doc_id),
+            )
+        else:
+            await self.execute(
+                "UPDATE documents SET status = ? WHERE doc_id = ?",
+                (status, doc_id),
+            )
+
+    async def list_documents(self) -> list[dict]:
+        return await self.fetchall("SELECT * FROM documents ORDER BY created_at DESC")

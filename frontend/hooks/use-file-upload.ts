@@ -1,0 +1,38 @@
+'use client'
+
+import { useCallback } from 'react'
+import { useWebSocket } from '@/components/desktop/ws-provider'
+
+const MAX_SIZE = 25 * 1024 * 1024
+const ALLOWED_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg'])
+const ALLOWED_EXTS = /\.(pdf|png|jpg|jpeg)$/i
+
+export function useFileUpload() {
+  const { send } = useWebSocket()
+
+  const sendUpload = useCallback((file: File): boolean => {
+    if (!ALLOWED_TYPES.has(file.type) && !ALLOWED_EXTS.test(file.name)) {
+      console.error('File upload rejected: unsupported type', file.type)
+      return false
+    }
+    if (file.size > MAX_SIZE) {
+      console.error('File upload rejected: exceeds 25MB', file.size)
+      return false
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      // Strip data:...;base64, prefix
+      const data = dataUrl.slice(dataUrl.indexOf(',') + 1)
+      send({
+        type: 'file_upload',
+        payload: { filename: file.name, mime_type: file.type, data },
+      })
+    }
+    reader.readAsDataURL(file)
+    return true
+  }, [send])
+
+  return { sendUpload }
+}

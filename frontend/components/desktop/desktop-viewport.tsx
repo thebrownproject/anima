@@ -5,6 +5,7 @@ import { useDesktopStore, WORLD_WIDTH, WORLD_HEIGHT } from '@/lib/stores/desktop
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
 import { setWallpaperTransform } from '@/components/wallpaper/wallpaper-layer'
+import { useFileUpload } from '@/hooks/use-file-upload'
 
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.0
@@ -52,6 +53,7 @@ interface ViewportProps extends React.HTMLAttributes<HTMLDivElement> {
 export function DesktopViewport({ children, className, ...rest }: ViewportProps) {
   const [isPanning, setIsPanning] = useState(false)
   const lastPos = useRef({ x: 0, y: 0 })
+  const { sendUpload } = useFileUpload()
   const transformRef = useRef<HTMLDivElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
 
@@ -304,6 +306,12 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onLostPointerCapture={handleLostPointerCapture}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault()
+        const file = e.dataTransfer.files[0]
+        if (file) sendUpload(file)
+      }}
     >
       <div id="desktop-canvas-bg" className="absolute inset-0" style={{ cursor: isPanning ? 'grabbing' : 'grab' }} />
 

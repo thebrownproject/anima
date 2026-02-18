@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
+import time
+from pathlib import Path
 from typing import Any, Callable, Awaitable, TYPE_CHECKING
 
 from .protocol import SystemMessage, SystemPayload, _new_id, to_json, is_websocket_message
@@ -117,8 +120,50 @@ class SpriteGateway:
         await self.runtime.handle_message(text, request_id=req_id, attachments=attachments)
 
     async def _handle_file_upload(self, msg: dict[str, Any], req_id: str | None) -> None:
-        logger.info("File upload: %s", msg.get("payload", {}).get("filename", "?"))
+        payload = msg.get("payload", {})
+        filename = payload.get("filename", "unknown")
+        mime_type = payload.get("mime_type", "")
+        data_b64 = payload.get("data", "")
+
+        doc_id = _new_id()
+        upload_dir = Path("/workspace/uploads")
+        upload_dir.mkdir(exist_ok=True)
+        safe_name = filename.replace("/", "_").replace("..", "_")
+        file_path = upload_dir / f"{doc_id}_{safe_name}"
+        file_bytes = base64.b64decode(data_b64)
+        file_path.write_bytes(file_bytes)
+        logger.info("File saved: %s (%d bytes)", file_path, len(file_bytes))
+
+        if self._workspace_db:
+            await self._workspace_db.create_document(doc_id, filename, mime_type, str(file_path))
+
+        await self._send_canvas_processing_card(doc_id, filename)
         await self._send_ack("file_upload_received", req_id)
+
+        asyncio.create_task(
+            self._run_extraction(doc_id, filename, mime_type, str(file_path))
+        )
+
+    async def _send_canvas_processing_card(self, doc_id: str, filename: str) -> None:
+        msg = {
+            "type": "canvas_update",
+            "id": _new_id(),
+            "timestamp": int(time.time() * 1000),
+            "payload": {
+                "command": "create_card",
+                "card_id": doc_id,
+                "title": filename,
+                "blocks": [
+                    {"type": "heading", "text": filename},
+                    {"type": "badge", "text": "Processing...", "variant": "default"},
+                ],
+                "size": "medium",
+            },
+        }
+        await self.send(json.dumps(msg))
+
+    async def _run_extraction(self, doc_id: str, filename: str, mime_type: str, file_path: str) -> None:
+        logger.info("Extraction triggered for %s (not yet implemented)", filename)
 
     async def _handle_canvas(self, msg: dict[str, Any], req_id: str | None) -> None:
         payload = msg.get("payload", {})
