@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws'
 import { SpriteConnection } from './sprite-connection.js'
 import { getConnectionsByUser } from './connection-store.js'
-import { handleDisconnect, isReconnecting, bufferMessage, cleanupReconnectState } from './reconnect.js'
+import { handleDisconnect, bufferMessage, cleanupReconnectState } from './reconnect.js'
 import { startKeepalive, stopKeepalive } from './keepalive.js'
 import { checkAndUpdate } from './updater.js'
 import { startSpriteServer } from './provisioning.js'
@@ -104,14 +104,14 @@ export async function ensureSpriteConnection(
   return conn
 }
 
-/** Forward a browser message to the Sprite for this user. Buffers during reconnect. */
+/** Forward a browser message to the Sprite for this user. Buffers when not connected. */
 export function forwardToSprite(userId: string, message: string): boolean {
-  if (isReconnecting(userId)) {
-    return bufferMessage(userId, message)
-  }
   const conn = spriteConnections.get(userId)
-  if (!conn || conn.state !== 'connected') return false
-  return conn.send(message)
+  if (conn && conn.state === 'connected') {
+    return conn.send(message)
+  }
+  // Not connected — buffer for reconnect (either in progress or about to start)
+  return bufferMessage(userId, message)
 }
 
 /** Broadcast a Sprite message to all browser connections for a user. */

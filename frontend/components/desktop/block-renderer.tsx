@@ -54,8 +54,8 @@ function Table({ columns, rows }: TableBlock) {
       <table className="w-full text-sm text-white/90">
         <thead>
           <tr className="border-b border-white/20 text-left text-xs uppercase text-white/50">
-            {columns.map((col) => (
-              <th key={col} className="pb-2 pr-3 font-medium">
+            {columns.map((col, ci) => (
+              <th key={ci} className="pb-2 pr-3 font-medium">
                 {col}
               </th>
             ))}
@@ -64,8 +64,8 @@ function Table({ columns, rows }: TableBlock) {
         <tbody className="divide-y divide-white/10">
           {rows.map((row, i) => (
             <tr key={i}>
-              {columns.map((col) => (
-                <td key={col} className="py-2 pr-3">
+              {columns.map((col, ci) => (
+                <td key={ci} className="py-2 pr-3">
                   {String(row[col] ?? '')}
                 </td>
               ))}

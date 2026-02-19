@@ -4111,3 +4111,102 @@ Files: `frontend/components/desktop/chat-bar.tsx` (new constant, updated linger 
 - Consider option 2 (smaller blur) or option 3 (solid tinted glass) for the glow if it bothers users
 
 ---
+
+## [2026-02-17 22:20] Session 185
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Deep investigation into glass glow artifact (m7b.4.16)** — Spent entire session systematically testing 13+ approaches to fix the Chrome `backdrop-filter` compositor glow bug on glass cards. The lighter rectangular halo around glass elements is caused by Chrome's blur kernel sampling beyond element bounds and hitting the window clear color.
+
+**Approaches tested and results:**
+1. `clip-path: inset(0)` on all glass elements — Fixed static glow on ALL elements, but caused white line artifacts when cards were dragged/overlapped (compositor layer seams)
+2. `clip-path: inset(0 round 1rem)` on cards only — Still showed ghostly halos between cards
+3. `contain: paint` on cards — Line artifacts persisted
+4. `backdrop-filter: blur(16px) brightness(0.7)` — Brightness had no visible effect
+5. Solid opaque bg (no blur) — Fixed all artifacts but lost glass effect (rejected)
+6. Conditional clip-path via className (static vs drag) — tailwind-merge failed to deduplicate arbitrary `[clip-path:...]` properties
+7. Dark spread box-shadow to mask glow — Ugly visible dark ring
+8. Clipped shell + overscan backdrop (from Codex) — `overflow-hidden` shell + `-inset-12` backdrop child. Did NOT fix the glow.
+9. mask-image with 3px edge fade — Masked the decorative elements too, cards looked flat
+10. mask-image on separate backdrop child only — Glow persisted (compositor-level artifact)
+11. Inset backdrop div (`inset-[3px]`) — Reverted before full testing
+12. SVG filter `backdrop-filter: url(#glass-blur)` — Same glow (confirms bug affects all filter types) but noticeably snappier rendering
+13. SVG filter + clip-path combo — User rejected before testing
+
+**SVG filter discovery:** Chrome supports SVG filters as `backdrop-filter` input via `url(#filter-id)`. Uses different rendering pipeline, feels more performant than CSS `blur()`. Definition: `<filter id="glass-blur"><feGaussianBlur in="SourceGraphic" stdDeviation="24"/></filter>` in layout.tsx. Card uses `[backdrop-filter:url(#glass-blur)]`.
+
+**Key finding:** `clip-path: inset(0)` is a proven fix for STATIC glass elements (chat bar, side panel, top bar, pill, tab switcher) — no artifacts since they're never transformed. The problem is exclusively with DRAGGABLE elements that undergo CSS transforms.
+
+**Codex consultation:** Sent detailed prompt to OpenAI Codex. Codex suggested the clipped shell + overscan backdrop approach. Tested — did not fix the glow. Codex ran a heavy debug session but couldn't resolve either.
+
+**Files changed (kept):** `frontend/app/layout.tsx` (SVG filter def), `frontend/components/ui/glass-card.tsx` (SVG filter reference). All other experimental changes reverted via `git checkout HEAD`.
+
+**Also:** Removed HUD position/zoom display from desktop-viewport (reverted — can re-remove separately). Detailed findings with code snippets added as 3 comments on m7b.4.16 bead.
+
+### Decisions Made
+- SVG filter kept as replacement for CSS `backdrop-blur-xl` — snappier rendering even though it doesn't fix the glow
+- Glass glow fix deferred — needs more investigation, tracked on m7b.4.16 with full session notes
+- `clip-path: inset(0)` confirmed as fix for static elements — apply next session
+
+### Gotchas
+- tailwind-merge does NOT deduplicate arbitrary `[clip-path:...]` property overrides — use inline `style={{}}` for guaranteed overrides
+- Chrome's backdrop-filter glow affects ALL filter types (CSS blur AND SVG feGaussianBlur) — it's compositor-level, not filter-level
+- `overflow: hidden` on a parent does NOT constrain Chrome's backdrop-filter edge sampling (Josh Comeau confirmed)
+- mask-image runs after backdrop-filter but may not affect compositor-level artifacts
+- Codex approaches can fail too — always verify before committing
+
+### Next Action
+- Apply `clip-path: inset(0)` to static glass elements (proven fix)
+- Test inset backdrop approach for cards (`absolute inset-[3px]` with separate border/sheen layers) — most promising untested approach
+- Consider disable-blur-during-drag via inline style as pragmatic fallback
+- HUD removal from desktop-viewport (separate small task)
+
+---
+
+## [2026-02-19 14:30] Session 129
+
+**Branch:** main | **Git:** uncommitted
+
+### What Happened
+
+**Demo sprint — upload pipeline built end-to-end.** Two Beads tasks completed (m7b.5.1, m7b.5.2), multiple bugs found and fixed during live testing on `sd-e2e-test` Sprite.
+
+**m7b.5.1 — File upload pipeline (commit 9916ab1):**
+- `frontend/hooks/use-file-upload.ts` — new hook: validates type/size, base64 encodes via FileReader, sends `file_upload` WS message
+- `frontend/components/desktop/chat-bar.tsx` — + button always visible, wired to file input. Later moved to LEFT side of action bar.
+- `frontend/components/desktop/desktop-viewport.tsx` — `onDragOver` + `onDrop` for drag-and-drop upload
+- `sprite/src/database.py` — `documents` table, `create_document()`, `update_document_status()`, `list_documents()`
+- `sprite/src/gateway.py` — `_handle_file_upload()`: decode base64, save to `/workspace/uploads/`, DB record, processing card, ack, extraction task
+
+**m7b.5.2 — Extraction agent (commit 7f75a24):**
+- `sprite/src/gateway.py` — `_run_extraction()`: context message with file path, mission_lock, `runtime.handle_message()`. Agent reads PDF via pdftotext, summarises, asks how to proceed.
+
+**Bug fixes during live testing:**
+1. Bridge message buffering (deployed Fly.io): `forwardToSprite()` buffers when Sprite dead, not just during reconnect
+2. Sprite readline limit: 64KB → 50MB in `server.py` (base64 PDFs caused `LimitOverrunError`)
+3. Processing card persistence: `_send_canvas_processing_card()` writes to WorkspaceDB
+4. Stale session: deleted `/workspace/.os/session_id` (242-msg session causing PDF API errors)
+5. Block renderer keys: column index instead of name (React duplicate key fix)
+6. `poppler-utils` installed on Sprite for `pdftotext`
+
+### Decisions Made
+- Agent reads PDFs via pdftotext (Bash) — simplest for demo
+- Conversational extraction: agent summarises + asks "how to proceed" (not auto-extract)
+- + button on left side of chat bar
+- Processing card saved to DB for refresh persistence
+
+### Gotchas
+- `asyncio.StreamReader` default limit 64KB — set `limit=` on `start_server()` for large messages
+- `/workspace/.os/session_id` resumes stale sessions — delete to force fresh
+- Bridge `forwardToSprite` race: TCP close → handleDisconnect async → message arrives in gap → dropped
+- Bridge deploy kills all WS connections — users see reconnect cycle
+
+### Next Action
+- Friday: wire documents panel, demo run-throughs
+- Fix Bridge API proxy zlib error (memory processor failing)
+- Add pdftotext to bootstrap script
+- Test with real invoice PDF
+
+---

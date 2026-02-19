@@ -42,7 +42,6 @@ export function isReconnecting(userId: string): boolean {
 
 export function bufferMessage(userId: string, data: string): boolean {
   const state = getState(userId)
-  if (!state.inProgress) return false
   if (state.buffer.length >= MAX_BUFFER) return false
   state.buffer.push({ data, bufferedAt: Date.now() })
   return true

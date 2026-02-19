@@ -107,7 +107,8 @@ async def main() -> None:
     )
 
     handler = lambda r, w: handle_connection(r, w, runtime=runtime, workspace_db=workspace_db)
-    server = await asyncio.start_server(handler, HOST, PORT)
+    # 50MB limit for StreamReader — file_upload messages carry base64 data (25MB file ≈ 33MB base64)
+    server = await asyncio.start_server(handler, HOST, PORT, limit=50 * 1024 * 1024)
     logger.info("Sprite server listening on tcp://%s:%d", HOST, PORT)
     await stop
     server.close()

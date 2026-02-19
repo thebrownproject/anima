@@ -145,6 +145,20 @@ class SpriteGateway:
         )
 
     async def _send_canvas_processing_card(self, doc_id: str, filename: str) -> None:
+        blocks = [
+            {"type": "heading", "text": filename},
+            {"type": "badge", "text": "Processing...", "variant": "default"},
+        ]
+        # Persist to DB so it survives page refresh
+        if self._workspace_db:
+            stack_id = self.runtime._active_stack_id
+            if not stack_id:
+                stacks = await self._workspace_db.list_stacks()
+                if stacks:
+                    stack_id = stacks[0]["stack_id"]
+            if stack_id:
+                await self._workspace_db.upsert_card(doc_id, stack_id, filename, blocks, "medium")
+
         msg = {
             "type": "canvas_update",
             "id": _new_id(),
@@ -153,10 +167,7 @@ class SpriteGateway:
                 "command": "create_card",
                 "card_id": doc_id,
                 "title": filename,
-                "blocks": [
-                    {"type": "heading", "text": filename},
-                    {"type": "badge", "text": "Processing...", "variant": "default"},
-                ],
+                "blocks": blocks,
                 "size": "medium",
             },
         }
@@ -167,9 +178,10 @@ class SpriteGateway:
         try:
             context = (
                 f"A file was just uploaded and saved to {file_path}.\n"
-                f"Filename: {filename}\n"
-                f"Please read the file, extract the key structured data, and create a canvas card "
-                f"with a table showing the main fields (e.g. invoice number, date, line items, total)."
+                f"Filename: {filename}, Type: {mime_type}\n"
+                f"Read the document using Bash (e.g. pdftotext or python). Do NOT use the Read tool on PDFs.\n"
+                f"Give the user a brief summary of what the document contains in chat, "
+                f"then ask how they'd like to proceed."
             )
             async with self.mission_lock:
                 await self.runtime.handle_message(context)

@@ -266,9 +266,9 @@ describe('proxy module', () => {
     expect(received).toBe(testMsg + '\n')
   })
 
-  it('returns false when forwarding to non-existent user', () => {
+  it('buffers message when forwarding to non-existent user', () => {
     const sent = proxyModule.forwardToSprite('nonexistent', '{}')
-    expect(sent).toBe(false)
+    expect(sent).toBe(true) // buffered for upcoming reconnect
   })
 
   it('cleans up on disconnectSprite', async () => {

@@ -242,6 +242,16 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
             {/* Action bar */}
             <div className="flex items-center px-3 py-2.5">
+              {/* Left — upload button */}
+              <div className="mr-1.5">
+                <GlassIconButton
+                  icon={<Icons.Plus />}
+                  tooltip="Upload file"
+                  tooltipSide="top"
+                  onClick={() => fileInputRef.current?.click()}
+                />
+              </div>
+
               {/* Center — clickable hover zone to activate text input */}
               {!inputActive ? (
                 <button
@@ -264,15 +274,6 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                   onMouseEnter={handleControlsMouseEnter}
                   onMouseLeave={handleControlsMouseLeave}
                 >
-                  {/* Attach — always visible */}
-                  <div className="mr-1.5">
-                    <GlassIconButton
-                      icon={<Icons.Plus />}
-                      tooltip="Upload file"
-                      tooltipSide="top"
-                      onClick={() => fileInputRef.current?.click()}
-                    />
-                  </div>
                   {/* Speaker toggle — hover-only */}
                   <div
                     className={cn(
@@ -325,12 +326,6 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5" data-testid="mic-button">
-                  <GlassIconButton
-                    icon={<Icons.Plus />}
-                    tooltip="Upload file"
-                    tooltipSide="top"
-                    onClick={() => fileInputRef.current?.click()}
-                  />
                   <GlassIconButton
                     icon={<Icons.Microphone />}
                     tooltip="Voice input"
