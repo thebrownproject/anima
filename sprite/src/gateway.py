@@ -59,6 +59,8 @@ def _format_canvas_context(canvas_state: list[dict[str, Any]]) -> str:
                 lines.append(f"    [stat] {block.get('label', '')}: {block.get('value', '')}")
             elif btype == "badge":
                 lines.append(f"    [badge] {block.get('text', '')} ({block.get('variant', '')})")
+            elif btype == "document":
+                lines.append(f"    [document] {block.get('filename', '')}")
 
     return "\n".join(lines)
 
@@ -225,19 +227,30 @@ class SpriteGateway:
         if self._workspace_db:
             await self._workspace_db.create_document(doc_id, filename, mime_type, str(file_path))
 
-        await self._send_canvas_processing_card(doc_id, filename)
+        await self._send_canvas_processing_card(doc_id, filename, data_b64, mime_type)
         await self._send_ack("file_upload_received", req_id)
 
         asyncio.create_task(
             self._run_extraction(doc_id, filename, mime_type, str(file_path))
         )
 
-    async def _send_canvas_processing_card(self, doc_id: str, filename: str) -> None:
-        blocks = [
-            {"type": "heading", "text": filename},
-            {"type": "badge", "text": "Processing...", "variant": "default"},
-        ]
-        # Persist to DB so it survives page refresh
+    async def _send_canvas_processing_card(
+        self, doc_id: str, filename: str, data_b64: str = "", mime_type: str = "",
+    ) -> None:
+        blocks: list[dict[str, Any]] = []
+        size = "medium"
+
+        # Embed document preview if small enough (< 5MB base64)
+        if data_b64 and len(data_b64) < 5_000_000:
+            blocks.append({
+                "type": "document", "id": _new_id(),
+                "data": data_b64, "mime_type": mime_type, "filename": filename,
+            })
+            size = "large"
+
+        blocks.append({"type": "heading", "text": filename})
+        blocks.append({"type": "badge", "text": "Processing...", "variant": "default"})
+
         if self._workspace_db:
             stack_id = self.runtime._active_stack_id
             if not stack_id:
@@ -245,7 +258,7 @@ class SpriteGateway:
                 if stacks:
                     stack_id = stacks[0]["stack_id"]
             if stack_id:
-                await self._workspace_db.upsert_card(doc_id, stack_id, filename, blocks, "medium")
+                await self._workspace_db.upsert_card(doc_id, stack_id, filename, blocks, size)
 
         msg = {
             "type": "canvas_update",
@@ -256,7 +269,7 @@ class SpriteGateway:
                 "card_id": doc_id,
                 "title": filename,
                 "blocks": blocks,
-                "size": "medium",
+                "size": size,
             },
         }
         await self.send(json.dumps(msg))
@@ -267,6 +280,7 @@ class SpriteGateway:
             context = (
                 f"A file was just uploaded and saved to {file_path}.\n"
                 f"Filename: {filename}, Type: {mime_type}\n"
+                f"The processing card has card_id: {doc_id}. Use update_card to add extracted data.\n"
                 f"Read the document using Bash (e.g. pdftotext or python). Do NOT use the Read tool on PDFs.\n"
                 f"Give the user a brief summary of what the document contains in chat, "
                 f"then ask how they'd like to proceed."
@@ -276,11 +290,56 @@ class SpriteGateway:
 
             if self._workspace_db:
                 await self._workspace_db.update_document_status(doc_id, "completed")
+                await self._update_card_badge(doc_id, "Ready", "success")
 
         except Exception as e:
             logger.error("Extraction failed for %s: %s", filename, e)
             if self._workspace_db:
                 await self._workspace_db.update_document_status(doc_id, "failed")
+                await self._update_card_badge(doc_id, "Failed", "destructive", str(e))
+            await self._send_error(f"Extraction failed for {filename}: {e}")
+
+    async def _update_card_badge(
+        self, card_id: str, badge_text: str, badge_variant: str, error_detail: str = "",
+    ) -> None:
+        """Swap the badge on a processing card and optionally append an error text block."""
+        row = await self._workspace_db.fetchone(
+            "SELECT blocks FROM cards WHERE card_id = ?", (card_id,),
+        )
+        if not row:
+            return
+
+        blocks = json.loads(row["blocks"]) if isinstance(row["blocks"], str) else row["blocks"]
+
+        # Replace first badge block; preserve document + heading blocks
+        updated: list[dict[str, Any]] = []
+        badge_replaced = False
+        for block in blocks:
+            if block.get("type") == "badge" and not badge_replaced:
+                updated.append({"type": "badge", "text": badge_text, "variant": badge_variant})
+                badge_replaced = True
+            else:
+                updated.append(block)
+
+        if not badge_replaced:
+            updated.append({"type": "badge", "text": badge_text, "variant": badge_variant})
+
+        if error_detail:
+            updated.append({"type": "text", "content": error_detail})
+
+        await self._workspace_db.update_card_content(card_id, updated)
+
+        msg = {
+            "type": "canvas_update",
+            "id": _new_id(),
+            "timestamp": int(time.time() * 1000),
+            "payload": {
+                "command": "update_card",
+                "card_id": card_id,
+                "blocks": updated,
+            },
+        }
+        await self.send(json.dumps(msg))
 
     async def _handle_canvas(self, msg: dict[str, Any], req_id: str | None) -> None:
         payload = msg.get("payload", {})
