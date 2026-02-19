@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
+import { cn } from '@/lib/utils'
 import { useWallpaperStore, getWallpaper } from '@/lib/stores/wallpaper-store'
 import { WORLD_WIDTH, WORLD_HEIGHT } from '@/lib/stores/desktop-store'
 import { MeshGradient } from './mesh-gradient'
@@ -36,6 +37,12 @@ export function WallpaperLayer() {
   const wallpaperId = useWallpaperStore((s) => s.wallpaperId)
   const wallpaper = getWallpaper(wallpaperId)
   const isMesh = wallpaperId.startsWith('mesh-')
+  const isSolid = wallpaperId.startsWith('solid-')
+  const solidColors: Record<string, string> = {
+    'solid-black': '#000000',
+    'solid-grey': '#1a1a2e',
+    'solid-white': '#e8e8f0',
+  }
 
   const ref = useCallback((el: HTMLDivElement | null) => {
     wallpaperEl = el
@@ -43,18 +50,19 @@ export function WallpaperLayer() {
 
   return (
     <>
-      {/* Wallpaper image or mesh gradient */}
+      {/* Wallpaper — solid color, mesh gradient, or image */}
       <div
-        ref={ref}
-        className="fixed -z-10 will-change-transform"
+        ref={isSolid ? undefined : ref}
+        className={cn('fixed -z-10', !isSolid && 'will-change-transform')}
         style={{
-          inset: '-250px',
-          backfaceVisibility: 'hidden',
+          inset: isSolid ? 0 : '-250px',
+          backfaceVisibility: isSolid ? undefined : 'hidden',
+          backgroundColor: isSolid ? solidColors[wallpaperId] : undefined,
         }}
       >
         {isMesh ? (
           <MeshGradient variant={wallpaperId} />
-        ) : (
+        ) : !isSolid ? (
           <img
             key={wallpaperId}
             src={wallpaper.url}
@@ -62,21 +70,23 @@ export function WallpaperLayer() {
             className="h-full w-full object-cover transition-opacity duration-700"
             draggable={false}
           />
-        )}
+        ) : null}
       </div>
 
       {/* Film grain overlay — subtle for JPGs, mesh has its own pixel grain */}
-      <div
-        className="pointer-events-none fixed inset-0 -z-[9] mix-blend-overlay"
-        style={{ opacity: isMesh ? 0 : 0.035 }}
-      >
-        <svg width="100%" height="100%">
-          <filter id="grain">
-            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#grain)" />
-        </svg>
-      </div>
+      {!isSolid && (
+        <div
+          className="pointer-events-none fixed inset-0 -z-[9] mix-blend-overlay"
+          style={{ opacity: isMesh ? 0 : 0.035 }}
+        >
+          <svg width="100%" height="100%">
+            <filter id="grain">
+              <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#grain)" />
+          </svg>
+        </div>
+      )}
     </>
   )
 }

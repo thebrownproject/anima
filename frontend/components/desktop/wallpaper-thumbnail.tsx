@@ -24,7 +24,10 @@ export function WallpaperThumbnail({
           ? 'border-2 border-white/50 scale-110'
           : 'border border-white/15 hover:border-white/30 hover:scale-105',
       )}
-      style={{ backgroundImage: `url(${wallpaper.url})` }}
+      style={wallpaper.url
+        ? { backgroundImage: `url(${wallpaper.url})` }
+        : { backgroundColor: wallpaper.id === 'solid-black' ? '#000' : wallpaper.id === 'solid-white' ? '#e8e8f0' : '#1a1a2e' }
+      }
     />
   )
 }

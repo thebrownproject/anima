@@ -8,6 +8,9 @@ export interface Wallpaper {
 }
 
 export const WALLPAPERS: Wallpaper[] = [
+  { id: 'solid-black', name: 'Black', url: '' },
+  { id: 'solid-grey', name: 'Grey', url: '' },
+  { id: 'solid-white', name: 'White', url: '' },
   { id: 'purple-blue-grain', name: 'Purple Blue Grain', url: '/wallpapers/purple-blue-grain.jpg' },
   { id: 'deep-purple-gradient', name: 'Deep Purple Gradient', url: '/wallpapers/deep-purple-gradient.jpg' },
   { id: 'blue-pink-gradient', name: 'Blue Pink Gradient', url: '/wallpapers/blue-pink-gradient.jpg' },

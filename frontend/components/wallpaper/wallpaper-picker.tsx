@@ -16,7 +16,10 @@ export function WallpaperPicker() {
               ? 'scale-110 border-white shadow-lg shadow-white/20'
               : 'border-white/30 hover:scale-105 hover:border-white/60'
           }`}
-          style={{ backgroundImage: `url(${wp.url})` }}
+          style={wp.url
+            ? { backgroundImage: `url(${wp.url})` }
+            : { backgroundColor: wp.id === 'solid-black' ? '#000' : wp.id === 'solid-white' ? '#e8e8f0' : '#1a1a2e' }
+          }
           title={wp.name}
         />
       ))}

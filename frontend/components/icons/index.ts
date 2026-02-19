@@ -109,6 +109,7 @@ export {
   IconMicrophoneOff as MicrophoneOff,
   IconVolume as Volume,
   IconVolumeOff as VolumeOff,
+  IconPlayerStop as PlayerStop,
   IconPlayerStopFilled as PlayerStopFilled,
   IconMessage as Message,
   IconBell as Bell,
