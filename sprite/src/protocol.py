@@ -178,9 +178,18 @@ Block = Union[
 # =============================================================================
 
 @dataclass
+class CanvasCardSnapshot:
+    """Lightweight card snapshot sent with missions for agent context."""
+    card_id: str
+    title: str
+    blocks: list[dict[str, Any]]
+
+
+@dataclass
 class MissionContext:
     """Context sent with a mission to identify the active stack."""
     stack_id: str
+    canvas_state: Optional[list[CanvasCardSnapshot]] = None
 
 
 @dataclass

@@ -122,9 +122,17 @@ export type BlockType = (typeof BLOCK_TYPES)[number]
 // Browser -> Sprite Messages
 // =============================================================================
 
+/** Lightweight card snapshot sent with missions for agent context. */
+export interface CanvasCardSnapshot {
+  card_id: string
+  title: string
+  blocks: Block[]
+}
+
 /** Context sent with a mission to identify the active stack. */
 export interface MissionContext {
   stack_id: string
+  canvas_state?: CanvasCardSnapshot[]
 }
 
 /** User sends a mission (chat message). */

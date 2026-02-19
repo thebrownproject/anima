@@ -7,6 +7,7 @@ import base64
 import json
 import logging
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Awaitable, TYPE_CHECKING
 
@@ -15,7 +16,7 @@ from .runtime import AgentRuntime
 from .state_sync import send_state_sync
 
 if TYPE_CHECKING:
-    from .database import WorkspaceDB
+    from .database import WorkspaceDB, MemoryDB
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,85 @@ _ROUTED_TYPES = frozenset({
     "mission", "file_upload", "canvas_interaction",
     "heartbeat", "auth", "system", "state_sync_request",
 })
+
+CORRECTION_THRESHOLD = 3
+
+
+def _format_canvas_context(canvas_state: list[dict[str, Any]]) -> str:
+    """Format canvas state into a readable text block for the agent."""
+    if not canvas_state:
+        return ""
+
+    lines = ["[Canvas State — cards the user currently sees]"]
+    for card in canvas_state:
+        card_id = card.get("card_id", "?")
+        title = card.get("title", "Untitled")
+        lines.append(f"\n  Card: {title} (id: {card_id})")
+        for block in card.get("blocks", []):
+            btype = block.get("type", "?")
+            if btype == "table":
+                cols = block.get("columns", [])
+                rows = block.get("rows", [])
+                lines.append(f"    [table] columns: {cols}")
+                for row in rows[:10]:
+                    lines.append(f"      {row}")
+            elif btype == "key-value":
+                for pair in block.get("pairs", []):
+                    lines.append(f"    {pair.get('label', '')}: {pair.get('value', '')}")
+            elif btype == "text":
+                lines.append(f"    [text] {block.get('content', '')}")
+            elif btype == "heading":
+                lines.append(f"    [heading] {block.get('text', '')}")
+            elif btype == "stat":
+                lines.append(f"    [stat] {block.get('label', '')}: {block.get('value', '')}")
+            elif btype == "badge":
+                lines.append(f"    [badge] {block.get('text', '')} ({block.get('variant', '')})")
+
+    return "\n".join(lines)
+
+
+async def _check_correction_threshold(
+    memory_db: "MemoryDB", soul_path: Path
+) -> None:
+    """If 3+ CORRECTION learnings share a common pattern, append a rule to soul.md."""
+    corrections = await memory_db.fetchall(
+        "SELECT content FROM learnings WHERE type = 'CORRECTION' ORDER BY created_at DESC LIMIT 50"
+    )
+    if len(corrections) < CORRECTION_THRESHOLD:
+        return
+
+    # Group by first word of content (field name heuristic)
+    field_counts: Counter[str] = Counter()
+    field_contents: dict[str, list[str]] = {}
+    for row in corrections:
+        content = row["content"]
+        key = content.split(":")[0].strip().lower() if ":" in content else content.split()[0].lower()
+        field_counts[key] += 1
+        field_contents.setdefault(key, []).append(content)
+
+    # Find patterns that meet threshold
+    rules_to_add = []
+    for field, count in field_counts.items():
+        if count >= CORRECTION_THRESHOLD:
+            # Use the most recent correction as the rule text
+            rules_to_add.append(field_contents[field][0])
+
+    if not rules_to_add:
+        return
+
+    # Read current soul.md and append learned rules section
+    current = soul_path.read_text() if soul_path.exists() else ""
+    if "## Learned Rules" in current:
+        # Append to existing section
+        for rule in rules_to_add:
+            if rule not in current:
+                current += f"\n- {rule}"
+    else:
+        current += "\n\n## Learned Rules\n"
+        for rule in rules_to_add:
+            current += f"\n- {rule}"
+
+    soul_path.write_text(current)
 
 
 class SpriteGateway:
@@ -116,8 +196,16 @@ class SpriteGateway:
         if stack_id:
             self.runtime.set_active_stack_id(stack_id)
 
+        # Inject Canvas state so the agent knows what the user sees
+        canvas_state = context.get("canvas_state")
+        prompt = text
+        if canvas_state:
+            canvas_context = _format_canvas_context(canvas_state)
+            if canvas_context:
+                prompt = f"{canvas_context}\n\n{text}"
+
         attachments = payload.get("attachments")
-        await self.runtime.handle_message(text, request_id=req_id, attachments=attachments)
+        await self.runtime.handle_message(prompt, request_id=req_id, attachments=attachments)
 
     async def _handle_file_upload(self, msg: dict[str, Any], req_id: str | None) -> None:
         payload = msg.get("payload", {})

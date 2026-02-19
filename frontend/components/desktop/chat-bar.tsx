@@ -52,7 +52,23 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
 
   const sendMessage = useCallback((text: string) => {
     addMessage({ role: 'user', content: text, timestamp: Date.now() })
-    send({ type: 'mission', payload: { text, context: { stack_id: activeStackId } } })
+
+    // Serialize open cards for agent context
+    const state = useDesktopStore.getState()
+    const openCards = Object.values(state.cards)
+      .filter((card) => card.stackId === state.activeStackId)
+      .map(({ id, title, blocks }) => ({ card_id: id, title, blocks }))
+
+    send({
+      type: 'mission',
+      payload: {
+        text,
+        context: {
+          stack_id: activeStackId,
+          canvas_state: openCards.length > 0 ? openCards : undefined,
+        },
+      },
+    })
   }, [addMessage, send, activeStackId])
 
   const handleSend = useCallback(() => {
