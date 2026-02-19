@@ -178,16 +178,16 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       >
         <GlassCard glowEffect={false}>
           {/* Title bar */}
-          <div className="flex h-11 items-center border-b border-white/10 px-3">
-            <span className="flex-1 truncate text-sm font-medium text-white/90">
+          <div className="flex h-11 items-center border-b border-white/[0.08] px-4">
+            <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-white/90">
               {card.title}
             </span>
             <button
               type="button"
               onClick={handleClose}
-              className="flex size-7 items-center justify-center rounded hover:bg-white/10"
+              className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
             >
-              <Icons.X className="size-4 text-white/60" />
+              <Icons.X className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
             </button>
           </div>
 
