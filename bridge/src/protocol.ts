@@ -86,7 +86,15 @@ export interface SeparatorBlock {
   type: 'separator'
 }
 
-/** Union of all 8 MVP block types. */
+export interface DocumentBlock {
+  type: 'document'
+  id: string
+  data: string       // base64-encoded file content
+  mime_type: string   // e.g. 'application/pdf'
+  filename: string
+}
+
+/** Union of all block types. */
 export type Block =
   | HeadingBlock
   | StatBlock
@@ -96,6 +104,7 @@ export type Block =
   | ProgressBlock
   | TextBlock
   | SeparatorBlock
+  | DocumentBlock
 
 /** All valid block type strings. */
 export const BLOCK_TYPES = [
@@ -107,6 +116,7 @@ export const BLOCK_TYPES = [
   'progress',
   'text',
   'separator',
+  'document',
 ] as const
 
 export type BlockType = (typeof BLOCK_TYPES)[number]

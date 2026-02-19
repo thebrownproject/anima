@@ -31,6 +31,7 @@ BLOCK_TYPES = (
     "progress",
     "text",
     "separator",
+    "document",
 )
 
 MESSAGE_TYPES = (
@@ -48,7 +49,7 @@ MESSAGE_TYPES = (
 # Type aliases matching TypeScript literal unions
 BlockType = Literal[
     "heading", "stat", "key-value", "table",
-    "badge", "progress", "text", "separator",
+    "badge", "progress", "text", "separator", "document",
 ]
 MessageType = Literal[
     "mission", "file_upload", "canvas_interaction", "auth",
@@ -160,6 +161,16 @@ class SeparatorBlock:
     type: Literal["separator"]
 
 
+@dataclass
+class DocumentBlock:
+    """Embedded document block (PDF preview, etc.)."""
+    type: Literal["document"]
+    id: str
+    data: str           # base64-encoded file content
+    mime_type: str       # e.g. 'application/pdf'
+    filename: str
+
+
 # Union of all block types
 Block = Union[
     HeadingBlock,
@@ -170,6 +181,7 @@ Block = Union[
     ProgressBlock,
     TextBlock,
     SeparatorBlock,
+    DocumentBlock,
 ]
 
 
