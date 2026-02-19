@@ -1,9 +1,10 @@
 """Tests for correction flow and Canvas state awareness (m7b.5.3)."""
 
 import json
+from typing import Any
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 from src.gateway import SpriteGateway
 from src.database import WorkspaceDB, MemoryDB
@@ -12,7 +13,7 @@ from src.protocol import _new_id, _now_ms
 
 def _make_mission(text: str, stack_id: str = "s1", canvas_state: list | None = None) -> str:
     """Build a raw mission message with optional canvas_state."""
-    context = {"stack_id": stack_id}
+    context: dict[str, Any] = {"stack_id": stack_id}
     if canvas_state is not None:
         context["canvas_state"] = canvas_state
     return json.dumps({
@@ -180,7 +181,6 @@ async def test_correction_updates_card_via_update_card(mock_send, workspace_db):
 @pytest.mark.asyncio
 async def test_soul_md_updated_after_correction_threshold(memory_db, tmp_path):
     """After 3+ CORRECTION learnings on same pattern, soul.md gets updated."""
-    from src.memory import SOUL_MD
     from src.gateway import _check_correction_threshold
 
     # Create a temp soul.md

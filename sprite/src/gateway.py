@@ -303,6 +303,8 @@ class SpriteGateway:
         self, card_id: str, badge_text: str, badge_variant: str, error_detail: str = "",
     ) -> None:
         """Swap the badge on a processing card and optionally append an error text block."""
+        if not self._workspace_db:
+            return
         row = await self._workspace_db.fetchone(
             "SELECT blocks FROM cards WHERE card_id = ?", (card_id,),
         )

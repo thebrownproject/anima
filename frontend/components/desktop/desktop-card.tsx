@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
 import { useDesktopStore, clampCardPosition, CARD_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
+import type { CardSize } from '@/types/ws-protocol'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
@@ -16,6 +17,7 @@ interface DesktopCardProps {
 }
 
 const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
+const SIZE_CYCLE: CardSize[] = ['small', 'medium', 'large', 'full']
 
 export function DesktopCard({ card, children }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -136,6 +138,24 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
     }
   }, [isDragging, syncToStore])
 
+  const handleResize = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      const idx = SIZE_CYCLE.indexOf(card.size)
+      const next = SIZE_CYCLE[(idx + 1) % SIZE_CYCLE.length]
+      useDesktopStore.getState().updateCard(card.id, { size: next })
+    },
+    [card.id, card.size],
+  )
+
+  const handleEdit = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      // Placeholder — will enable card editing in a future task
+    },
+    [],
+  )
+
   const handleClose = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -182,13 +202,32 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
             <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-white/90">
               {card.title}
             </span>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
-            >
-              <Icons.X className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={handleEdit}
+                className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                title="Edit"
+              >
+                <Icons.Edit className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+              </button>
+              <button
+                type="button"
+                onClick={handleResize}
+                className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                title={`Resize (${card.size})`}
+              >
+                <Icons.ArrowsMaximize className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                title="Close"
+              >
+                <Icons.X className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+              </button>
+            </div>
           </div>
 
           {/* Content — stopPropagation so clicks inside don't trigger drag */}
