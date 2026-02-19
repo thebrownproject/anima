@@ -3,17 +3,24 @@ import { persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 import type { Block, CardSize, StackInfo } from '@/types/ws-protocol'
 
+export const CARD_WIDTHS: Record<CardSize, number> = {
+  small: 280,
+  medium: 380,
+  large: 560,
+  full: 800,
+}
+
 // World bounds — cards and viewport are clamped to this area (16:9 for widescreen monitors)
 export const WORLD_WIDTH = 8000
 export const WORLD_HEIGHT = 4000
-export const CARD_WIDTH = 320
-const CARD_H_DEFAULT = 500 // Fallback when actual card height isn't known
+export const CARD_WIDTH = CARD_WIDTHS.medium // backward compat
+const CARD_H_DEFAULT = 500
 
 /** Clamp a card position within world bounds.
- *  Pass cardHeight for pixel-perfect bottom clamping during drag. */
-export function clampCardPosition(x: number, y: number, cardHeight?: number): { x: number; y: number } {
+ *  Pass cardHeight/cardWidth for pixel-perfect clamping during drag. */
+export function clampCardPosition(x: number, y: number, cardHeight?: number, cardWidth?: number): { x: number; y: number } {
   return {
-    x: Math.max(0, Math.min(WORLD_WIDTH - CARD_WIDTH, x)),
+    x: Math.max(0, Math.min(WORLD_WIDTH - (cardWidth ?? CARD_WIDTH), x)),
     y: Math.max(0, Math.min(WORLD_HEIGHT - (cardHeight ?? CARD_H_DEFAULT), y)),
   }
 }

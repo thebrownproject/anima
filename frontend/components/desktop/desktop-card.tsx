@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
-import { useDesktopStore, clampCardPosition } from '@/lib/stores/desktop-store'
+import { useDesktopStore, clampCardPosition, CARD_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
@@ -151,11 +151,12 @@ export function DesktopCard({ card, children }: DesktopCardProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.35, ease: APPLE_EASE }}
-      className="pointer-events-auto absolute w-80"
+      className="pointer-events-auto absolute"
       style={{
         left: card.position.x,
         top: card.position.y,
         zIndex: card.zIndex,
+        width: CARD_WIDTHS[card.size] ?? CARD_WIDTHS.medium,
       }}
     >
       <div
