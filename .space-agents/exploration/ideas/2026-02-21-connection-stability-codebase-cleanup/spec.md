@@ -61,6 +61,8 @@ A comprehensive, multi-track cleanup that fixes every known connection bug, hard
 - [ ] **T2.7** Wrap async WS message handler in try/catch (`index.ts:94`). The `async` callback on `ws.on('message')` can have unhandled rejections if `authenticateConnection` or downstream calls throw unexpectedly.
 - [ ] **T2.8** Fix Dockerfile to include sprite source files or refactor to API-only deployment. `bootstrap.ts:25` reads from `../../sprite/` which doesn't exist in the container. Every version update attempt fails in production. Either COPY sprite/ into the image or refactor bootstrap/updater to use Sprites.dev FS API exclusively.
 - [ ] **T2.9** Add `package-lock.json` to Dockerfile COPY. Currently `npm install` without lockfile produces non-deterministic builds. Change to `COPY package*.json ./` and `npm ci --omit=dev`.
+- [ ] **T2.10** Add body size limit to `api-proxy.ts:37` `collectBody` (promoted from T8.19). No size limit allows OOM via unbounded payload. A single malicious Sprite can crash the entire global Bridge, taking down all users. Cap at 10MB or stream directly to upstream. **Critical -- platform-wide impact.**
+- [ ] **T2.11** Fix `api-proxy.ts:72` header array crash (promoted from T8.20). Duplicate HTTP headers parse as `string[]`. `Buffer.byteLength(token)` throws synchronous TypeError, which inside the async handler triggers an unhandled rejection that crashes the Bridge process. Guard with `Array.isArray()` check. **Critical -- platform-wide impact.**
 
 ### Track 3: Frontend Connection UX
 
@@ -100,7 +102,7 @@ A comprehensive, multi-track cleanup that fixes every known connection bug, hard
 - [ ] **T6.2** Add background task registry and lifecycle management (`gateway.py:233`). Store extraction task handles. Cancel on shutdown. Cancel on connection close if extraction's send_fn is dead.
 - [ ] **T6.3** Guard `_send_event` against closed-connection exceptions (`runtime.py:252-258`). Mid-run disconnect causes cascade of send errors logged as "Unhandled error". Add `is_connected` flag, check before sending, handle gracefully.
 - [ ] **T6.4** Guard `send_fn` swap during reconnect (`runtime.py:136`). `update_send_fn` swaps immediately. In-flight sends on old connection can go to closed writer. Add a generation counter or small async lock.
-- [ ] **T6.5** Add `await server.wait_closed()` after `server.close()` (`server.py:114`). Currently active connection handlers hang indefinitely. Properly drain connections.
+- [ ] **T6.5** Add `await server.wait_closed()` after `server.close()` (`server.py:114`). Currently active connection handlers hang indefinitely. Properly drain connections. **Also: explicitly cancel all active connection handler tasks in `main()` during SIGINT/SIGTERM before calling `wait_closed()`, otherwise it can hang indefinitely if a client holds the TCP socket open.**
 - [ ] **T6.6** Add readline timeout (`server.py:58`). No timeout on `reader.readline()`. Half-open TCP connections hang forever. Use `asyncio.wait_for(reader.readline(), timeout=120)`.
 - [ ] **T6.7** Add timeouts to SDK calls (`runtime.py:252`). No timeout on `_client.query()` or `receive_response()`. Unresponsive API hangs forever. Wrap in `asyncio.wait_for()` with configurable timeout.
 - [ ] **T6.8** Wrap large file writes in `asyncio.to_thread()` (`gateway.py:224`). 25MB `file_path.write_bytes()` and `base64.b64decode()` block the event loop synchronously.
@@ -140,8 +142,8 @@ A comprehensive, multi-track cleanup that fixes every known connection bug, hard
 - [ ] **T8.16** Break circular dependency `proxy.ts` <-> `keepalive.ts`. Have keepalive accept a connection-getter function parameter instead of importing from proxy.
 - [ ] **T8.17** Fix `sprite-exec.ts` stderr filtering. Logic filters OUT legitimate warnings while logging only non-warning content. Invert: always log stderr, suppress only known noise patterns.
 - [ ] **T8.18** Move `node:crypto` to static import in `api-proxy.ts:71`. Currently dynamically imported on every proxied request.
-- [ ] **T8.19** Add body size limit to `api-proxy.ts:37` `collectBody`. No size limit allows OOM via unbounded payload. Cap at 10MB or stream directly to upstream.
-- [ ] **T8.20** Fix `api-proxy.ts:72` header array crash. Duplicate HTTP headers parse as `string[]`. `Buffer.byteLength(token)` throws TypeError on array. Guard with `Array.isArray()` check.
+- ~~T8.19~~ Promoted to **T2.10** (api-proxy OOM -- platform-wide critical).
+- ~~T8.20~~ Promoted to **T2.11** (api-proxy header crash -- platform-wide critical).
 - [ ] **T8.21** Add SIGTERM cleanup for sprite connections, keepalive timers, and reconnect states (`index.ts:231-243`). Add forced exit timeout.
 - [ ] **T8.22** Fix Bridge reconnect to abort when no browsers connected (`reconnect.ts`). Add `getConnectionsByUser(userId).length === 0` early-exit checks after each async step.
 - [ ] **T8.23** Add `checkAndUpdate` test coverage (`updater.ts`). Only `compareSemver` is tested. The full update flow has zero coverage.
