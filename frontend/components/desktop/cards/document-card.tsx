@@ -5,7 +5,7 @@ import type { DesktopCard } from '@/lib/stores/desktop-store'
 
 interface Props {
   card: DesktopCard
-  onCardClick: (card: DesktopCard) => void
+  onCardClick?: (card: DesktopCard) => void
 }
 
 export function DocumentCard({ card, onCardClick }: Props) {
@@ -48,7 +48,7 @@ export function DocumentCard({ card, onCardClick }: Props) {
 
           <button
             className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl font-bold text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-between px-6 group"
-            onClick={(e) => { e.stopPropagation(); onCardClick(card) }}
+            onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
             <span>Read Report</span>
             <ArrowUpRight size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />

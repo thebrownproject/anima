@@ -2,7 +2,6 @@ import type { CardType } from '@/types/ws-protocol'
 
 export type CardColor = 'yellow' | 'pink' | 'green' | 'blue' | 'white' | 'dark' | 'orange' | 'purple' | 'cream'
 
-// bg + text hex matched exactly to prototype BaseCard colorStyles
 export const COLOR_STYLES: Record<CardColor, { bg: string; text: string; border?: string }> = {
   yellow: { bg: '#F2E8CF', text: '#2C2C2C' },
   pink:   { bg: '#FFD6E0', text: '#2C2C2C' },

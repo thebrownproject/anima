@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
 import { useDesktopStore, clampCardPosition, CARD_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
-import type { CardSize } from '@/types/ws-protocol'
+import type { CardSize, CardType } from '@/types/ws-protocol'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
@@ -15,13 +15,12 @@ import { DocumentCard, MetricCard, TableCard, ArticleCard, DataCard } from '@/co
 interface DesktopCardProps {
   card: DesktopCardType
   children?: ReactNode
-  style?: React.CSSProperties
   onCardClick?: (card: DesktopCardType) => void
 }
 
 const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
 const SIZE_CYCLE: CardSize[] = ['small', 'medium', 'large', 'full']
-const TEMPLATE_WIDTHS: Record<string, number> = {
+const TEMPLATE_WIDTHS: Record<CardType, number> = {
   document: 400,
   metric: 300,
   table: 600,
@@ -29,14 +28,14 @@ const TEMPLATE_WIDTHS: Record<string, number> = {
   data: 400,
 }
 
-export function DesktopCard({ card, children, style, onCardClick }: DesktopCardProps) {
+export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const positionRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const { send } = useWebSocket()
 
-  // Local position tracked in ref during drag (no re-renders)
+  // Ref (not state) to avoid re-renders during drag
   const localPos = useRef({ x: card.position.x, y: card.position.y })
 
   const syncToStore = useCallback(() => {
@@ -196,7 +195,7 @@ export function DesktopCard({ card, children, style, onCardClick }: DesktopCardP
         left: card.position.x,
         top: card.position.y,
         zIndex: card.zIndex,
-        width: card.cardType ? (TEMPLATE_WIDTHS[card.cardType] ?? CARD_WIDTHS.medium) : (CARD_WIDTHS[card.size] ?? CARD_WIDTHS.medium),
+        width: card.cardType ? TEMPLATE_WIDTHS[card.cardType] : CARD_WIDTHS[card.size],
       }}
     >
       <div
@@ -222,19 +221,18 @@ export function DesktopCard({ card, children, style, onCardClick }: DesktopCardP
         {(() => {
           switch (card.cardType) {
             case 'document':
-              return <DocumentCard card={card} onCardClick={onCardClick ?? (() => {})} />
+              return <DocumentCard card={card} onCardClick={onCardClick} />
             case 'metric':
-              return <MetricCard card={card} onCardClick={onCardClick ?? (() => {})} />
+              return <MetricCard card={card} onCardClick={onCardClick} />
             case 'table':
-              return <TableCard card={card} onCardClick={onCardClick ?? (() => {})} />
+              return <TableCard card={card} onCardClick={onCardClick} />
             case 'article':
-              return <ArticleCard card={card} onCardClick={onCardClick ?? (() => {})} />
+              return <ArticleCard card={card} onCardClick={onCardClick} />
             case 'data':
-              return <DataCard card={card} onCardClick={onCardClick ?? (() => {})} />
+              return <DataCard card={card} onCardClick={onCardClick} />
             default:
               return (
                 <GlassCard glowEffect={false}>
-                  {/* Title bar */}
                   <div className="flex h-11 items-center border-b border-white/[0.08] px-4">
                     <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-white/90">
                       {card.title}

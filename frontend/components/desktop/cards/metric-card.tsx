@@ -5,7 +5,7 @@ import type { DesktopCard } from '@/lib/stores/desktop-store'
 
 interface Props {
   card: DesktopCard
-  onCardClick: (card: DesktopCard) => void
+  onCardClick?: (card: DesktopCard) => void
 }
 
 const BARS = [40, 65, 45, 80, 55, 90, 70]
@@ -23,7 +23,7 @@ export function MetricCard({ card, onCardClick }: Props) {
           </span>
           <button
             className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
-            onClick={(e) => { e.stopPropagation(); onCardClick(card) }}
+            onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
             <ArrowRight size={14} />
           </button>

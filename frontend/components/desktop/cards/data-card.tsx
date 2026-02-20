@@ -5,7 +5,7 @@ import type { DesktopCard } from '@/lib/stores/desktop-store'
 
 interface Props {
   card: DesktopCard
-  onCardClick: (card: DesktopCard) => void
+  onCardClick?: (card: DesktopCard) => void
 }
 
 export function DataCard({ card, onCardClick }: Props) {
@@ -20,7 +20,7 @@ export function DataCard({ card, onCardClick }: Props) {
           <h2 className="text-xl font-bold">{card.title}</h2>
           <button
             className="p-1 hover:bg-black/5 rounded-full transition-colors"
-            onClick={(e) => { e.stopPropagation(); onCardClick(card) }}
+            onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
             <ArrowUpRight size={16} className="opacity-50" />
           </button>
@@ -50,13 +50,13 @@ export function DataCard({ card, onCardClick }: Props) {
         <div className="flex justify-end gap-2 mt-4">
           <button
             className="px-3 py-1.5 bg-black text-white text-xs font-medium rounded-lg shadow-sm hover:bg-neutral-800 transition-colors"
-            onClick={(e) => { e.stopPropagation(); onCardClick(card) }}
+            onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
             Export CSV
           </button>
           <button
             className="px-3 py-1.5 bg-white border border-black/10 text-xs font-medium rounded-lg shadow-sm hover:bg-neutral-50 transition-colors"
-            onClick={(e) => { e.stopPropagation(); onCardClick(card) }}
+            onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
             Edit Data
           </button>

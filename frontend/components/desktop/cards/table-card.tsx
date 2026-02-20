@@ -5,7 +5,7 @@ import type { DesktopCard } from '@/lib/stores/desktop-store'
 
 interface Props {
   card: DesktopCard
-  onCardClick: (card: DesktopCard) => void
+  onCardClick?: (card: DesktopCard) => void
 }
 
 export function TableCard({ card, onCardClick }: Props) {
@@ -20,7 +20,7 @@ export function TableCard({ card, onCardClick }: Props) {
           <h2 className="text-2xl font-bold tracking-tight">{card.title}</h2>
           <button
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-            onClick={(e) => { e.stopPropagation(); onCardClick(card) }}
+            onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
             <ArrowUpRight size={18} />
           </button>

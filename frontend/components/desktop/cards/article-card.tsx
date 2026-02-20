@@ -4,7 +4,7 @@ import type { DesktopCard } from '@/lib/stores/desktop-store'
 
 interface Props {
   card: DesktopCard
-  onCardClick: (card: DesktopCard) => void
+  onCardClick?: (card: DesktopCard) => void
 }
 
 export function ArticleCard({ card, onCardClick }: Props) {
@@ -26,9 +26,8 @@ export function ArticleCard({ card, onCardClick }: Props) {
         </div>
 
         <div
-          className="flex-1 overflow-y-auto pr-2"
-          onClick={(e) => { e.stopPropagation(); onCardClick(card) }}
-          style={{ cursor: 'pointer' }}
+          className="flex-1 overflow-y-auto pr-2 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
         >
           <div className="text-base leading-relaxed opacity-90 whitespace-pre-wrap font-serif">
             {card.summary ?? ''}

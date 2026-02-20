@@ -17,14 +17,13 @@ export function BaseCard({ children, className, color = 'white' }: BaseCardProps
       data-color={color}
       className={cn(
         'rounded-[40px] shadow-2xl overflow-hidden border',
-        // dark card uses a visible border; light cards suppress it
-        color === 'dark' ? '' : 'border-transparent',
+        color !== 'dark' && 'border-transparent',
         className,
       )}
       style={{
         backgroundColor: bg,
         color: text,
-        borderColor: border ?? undefined,
+        borderColor: border,
       }}
     >
       <div className="p-8 flex flex-col h-full">
