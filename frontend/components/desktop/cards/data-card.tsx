@@ -1,4 +1,4 @@
-import { ArrowUpRight } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { BaseCard } from './base-card'
 import { getCardColor } from './colors'
 import type { DesktopCard } from '@/lib/stores/desktop-store'
@@ -22,7 +22,7 @@ export function DataCard({ card, onCardClick }: Props) {
             className="p-1 hover:bg-black/5 rounded-full transition-colors"
             onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
-            <ArrowUpRight size={16} className="opacity-50" />
+            <Icons.ArrowUpRight size={16} className="opacity-50" />
           </button>
         </div>
 

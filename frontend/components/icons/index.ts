@@ -20,7 +20,13 @@ export {
   IconChevronUp as ChevronUp,
   IconArrowUp as ArrowUp,
   IconArrowDown as ArrowDown,
+  IconArrowRight as ArrowRight,
+  IconArrowUpRight as ArrowUpRight,
   IconSelector as ChevronsUpDown,
+
+  // Trends
+  IconTrendingUp as TrendingUp,
+  IconTrendingDown as TrendingDown,
 
   // Close & actions
   IconX as X,

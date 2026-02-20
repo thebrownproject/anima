@@ -1,4 +1,4 @@
-import { ArrowUpRight } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { BaseCard } from './base-card'
 import { getCardColor } from './colors'
 import type { DesktopCard } from '@/lib/stores/desktop-store'
@@ -22,7 +22,7 @@ export function TableCard({ card, onCardClick }: Props) {
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
-            <ArrowUpRight size={18} />
+            <Icons.ArrowUpRight size={18} />
           </button>
         </div>
 
@@ -53,6 +53,7 @@ export function TableCard({ card, onCardClick }: Props) {
 
         <div className="mt-6 flex justify-between items-center text-xs opacity-40 font-mono">
           <span>{rows.length} entries</span>
+          {/* decorative: placeholder sync status, no timestamp field on DesktopCard yet */}
           <span>Synced just now</span>
         </div>
       </div>

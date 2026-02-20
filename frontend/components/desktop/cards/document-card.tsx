@@ -1,4 +1,4 @@
-import { FileText, ArrowUpRight } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { BaseCard } from './base-card'
 import { getCardColor } from './colors'
 import type { DesktopCard } from '@/lib/stores/desktop-store'
@@ -17,7 +17,7 @@ export function DocumentCard({ card, onCardClick }: Props) {
       <div className="flex flex-col h-full gap-6">
         <div className="flex justify-between items-start border-b border-black/5 pb-6">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-black/5 shadow-sm">
-            <FileText size={14} className="opacity-50" />
+            <Icons.FileText size={14} className="opacity-50" />
             <span className="text-xs font-bold uppercase tracking-wider">{card.typeBadge ?? 'Document'}</span>
           </div>
           {card.date && (
@@ -51,7 +51,7 @@ export function DocumentCard({ card, onCardClick }: Props) {
             onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
             <span>Read Report</span>
-            <ArrowUpRight size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+            <Icons.ArrowUpRight size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
           </button>
         </div>
       </div>

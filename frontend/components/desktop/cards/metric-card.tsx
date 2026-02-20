@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
+import * as Icons from '@/components/icons'
 import { BaseCard } from './base-card'
 import { getCardColor } from './colors'
 import type { DesktopCard } from '@/lib/stores/desktop-store'
@@ -8,6 +8,7 @@ interface Props {
   onCardClick?: (card: DesktopCard) => void
 }
 
+// Decorative bars — visual design element, not connected to real data
 const BARS = [40, 65, 45, 80, 55, 90, 70]
 
 export function MetricCard({ card, onCardClick }: Props) {
@@ -25,7 +26,7 @@ export function MetricCard({ card, onCardClick }: Props) {
             className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
             onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
           >
-            <ArrowRight size={14} />
+            <Icons.ArrowRight size={14} />
           </button>
         </div>
 
@@ -34,9 +35,10 @@ export function MetricCard({ card, onCardClick }: Props) {
           {card.trend && (
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 text-sm font-bold px-2 py-0.5 rounded-md bg-black/5">
-                {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {isUp ? <Icons.TrendingUp size={14} /> : <Icons.TrendingDown size={14} />}
                 {card.trend}
               </span>
+              {/* decorative: placeholder period label, no period field on DesktopCard yet */}
               <span className="text-xs opacity-60 font-medium">vs last month</span>
             </div>
           )}

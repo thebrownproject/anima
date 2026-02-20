@@ -96,7 +96,8 @@ describe('DesktopCard WS move message', () => {
     act(() => { fireEvent.pointerUp(dragHandle, { pointerId: 1 }) })
 
     expect(mockSend).toHaveBeenCalledTimes(1)
-    const sentMsg = mockSend.mock.calls[0][0]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sentMsg: any = (mockSend.mock.calls as any[][])[0][0]
     expect(sentMsg.type).toBe('canvas_interaction')
     expect(sentMsg.payload.action).toBe('move')
     expect(sentMsg.payload.card_id).toBe('card-test-1')
@@ -110,7 +111,8 @@ describe('DesktopCard WS move message', () => {
     act(() => { fireEvent.pointerMove(dragHandle, { pointerId: 1, movementX: 10, movementY: 10 }) })
     act(() => { fireEvent.pointerUp(dragHandle, { pointerId: 1 }) })
 
-    const sentMsg = mockSend.mock.calls[0][0]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sentMsg: any = (mockSend.mock.calls as any[][])[0][0]
     expect(sentMsg.payload.data).toHaveProperty('position_x')
     expect(sentMsg.payload.data).toHaveProperty('position_y')
     expect(sentMsg.payload.data).toHaveProperty('z_index')
