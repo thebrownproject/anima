@@ -615,3 +615,114 @@ async def test_get_chat_history_limit_and_order(workspace_db):
     all_msgs = await workspace_db.get_chat_history()
     assert len(all_msgs) == 5
     assert all_msgs[0]["content"] == "msg-0"
+
+
+# -- Template column tests (m7b.4.17.2) ----------------------------------------
+
+
+async def test_fresh_db_has_template_columns(workspace_db):
+    """Fresh WorkspaceDB has all 13 template columns in the cards table."""
+    TEMPLATE_COLS = [
+        "card_type", "summary", "tags", "color", "type_badge",
+        "date", "value", "trend", "trend_direction", "author",
+        "read_time", "headers", "preview_rows",
+    ]
+    row = await workspace_db.fetchone("PRAGMA table_info(cards)")
+    # Use fetchall to get all column info
+    cols = await workspace_db.fetchall("PRAGMA table_info(cards)")
+    col_names = {c["name"] for c in cols}
+    for col in TEMPLATE_COLS:
+        assert col in col_names, f"Missing column: {col}"
+
+
+async def test_template_columns_migration(tmp_path):
+    """Existing DB without template columns gets them via ALTER TABLE migration."""
+    import sqlite3 as stdlib_sqlite
+    path = str(tmp_path / "legacy_template.db")
+
+    conn = stdlib_sqlite.connect(path)
+    conn.executescript("""\
+        CREATE TABLE stacks (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT,
+            sort_order INTEGER DEFAULT 0, status TEXT DEFAULT 'active',
+            archived_at REAL, created_at REAL
+        );
+        CREATE TABLE cards (
+            card_id TEXT PRIMARY KEY, stack_id TEXT NOT NULL, title TEXT NOT NULL,
+            blocks TEXT, size TEXT DEFAULT 'medium', status TEXT DEFAULT 'active',
+            archived_at REAL, updated_at REAL,
+            position_x REAL DEFAULT 0.0, position_y REAL DEFAULT 0.0,
+            z_index INTEGER DEFAULT 0,
+            FOREIGN KEY (stack_id) REFERENCES stacks(id)
+        );
+        CREATE TABLE chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL,
+            content TEXT NOT NULL, timestamp REAL
+        );
+        INSERT INTO stacks (id, name) VALUES ('s1', 'Stack');
+        INSERT INTO cards (card_id, stack_id, title) VALUES ('c1', 's1', 'Old Card');
+    """)
+    conn.close()
+
+    db = WorkspaceDB(db_path=path)
+    await db.connect()
+    card = await db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert card["card_type"] is None
+    assert card["summary"] is None
+    assert card["tags"] is None
+    await db.close()
+
+
+async def test_upsert_card_json_fields_round_trip(workspace_db):
+    """tags, headers, preview_rows persist as JSON and come back as original values."""
+    await workspace_db.create_stack("s1", "Stack")
+    tags = ["finance", "q1"]
+    headers = ["Name", "Amount"]
+    preview_rows = [["Alice", "$100"], ["Bob", "$200"]]
+
+    await workspace_db.upsert_card(
+        "c1", "s1", "Test",
+        blocks=[],
+        card_type="table",
+        summary="Q1",
+        tags=tags,
+        headers=headers,
+        preview_rows=preview_rows,
+        color="blue",
+    )
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert row["card_type"] == "table"
+    assert row["summary"] == "Q1"
+    assert row["color"] == "blue"
+    assert json.loads(row["tags"]) == tags
+    assert json.loads(row["headers"]) == headers
+    assert json.loads(row["preview_rows"]) == preview_rows
+
+
+async def test_upsert_card_update_preserves_template_fields(workspace_db):
+    """ON CONFLICT update path preserves template fields on re-upsert."""
+    await workspace_db.create_stack("s1", "Stack")
+
+    await workspace_db.upsert_card(
+        "c1", "s1", "Original",
+        blocks=[],
+        card_type="document",
+        summary="First",
+        tags=["a"],
+    )
+
+    # Re-upsert same card_id with different title
+    await workspace_db.upsert_card(
+        "c1", "s1", "Updated",
+        blocks=[],
+        card_type="metric",
+        summary="Second",
+        tags=["b", "c"],
+    )
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", ("c1",))
+    assert row["title"] == "Updated"
+    assert row["card_type"] == "metric"
+    assert row["summary"] == "Second"
+    assert json.loads(row["tags"]) == ["b", "c"]

@@ -55,6 +55,19 @@ async def build_state_sync_message(db: WorkspaceDB) -> StateSyncMessage:
                 size=r["size"] or "medium",
                 position=CardPosition(x=r["position_x"], y=r["position_y"]),
                 z_index=r["z_index"],
+                card_type=r.get("card_type"),
+                summary=r.get("summary"),
+                tags=json.loads(r["tags"]) if r.get("tags") else None,
+                color=r.get("color"),
+                type_badge=r.get("type_badge"),
+                date=r.get("date"),
+                value=r.get("value"),
+                trend=r.get("trend"),
+                trend_direction=r.get("trend_direction"),
+                author=r.get("author"),
+                read_time=r.get("read_time"),
+                headers=json.loads(r["headers"]) if r.get("headers") else None,
+                preview_rows=json.loads(r["preview_rows"]) if r.get("preview_rows") else None,
             ))
 
     # Last 50 chat messages, converting seconds->ms and int->str id

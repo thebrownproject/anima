@@ -159,6 +159,19 @@ CREATE TABLE IF NOT EXISTS cards (
     position_x REAL DEFAULT 0.0,
     position_y REAL DEFAULT 0.0,
     z_index INTEGER DEFAULT 0,
+    card_type TEXT,
+    summary TEXT,
+    tags TEXT,
+    color TEXT,
+    type_badge TEXT,
+    date TEXT,
+    value TEXT,
+    trend TEXT,
+    trend_direction TEXT,
+    author TEXT,
+    read_time TEXT,
+    headers TEXT,
+    preview_rows TEXT,
     FOREIGN KEY (stack_id) REFERENCES stacks(id)
 );
 CREATE TABLE IF NOT EXISTS chat_messages (
@@ -189,6 +202,7 @@ class WorkspaceDB(_BaseDB):
         await super().connect()
         await self._migrate_card_position_columns()
         await self._migrate_documents_table()
+        await self._migrate_card_template_columns()
 
     async def _migrate_card_position_columns(self) -> None:
         """Add position columns to existing cards tables (CREATE TABLE IF NOT EXISTS won't)."""
@@ -199,6 +213,20 @@ class WorkspaceDB(_BaseDB):
         ]:
             try:
                 await self._conn.execute(f"ALTER TABLE cards ADD COLUMN {col} {typedef}")
+                await self._conn.commit()
+                logger.info("Migrated cards table: added %s", col)
+            except Exception:
+                pass  # Column already exists
+
+    async def _migrate_card_template_columns(self) -> None:
+        """Add template columns to existing cards tables."""
+        for col in [
+            "card_type", "summary", "tags", "color", "type_badge",
+            "date", "value", "trend", "trend_direction", "author",
+            "read_time", "headers", "preview_rows",
+        ]:
+            try:
+                await self._conn.execute(f"ALTER TABLE cards ADD COLUMN {col} TEXT")
                 await self._conn.commit()
                 logger.info("Migrated cards table: added %s", col)
             except Exception:
@@ -277,20 +305,46 @@ class WorkspaceDB(_BaseDB):
         position_x: float = 0.0,
         position_y: float = 0.0,
         z_index: int = 0,
+        card_type: str | None = None,
+        summary: str | None = None,
+        tags: list | None = None,
+        color: str | None = None,
+        type_badge: str | None = None,
+        date: str | None = None,
+        value: str | None = None,
+        trend: str | None = None,
+        trend_direction: str | None = None,
+        author: str | None = None,
+        read_time: str | None = None,
+        headers: list | None = None,
+        preview_rows: list | None = None,
     ) -> dict:
         now = time.time()
         blocks_json = json.dumps(blocks)
+        tags_json = json.dumps(tags) if tags is not None else None
+        headers_json = json.dumps(headers) if headers is not None else None
+        preview_rows_json = json.dumps(preview_rows) if preview_rows is not None else None
         await self.execute(
             "INSERT INTO cards (card_id, stack_id, title, blocks, size, updated_at, "
-            "position_x, position_y, z_index) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "position_x, position_y, z_index, card_type, summary, tags, color, "
+            "type_badge, date, value, trend, trend_direction, author, read_time, "
+            "headers, preview_rows) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(card_id) DO UPDATE SET "
             "title = excluded.title, blocks = excluded.blocks, "
             "size = excluded.size, updated_at = excluded.updated_at, "
             "position_x = excluded.position_x, position_y = excluded.position_y, "
-            "z_index = excluded.z_index",
+            "z_index = excluded.z_index, card_type = excluded.card_type, "
+            "summary = excluded.summary, tags = excluded.tags, color = excluded.color, "
+            "type_badge = excluded.type_badge, date = excluded.date, "
+            "value = excluded.value, trend = excluded.trend, "
+            "trend_direction = excluded.trend_direction, author = excluded.author, "
+            "read_time = excluded.read_time, headers = excluded.headers, "
+            "preview_rows = excluded.preview_rows",
             (card_id, stack_id, title, blocks_json, size, now,
-             position_x, position_y, z_index),
+             position_x, position_y, z_index, card_type, summary, tags_json, color,
+             type_badge, date, value, trend, trend_direction, author, read_time,
+             headers_json, preview_rows_json),
         )
         return await self.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
 

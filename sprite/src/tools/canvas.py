@@ -9,6 +9,7 @@ from typing import Any, Awaitable, Callable, TYPE_CHECKING
 from claude_agent_sdk import tool
 
 from ..protocol import (
+    CARD_TYPES,
     CanvasUpdate,
     CanvasUpdatePayload,
     HeadingBlock,
@@ -180,9 +181,22 @@ def create_canvas_tools(
         "Create a new card on the user's Canvas with composable blocks.\n\n"
         "Parameters:\n"
         "- title (str): Card title displayed in the title bar.\n"
+        "- card_type (str): Template — 'document', 'metric', 'table', 'article', or 'data'.\n"
         "- size (str): Card size — 'small', 'medium' (default), 'large', or 'full'.\n"
         "  small: single stat or badge. medium: key-value pairs, short tables.\n"
         "  large: wide tables, detailed content. full: full-width dashboards.\n"
+        "- summary (str, optional): One-line summary shown on the card face.\n"
+        "- tags (list[str], optional): Category tags for filtering.\n"
+        "- color (str, optional): Card accent color from palette.\n"
+        "- type_badge (str, optional): Override badge label (defaults to card_type).\n"
+        "- date (str, optional): Date string for document/article cards.\n"
+        "- value (str, optional): Primary metric value for metric cards.\n"
+        "- trend (str, optional): Trend string e.g. '+12%' for metric cards.\n"
+        "- trend_direction (str, optional): 'up' or 'down'.\n"
+        "- author (str, optional): Author name for article cards.\n"
+        "- read_time (str, optional): Estimated read time e.g. '5 min'.\n"
+        "- headers (list[str], optional): Column headers for table cards.\n"
+        "- preview_rows (list[list[str]], optional): Preview row data for table cards.\n"
         "- blocks (list[dict]): Array of block objects. Each block needs a 'type' field "
         "(do NOT include 'id' — it is auto-generated). Valid block types:\n"
         "  - heading: {type: 'heading', text: str, subtitle?: str}\n"
@@ -193,16 +207,32 @@ def create_canvas_tools(
         "  - progress: {type: 'progress', value: int (0-100), label?: str}\n"
         "  - text: {type: 'text', content: str}  NOTE: field is 'content', NOT 'text'\n"
         "  - separator: {type: 'separator'}  NOTE: type is 'separator', NOT 'divider'\n",
-        {"title": str, "size": str, "blocks": list},
+        {"title": str, "card_type": str, "size": str, "blocks": list},
     )
     async def create_card(_args: dict) -> dict:
-        """Create a card with title, size, and blocks array."""
+        """Create a card with title, card_type, size, and blocks array."""
         title = _args.get("title", "").strip()
+        card_type = _args.get("card_type", "").strip() or None
         size = _args.get("size", "medium").strip()
         blocks = _parse_json_param(_args.get("blocks", []))
+        summary = _args.get("summary")
+        tags = _parse_json_param(_args.get("tags"))
+        color = _args.get("color")
+        type_badge = _args.get("type_badge")
+        date = _args.get("date")
+        value = _args.get("value")
+        trend = _args.get("trend")
+        trend_direction = _args.get("trend_direction")
+        author = _args.get("author")
+        read_time = _args.get("read_time")
+        headers = _parse_json_param(_args.get("headers"))
+        preview_rows = _parse_json_param(_args.get("preview_rows"))
 
         if not title:
             return _error_result("title is required")
+
+        if card_type and card_type not in CARD_TYPES:
+            return _error_result(f"card_type must be one of: {', '.join(CARD_TYPES)}")
 
         if size not in VALID_SIZES:
             return _error_result(f"size must be one of: {', '.join(sorted(VALID_SIZES))}")
@@ -216,7 +246,12 @@ def create_canvas_tools(
             type="canvas_update",
             payload=CanvasUpdatePayload(
                 command="create_card", card_id=card_id, title=title,
-                blocks=block_dataclasses, size=size, stack_id=stack_id_fn() if stack_id_fn else None,
+                blocks=block_dataclasses, size=size,
+                stack_id=stack_id_fn() if stack_id_fn else None,
+                card_type=card_type, summary=summary, tags=tags, color=color,
+                type_badge=type_badge, date=date, value=value, trend=trend,
+                trend_direction=trend_direction, author=author, read_time=read_time,
+                headers=headers, preview_rows=preview_rows,
             ),
         )
 
@@ -226,9 +261,15 @@ def create_canvas_tools(
 
         current_stack_id = stack_id_fn() if stack_id_fn else None
         if workspace_db and current_stack_id:
-            await workspace_db.upsert_card(card_id, current_stack_id, title, blocks, size)
+            await workspace_db.upsert_card(
+                card_id, current_stack_id, title, blocks, size,
+                card_type=card_type, summary=summary, tags=tags, color=color,
+                type_badge=type_badge, date=date, value=value, trend=trend,
+                trend_direction=trend_direction, author=author, read_time=read_time,
+                headers=headers, preview_rows=preview_rows,
+            )
 
-        logger.info(f"Created card {card_id}: {title} ({len(blocks)} blocks)")
+        logger.info(f"Created card {card_id}: {title} ({len(blocks)} blocks, type={card_type})")
         return {"content": [{"type": "text", "text": f"Card created: {title} (ID: {card_id})"}]}
 
     @tool(

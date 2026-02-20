@@ -246,3 +246,63 @@ async def test_round_trip_upsert_position_then_state_sync(workspace_db):
     assert card.position.x == 42.0
     assert card.position.y == 99.9
     assert card.z_index == 3
+
+
+# -- Template field tests (m7b.4.17.2) ----------------------------------------
+
+
+async def test_state_sync_includes_card_type(workspace_db):
+    """state_sync CardInfo includes card_type when present in DB."""
+    stacks = await _seed_stacks(workspace_db, count=1)
+    sid = stacks[0]["id"]
+
+    await workspace_db.upsert_card(
+        card_id="typed-card",
+        stack_id=sid,
+        title="Doc Card",
+        blocks=[],
+        card_type="document",
+        summary="A document summary",
+    )
+
+    msg = await build_state_sync_message(workspace_db)
+    card = next(c for c in msg.payload.cards if c.id == "typed-card")
+    assert card.card_type == "document"
+    assert card.summary == "A document summary"
+
+
+async def test_state_sync_includes_json_template_fields(workspace_db):
+    """state_sync deserializes JSON columns (tags, headers, preview_rows) into lists."""
+    stacks = await _seed_stacks(workspace_db, count=1)
+    sid = stacks[0]["id"]
+
+    await workspace_db.upsert_card(
+        card_id="json-card",
+        stack_id=sid,
+        title="Table Card",
+        blocks=[],
+        card_type="table",
+        tags=["a", "b"],
+        headers=["Col1", "Col2"],
+        preview_rows=[["x", "y"], ["1", "2"]],
+    )
+
+    msg = await build_state_sync_message(workspace_db)
+    card = next(c for c in msg.payload.cards if c.id == "json-card")
+    assert card.tags == ["a", "b"]
+    assert card.headers == ["Col1", "Col2"]
+    assert card.preview_rows == [["x", "y"], ["1", "2"]]
+
+
+async def test_state_sync_template_fields_none_when_absent(workspace_db):
+    """Cards without template fields have None values in CardInfo (not empty strings)."""
+    stacks = await _seed_stacks(workspace_db, count=1)
+    cards = await _seed_cards(workspace_db, stacks[0]["id"], count=1)
+
+    msg = await build_state_sync_message(workspace_db)
+    card = msg.payload.cards[0]
+    assert card.card_type is None
+    assert card.summary is None
+    assert card.tags is None
+    assert card.headers is None
+    assert card.preview_rows is None

@@ -476,3 +476,97 @@ async def test_stack_id_from_closure(mock_send, workspace_db):
         "SELECT * FROM cards WHERE stack_id = ?", ("stack-a",)
     )
     assert row is not None
+
+
+# -- Template field tests (m7b.4.17.2) ----------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_card_with_card_type(db_canvas_tools, mock_send):
+    """create_card accepts card_type and includes it in WS message."""
+    create_card = db_canvas_tools[0].handler
+
+    result = await create_card({
+        "title": "Invoice Summary",
+        "card_type": "document",
+        "size": "medium",
+        "blocks": [{"type": "text", "content": "Hello"}],
+    })
+
+    assert "is_error" not in result
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    assert sent_msg["payload"]["card_type"] == "document"
+
+
+@pytest.mark.asyncio
+async def test_create_card_invalid_card_type(db_canvas_tools):
+    """create_card rejects invalid card_type."""
+    create_card = db_canvas_tools[0].handler
+
+    result = await create_card({
+        "title": "Bad Type",
+        "card_type": "invoice",
+        "blocks": [],
+    })
+
+    assert result["is_error"] is True
+    assert "card_type must be one of" in result["content"][0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_create_card_template_fields_in_ws_message(db_canvas_tools, mock_send):
+    """Template fields (summary, color, tags) flow through to WS message."""
+    create_card = db_canvas_tools[0].handler
+
+    result = await create_card({
+        "title": "Metrics Card",
+        "card_type": "metric",
+        "summary": "Revenue up 12%",
+        "color": "emerald",
+        "tags": ["finance", "q1"],
+        "value": "$1.2M",
+        "trend": "+12%",
+        "trend_direction": "up",
+        "blocks": [{"type": "stat", "value": "$1.2M", "label": "Revenue"}],
+    })
+
+    assert "is_error" not in result
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    p = sent_msg["payload"]
+    assert p["card_type"] == "metric"
+    assert p["summary"] == "Revenue up 12%"
+    assert p["color"] == "emerald"
+    assert p["tags"] == ["finance", "q1"]
+    assert p["value"] == "$1.2M"
+    assert p["trend"] == "+12%"
+    assert p["trend_direction"] == "up"
+
+
+@pytest.mark.asyncio
+async def test_create_card_template_fields_persisted_to_db(db_canvas_tools, mock_send, workspace_db):
+    """Template fields persist to DB and JSON fields round-trip correctly."""
+    create_card = db_canvas_tools[0].handler
+
+    result = await create_card({
+        "title": "Table Card",
+        "card_type": "table",
+        "summary": "Q1 Sales",
+        "tags": ["q1", "sales"],
+        "headers": ["Name", "Amount"],
+        "preview_rows": [["Alice", "$100"], ["Bob", "$200"]],
+        "color": "blue",
+        "blocks": [{"type": "text", "content": "data"}],
+    })
+
+    assert "is_error" not in result
+    sent_msg = json.loads(mock_send.call_args[0][0])
+    card_id = sent_msg["payload"]["card_id"]
+
+    row = await workspace_db.fetchone("SELECT * FROM cards WHERE card_id = ?", (card_id,))
+    assert row is not None
+    assert row["card_type"] == "table"
+    assert row["summary"] == "Q1 Sales"
+    assert row["color"] == "blue"
+    assert json.loads(row["tags"]) == ["q1", "sales"]
+    assert json.loads(row["headers"]) == ["Name", "Amount"]
+    assert json.loads(row["preview_rows"]) == [["Alice", "$100"], ["Bob", "$200"]]
