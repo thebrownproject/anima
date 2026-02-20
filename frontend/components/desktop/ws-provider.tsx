@@ -100,7 +100,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     switch (message.type) {
       case 'canvas_update': {
-        const { command, card_id, title, blocks, size, stack_id } = message.payload
+        const {
+          command, card_id, title, blocks, size, stack_id,
+          card_type, summary, tags, color, type_badge, date,
+          value, trend, trend_direction, author, read_time, headers, preview_rows,
+        } = message.payload
         const store = useDesktopStore.getState()
 
         if (command === 'create_card') {
@@ -113,12 +117,38 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             size: size ?? 'medium',
             position,
             zIndex: store.maxZIndex + 1,
+            cardType: card_type,
+            summary,
+            tags,
+            color,
+            typeBadge: type_badge,
+            date,
+            value,
+            trend,
+            trendDirection: trend_direction,
+            author,
+            readTime: read_time,
+            headers,
+            previewRows: preview_rows,
           })
         } else if (command === 'update_card') {
           const updates: Partial<Omit<DesktopCard, 'id'>> = {}
           if (title !== undefined) updates.title = title
           if (blocks !== undefined) updates.blocks = blocks
           if (size !== undefined) updates.size = size
+          if (card_type !== undefined) updates.cardType = card_type
+          if (summary !== undefined) updates.summary = summary
+          if (tags !== undefined) updates.tags = tags
+          if (color !== undefined) updates.color = color
+          if (type_badge !== undefined) updates.typeBadge = type_badge
+          if (date !== undefined) updates.date = date
+          if (value !== undefined) updates.value = value
+          if (trend !== undefined) updates.trend = trend
+          if (trend_direction !== undefined) updates.trendDirection = trend_direction
+          if (author !== undefined) updates.author = author
+          if (read_time !== undefined) updates.readTime = read_time
+          if (headers !== undefined) updates.headers = headers
+          if (preview_rows !== undefined) updates.previewRows = preview_rows
           store.updateCard(card_id, updates)
         } else if (command === 'close_card') {
           store.removeCard(card_id)
@@ -171,6 +201,19 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             size: c.size,
             position,
             zIndex: c.z_index || idx + 1,
+            cardType: c.card_type,
+            summary: c.summary,
+            tags: c.tags,
+            color: c.color,
+            typeBadge: c.type_badge,
+            date: c.date,
+            value: c.value,
+            trend: c.trend,
+            trendDirection: c.trend_direction,
+            author: c.author,
+            readTime: c.read_time,
+            headers: c.headers,
+            previewRows: c.preview_rows,
           }
           idx++
         }

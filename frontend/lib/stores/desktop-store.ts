@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
-import type { Block, CardSize, StackInfo } from '@/types/ws-protocol'
+import type { Block, CardSize, CardType, StackInfo, TrendDirection } from '@/types/ws-protocol'
 
 export const CARD_WIDTHS: Record<CardSize, number> = {
   small: 280,
@@ -33,6 +33,19 @@ export interface DesktopCard {
   size: CardSize
   position: { x: number; y: number }
   zIndex: number
+  cardType?: CardType
+  summary?: string
+  tags?: string[]
+  color?: string
+  typeBadge?: string
+  date?: string
+  value?: string
+  trend?: string
+  trendDirection?: TrendDirection
+  author?: string
+  readTime?: string
+  headers?: string[]
+  previewRows?: unknown[][]
 }
 
 export interface ViewState {
@@ -205,7 +218,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
     }),
     {
       name: 'stackdocs-desktop',
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>
         if (version === 0 || version === undefined) {
@@ -223,6 +236,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
             cards: migratedCards,
           }
         }
+        // v1 -> v2: all new template fields are optional — no transformation needed
         return state
       },
     }
