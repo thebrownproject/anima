@@ -15,23 +15,15 @@ import { DebugPanel } from '@/components/debug/debug-panel'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
 import { MaybeVoiceProvider } from '@/components/voice/voice-provider'
-// SPIKE: font switcher
-import { SPIKE_CARDS_ENABLED } from '@/spike/card-redesign/config'
-import { FontSwitcher, useSpikeFont } from '@/spike/card-redesign/font-switcher'
 
 function CardLayer() {
   const cards = useDesktopStore((s) => s.cards)
-  const { fontFamily } = useSpikeFont()
 
   return (
     <>
       <AnimatePresence>
         {Object.values(cards).map((card) => (
-          <DesktopCard
-            key={card.id}
-            card={card}
-            style={SPIKE_CARDS_ENABLED ? { fontFamily } : undefined}
-          >
+          <DesktopCard key={card.id} card={card}>
             <BlockRenderer blocks={card.blocks} />
           </DesktopCard>
         ))}
@@ -61,7 +53,6 @@ export default function DesktopPage() {
 
         <ChatBar />
         <DebugPanel />
-        {SPIKE_CARDS_ENABLED && <FontSwitcher />}
       </div>
     </GlassTooltipProvider>
     </MaybeVoiceProvider>

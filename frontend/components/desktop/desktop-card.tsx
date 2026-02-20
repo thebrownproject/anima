@@ -10,9 +10,7 @@ import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
 import { useWebSocket } from './ws-provider'
-// SPIKE: card redesign
-import { SPIKE_CARDS_ENABLED } from '@/spike/card-redesign/config'
-import { CARD_PALETTE, CARD_TEXT, CARD_TEXT_SUBTLE, colorFromId } from '@/spike/card-redesign/palette'
+import { DocumentCard, MetricCard, TableCard, ArticleCard, DataCard } from '@/components/desktop/cards'
 
 interface DesktopCardProps {
   card: DesktopCardType
@@ -23,6 +21,13 @@ interface DesktopCardProps {
 
 const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
 const SIZE_CYCLE: CardSize[] = ['small', 'medium', 'large', 'full']
+const TEMPLATE_WIDTHS: Record<string, number> = {
+  document: 400,
+  metric: 300,
+  table: 600,
+  article: 500,
+  data: 400,
+}
 
 export function DesktopCard({ card, children, style, onCardClick }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -191,7 +196,7 @@ export function DesktopCard({ card, children, style, onCardClick }: DesktopCardP
         left: card.position.x,
         top: card.position.y,
         zIndex: card.zIndex,
-        width: CARD_WIDTHS[card.size] ?? CARD_WIDTHS.medium,
+        width: card.cardType ? (TEMPLATE_WIDTHS[card.cardType] ?? CARD_WIDTHS.medium) : (CARD_WIDTHS[card.size] ?? CARD_WIDTHS.medium),
       }}
     >
       <div
@@ -210,110 +215,66 @@ export function DesktopCard({ card, children, style, onCardClick }: DesktopCardP
           WebkitUserSelect: isDragging ? 'none' : undefined,
         }}
         className={cn(
-          SPIKE_CARDS_ENABLED ? 'rounded-xl' : 'rounded-2xl',
+          'rounded-2xl',
           isDragging ? 'shadow-[0_16px_48px_rgba(0,0,0,0.5)]' : 'shadow-none',
         )}
       >
-        {SPIKE_CARDS_ENABLED ? (
-          /* SPIKE: Opaque editorial card surface */
-          <div
-            className="group relative overflow-hidden rounded-xl"
-            style={{
-              background: CARD_PALETTE[colorFromId(card.id)],
-              boxShadow: '0 8px 40px rgba(0, 0, 0, 0.25), 0 2px 10px rgba(0, 0, 0, 0.12)',
-              ...style,
-            }}
-          >
-            {/* Subtle top-edge highlight for depth/lift */}
-            <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-xl"
-              style={{ background: 'linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0.3), rgba(255,255,255,0.5))' }}
-            />
-            {/* Floating controls — visible on hover */}
-            <div className="absolute right-3 top-3 z-10 flex items-center gap-0.5 rounded-lg bg-black/8 px-1.5 py-1 opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100">
-              <button
-                type="button"
-                onClick={handleEdit}
-                className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-black/10"
-                title="Edit"
-              >
-                <Icons.Edit className="size-3.5 transition-colors" style={{ color: CARD_TEXT_SUBTLE }} />
-              </button>
-              <button
-                type="button"
-                onClick={handleResize}
-                className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-black/10"
-                title={`Resize (${card.size})`}
-              >
-                <Icons.ArrowsMaximize className="size-3.5 transition-colors" style={{ color: CARD_TEXT_SUBTLE }} />
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-black/10"
-                title="Close"
-              >
-                <Icons.X className="size-3.5 transition-colors" style={{ color: CARD_TEXT_SUBTLE }} />
-              </button>
-            </div>
+        {(() => {
+          switch (card.cardType) {
+            case 'document':
+              return <DocumentCard card={card} onCardClick={onCardClick ?? (() => {})} />
+            case 'metric':
+              return <MetricCard card={card} onCardClick={onCardClick ?? (() => {})} />
+            case 'table':
+              return <TableCard card={card} onCardClick={onCardClick ?? (() => {})} />
+            case 'article':
+              return <ArticleCard card={card} onCardClick={onCardClick ?? (() => {})} />
+            case 'data':
+              return <DataCard card={card} onCardClick={onCardClick ?? (() => {})} />
+            default:
+              return (
+                <GlassCard glowEffect={false}>
+                  {/* Title bar */}
+                  <div className="flex h-11 items-center border-b border-white/[0.08] px-4">
+                    <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-white/90">
+                      {card.title}
+                    </span>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={handleEdit}
+                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                        title="Edit"
+                      >
+                        <Icons.Edit className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResize}
+                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                        title={`Resize (${card.size})`}
+                      >
+                        <Icons.ArrowsMaximize className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClose}
+                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                        title="Close"
+                      >
+                        <Icons.X className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+                      </button>
+                    </div>
+                  </div>
 
-            {/* Card title — NEWSPAPER HEADLINE */}
-            <div className="px-7 pt-7 pb-3">
-              <h2
-                className="text-[36px] font-black leading-[1.15] tracking-tight"
-                style={{ color: CARD_TEXT }}
-              >
-                {card.title}
-              </h2>
-            </div>
-
-            {/* Content — stopPropagation so clicks inside don't trigger drag */}
-            <div onPointerDown={(e) => e.stopPropagation()}>
-              {children}
-            </div>
-          </div>
-        ) : (
-          /* Original glass card */
-          <GlassCard glowEffect={false}>
-            {/* Title bar */}
-            <div className="flex h-11 items-center border-b border-white/[0.08] px-4">
-              <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-white/90">
-                {card.title}
-              </span>
-              <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={handleEdit}
-                  className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
-                  title="Edit"
-                >
-                  <Icons.Edit className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResize}
-                  className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
-                  title={`Resize (${card.size})`}
-                >
-                  <Icons.ArrowsMaximize className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
-                  title="Close"
-                >
-                  <Icons.X className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
-                </button>
-              </div>
-            </div>
-
-            {/* Content — stopPropagation so clicks inside don't trigger drag */}
-            <div onPointerDown={(e) => e.stopPropagation()}>
-              {children}
-            </div>
-          </GlassCard>
-        )}
+                  {/* stopPropagation so clicks inside don't trigger drag */}
+                  <div onPointerDown={(e) => e.stopPropagation()}>
+                    {children}
+                  </div>
+                </GlassCard>
+              )
+          }
+        })()}
       </div>
     </motion.div>
   )

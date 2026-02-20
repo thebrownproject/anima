@@ -40,6 +40,15 @@ beforeAll(() => {
   HTMLElement.prototype.releasePointerCapture = vi.fn()
 })
 
+// Mock template components so tests don't need to render their full trees
+vi.mock('@/components/desktop/cards', () => ({
+  DocumentCard: ({ card }: { card: any }) => <div data-testid="document-card">{card.title}</div>,
+  MetricCard: ({ card }: { card: any }) => <div data-testid="metric-card">{card.title}</div>,
+  TableCard: ({ card }: { card: any }) => <div data-testid="table-card">{card.title}</div>,
+  ArticleCard: ({ card }: { card: any }) => <div data-testid="article-card">{card.title}</div>,
+  DataCard: ({ card }: { card: any }) => <div data-testid="data-card">{card.title}</div>,
+}))
+
 import { DesktopCard } from '../desktop-card'
 
 const TEST_CARD = {
@@ -50,6 +59,13 @@ const TEST_CARD = {
   size: 'medium' as const,
   position: { x: 200, y: 150 },
   zIndex: 3,
+}
+
+const DOCUMENT_CARD = {
+  ...TEST_CARD,
+  id: 'card-doc-1',
+  title: 'Document Card',
+  cardType: 'document' as const,
 }
 
 describe('DesktopCard WS move message', () => {
@@ -164,5 +180,41 @@ describe('DesktopCard click discrimination', () => {
 
     expect(mockClick).not.toHaveBeenCalled()
     expect(mockSend).toHaveBeenCalledTimes(1) // move message sent instead
+  })
+})
+
+describe('DesktopCard template dispatch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useDesktopStore.setState({
+      cards: {
+        [TEST_CARD.id]: TEST_CARD,
+        [DOCUMENT_CARD.id]: DOCUMENT_CARD,
+      },
+      maxZIndex: 3,
+      view: { x: 0, y: 0, scale: 1 },
+      activeStackId: 'default',
+      stacks: [],
+      archivedStackIds: [],
+      leftPanel: 'none',
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('card with cardType="document" renders DocumentCard', () => {
+    render(<DesktopCard card={DOCUMENT_CARD} />)
+    expect(screen.getByTestId('document-card')).toBeDefined()
+    expect(screen.queryByRole('heading', { name: /Test Card/i })).toBeNull()
+  })
+
+  it('card with no cardType renders legacy GlassCard', () => {
+    render(<DesktopCard card={TEST_CARD} />)
+    // Legacy path: title bar h-11 with card title text (GlassCard)
+    expect(screen.getByText('Test Card')).toBeDefined()
+    expect(screen.queryByTestId('document-card')).toBeNull()
+    expect(screen.queryByTestId('base-card')).toBeNull()
   })
 })
