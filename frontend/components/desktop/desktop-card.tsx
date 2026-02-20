@@ -18,15 +18,17 @@ interface DesktopCardProps {
   card: DesktopCardType
   children?: ReactNode
   style?: React.CSSProperties
+  onCardClick?: (card: DesktopCardType) => void
 }
 
 const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
 const SIZE_CYCLE: CardSize[] = ['small', 'medium', 'large', 'full']
 
-export function DesktopCard({ card, children, style }: DesktopCardProps) {
+export function DesktopCard({ card, children, style, onCardClick }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const positionRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const { send } = useWebSocket()
 
   // Local position tracked in ref during drag (no re-renders)
@@ -83,13 +85,13 @@ export function DesktopCard({ card, children, style }: DesktopCardProps) {
       e.stopPropagation()
       useDesktopStore.getState().bringToFront(card.id)
 
-      // Cancel any running momentum
+      pointerDownPos.current = { x: e.clientX, y: e.clientY }
+
       if (momentum.isAnimating()) {
         momentum.cancel()
       }
 
       if (!cardRef.current) return
-      // Snapshot current position into local ref
       const current = useDesktopStore.getState().cards[card.id]
       if (current) localPos.current = { ...current.position }
 
@@ -125,12 +127,21 @@ export function DesktopCard({ card, children, style }: DesktopCardProps) {
       setIsDragging(false)
       cardRef.current?.releasePointerCapture(e.pointerId)
 
-      // Flick -> momentum glide, otherwise snap to final position
+      // Click discrimination: < 5px travel = click, not drag
+      if (pointerDownPos.current) {
+        const dist = Math.hypot(e.clientX - pointerDownPos.current.x, e.clientY - pointerDownPos.current.y)
+        pointerDownPos.current = null
+        if (dist < 5) {
+          onCardClick?.(card)
+          return
+        }
+      }
+
       if (!momentum.releaseWithFlick()) {
         syncToStore()
       }
     },
-    [isDragging, momentum, syncToStore],
+    [isDragging, momentum, syncToStore, onCardClick, card],
   )
 
   // Safety net: if pointer capture is lost (tab switch, DevTools, touch cancel),

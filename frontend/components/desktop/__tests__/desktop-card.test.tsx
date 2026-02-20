@@ -120,3 +120,49 @@ describe('DesktopCard WS move message', () => {
     expect(mockSend).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('DesktopCard click discrimination', () => {
+  const mockClick = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useDesktopStore.setState({
+      cards: { [TEST_CARD.id]: TEST_CARD },
+      maxZIndex: 3,
+      view: { x: 0, y: 0, scale: 1 },
+      activeStackId: 'default',
+      stacks: [],
+      archivedStackIds: [],
+      leftPanel: 'none',
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('calls onCardClick when pointer travel < 5px', () => {
+    render(<DesktopCard card={TEST_CARD} onCardClick={mockClick} />)
+    const dragHandle = screen.getByTestId('card-drag-handle')
+
+    act(() => { fireEvent.pointerDown(dragHandle, { pointerId: 1, clientX: 100, clientY: 100 }) })
+    act(() => { fireEvent.pointerUp(dragHandle, { pointerId: 1, clientX: 102, clientY: 101 }) })
+
+    expect(mockClick).toHaveBeenCalledTimes(1)
+    expect(mockClick).toHaveBeenCalledWith(TEST_CARD)
+    // No WS move sent for a click
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('does not call onCardClick when pointer travel >= 5px', () => {
+    render(<DesktopCard card={TEST_CARD} onCardClick={mockClick} />)
+    const dragHandle = screen.getByTestId('card-drag-handle')
+
+    act(() => { fireEvent.pointerDown(dragHandle, { pointerId: 1, clientX: 100, clientY: 100 }) })
+    act(() => { fireEvent.pointerMove(dragHandle, { pointerId: 1, movementX: 10, movementY: 10 }) })
+    act(() => { fireEvent.pointerUp(dragHandle, { pointerId: 1, clientX: 110, clientY: 110 }) })
+
+    expect(mockClick).not.toHaveBeenCalled()
+    expect(mockSend).toHaveBeenCalledTimes(1) // move message sent instead
+  })
+})
