@@ -34,6 +34,8 @@ BLOCK_TYPES = (
     "document",
 )
 
+CARD_TYPES = ("document", "metric", "table", "article", "data")
+
 MESSAGE_TYPES = (
     "mission",
     "file_upload",
@@ -61,6 +63,8 @@ CanvasAction = Literal[
 ]
 CanvasCommand = Literal["create_card", "update_card", "close_card"]
 CardSize = Literal["small", "medium", "large", "full"]
+CardType = Literal["document", "metric", "table", "article", "data"]
+TrendDirection = Literal["up", "down"]
 AgentEventType = Literal["text", "tool", "complete", "error"]
 BadgeVariant = Literal["default", "success", "warning", "destructive"]
 DocumentStatus = Literal["processing", "ocr_complete", "completed", "failed"]
@@ -314,6 +318,19 @@ class CanvasUpdatePayload:
     size: Optional[CardSize] = None
     mission_id: Optional[str] = None
     stack_id: Optional[str] = None
+    card_type: Optional[CardType] = None
+    summary: Optional[str] = None
+    tags: Optional[list[str]] = None
+    color: Optional[str] = None
+    type_badge: Optional[str] = None
+    date: Optional[str] = None
+    value: Optional[str] = None
+    trend: Optional[str] = None
+    trend_direction: Optional[TrendDirection] = None
+    author: Optional[str] = None
+    read_time: Optional[str] = None
+    headers: Optional[list[str]] = None
+    preview_rows: Optional[list[list[str]]] = None
 
 
 @dataclass
@@ -369,6 +386,19 @@ class CardInfo:
     size: CardSize
     position: CardPosition
     z_index: int
+    card_type: Optional[CardType] = None
+    summary: Optional[str] = None
+    tags: Optional[list[str]] = None
+    color: Optional[str] = None
+    type_badge: Optional[str] = None
+    date: Optional[str] = None
+    value: Optional[str] = None
+    trend: Optional[str] = None
+    trend_direction: Optional[TrendDirection] = None
+    author: Optional[str] = None
+    read_time: Optional[str] = None
+    headers: Optional[list[str]] = None
+    preview_rows: Optional[list[list[str]]] = None
 
 
 @dataclass
@@ -526,11 +556,15 @@ def is_canvas_update(value: Any) -> bool:
         return False
     p = value["payload"]
     valid_commands = ("create_card", "update_card", "close_card")
-    return (
-        value["type"] == "canvas_update"
-        and p.get("command") in valid_commands
-        and isinstance(p.get("card_id"), str)
-    )
+    if value["type"] != "canvas_update":
+        return False
+    if p.get("command") not in valid_commands:
+        return False
+    if not isinstance(p.get("card_id"), str):
+        return False
+    if p.get("card_type") is not None and p.get("card_type") not in CARD_TYPES:
+        return False
+    return True
 
 
 def is_status_update(value: Any) -> bool:

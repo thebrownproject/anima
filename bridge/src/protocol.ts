@@ -121,6 +121,10 @@ export const BLOCK_TYPES = [
 
 export type BlockType = (typeof BLOCK_TYPES)[number]
 
+export const CARD_TYPES = ['document', 'metric', 'table', 'article', 'data'] as const
+export type CardType = (typeof CARD_TYPES)[number]
+export type TrendDirection = 'up' | 'down'
+
 // =============================================================================
 // Browser -> Sprite Messages
 // =============================================================================
@@ -217,6 +221,19 @@ export interface CanvasUpdate extends WebSocketMessageBase {
     size?: CardSize   // Card size hint (small/medium/large/full)
     mission_id?: string
     stack_id?: string
+    card_type?: CardType
+    summary?: string
+    tags?: string[]
+    color?: string
+    type_badge?: string
+    date?: string
+    value?: string
+    trend?: string
+    trend_direction?: TrendDirection
+    author?: string
+    read_time?: string
+    headers?: string[]
+    preview_rows?: unknown[][]
   }
 }
 
@@ -256,6 +273,19 @@ export interface CardInfo {
   size: CardSize
   position: CardPosition
   z_index: number
+  card_type?: CardType
+  summary?: string
+  tags?: string[]
+  color?: string
+  type_badge?: string
+  date?: string
+  value?: string
+  trend?: string
+  trend_direction?: TrendDirection
+  author?: string
+  read_time?: string
+  headers?: string[]
+  preview_rows?: unknown[][]
 }
 
 export interface ChatMessageInfo {
@@ -422,6 +452,7 @@ export function isCanvasUpdate(value: unknown): value is CanvasUpdate {
   if (msg.type !== 'canvas_update' || !validCommands.includes(msg.payload.command)) return false
   if (typeof msg.payload.card_id !== 'string') return false
   if (msg.payload.stack_id !== undefined && typeof msg.payload.stack_id !== 'string') return false
+  if (msg.payload.card_type !== undefined && !CARD_TYPES.includes(msg.payload.card_type as CardType)) return false
   return true
 }
 

@@ -21,6 +21,35 @@ function baseMsg(type: string, payload: Record<string, unknown>) {
   }
 }
 
+describe('isCanvasUpdate — optional card_type', () => {
+  it('validates canvas_update without card_type', () => {
+    const msg = baseMsg('canvas_update', {
+      command: 'create_card',
+      card_id: 'card-1',
+      title: 'Test',
+    })
+    expect(isCanvasUpdate(msg)).toBe(true)
+  })
+
+  it('validates canvas_update with valid card_type', () => {
+    const msg = baseMsg('canvas_update', {
+      command: 'create_card',
+      card_id: 'card-1',
+      card_type: 'metric',
+    })
+    expect(isCanvasUpdate(msg)).toBe(true)
+  })
+
+  it('rejects canvas_update with invalid card_type string', () => {
+    const msg = baseMsg('canvas_update', {
+      command: 'create_card',
+      card_id: 'card-1',
+      card_type: 'spreadsheet',
+    })
+    expect(isCanvasUpdate(msg)).toBe(false)
+  })
+})
+
 describe('isCanvasUpdate — optional stack_id', () => {
   it('validates canvas_update without stack_id', () => {
     const msg = baseMsg('canvas_update', {
