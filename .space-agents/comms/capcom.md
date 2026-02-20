@@ -4210,3 +4210,52 @@ Files: `frontend/components/desktop/chat-bar.tsx` (new constant, updated linger 
 - Test with real invoice PDF
 
 ---
+
+## [2026-02-20 12:05] Session 187
+
+**Branch:** main | **Git:** uncommitted (spike in progress)
+
+### What Happened
+
+**Card visual redesign brainstorm + spike test.** Full exploration session for `stackdocs-4tx` (Card visual design overhaul). Reviewed 12 user-provided inspiration images in `/Users/fraserbrown/Downloads/card-inspiration/`. Activated `frontend-design`, `audit-typography`, and `audit-ui` skills.
+
+**Brainstorm decisions:**
+- Direction: warm editorial (not bold graphic)
+- Fully opaque cards (no glass, no translucency)
+- Agent-chosen color from named palette
+- No title bar — title merges into card body as bold heading
+- Floating hover controls (appear on card hover)
+- Per-block-type typography scale (stats 56px, headings 28px, body 18px)
+- Dark text on light cards, no grey text — hierarchy through size/weight only
+- Soft shadow, 12px corners, keep wallpaper system
+
+**Spec written:** `.space-agents/exploration/ideas/2026-02-20-card-visual-redesign/spec.md`
+
+**Spike built:** `frontend/spike/card-redesign/` with:
+- `config.ts` — toggle flag (`SPIKE_CARDS_ENABLED = true`)
+- `palette.ts` — v7: color-to-color gradients, varied directions (8 pastel combos)
+- `font-switcher.tsx` — Zustand-backed switcher for 4 font candidates (DM Sans, Plus Jakarta Sans, General Sans, System/Geist)
+
+**Modified files (spike-conditional, clearly marked):**
+- `desktop-card.tsx` — opaque gradient surface, floating hover controls, 36px black card title, `style` prop for font switching
+- `block-renderer.tsx` — all dark text (#1A1A18), oversized typography (headings 28px extrabold, stats 56px black, body 18px, key-value 17px, tables 15px), generous spacing (space-y-7, px-7, pb-8)
+- `app/layout.tsx` — DM Sans + Plus Jakarta Sans via next/font/google, General Sans via Fontshare CDN
+- `app/(desktop)/desktop/page.tsx` — CardLayer component with font injection, FontSwitcher rendered when spike enabled
+
+### Decisions Made
+- **Glass is dead for cards.** User confirmed dissatisfaction — cards too samey and too subtle. Glass stays for chat bar, panels, and other UI chrome.
+- **Typography is the pop mechanism.** With muted/pastel colors, boldness comes from oversized text, not bright colors. Newspaper article feel, not app UI.
+- **Color palette still WIP.** Went through 7 iterations from earthy muted → bright clean → user-picked hex → gradients. Current v7 uses pastel gradients with varied directions, but user says "not quite there yet."
+- **Font choice TBD.** Switcher built but user hasn't evaluated fonts yet. DM Sans is closest to Balance app's SF Pro.
+
+### In Progress
+- **Palette tuning.** User wants lighter, more varied gradients. v7 is close but needs refinement — "not quite there yet."
+- **Font evaluation.** Switcher is built, fonts loaded, but user hasn't A/B tested them yet.
+- All spike code is uncommitted on main. No protocol or agent changes — purely frontend visual.
+
+### Next Action
+- Continue spike tuning: refine gradient palette, evaluate fonts via switcher, possibly adjust block-level spacing
+- Once visual direction locked, create implementation plan from spec via `/plan`
+- Update bead `stackdocs-4tx` with progress
+
+---

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, DM_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import { shadcn } from '@clerk/themes'
 import NextTopLoader from 'nextjs-toploader'
@@ -15,6 +15,19 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+})
+
+// SPIKE: card redesign font candidates
+const dmSans = DM_Sans({
+  variable: '--font-dm-sans',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+})
+
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: '--font-plus-jakarta',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
 })
 
 export const metadata: Metadata = {
@@ -49,8 +62,10 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <head>
           <link rel="preload" href="/persona/obsidian.riv" as="fetch" crossOrigin="anonymous" />
+          {/* SPIKE: General Sans from Fontshare */}
+          <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700,800,900&display=swap" rel="stylesheet" />
         </head>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <body className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} ${plusJakarta.variable} antialiased`}>
           {/* SVG filter for glass blur — different Chrome rendering path than CSS blur() */}
           <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>
             <filter id="glass-blur">
