@@ -32,9 +32,6 @@ vi.mock('@/hooks/use-momentum', () => ({
   }),
 }))
 
-// Block renderer renders literally — no spike flag to worry about
-vi.mock('@/spike/card-redesign/config', () => ({ SPIKE_CARDS_ENABLED: false }))
-
 import { CardOverlayProvider } from '../card-overlay'
 import { DesktopCard } from '../desktop-card'
 import { BlockRenderer } from '../block-renderer'
