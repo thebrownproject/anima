@@ -1,4 +1,4 @@
-import { type DesktopCard, type ViewState, WORLD_WIDTH, WORLD_HEIGHT, CARD_WIDTHS, clampCardPosition } from '@/lib/stores/desktop-store'
+import { type DesktopCard, type ViewState, WORLD_WIDTH, WORLD_HEIGHT, CARD_WIDTHS, clampCardPosition, snapToGrid } from '@/lib/stores/desktop-store'
 
 const CARD_GRID_HEIGHT = 200 // Estimated height for grid spacing (not actual rendered height)
 const GAP = 40
@@ -34,8 +34,9 @@ export function getAutoPosition(
   const startX = centerX - gridWidth / 2
   const startY = centerY - CARD_GRID_HEIGHT / 2
 
-  return clampCardPosition(
+  const clamped = clampCardPosition(
     startX + col * (CARD_WIDTHS.medium + GAP),
     startY + row * (CARD_GRID_HEIGHT + GAP),
   )
+  return snapToGrid(clamped.x, clamped.y)
 }

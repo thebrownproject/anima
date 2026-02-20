@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
-import { useDesktopStore, clampCardPosition, CARD_WIDTHS } from '@/lib/stores/desktop-store'
+import { useDesktopStore, clampCardPosition, snapToGrid, CARD_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import type { CardSize, CardType } from '@/types/ws-protocol'
 import * as Icons from '@/components/icons'
@@ -38,29 +38,32 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
   // Ref (not state) to avoid re-renders during drag
   const localPos = useRef({ x: card.position.x, y: card.position.y })
 
-  const syncToStore = useCallback(() => {
-    const height = positionRef.current?.offsetHeight ?? undefined
-    useDesktopStore.getState().moveCard(card.id, { ...localPos.current }, height)
-    send({
-      type: 'canvas_interaction',
-      payload: {
-        card_id: card.id,
-        action: 'move',
-        data: {
-          position_x: localPos.current.x,
-          position_y: localPos.current.y,
-          z_index: useDesktopStore.getState().cards[card.id]?.zIndex ?? 0,
-        },
-      },
-    })
-  }, [card.id, send])
-
   const applyPosition = useCallback(() => {
     if (positionRef.current) {
       positionRef.current.style.left = `${localPos.current.x}px`
       positionRef.current.style.top = `${localPos.current.y}px`
     }
   }, [])
+
+  const syncToStore = useCallback(() => {
+    const height = positionRef.current?.offsetHeight ?? undefined
+    const snapped = snapToGrid(localPos.current.x, localPos.current.y)
+    localPos.current = snapped
+    applyPosition()
+    useDesktopStore.getState().moveCard(card.id, snapped, height)
+    send({
+      type: 'canvas_interaction',
+      payload: {
+        card_id: card.id,
+        action: 'move',
+        data: {
+          position_x: snapped.x,
+          position_y: snapped.y,
+          z_index: useDesktopStore.getState().cards[card.id]?.zIndex ?? 0,
+        },
+      },
+    })
+  }, [card.id, send, applyPosition])
 
   const getCardHeight = useCallback(() => positionRef.current?.offsetHeight ?? undefined, [])
 

@@ -16,6 +16,15 @@ export const WORLD_HEIGHT = 4000
 export const CARD_WIDTH = CARD_WIDTHS.medium // backward compat
 const CARD_H_DEFAULT = 500
 
+export const GRID_SIZE = 20 // px — snap granularity for card drop positions
+
+export function snapToGrid(x: number, y: number): { x: number; y: number } {
+  return {
+    x: Math.round(x / GRID_SIZE) * GRID_SIZE,
+    y: Math.round(y / GRID_SIZE) * GRID_SIZE,
+  }
+}
+
 /** Clamp a card position within world bounds.
  *  Pass cardHeight/cardWidth for pixel-perfect clamping during drag. */
 export function clampCardPosition(x: number, y: number, cardHeight?: number, cardWidth?: number): { x: number; y: number } {
