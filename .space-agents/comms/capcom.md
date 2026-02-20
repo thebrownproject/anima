@@ -4422,3 +4422,52 @@ Massive investigation session. Launched 12 internal sub-agents (3 round-1 connec
 Run `/plan` on the spec to create implementation tasks with dependencies. Tracks 1-2 (critical connection + auth) go first. Tracks 3-4 + Track 6 can parallel. Large orchestrated mission.
 
 ---
+
+## [2026-02-21 14:30] Session 192
+
+**Branch:** main | **Git:** uncommitted (plan folder move + new beads)
+
+### What Happened
+
+Planning session. Took the 86-requirement connection stability spec from Session 191 (`spec.md`) and turned it into an executable implementation plan with tracked Beads.
+
+**Planning council (3 sequential agents):**
+- **Task planner**: Broke 86 requirements into 15 task groupings by concern and codebase
+- **Sequencer**: Analyzed dependencies, proposed 5-wave execution model, identified critical path (frontend chain ~17h), flagged ws-provider.tsx and gateway.py as high-contention files
+- **Implementer**: Full TDD guidance for P1 tasks (code-level fix details, test-first approach), patterns/gotchas for P2/P3
+
+**External reviews (3 rounds):**
+- Gemini: REWORK verdict. Most findings factually wrong (claimed requirements were dropped when they were present). 2 valid findings (test criteria gaps).
+- Codex: APPROVE WITH CHANGES. Best review. Valid findings: T6.7 missing receive_response() timeout, T2.4 should use WS code 1011 not 4500, Task 6 send-failure toasts depend on queue semantics, auth timeout 30s not mapped, BEGIN IMMEDIATE not mapped, gateway.py contention missing from risk register, several dependency loosening opportunities.
+- Review 3: Mixed quality. Echoed Codex findings. Added T1.2 verify transition tests, T2.1 failed/pending paths, T3.2 reconnect churn tests, T7.5 crash test, T7.8 prune ordering.
+
+**Plan revisions applied from reviews:**
+- Split T2.8/T2.9 into separate "Bridge Build and Dockerfile Fixes" task (15 tasks total)
+- Loosened 4 dependencies (State Reconciliation, Bridge Cleanup, Sprite Error Handling, Sprite Dead Code)
+- Moved Database and Build tasks to Wave 1 (independent)
+- Fixed T2.4 to use WS close code 1011, added 30s auth timeout, added BEGIN IMMEDIATE for archive/restore
+- Added 8 test criteria across 6 tasks
+- Added 5 risks to register (gateway.py, index.ts, runtime.py contention + deployment ordering + prune safety)
+- Scoped Task 6 toasts to exclude send-failures (moved to Task 5)
+
+**Beads created:**
+- Feature: `stackdocs-m7b.14` (Connection Stability and Codebase Cleanup)
+- 15 tasks: `stackdocs-m7b.14.1` through `stackdocs-m7b.14.15`
+- 12 dependency links set
+- Plan moved to `mission/staged/m7b.14-connection-stability-codebase-cleanup/`
+
+### Decisions Made
+
+- 15 tasks (not 86 individual items, not 8 tracks). Grouped by file-level concern and codebase.
+- 5-wave execution model with integration checkpoint after Wave 2.
+- Critical path is frontend dependency chain (~17h task-level, ~19h wave-level).
+- Task-level dependencies, not strict wave barriers. Orchestrated agents start as soon as specific deps met.
+- T2.4 uses WS close code 1011 for infra errors (not 4500 or HTTP 5xx).
+- Auth timeout 30s (spec decision, now explicitly mapped to T2.2/T2.5).
+- Gemini review quality was poor (6/10 findings factually wrong). Codex review was best. Worth weighting Codex higher in future.
+
+### Next Action
+
+Run `/mission orchestrated` on feature `stackdocs-m7b.14`. Wave 1 has 5 ready tasks that can run in parallel: Bridge Connection Pipeline, Bridge Crash Fixes, Bridge Build Fixes, Frontend Error Boundaries, Sprite Database.
+
+---
