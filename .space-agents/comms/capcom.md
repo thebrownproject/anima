@@ -4358,3 +4358,27 @@ Run `/mission` on `stackdocs-m7b.4.17` to begin execution. Task 1 (protocol fiel
 Run `/launch` then continue with remaining Phase 3 Canvas UI work: `stackdocs-m7b.4.12` (Glass Desktop UI) or `stackdocs-m7b.4.15` (Chat Bar redesign). Also consider shipping zoom-to-fit button (small, untracked — 50 lines of math).
 
 ---
+## [2026-02-20 19:50] Session 190
+
+**Branch:** main | **Git:** clean
+
+### What Happened
+
+Short session — no code written. Discussed architecture and reviewed the card visual output.
+
+**Canvas architecture discussion:** User asked whether to keep the zoomable/pannable canvas or switch to something simpler. Decision: keep the canvas. It's the product differentiator — spatial persistence, accumulating knowledge over time. Needs zoom-to-fit button to feel complete but the core mechanic is sound. Free canvas + snap-to-grid beats masonry/grid layout for this use case.
+
+**Card visual review:** Compared our card implementation to the Google AI Studio prototype. Verdict: structural parity is high — same templates, same typography scale, same aesthetic. Main gap is canvas context (dark background, card density from multiple metrics side by side) not the card components themselves.
+
+**Demo card seeding explained:** User discovered that demo cards seeded from `useEffect` in `desktop/page.tsx` get overwritten when the Sprite connects and sends `state_sync`. Explained the proper fix: seed demo cards in Sprite's `workspace.db` on first bootstrap (via `provisioning.ts` sending canvas_update messages, or `sprite/src/database.py` seeding on empty DB). The frontend `useEffect` seeding is a visual placeholder only — Sprite is source of truth.
+
+### Decisions Made
+
+- **Canvas stays.** Free canvas with pan/zoom/momentum is worth keeping. Not replacing with grid/masonry.
+- **Demo seeding should live on the Sprite**, not the frontend. Frontend `useEffect` is a workaround. Proper fix is bootstrap seeding in `provisioning.ts` or `sprite/src/database.py`.
+
+### Next Action
+
+If continuing with demo: wire up Sprite-side demo card seeding so cards survive Sprite reconnection. Otherwise: next Phase 3 feature — `stackdocs-m7b.4.12` (Glass Desktop UI) or `stackdocs-m7b.4.15` (Chat Bar redesign). Also: zoom-to-fit button (~50 lines, untracked).
+
+---
