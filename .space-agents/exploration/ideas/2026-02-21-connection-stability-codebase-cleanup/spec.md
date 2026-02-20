@@ -67,7 +67,7 @@ A comprehensive, multi-track cleanup that fixes every known connection bug, hard
 ### Track 3: Frontend Connection UX
 
 - [ ] **T3.1** Add user-visible connection status indicator. The `ConnectionStatus` type has 6 states (`disconnected`, `connecting`, `authenticating`, `sprite_waking`, `connected`, `error`) but no component displays them. Add a status pill/indicator. Silent on transient drops (<5s), visible on longer outages or permanent failures.
-- [ ] **T3.2** Build outgoing message queue in `WebSocketManager`. In-memory buffer (not localStorage). Queue messages while disconnected, flush on reconnect. Return queue status from `send()` so callers know message is queued vs delivered.
+- [ ] **T3.2** Build outgoing message queue in `WebSocketManager`. In-memory buffer (not localStorage). Queue messages while disconnected, flush on reconnect. Return queue status from `send()` so callers know message is queued vs delivered. **Dedup rule: each message already has a unique `id` (UUID) per protocol. The frontend queue flushes to Bridge on reconnect; Bridge's reconnect buffer handles Bridge-to-Sprite delivery. These are two separate hops, not overlapping buffers. Frontend queue drains on `sprite_ready`, Bridge buffer drains on Sprite TCP reconnect. No double-delivery because they operate on different segments of the path. Document this in code comments.**
 - [ ] **T3.3** Fix chat-bar optimistic send (`chat-bar.tsx:54`). Message is added to local store BEFORE checking if `send()` succeeded. Check `send()` result first; if queued, show pending state; if failed, show error.
 - [ ] **T3.4** Handle `reconnect_failed` system event (`websocket.ts:180`). Currently defined but unhandled. Transition to error status with user-visible retry guidance.
 - [ ] **T3.5** Handle auth rejection (4001) as terminal (`websocket.ts:78-84`). Currently any close code triggers reconnect. Auth failures should NOT reconnect -- they should show an auth error.
@@ -83,7 +83,7 @@ A comprehensive, multi-track cleanup that fixes every known connection bug, hard
 - [ ] **T4.2** Reconcile `archivedStackIds` on `state_sync` (`ws-provider.tsx:183`). Persisted archived IDs are not reset on sync, so stacks can remain hidden incorrectly after reconnect.
 - [ ] **T4.3** Fix `mergeCards` to use server state as authoritative (`desktop-store.ts:162-167`). Two problems: (a) (0,0) used as magic "no position" sentinel -- cards placed at origin get overwritten. (b) `mergeCards` only iterates incoming cards, so local-only cards are silently deleted. Use server state as authoritative source, or add explicit "user has positioned" metadata flag.
 - [ ] **T4.4** Fix `mergeCards` to preserve user messages during state_sync (`chat-store.ts:65`). `setMessages` wholesale replaces the array. Optimistic user messages sent before reconnect are wiped if not yet persisted by Sprite. Merge by preserving local messages newer than sync timestamp.
-- [ ] **T4.5** Add `StatusUpdate` to `SpriteToBrowserMessage` union (`ws-protocol.ts:339`). Currently missing from the union type. Document status updates pass validation but are silently dropped by the switch statement in ws-provider. Add the type and a handler.
+- [ ] **T4.5** Add `status` message handler to ws-provider.tsx. `StatusUpdate` IS in the `SpriteToBrowserMessage` union already (line 342), but `ws-provider.tsx` has no `case 'status':` branch in the switch statement. Messages pass validation but are silently dropped. Add the handler to update card/document state.
 - [ ] **T4.6** Remove demo card seeding from production (`page.tsx:55-64`). `DEMO_CARDS` seeded in `useEffect` on every mount, overwrites real `state_sync` data. Remove entirely or gate behind explicit dev flag.
 - [ ] **T4.7** Fix `clampCardPosition` width handling (`desktop-store.ts:30`). Defaults to medium width when `cardWidth` is omitted. Wider templates overflow near right edge. Pass actual template width from `TEMPLATE_WIDTHS`.
 - [ ] **T4.8** Filter CardLayer by active stack (`page.tsx:24`). Currently renders ALL cards from every stack. `useCardsForActiveStack` selector exists but is unused. Use it.
@@ -124,8 +124,8 @@ A comprehensive, multi-track cleanup that fixes every known connection bug, hard
 
 ### Track 8: Dead Code & Cleanup
 
-- [ ] **T8.1** Remove dead frontend files: `app/(app)/test-chat/page.tsx` (553-line v1 prototype), `components/wallpaper/wallpaper-picker.tsx`, `lib/supabase.ts`, `lib/supabase-server.ts`, `hooks/use-mobile.ts`.
-- [ ] **T8.2** Remove dead frontend exports: `useCardsForActiveStack` (after T4.8 uses it), `isBlock()`/`isBlockArray()` from ws-protocol.ts, `handlers` Map + `on()` method from WebSocketManager, `SuggestionChip` type export.
+- [ ] **T8.1** Remove dead frontend files: `app/(app)/test-chat/page.tsx` (553-line v1 prototype), `components/wallpaper/wallpaper-picker.tsx`, `lib/supabase.ts`, `lib/supabase-server.ts`, `hooks/use-mobile.ts`. **Deletion gate: for each file, verify zero import references (`rg` search), then confirm build + test pass after removal.**
+- [ ] **T8.2** Remove dead frontend exports: `isBlock()`/`isBlockArray()` from ws-protocol.ts, `handlers` Map + `on()` method from WebSocketManager, `SuggestionChip` type export. (Note: `useCardsForActiveStack` is NOT dead -- T4.8 wires it up. Do not remove.) **Deletion gate: for each export, verify zero consumers (`rg` search), then confirm build + test pass after removal.**
 - [ ] **T8.3** Remove spike fonts from layout.tsx: `DM_Sans`, `Plus_Jakarta_Sans`, General Sans external stylesheet. All marked SPIKE, loading on every page.
 - [ ] **T8.4** Remove `_check_correction_threshold` dead code (`gateway.py:68-109`). Defined but never called.
 - [ ] **T8.5** Remove dead `session_id`/sessions data paths. `session_id` always NULL in observations (`hooks.py:99`). Sessions table `ended_at`/`message_count`/`observation_count` never updated.
@@ -162,7 +162,7 @@ A comprehensive, multi-track cleanup that fixes every known connection bug, hard
 - **Not adding markdown rendering to chat.** Found as a gap but is a feature, not a stability fix. Track separately.
 - **Not adding accessibility overhaul.** Chat textarea `aria-label` and button semantics are included as quick fixes, but a full a11y audit is separate work.
 - **Not adding dark/light mode toggle.** The app is dark-themed by design.
-- **Not adding data retention/archival automation.** T7.8 adds the policy/limits; automated pruning jobs are future work.
+- **Not adding background retention cron jobs or scheduled pruning.** T7.8 adds inline prune-on-insert when tables exceed limits (10k observations, 5k messages). This is simple write-time enforcement, not a separate automation system.
 - **Not refactoring documents panel.** Noted as hardcoded mock data, but wiring to real Sprite filesystem is a feature (Phase 5 work).
 - **Not adding responsive/mobile support.** Canvas metaphor is desktop-first by design.
 - **Not adding custom scrollbar styling.** Cosmetic, not stability.
@@ -292,7 +292,7 @@ AFTER:
 ### Code Quality
 - [ ] Zero dead files/exports remaining from the cleanup list.
 - [ ] `npm run lint` passes in frontend with zero errors.
-- [ ] All Bridge tests pass (136 existing + fixed E2E multi-tab).
+- [ ] All Bridge tests pass (full current suite + fixed E2E multi-tab). Verify count at CI runtime, not hardcoded.
 - [ ] Frontend voice/chat tests pass (10 currently failing).
 - [ ] Backend pytest collection succeeds (stale import fixed).
 - [ ] No `any` types added. Existing `any` count does not increase.
