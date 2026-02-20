@@ -4382,3 +4382,43 @@ Short session — no code written. Discussed architecture and reviewed the card 
 If continuing with demo: wire up Sprite-side demo card seeding so cards survive Sprite reconnection. Otherwise: next Phase 3 feature — `stackdocs-m7b.4.12` (Glass Desktop UI) or `stackdocs-m7b.4.15` (Chat Bar redesign). Also: zoom-to-fit button (~50 lines, untracked).
 
 ---
+
+## [2026-02-21 10:15] Session 191
+
+**Branch:** main | **Git:** uncommitted (spec file + external review)
+
+### What Happened
+
+Massive investigation session. Launched 12 internal sub-agents (3 round-1 connection-focused + 9 round-2 deep-dive) to audit every file across all three codebases (frontend, bridge, sprite). User also provided 3 external review reports (Gemini, codebase-review.md, and a practical test/lint report).
+
+**Round 1 agents (connection-focused):**
+- Frontend WS: reconnect_failed unhandled, isAgentStreaming stuck, auth rejection loops, StatusUpdate dropped from type union
+- Bridge WS: CRITICAL reconnect registration gap (SpriteConnection never written back to Map), auth timeout races, startSpriteServer timeout resolves not rejects
+- Sprite: CRITICAL per-connection gateway breaks mission lock, mid-run disconnect cascade, extraction tasks fire-and-forget
+
+**Round 2 agents (deep-dive):**
+- Frontend state: ChatBar subscribes to entire store, CardLayer renders ALL stacks, demo seeding overwrites state_sync
+- Frontend UI: ZERO connection status indicator, no error boundary, no markdown in chat, Sonner installed but zero calls
+- Frontend dead code: test-chat 553-line prototype, unused supabase clients, 3 spike fonts in production
+- Bridge errors: async handler unhandled rejections, auth catches swallow real errors
+- Bridge architecture: CRITICAL Dockerfile missing sprite/ files, no startup env validation, 3 E2E tests failing
+- Sprite asyncio: extraction tasks untracked, no SDK call timeouts, 25MB writes block event loop
+- Sprite database: missing indexes, migrations swallow exceptions, processor cross-DB non-atomic, unbounded growth
+- Sprite SDK: no error differentiation, no prompt size bounding, phantom cards on DB write failure
+
+**External reviews added:**
+- Gemini: frame fragmentation (no partial-line buffer), ping/pong mismatch, ensureSpriteProvisioned never wired
+- codebase-review.md: zombie socket leak, socket registered before verify, OOM collectBody, header array crash
+- Practical report: backend pytest broken, frontend lint red, 10 test failures, multi-tab E2E race explained
+
+**Spec written:** `.space-agents/exploration/ideas/2026-02-21-connection-stability-codebase-cleanup/spec.md` (8 tracks, 86 requirements, all open questions resolved)
+
+### Decisions Made
+
+- Auth timeout: 30s. File upload: 10MB limit. Data retention: 10k/5k/unlimited. cards-demo: remove. Transactions: explicit BEGIN. Message queue: in-memory only. Connection UX: invisible <5s, visible on longer outages.
+
+### Next Action
+
+Run `/plan` on the spec to create implementation tasks with dependencies. Tracks 1-2 (critical connection + auth) go first. Tracks 3-4 + Track 6 can parallel. Large orchestrated mission.
+
+---
