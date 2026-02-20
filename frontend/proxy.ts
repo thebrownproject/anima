@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   '/contact',
   '/api/webhooks/clerk',
   '/test-chat',
+  '/cards-demo(.*)',
 ])
 
 export function proxy(req: NextRequest, event: NextFetchEvent) {

@@ -41,7 +41,7 @@ export function WallpaperLayer() {
   const solidColors: Record<string, string> = {
     'solid-black': '#000000',
     'solid-grey': '#1a1a2e',
-    'solid-white': '#e8e8f0',
+    'solid-white': '#f5f5f5',
   }
 
   const ref = useCallback((el: HTMLDivElement | null) => {

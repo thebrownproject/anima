@@ -33,7 +33,7 @@ interface WallpaperState {
 export const useWallpaperStore = create<WallpaperState>()(
   persist(
     (set) => ({
-      wallpaperId: WALLPAPERS[0].id,
+      wallpaperId: 'solid-white',
       setWallpaper: (id) => set({ wallpaperId: id }),
     }),
     { name: 'stackdocs-wallpaper' }

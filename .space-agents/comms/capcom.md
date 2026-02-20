@@ -4310,3 +4310,51 @@ Files: `frontend/components/desktop/chat-bar.tsx` (new constant, updated linger 
 Run `/mission` on `stackdocs-m7b.4.17` to begin execution. Task 1 (protocol fields) is unblocked and ready.
 
 ---
+## [2026-02-20 19:30] Session 189
+
+**Branch:** main | **Git:** uncommitted (demo page + wallpaper tweaks)
+
+### What Happened
+
+**Executed feature `stackdocs-m7b.4.17` — Canvas Card Template System — in full.** 9 tasks completed via orchestrated Pathfinder/Builder/Inspector cycle. All tasks passed Inspector review.
+
+**Tasks completed:**
+- `m7b.4.17.1` — Protocol fields: added `CardType`, `TrendDirection`, and 13 template fields (`card_type`, `summary`, `tags`, `color`, `type_badge`, `date`, `value`, `trend`, `trend_direction`, `author`, `read_time`, `headers`, `preview_rows`) to `bridge/src/protocol.ts`, `frontend/types/ws-protocol.ts`, `sprite/src/protocol.py`
+- `m7b.4.17.2` — Sprite canvas tools + DB: added 13 columns to `workspace.db`, `_migrate_card_template_columns()`, extended `upsert_card()`, `create_card` tool, `state_sync.py` CardInfo construction
+- `m7b.4.17.3` — Frontend store: extended `DesktopCard` interface with 13 optional fields, bumped persist to v2, updated `ws-provider.tsx` snake_case→camelCase mapping in both create and update paths
+- `m7b.4.17.4` — BaseCard wrapper: `frontend/components/desktop/cards/colors.ts` (9-color palette, DEFAULT_TEMPLATE_COLORS, getCardColor), `base-card.tsx` (40px radius, p-8, inline style hex colors), click discrimination in `desktop-card.tsx` (pointerDownPos ref, < 5px = click, >= 5px = drag)
+- `m7b.4.17.5` — 5 template components: DocumentCard (cream), MetricCard (blue, decorative BARS), TableCard (dark), ArticleCard (yellow, font-serif body), DataCard (green, Export CSV + Edit Data buttons)
+- `m7b.4.17.6` — Template dispatcher: rewrote `desktop-card.tsx` render section as switch on `card.cardType`, added TEMPLATE_WIDTHS, removed all spike imports from `desktop-card.tsx` and `desktop/page.tsx`
+- `m7b.4.17.7` — Card overlay: new `card-overlay.tsx` with `CardOverlayProvider` + `CardOverlayPanel` (fixed inset-0, backdrop blur, escape/click-backdrop/close button dismiss). Added `theme?: 'editorial' | 'glass'` prop to `block-renderer.tsx`, replacing SPIKE_CARDS_ENABLED entirely. Overlay passes `theme="editorial"` to BlockRenderer.
+- `m7b.4.17.8` — Spike cleanup: deleted `spike/card-redesign/config.ts`, `palette.ts`, `font-switcher.tsx`. Removed dead `vi.mock` in `card-overlay.test.tsx`. Zero spike references remain.
+- `m7b.4.17.9` — Snap-to-grid: added `GRID_SIZE=20` and `snapToGrid()` to `desktop-store.ts`, applied in `syncToStore()` in `desktop-card.tsx` (covers all 3 drag-end paths), applied in `auto-placer.ts` after clamp.
+
+**Code quality pass (user-requested):**
+- Ran `code-simplifier` on card components — removed unused `style` prop from DesktopCardProps, made `onCardClick` optional with `?.()` call syntax, tightened TEMPLATE_WIDTHS type to `Record<CardType, number>`, removed obvious comments
+- Ran quality review agent on frontend — surfaced 5 critical + 9 warnings. Fixed: Lucide imports bypassing `@/components/icons` barrel (added ArrowRight, ArrowUpRight, TrendingUp, TrendingDown to barrel), added decorative comments to hardcoded "vs last month" and "Synced just now" strings, fixed `desktop-card.test.tsx` mock typing (Vitest 3 `vi.fn` inference issue)
+- Created 4 tracking beads: `stackdocs-u18` (clampCardPosition never receives cardWidth — functional bug), `stackdocs-0nt` (TEMPLATE_WIDTHS duplicates card className widths), `stackdocs-l0l` (dead spike font-switcher), `stackdocs-61y` (font-serif no font loaded)
+- Created `m7b.4.17.10` (Python protocol tests for card_type validation, P3)
+
+**Demo setup (end of session):**
+- Created `frontend/app/cards-demo/page.tsx` — static demo page at `/cards-demo` with all 5 templates using sample data. Made public in `proxy.ts`.
+- Seeded demo cards into `desktop/page.tsx` via `useEffect` on mount (replaces persisted cards). 5 cards: Document, Metric×2, Article, Table.
+- Changed wallpaper default to `solid-white` (#f5f5f5). Demo cards visible after `localStorage.removeItem('stackdocs-desktop') + reload`.
+
+### Decisions Made
+
+- **Keep the canvas.** User asked for opinion — confirmed canvas with pan/zoom/momentum is worth keeping. Needs zoom-to-fit button to feel complete. Free positioning + snap-to-grid beats masonry/grid layout.
+- **Light background.** User preferred `neutral-100` / `#f5f5f5` background over dark `#0A0A0A` prototype aesthetic. Wallpaper default updated.
+- **Cards match prototype closely.** Compared our cards to Google AI Studio prototype — structural parity confirmed. Main gap is canvas context (dark bg, card density), not the cards themselves.
+
+### Gotchas
+
+- Vitest 3.x changed `vi.fn` type signature — `vi.fn<[args], return>` no longer works. Only takes return type. Use `(mockSend.mock.calls as any[][])[0][0]` cast pattern for accessing mock call args.
+- LSP shows stale diagnostics frequently after Builder agents commit — run `npx tsc --noEmit` directly to verify instead of trusting the IDE error overlay.
+- `vi.fn(() => true)` with no type params infers `mock.calls` as `[][]` (empty tuple), causing TS2493. Fix: cast to `any[][]` at call site.
+- Zustand persist hydrates before `useEffect` — demo card seeding requires `localStorage.removeItem('stackdocs-desktop')` on first load if old state exists.
+
+### Next Action
+
+Run `/launch` then continue with remaining Phase 3 Canvas UI work: `stackdocs-m7b.4.12` (Glass Desktop UI) or `stackdocs-m7b.4.15` (Chat Bar redesign). Also consider shipping zoom-to-fit button (small, untracked — 50 lines of math).
+
+---
