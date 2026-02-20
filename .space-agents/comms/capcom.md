@@ -4259,3 +4259,54 @@ Files: `frontend/components/desktop/chat-bar.tsx` (new constant, updated linger 
 - Update bead `stackdocs-4tx` with progress
 
 ---
+
+## [2026-02-20 14:05] Session 188
+
+**Branch:** main | **Git:** uncommitted (new files)
+
+### What Happened
+
+**Canvas card template system -- full brainstorm + plan + Beads.** Designed a major canvas redesign replacing the "dump everything" card model with a 5-template summary card system.
+
+**Brainstorm decisions:**
+- 5 card templates: Document (cream, 400px), Metric (green, 300px), Table (dark, 600px), Article (white, 500px), Data (yellow, 400px)
+- Canvas cards show summaries only; click opens full-screen overlay with all blocks
+- Agent picks template from a menu + writes explicit summary + sends full blocks
+- Template-default colors with agent override from 9-color palette
+- Keep zoomable/pannable canvas with momentum physics (no React Flow/Grid)
+- 40px border radius, p-8 padding editorial aesthetic (from Gemini prototype)
+- Snap-to-grid on card drop (overlapping allowed)
+- Click-vs-drag discrimination (< 5px = click opens overlay, >= 5px = drag)
+
+**Prototype reference saved:** `docs/references/canvas-card-prototype/` (copied from ~/Downloads/stackdocs-prototype). Vite+React with 5 card components (DocumentCard, MetricCard, TableCard, LongTextCard, DataCard, BaseCard) plus InputBar and Header.
+
+**Spec written:** `.space-agents/mission/staged/m7b.4.17-canvas-card-templates/spec.md`
+
+**Plan written:** `.space-agents/mission/staged/m7b.4.17-canvas-card-templates/plan.md`
+- 9 tasks across 3 shipping slices
+- Council input from task-planner, sequencer, and implementer agents
+- Detailed implementation guidance including code patterns and gotchas
+
+**Beads created:** Feature `stackdocs-m7b.4.17` with 9 tasks:
+- m7b.4.17.1: Protocol fields (all 3 codebases)
+- m7b.4.17.2: Sprite tools + DB (depends on .1)
+- m7b.4.17.3: Frontend store + ws-provider (depends on .1, parallel with .2)
+- m7b.4.17.4: BaseCard wrapper + colors (depends on .3)
+- m7b.4.17.5: 5 template components (depends on .4)
+- m7b.4.17.6: Template dispatcher (depends on .5)
+- m7b.4.17.7: Card overlay (depends on .6)
+- m7b.4.17.8: Block-renderer cleanup + spike deletion (depends on .7)
+- m7b.4.17.9: Snap-to-grid on card drop (depends on .6, parallel with .7)
+
+### Decisions Made
+- **Glass is dead for cards.** Confirmed from Session 187. Glass stays only for chat bar, panels, and UI chrome.
+- **Agent card rejected.** User explicitly doesn't want a system status card on the canvas.
+- **No auto-grid/masonry.** Free canvas with snap-to-grid, not responsive columns.
+- **Overlay is view-only for now.** No editing, no PDF comparison, no tabs. Just full block content.
+- **Stat card sparklines are decorative.** Not real data. Static bars that signal "this is a metrics card."
+- **Template tasks reference prototype files explicitly.** Plan and bead descriptions tell builders to read prototype code first and match styling exactly.
+
+### Next Action
+Run `/mission` on `stackdocs-m7b.4.17` to begin execution. Task 1 (protocol fields) is unblocked and ready.
+
+---
