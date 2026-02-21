@@ -18,11 +18,19 @@ import { spriteExec } from './sprite-exec.js'
 // The updater checks this against the sprite's /workspace/.os/VERSION file.
 export const CURRENT_VERSION = '0.3.1'
 
+// Resolve sprite directory: /app/sprite/ in Docker, ../../sprite/ locally
+function getSpriteDir(): string {
+  if (process.env.NODE_ENV === 'production') {
+    return '/app/sprite'
+  }
+  return join(import.meta.dirname, '..', '..', 'sprite')
+}
+
 // -- Source code deployment --
 
 /** Deploy sprite/src/ Python files to /workspace/.os/src/ on the sprite. */
 export async function deployCode(spriteName: string): Promise<void> {
-  const spriteDir = join(import.meta.dirname, '..', '..', 'sprite')
+  const spriteDir = getSpriteDir()
 
   const srcFiles = [
     '__init__.py',
@@ -59,7 +67,7 @@ export async function deployCode(spriteName: string): Promise<void> {
 /** Deploy requirements.txt to /workspace/.os/ on the sprite. */
 async function deployRequirements(spriteName: string): Promise<void> {
   const content = await fsRead(
-    join(import.meta.dirname, '..', '..', 'sprite', 'requirements.txt'),
+    join(getSpriteDir(), 'requirements.txt'),
     'utf-8',
   )
   await writeFile(spriteName, '/workspace/.os/requirements.txt', content)
@@ -182,7 +190,7 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
   console.log(`[bootstrap] SQLite databases initialized (transcript.db + memory.db)`)
 
   // 6. Deploy daemon-managed memory templates (only on fresh bootstrap, not overwritten by updates)
-  const spriteDir = join(import.meta.dirname, '..', '..', 'sprite')
+  const spriteDir = getSpriteDir()
   for (const file of DAEMON_MANAGED_FILES) {
     const content = await fsRead(join(spriteDir, 'memory', file), 'utf-8')
     await writeFile(spriteName, `/workspace/.os/memory/${file}`, content)

@@ -1,0 +1,19 @@
+# Bridge Docker build — context is repo root
+# Only bridge/ and sprite/ directories are needed
+
+# Exclude everything by default
+*
+
+# Include bridge build files
+!bridge/package.json
+!bridge/package-lock.json
+!bridge/tsconfig.json
+!bridge/src/
+
+# Include sprite files deployed to Sprite VMs
+!sprite/src/
+!sprite/memory/
+!sprite/requirements.txt
+
+# Re-exclude Python cache
+sprite/src/__pycache__
