@@ -365,7 +365,7 @@ async def test_extraction_failure_swaps_badge_to_failed_with_error(gateway, work
     assert badge["variant"] == "destructive"
     # Error text appended
     error_block = next(b for b in blocks if b["type"] == "text")
-    assert "parse error" in error_block["content"]
+    assert "bad.pdf" in error_block["content"]
 
     # Error message sent to user
     calls = [json.loads(c[0][0]) for c in mock_send.call_args_list]
