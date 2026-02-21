@@ -75,9 +75,7 @@ export function ConnectionStatus() {
     }
 
     // All other non-connected states show immediately
-    if (status !== 'connected') {
-      setVisible(true)
-    }
+    setVisible(true)
 
     return () => {
       if (disconnectTimer.current) {

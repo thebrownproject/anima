@@ -1,7 +1,6 @@
 import type {
   BrowserToSpriteMessage,
   SpriteToBrowserMessage,
-  MessageType,
   SystemMessage,
 } from '@/types/ws-protocol'
 import { parseMessage, isSystemMessage } from '@/types/ws-protocol'
@@ -15,8 +14,6 @@ export type ConnectionStatus =
   | 'error'
 
 export type SendResult = 'sent' | 'queued' | 'dropped'
-
-export type MessageHandler = (message: SpriteToBrowserMessage) => void
 
 export interface WebSocketManagerOptions {
   getToken: () => Promise<string | null>
@@ -52,7 +49,6 @@ export class WebSocketManager {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private intentionalClose = false
   private terminalError = false
-  private handlers = new Map<MessageType, Set<MessageHandler>>()
   private _status: ConnectionStatus = 'disconnected'
   private queue: QueuedMessage[] = []
 
@@ -134,23 +130,8 @@ export class WebSocketManager {
     return 'queued'
   }
 
-  on(type: MessageType, handler: MessageHandler): () => void {
-    let set = this.handlers.get(type)
-    if (!set) {
-      set = new Set()
-      this.handlers.set(type, set)
-    }
-    set.add(handler)
-
-    return () => {
-      set!.delete(handler)
-      if (set!.size === 0) this.handlers.delete(type)
-    }
-  }
-
   destroy(): void {
     this.disconnect()
-    this.handlers.clear()
     this.queue = []
   }
 
@@ -187,13 +168,6 @@ export class WebSocketManager {
 
     if (isSystemMessage(message)) {
       this.handleSystemMessage(message)
-    }
-
-    const handlers = this.handlers.get(message.type as MessageType)
-    if (handlers) {
-      for (const handler of handlers) {
-        handler(message as SpriteToBrowserMessage)
-      }
     }
 
     this.options.onMessage(message as SpriteToBrowserMessage)

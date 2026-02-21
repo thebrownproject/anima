@@ -54,7 +54,7 @@ function summarizeInbound(msg: SpriteToBrowserMessage): string {
     case 'system':
       return `System: ${msg.payload.event}${msg.payload.message ? ` — ${msg.payload.message}` : ''}`
     default:
-      return msg.type
+      return (msg as SpriteToBrowserMessage).type
   }
 }
 

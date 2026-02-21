@@ -539,24 +539,6 @@ export function isProtocolMessage(value: unknown): value is ProtocolMessage {
 }
 
 // =============================================================================
-// Block Type Guards
-// =============================================================================
-
-/** Check if a value is a valid Block (has id and valid type). */
-export function isBlock(value: unknown): value is Block {
-  if (typeof value !== 'object' || value === null) return false
-  const block = value as Record<string, unknown>
-  if (typeof block.id !== 'string' || typeof block.type !== 'string') return false
-  return (BLOCK_TYPES as readonly string[]).includes(block.type)
-}
-
-/** Validate an array of blocks. */
-export function isBlockArray(value: unknown): value is Block[] {
-  if (!Array.isArray(value)) return false
-  return value.every(isBlock)
-}
-
-// =============================================================================
 // Utility: Parse raw WebSocket data
 // =============================================================================
 
