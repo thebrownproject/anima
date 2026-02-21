@@ -1,32 +1,33 @@
 # UI Components
 
-Mix of shadcn/ui managed primitives and custom glass morphism components.
+Mix of shadcn/ui managed primitives and project-owned components.
 
 ## shadcn/ui Managed (do not modify)
 
 | File | Description |
 |------|-------------|
 | `button.tsx` | Radix button with CVA variants |
+| `card.tsx` | Card container (div composition) |
 | `collapsible.tsx` | Expandable sections |
+| `context-menu.tsx` | Right-click context menu (Radix) |
 | `sonner.tsx` | Toast notifications (via Sonner) |
+| `tooltip.tsx` | Tooltip (Radix, exports TooltipProvider) |
 
 Update via: `npx shadcn@latest add <component> --overwrite`
 
-## Glass Components (project-owned, editable)
+## Project-Owned Components
 
 | File | Description |
 |------|-------------|
-| `glass-button.tsx` | Glass morphism button (variants: default, primary, outline, ghost, destructive) |
-| `glass-card.tsx` | Glass morphism card with optional glow effect |
-| `glass-icon-button.tsx` | Reusable tooltip + icon button (size-10, text-white/70, 22px icons) |
-| `glass-input.tsx` | Glass input field |
-| `glass-tabs.tsx` | Glass tab switcher (framer-motion animated) |
-| `glass-tooltip.tsx` | Glass tooltip |
-| `glass-context-menu.tsx` | Glass right-click context menu |
+| `icon-button.tsx` | Tooltip + icon button wrapper (shadcn Button ghost + Tooltip) |
+| `glass-pill.tsx` | Small label pill (restyled for light mode) |
+
+## Archived Glass Components
+
+Legacy glassmorphism components in `_archived-glass/`. Not imported anywhere. Kept for reference until confirmed safe to delete.
 
 ## Key Patterns
 
-- **CVA variants**: `glass-button` uses `class-variance-authority` for variant/size system
+- **CSS variables**: All components use shadcn CSS variable classes (`bg-card`, `text-foreground`, etc.)
 - **Icons**: Import from `@/components/icons` barrel (never direct `@tabler/icons-react`)
-- **Radix primitives**: `glass-tooltip` and `glass-context-menu` wrap Radix UI
-- **Ein UI registry**: Glass components installed via `@einui` registry in `components.json`
+- **Radix primitives**: `tooltip` and `context-menu` wrap Radix UI
