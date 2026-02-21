@@ -8,7 +8,7 @@ import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { useWebSocket } from './ws-provider'
 
-const launcherClass = 'bg-card border-border shadow-sm'
+const launcherClass = 'border bg-card border-border shadow-sm'
 
 export function DesktopTopBar() {
   const stacks = useDesktopStore((s) => s.stacks)

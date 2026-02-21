@@ -96,7 +96,7 @@ export function ConnectionStatus() {
       className={cn(
         'pointer-events-auto fixed left-1/2 top-16 z-50 -translate-x-1/2',
         'flex items-center gap-2 rounded-full border px-3 py-1.5',
-        'text-xs font-medium text-foreground shadow-lg backdrop-blur-2xl',
+        'text-xs font-medium text-foreground shadow-lg bg-background/95',
         'animate-in fade-in slide-in-from-top-2 duration-300',
         config.className,
       )}

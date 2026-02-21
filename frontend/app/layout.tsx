@@ -51,12 +51,6 @@ export default function RootLayout({
           <link rel="preload" href="/persona/obsidian.riv" as="fetch" crossOrigin="anonymous" />
         </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          {/* SVG filter for glass blur — different Chrome rendering path than CSS blur() */}
-          <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>
-            <filter id="glass-blur">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="24" />
-            </filter>
-          </svg>
           <NextTopLoader
             color="var(--primary)"
             height={2}

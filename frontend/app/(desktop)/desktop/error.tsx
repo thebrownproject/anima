@@ -14,17 +14,17 @@ export default function DesktopError({
   }, [error])
 
   return (
-    <div className="flex h-svh w-full items-center justify-center bg-black/90">
-      <div className="mx-4 max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur-xl">
-        <h2 className="mb-2 text-lg font-medium text-white/95">
+    <div className="flex h-svh w-full items-center justify-center bg-background">
+      <div className="mx-4 max-w-md rounded-2xl border border-destructive/20 bg-card p-8 text-center shadow-lg">
+        <h2 className="mb-2 text-lg font-medium text-foreground">
           Something went wrong
         </h2>
-        <p className="mb-6 text-sm text-white/50">
+        <p className="mb-6 text-sm text-muted-foreground">
           {error.message || 'An unexpected error occurred.'}
         </p>
         <button
           onClick={reset}
-          className="rounded-xl border border-white/20 bg-white/10 px-6 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/15"
+          className="rounded-xl border border-border bg-secondary px-6 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent"
         >
           Try again
         </button>
