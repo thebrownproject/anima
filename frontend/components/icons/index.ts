@@ -77,6 +77,11 @@ export {
   IconMoon as Moon,
   IconDeviceDesktop as DeviceDesktop,
 
+  // Connection status
+  IconWifi as Wifi,
+  IconWifiOff as WifiOff,
+  IconCloudOff as CloudOff,
+
   // Loading
   IconLoader2 as Loader2,
 

@@ -12,6 +12,7 @@ import { useVoiceStore } from '@/lib/stores/voice-store'
 import { useVoiceMaybe } from '@/components/voice/voice-provider'
 import { PersonaOrb } from '@/components/voice/persona-orb'
 import { VoiceBars } from '@/components/voice/voice-bars'
+import { toast } from 'sonner'
 import { Spinner } from '@/components/ui/spinner'
 import { useFileUpload } from '@/hooks/use-file-upload'
 
@@ -33,9 +34,8 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const prevTranscriptRef = useRef('')
   const wasListeningRef = useRef(false)
   const wasConnectingRef = useRef(false)
-  const { send, status } = useWebSocket()
+  const { send } = useWebSocket()
   const { sendUpload } = useFileUpload()
-  const isConnected = status === 'connected'
   const { chips, mode, isAgentStreaming, addMessage, draft: inputValue, setDraft: setInputValue, clearDraft, inputActive, setInputActive } = useChatStore()
   const activeStackId = useDesktopStore((s) => s.activeStackId)
   const voiceActive = isVoiceEnabled()
@@ -51,15 +51,12 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
   const isVoiceActive = isListening || isConnecting
 
   const sendMessage = useCallback((text: string) => {
-    addMessage({ role: 'user', content: text, timestamp: Date.now() })
-
-    // Serialize open cards for agent context
     const state = useDesktopStore.getState()
     const openCards = Object.values(state.cards)
       .filter((card) => card.stackId === state.activeStackId)
       .map(({ id, title, blocks }) => ({ card_id: id, title, blocks }))
 
-    send({
+    const result = send({
       type: 'mission',
       payload: {
         text,
@@ -69,12 +66,19 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
         },
       },
     })
+
+    if (result === 'dropped') {
+      toast.error('Message could not be sent', { id: 'send-failed' })
+      return
+    }
+
+    addMessage({ role: 'user', content: text, timestamp: Date.now() })
   }, [addMessage, send, activeStackId])
 
   const handleSend = useCallback(() => {
     if (voice && (isVoiceActive)) voice.stopRecordingForSend()
     const text = inputValue.trim()
-    if (!text || !isConnected) return
+    if (!text) return
     sendMessage(text)
     clearDraft()
     useVoiceStore.getState().clearTranscript()
@@ -82,7 +86,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
     if (voiceActive && ps !== 'asleep') {
       useVoiceStore.getState().setPersonaState('thinking')
     }
-  }, [inputValue, sendMessage, clearDraft, isConnected, voice, isVoiceActive, voiceActive])
+  }, [inputValue, sendMessage, clearDraft, voice, isVoiceActive, voiceActive])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

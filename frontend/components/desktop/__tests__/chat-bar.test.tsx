@@ -42,7 +42,7 @@ vi.mock('next/dynamic', () => ({
 vi.mock('../ws-provider', () => ({
   useWebSocket: () => ({
     status: 'connected',
-    send: vi.fn(() => true),
+    send: vi.fn(() => 'sent'),
     error: null,
     connect: vi.fn(),
     disconnect: vi.fn(),

@@ -6,10 +6,6 @@ import type {
 } from '@/types/ws-protocol'
 import { parseMessage, isSystemMessage } from '@/types/ws-protocol'
 
-// =============================================================================
-// Types
-// =============================================================================
-
 export type ConnectionStatus =
   | 'disconnected'
   | 'connecting'
@@ -17,6 +13,8 @@ export type ConnectionStatus =
   | 'sprite_waking'
   | 'connected'
   | 'error'
+
+export type SendResult = 'sent' | 'queued' | 'dropped'
 
 export type MessageHandler = (message: SpriteToBrowserMessage) => void
 
@@ -27,18 +25,25 @@ export interface WebSocketManagerOptions {
   url?: string
 }
 
-// =============================================================================
-// Constants
-// =============================================================================
-
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'wss://ws.stackdocs.io'
 const INITIAL_BACKOFF_MS = 1000
 const MAX_BACKOFF_MS = 30000
 const BACKOFF_MULTIPLIER = 2
 
-// =============================================================================
-// WebSocket Connection Manager
-// =============================================================================
+// Frontend message queue: browser-to-Bridge buffer for messages sent while
+// disconnected or during sprite_waking. Separate from Bridge's reconnect.ts
+// buffer (Bridge-to-Sprite, MAX_BUFFER=50, TTL=60s) which holds messages
+// during Sprite sleep/wake reconnection.
+const MAX_QUEUE = 100
+const QUEUE_TTL_MS = 60_000
+
+// Close codes that indicate terminal auth failure - do NOT reconnect
+const TERMINAL_CLOSE_CODES = new Set([4001, 4003])
+
+interface QueuedMessage {
+  data: string
+  queuedAt: number
+}
 
 export class WebSocketManager {
   private ws: WebSocket | null = null
@@ -46,9 +51,10 @@ export class WebSocketManager {
   private backoffMs = INITIAL_BACKOFF_MS
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private intentionalClose = false
-  // TODO: handlers registry not currently used — review if needed when message routing is implemented
+  private terminalError = false
   private handlers = new Map<MessageType, Set<MessageHandler>>()
   private _status: ConnectionStatus = 'disconnected'
+  private queue: QueuedMessage[] = []
 
   constructor(options: WebSocketManagerOptions) {
     this.options = options
@@ -58,7 +64,6 @@ export class WebSocketManager {
     return this._status
   }
 
-  /** Connect to the Bridge WebSocket. */
   connect(): void {
     if (this.ws) return
     this.intentionalClose = false
@@ -75,8 +80,14 @@ export class WebSocketManager {
       this.handleRawMessage(event.data as string)
     }
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event: CloseEvent) => {
       this.ws = null
+      if (TERMINAL_CLOSE_CODES.has(event.code)) {
+        this.terminalError = true
+        this.intentionalClose = true
+        this.setStatus('error', 'Authentication failed')
+        return
+      }
       if (!this.intentionalClose) {
         this.setStatus('disconnected')
         this.scheduleReconnect()
@@ -88,7 +99,6 @@ export class WebSocketManager {
     }
   }
 
-  /** Disconnect and stop reconnection attempts. */
   disconnect(): void {
     this.intentionalClose = true
     this.clearReconnectTimer()
@@ -99,20 +109,31 @@ export class WebSocketManager {
     this.setStatus('disconnected')
   }
 
-  /** Send a typed protocol message to the Sprite. */
-  send(message: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>): boolean {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false
+  /** Send a typed protocol message. Returns 'sent', 'queued', or 'dropped'. */
+  send(message: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>): SendResult {
+    if (this.terminalError) return 'dropped'
 
     const full = {
       ...message,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
     }
-    this.ws.send(JSON.stringify(full))
-    return true
+    const data = JSON.stringify(full)
+
+    // Send immediately if WS open AND sprite is ready (not waking)
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this._status === 'connected') {
+      this.ws.send(data)
+      return 'sent'
+    }
+
+    // Queue for later delivery
+    if (this.queue.length >= MAX_QUEUE) {
+      this.queue.shift()
+    }
+    this.queue.push({ data, queuedAt: Date.now() })
+    return 'queued'
   }
 
-  /** Register a handler for a specific message type. */
   on(type: MessageType, handler: MessageHandler): () => void {
     let set = this.handlers.get(type)
     if (!set) {
@@ -127,19 +148,24 @@ export class WebSocketManager {
     }
   }
 
-  /** Remove all handlers and disconnect. */
   destroy(): void {
     this.disconnect()
     this.handlers.clear()
+    this.queue = []
   }
-
-  // ---------------------------------------------------------------------------
-  // Internal
-  // ---------------------------------------------------------------------------
 
   private async authenticate(): Promise<void> {
     this.setStatus('authenticating')
-    const token = await this.options.getToken()
+
+    let token: string | null
+    try {
+      token = await this.options.getToken()
+    } catch {
+      this.setStatus('error', 'Failed to get auth token')
+      this.ws?.close(4001, 'Token error')
+      return
+    }
+
     if (!token) {
       this.setStatus('error', 'Failed to get auth token')
       this.ws?.close(4001, 'No auth token')
@@ -159,12 +185,10 @@ export class WebSocketManager {
     const message = parseMessage(data)
     if (!message) return
 
-    // Track connection status from system messages
     if (isSystemMessage(message)) {
       this.handleSystemMessage(message)
     }
 
-    // Dispatch to type-specific handlers
     const handlers = this.handlers.get(message.type as MessageType)
     if (handlers) {
       for (const handler of handlers) {
@@ -172,14 +196,12 @@ export class WebSocketManager {
       }
     }
 
-    // Always call the global onMessage callback
     this.options.onMessage(message as SpriteToBrowserMessage)
   }
 
   private handleSystemMessage(msg: SystemMessage): void {
     switch (msg.payload.event) {
       case 'connected':
-        // Auth succeeded, waiting for Sprite
         break
       case 'sprite_waking':
         this.setStatus('sprite_waking')
@@ -187,15 +209,29 @@ export class WebSocketManager {
       case 'sprite_ready':
         this.setStatus('connected')
         this.backoffMs = INITIAL_BACKOFF_MS
+        this.flushQueue()
+        break
+      case 'reconnect_failed':
+        this.setStatus('error', msg.payload.message ?? 'Connection failed. Please reload to retry.')
         break
       case 'error':
-        // Only transition to error state if we're not already connected.
-        // Non-fatal errors (e.g. Sprite rejecting keepalive pings) shouldn't
-        // brick an active connection.
+        // Non-fatal errors shouldn't brick an active connection
         if (this._status !== 'connected') {
           this.setStatus('error', msg.payload.message)
         }
         break
+    }
+  }
+
+  private flushQueue(): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
+
+    const now = Date.now()
+    const valid = this.queue.filter(m => now - m.queuedAt < QUEUE_TTL_MS)
+    this.queue = []
+
+    for (const msg of valid) {
+      this.ws.send(msg.data)
     }
   }
 

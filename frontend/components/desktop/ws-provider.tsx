@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
-import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
+import { WebSocketManager, type ConnectionStatus, type SendResult } from '@/lib/websocket'
 import type { SpriteToBrowserMessage, BrowserToSpriteMessage, ChatMessageInfo } from '@/types/ws-protocol'
 import { useDesktopStore, type DesktopCard } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
@@ -24,7 +24,7 @@ interface WebSocketContextValue {
   error: string | null
   connect: () => void
   disconnect: () => void
-  send: (msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>) => boolean
+  send: (msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>) => SendResult
   debugLog: RefObject<DebugLogEntry[]>
 }
 
@@ -287,13 +287,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const send = useCallback(
-    (msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>): boolean => {
-      const ok = managerRef.current?.send(msg) ?? false
-      if (ok) {
+    (msg: Omit<BrowserToSpriteMessage, 'id' | 'timestamp'>): SendResult => {
+      const result = managerRef.current?.send(msg) ?? 'dropped'
+      if (result !== 'dropped') {
         const redacted = msg.type === 'auth' ? { ...msg, payload: { token: '[REDACTED]' } } : msg
-        pushDebug('outbound', msg.type, summarizeOutbound(msg), redacted)
+        pushDebug('outbound', msg.type, `[${result}] ${summarizeOutbound(msg)}`, redacted)
       }
-      return ok
+      return result
     },
     [pushDebug]
   )

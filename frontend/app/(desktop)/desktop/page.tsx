@@ -12,6 +12,7 @@ import { ChatPanel } from '@/components/desktop/chat-panel'
 import { DocumentsPanel } from '@/components/desktop/documents-panel'
 import { BlockRenderer } from '@/components/desktop/block-renderer'
 import { DesktopContextMenu } from '@/components/desktop/desktop-context-menu'
+import { ConnectionStatus } from '@/components/desktop/connection-status'
 import { DebugPanel } from '@/components/debug/debug-panel'
 import { useDesktopStore, useCardsForActiveStack } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
@@ -84,6 +85,7 @@ export default function DesktopPage() {
         <DocumentsPanel />
         <ChatPanel />
 
+        <ConnectionStatus />
         <ChatBar />
         <DebugPanel />
       </div>
