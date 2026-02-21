@@ -5,9 +5,9 @@ app = "stackdocs-bridge"
 primary_region = "syd"
 
 [build]
-  # Deploy from repo root: flyctl deploy --config bridge/fly.toml
   # Build context = repo root, so Dockerfile can COPY from bridge/ and sprite/
-  dockerfile = "bridge/Dockerfile"
+  # Deploy with: flyctl deploy --dockerfile bridge/Dockerfile
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "8080"
