@@ -22,6 +22,7 @@ from claude_agent_sdk import (
 
 from .protocol import AgentEvent, AgentEventPayload, AgentEventMeta, to_json
 from .tools.canvas import create_canvas_tools
+from .tools.extraction import create_extraction_tools
 from .tools.memory import create_memory_tools
 from .memory.loader import load as load_memory
 from .memory import ensure_templates
@@ -221,9 +222,14 @@ class AgentRuntime:
             workspace_db=self._workspace_db,
             stack_id_fn=lambda: self._active_stack_id,
         )
+        extraction_tools = create_extraction_tools(
+            self._indirect_send,
+            workspace_db=self._workspace_db,
+            stack_id_fn=lambda: self._active_stack_id,
+        )
         memory_tools = create_memory_tools(self._memory_db) if self._memory_db else []
         sprite_server = create_sdk_mcp_server(
-            name="sprite", tools=canvas_tools + memory_tools
+            name="sprite", tools=canvas_tools + extraction_tools + memory_tools
         )
         system_prompt = await load_memory(self._memory_db)
 
