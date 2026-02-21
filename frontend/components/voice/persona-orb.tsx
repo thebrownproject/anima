@@ -90,7 +90,7 @@ export function PersonaOrb({ hasText, onSendMessage }: PersonaOrbProps): React.J
           {!riveReady && (
             <div
               data-testid="persona-placeholder"
-              className="absolute inset-0 animate-pulse rounded-full border border-white/20 bg-gradient-to-br from-white/20 to-white/5"
+              className="absolute inset-0 animate-pulse rounded-full border border-border bg-gradient-to-br from-muted to-muted/50"
             />
           )}
           <div className="absolute inset-[-13%]">

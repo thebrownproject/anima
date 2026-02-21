@@ -62,7 +62,7 @@ export function VoiceBars({ analyser, className }: VoiceBarsProps) {
       {levels.map((level, i) => (
         <div
           key={i}
-          className="w-[3px] rounded-full bg-white/70"
+          className="w-[3px] rounded-full bg-muted-foreground"
           style={{ height: `${MIN_PX + Math.round(level * (MAX_PX - MIN_PX))}px` }}
         />
       ))}

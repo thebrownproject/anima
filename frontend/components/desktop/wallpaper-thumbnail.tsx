@@ -21,8 +21,8 @@ export function WallpaperThumbnail({
       className={cn(
         'size-10 cursor-default rounded-full bg-cover bg-center transition-all',
         selected
-          ? 'border-2 border-white/50 scale-110'
-          : 'border border-white/15 hover:border-white/30 hover:scale-105',
+          ? 'border-2 border-primary scale-110'
+          : 'border border-border hover:border-primary/50 hover:scale-105',
       )}
       style={wallpaper.url
         ? { backgroundImage: `url(${wallpaper.url})` }
