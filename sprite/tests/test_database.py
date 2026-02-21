@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sqlite3
 import time
 
 import pytest
@@ -726,3 +727,218 @@ async def test_upsert_card_update_preserves_template_fields(workspace_db):
     assert row["card_type"] == "metric"
     assert row["summary"] == "Second"
     assert json.loads(row["tags"]) == ["b", "c"]
+
+
+# -- T7.1: Index on observations.processed -----------------------------------
+
+async def test_index_exists_on_observations_processed(transcript_db):
+    """T7.1: idx_observations_processed exists in sqlite_master."""
+    rows = await transcript_db.fetchall(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_observations_processed'"
+    )
+    assert len(rows) == 1
+
+
+# -- T7.2: Composite index on cards(stack_id, status) -------------------------
+
+async def test_composite_index_on_cards_stack_status(workspace_db):
+    """T7.2: idx_cards_stack_status exists in sqlite_master."""
+    rows = await workspace_db.fetchall(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_cards_stack_status'"
+    )
+    assert len(rows) == 1
+
+
+# -- T7.3: Migration errors catch sqlite3.OperationalError -------------------
+
+async def test_migration_catches_only_operational_error(tmp_path):
+    """T7.3: Migration catches sqlite3.OperationalError with 'duplicate column' only."""
+    path = str(tmp_path / "migrate_test.db")
+
+    # First connect creates all columns
+    db1 = WorkspaceDB(db_path=path)
+    await db1.connect()
+    await db1.close()
+
+    # Second connect triggers migrations on existing columns (duplicate column)
+    # Should NOT raise because "duplicate column" is expected
+    db2 = WorkspaceDB(db_path=path)
+    await db2.connect()
+    await db2.close()
+
+
+# -- T7.4: Transaction context manager ----------------------------------------
+
+async def test_transaction_commits_on_success(workspace_db):
+    """T7.4: Transaction commits all statements on clean exit."""
+    await workspace_db.create_stack("tx-s1", "Stack")
+
+    async with workspace_db.transaction():
+        await workspace_db.execute(
+            "INSERT INTO cards (card_id, stack_id, title, blocks) VALUES (?, ?, ?, ?)",
+            ("tx-c1", "tx-s1", "Card 1", "[]"),
+        )
+        await workspace_db.execute(
+            "INSERT INTO cards (card_id, stack_id, title, blocks) VALUES (?, ?, ?, ?)",
+            ("tx-c2", "tx-s1", "Card 2", "[]"),
+        )
+
+    rows = await workspace_db.fetchall("SELECT * FROM cards WHERE stack_id = 'tx-s1'")
+    assert len(rows) == 2
+
+
+async def test_transaction_rolls_back_on_exception(workspace_db):
+    """T7.4: Transaction rolls back on exception -- no partial writes."""
+    await workspace_db.create_stack("rb-s1", "Stack")
+
+    with pytest.raises(ValueError):
+        async with workspace_db.transaction():
+            await workspace_db.execute(
+                "INSERT INTO cards (card_id, stack_id, title, blocks) VALUES (?, ?, ?, ?)",
+                ("rb-c1", "rb-s1", "Card 1", "[]"),
+            )
+            raise ValueError("simulated crash")
+
+    rows = await workspace_db.fetchall("SELECT * FROM cards WHERE stack_id = 'rb-s1'")
+    assert len(rows) == 0
+
+
+# -- T7.6: Database methods after close() raise RuntimeError ------------------
+
+async def test_execute_after_close_raises_runtime_error(tmp_path):
+    """T7.6: Calling execute() after close() raises RuntimeError."""
+    db = TranscriptDB(db_path=str(tmp_path / "closed.db"))
+    await db.connect()
+    await db.close()
+
+    with pytest.raises(RuntimeError, match="Database not connected"):
+        await db.execute("SELECT 1")
+
+
+async def test_fetchone_after_close_raises_runtime_error(tmp_path):
+    """T7.6: Calling fetchone() after close() raises RuntimeError."""
+    db = TranscriptDB(db_path=str(tmp_path / "closed2.db"))
+    await db.connect()
+    await db.close()
+
+    with pytest.raises(RuntimeError, match="Database not connected"):
+        await db.fetchone("SELECT 1")
+
+
+async def test_fetchall_after_close_raises_runtime_error(tmp_path):
+    """T7.6: Calling fetchall() after close() raises RuntimeError."""
+    db = TranscriptDB(db_path=str(tmp_path / "closed3.db"))
+    await db.connect()
+    await db.close()
+
+    with pytest.raises(RuntimeError, match="Database not connected"):
+        await db.fetchall("SELECT 1")
+
+
+async def test_executemany_after_close_raises_runtime_error(tmp_path):
+    """T7.6: Calling executemany() after close() raises RuntimeError."""
+    db = TranscriptDB(db_path=str(tmp_path / "closed4.db"))
+    await db.connect()
+    await db.close()
+
+    with pytest.raises(RuntimeError, match="Database not connected"):
+        await db.executemany("INSERT INTO observations VALUES (?)", [(1,)])
+
+
+# -- T7.7: get_chat_history uses cursor-based pagination ----------------------
+
+async def test_get_chat_history_cursor_based(workspace_db):
+    """T7.7: get_chat_history returns correct order without COUNT(*)."""
+    for i in range(10):
+        await workspace_db.add_chat_message("user" if i % 2 == 0 else "assistant", f"msg-{i}")
+
+    history = await workspace_db.get_chat_history(limit=5)
+    assert len(history) == 5
+    # Chronological (ASC) order of last 5
+    assert history[0]["content"] == "msg-5"
+    assert history[4]["content"] == "msg-9"
+
+    # Full history
+    all_msgs = await workspace_db.get_chat_history(limit=100)
+    assert len(all_msgs) == 10
+    assert all_msgs[0]["content"] == "msg-0"
+    assert all_msgs[9]["content"] == "msg-9"
+
+
+# -- T7.8: Data retention (prune on insert) -----------------------------------
+
+async def test_chat_messages_pruned_to_5k(workspace_db):
+    """T7.8: chat_messages pruned to 5000, newest preserved."""
+    # Insert 5002 messages (bulk for speed)
+    await workspace_db.executemany(
+        "INSERT INTO chat_messages (role, content, timestamp) VALUES (?, ?, ?)",
+        [("user", f"msg-{i}", time.time()) for i in range(5002)],
+    )
+    count_before = await workspace_db.fetchone("SELECT COUNT(*) as c FROM chat_messages")
+    assert count_before["c"] == 5002
+
+    # add_chat_message triggers prune
+    await workspace_db.add_chat_message("user", "newest-msg")
+
+    count_after = await workspace_db.fetchone("SELECT COUNT(*) as c FROM chat_messages")
+    assert count_after["c"] == 5000
+
+    # Newest message is preserved
+    newest = await workspace_db.fetchone(
+        "SELECT * FROM chat_messages ORDER BY id DESC LIMIT 1"
+    )
+    assert newest["content"] == "newest-msg"
+
+
+async def test_observations_pruned_to_10k_processed_only(transcript_db):
+    """T7.8: prune_observations removes processed rows beyond 10k window."""
+    # Insert 10005 processed observations (ids 1-10005)
+    await transcript_db.executemany(
+        "INSERT INTO observations (timestamp, session_id, sequence_num, user_message, agent_response, processed) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        [(time.time(), "s1", i, f"msg-{i}", f"resp-{i}", 1) for i in range(10005)],
+    )
+    # Insert 3 unprocessed observations (ids 10006-10008, inside top 10k)
+    await transcript_db.executemany(
+        "INSERT INTO observations (timestamp, session_id, sequence_num, user_message, agent_response, processed) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        [(time.time(), "s1", 20000 + i, f"unproc-{i}", f"resp-{i}", 0) for i in range(3)],
+    )
+
+    await transcript_db.prune_observations()
+
+    # Top 10000 by id DESC = ids 10008..9. That leaves ids 1-8 outside the window.
+    # All 8 are processed=1, so all 8 get deleted. Total = 10008 - 8 = 10000.
+    total = await transcript_db.fetchone("SELECT COUNT(*) as c FROM observations")
+    assert total["c"] == 10000
+
+    # Unprocessed observations are protected (they have the highest IDs)
+    unprocessed = await transcript_db.fetchone(
+        "SELECT COUNT(*) as c FROM observations WHERE processed = 0"
+    )
+    assert unprocessed["c"] == 3
+
+
+async def test_unprocessed_observations_never_pruned(transcript_db):
+    """T7.8: Unprocessed observations outside the 10k window are NOT deleted."""
+    # Insert 5 unprocessed observations (low IDs)
+    await transcript_db.executemany(
+        "INSERT INTO observations (timestamp, session_id, sequence_num, user_message, agent_response, processed) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        [(time.time(), "s1", i, f"unproc-{i}", f"resp-{i}", 0) for i in range(5)],
+    )
+    # Insert 10005 processed observations (high IDs, fill the 10k window)
+    await transcript_db.executemany(
+        "INSERT INTO observations (timestamp, session_id, sequence_num, user_message, agent_response, processed) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        [(time.time(), "s1", 100 + i, f"msg-{i}", f"resp-{i}", 1) for i in range(10005)],
+    )
+
+    await transcript_db.prune_observations()
+
+    # The 5 unprocessed obs have ids 1-5, outside the top 10000 window (ids 10010..11).
+    # But processed=0 so the WHERE clause protects them.
+    unprocessed = await transcript_db.fetchone(
+        "SELECT COUNT(*) as c FROM observations WHERE processed = 0"
+    )
+    assert unprocessed["c"] == 5

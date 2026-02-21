@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback } from 'react'
-import { toast } from 'sonner'
 import { useWebSocket } from '@/components/desktop/ws-provider'
 
 const MAX_SIZE = 25 * 1024 * 1024
@@ -13,11 +12,11 @@ export function useFileUpload() {
 
   const sendUpload = useCallback((file: File): boolean => {
     if (!ALLOWED_TYPES.has(file.type) && !ALLOWED_EXTS.test(file.name)) {
-      toast.error('Unsupported file type. Use PDF, PNG, or JPEG.')
+      console.error('File upload rejected: unsupported type', file.type)
       return false
     }
     if (file.size > MAX_SIZE) {
-      toast.error('File too large. Maximum size is 25MB.')
+      console.error('File upload rejected: exceeds 25MB', file.size)
       return false
     }
 

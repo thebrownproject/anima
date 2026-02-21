@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     message_count INTEGER,
     observation_count INTEGER
 );
+CREATE INDEX IF NOT EXISTS idx_observations_processed ON observations(processed);
 """
 
 MEMORY_SCHEMA = """\
@@ -82,6 +83,12 @@ class _BaseDB:
     def __init__(self, db_path: str | None = None) -> None:
         self.db_path = db_path or self._default_path
         self._conn: aiosqlite.Connection | None = None
+        self._in_transaction: bool = False
+
+    def _check_conn(self) -> aiosqlite.Connection:
+        if self._conn is None:
+            raise RuntimeError("Database not connected")
+        return self._conn
 
     async def connect(self) -> None:
         self._conn = await aiosqlite.connect(self.db_path)
@@ -97,23 +104,33 @@ class _BaseDB:
             await self._conn.close()
             self._conn = None
 
+    def transaction(self) -> _Transaction:
+        """Async context manager for BEGIN IMMEDIATE / COMMIT / ROLLBACK."""
+        return _Transaction(self)
+
     async def execute(self, sql: str, params: tuple = ()) -> aiosqlite.Cursor:
-        cursor = await self._conn.execute(sql, params)
-        await self._conn.commit()
+        conn = self._check_conn()
+        cursor = await conn.execute(sql, params)
+        if not self._in_transaction:
+            await conn.commit()
         return cursor
 
     async def executemany(self, sql: str, params_list: list[tuple]) -> aiosqlite.Cursor:
-        cursor = await self._conn.executemany(sql, params_list)
-        await self._conn.commit()
+        conn = self._check_conn()
+        cursor = await conn.executemany(sql, params_list)
+        if not self._in_transaction:
+            await conn.commit()
         return cursor
 
     async def fetchone(self, sql: str, params: tuple = ()) -> dict | None:
-        cursor = await self._conn.execute(sql, params)
+        conn = self._check_conn()
+        cursor = await conn.execute(sql, params)
         row = await cursor.fetchone()
         return dict(row) if row else None
 
     async def fetchall(self, sql: str, params: tuple = ()) -> list[dict]:
-        cursor = await self._conn.execute(sql, params)
+        conn = self._check_conn()
+        cursor = await conn.execute(sql, params)
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
 
@@ -125,10 +142,39 @@ class _BaseDB:
         await self.close()
 
 
+class _Transaction:
+    """BEGIN IMMEDIATE / COMMIT / ROLLBACK wrapper for _BaseDB."""
+
+    def __init__(self, db: _BaseDB) -> None:
+        self._db = db
+
+    async def __aenter__(self) -> None:
+        conn = self._db._check_conn()
+        await conn.execute("BEGIN IMMEDIATE")
+        self._db._in_transaction = True
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        conn = self._db._check_conn()
+        try:
+            if exc_type is None:
+                await conn.execute("COMMIT")
+            else:
+                await conn.execute("ROLLBACK")
+        finally:
+            self._db._in_transaction = False
+
+
 class TranscriptDB(_BaseDB):
     """Append-only conversation transcript. Hooks write observations, daemon reads for processing."""
     _schema = TRANSCRIPT_SCHEMA
     _default_path = "/workspace/.os/memory/transcript.db"
+
+    async def prune_observations(self) -> None:
+        """Keep newest 10k observations, only prune those already processed."""
+        await self.execute(
+            "DELETE FROM observations WHERE processed = 1 AND id NOT IN "
+            "(SELECT id FROM observations ORDER BY id DESC LIMIT 10000)"
+        )
 
 
 class MemoryDB(_BaseDB):
@@ -189,6 +235,7 @@ CREATE TABLE IF NOT EXISTS documents (
     status TEXT DEFAULT 'processing',
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_cards_stack_status ON cards(stack_id, status);
 """
 
 
@@ -206,43 +253,48 @@ class WorkspaceDB(_BaseDB):
 
     async def _migrate_card_position_columns(self) -> None:
         """Add position columns to existing cards tables (CREATE TABLE IF NOT EXISTS won't)."""
+        conn = self._check_conn()
         for col, typedef in [
             ("position_x", "REAL DEFAULT 0.0"),
             ("position_y", "REAL DEFAULT 0.0"),
             ("z_index", "INTEGER DEFAULT 0"),
         ]:
             try:
-                await self._conn.execute(f"ALTER TABLE cards ADD COLUMN {col} {typedef}")
-                await self._conn.commit()
+                await conn.execute(f"ALTER TABLE cards ADD COLUMN {col} {typedef}")
+                await conn.commit()
                 logger.info("Migrated cards table: added %s", col)
-            except Exception:
-                pass  # Column already exists
+            except sqlite3.OperationalError as e:
+                if "duplicate column" not in str(e):
+                    raise
 
     async def _migrate_card_template_columns(self) -> None:
         """Add template columns to existing cards tables."""
+        conn = self._check_conn()
         for col in [
             "card_type", "summary", "tags", "color", "type_badge",
             "date", "value", "trend", "trend_direction", "author",
             "read_time", "headers", "preview_rows",
         ]:
             try:
-                await self._conn.execute(f"ALTER TABLE cards ADD COLUMN {col} TEXT")
-                await self._conn.commit()
+                await conn.execute(f"ALTER TABLE cards ADD COLUMN {col} TEXT")
+                await conn.commit()
                 logger.info("Migrated cards table: added %s", col)
-            except Exception:
-                pass  # Column already exists
+            except sqlite3.OperationalError as e:
+                if "duplicate column" not in str(e):
+                    raise
 
     async def _migrate_documents_table(self) -> None:
         """Create documents table on existing DBs that predate the schema addition."""
+        conn = self._check_conn()
         try:
-            await self._conn.execute(
+            await conn.execute(
                 "CREATE TABLE IF NOT EXISTS documents ("
                 "doc_id TEXT PRIMARY KEY, filename TEXT NOT NULL, mime_type TEXT, "
                 "file_path TEXT NOT NULL, card_id TEXT, status TEXT DEFAULT 'processing', "
                 "created_at TEXT DEFAULT (datetime('now')))"
             )
-            await self._conn.commit()
-        except Exception as e:
+            await conn.commit()
+        except sqlite3.OperationalError as e:
             logger.warning("_migrate_documents_table: %s", e)
 
     # -- Stacks ----------------------------------------------------------------
@@ -271,27 +323,27 @@ class WorkspaceDB(_BaseDB):
     async def archive_stack(self, stack_id: str) -> None:
         """Archive stack and cascade to all its cards (transactional)."""
         now = time.time()
-        await self._conn.execute(
-            "UPDATE stacks SET status = 'archived', archived_at = ? WHERE id = ?",
-            (now, stack_id),
-        )
-        await self._conn.execute(
-            "UPDATE cards SET status = 'archived', archived_at = ? WHERE stack_id = ?",
-            (now, stack_id),
-        )
-        await self._conn.commit()
+        async with self.transaction():
+            await self.execute(
+                "UPDATE stacks SET status = 'archived', archived_at = ? WHERE id = ?",
+                (now, stack_id),
+            )
+            await self.execute(
+                "UPDATE cards SET status = 'archived', archived_at = ? WHERE stack_id = ?",
+                (now, stack_id),
+            )
 
     async def restore_stack(self, stack_id: str) -> None:
         """Restore stack and all its cards (transactional)."""
-        await self._conn.execute(
-            "UPDATE stacks SET status = 'active', archived_at = NULL WHERE id = ?",
-            (stack_id,),
-        )
-        await self._conn.execute(
-            "UPDATE cards SET status = 'active', archived_at = NULL WHERE stack_id = ?",
-            (stack_id,),
-        )
-        await self._conn.commit()
+        async with self.transaction():
+            await self.execute(
+                "UPDATE stacks SET status = 'active', archived_at = NULL WHERE id = ?",
+                (stack_id,),
+            )
+            await self.execute(
+                "UPDATE cards SET status = 'active', archived_at = NULL WHERE stack_id = ?",
+                (stack_id,),
+            )
 
     # -- Cards -----------------------------------------------------------------
 
@@ -409,16 +461,21 @@ class WorkspaceDB(_BaseDB):
             "INSERT INTO chat_messages (role, content, timestamp) VALUES (?, ?, ?)",
             (role, content, now),
         )
+        await self.execute(
+            "DELETE FROM chat_messages WHERE id NOT IN "
+            "(SELECT id FROM chat_messages ORDER BY id DESC LIMIT 5000)"
+        )
         return await self.fetchone(
             "SELECT * FROM chat_messages WHERE id = ?", (cursor.lastrowid,)
         )
 
     async def get_chat_history(self, limit: int = 100) -> list[dict]:
-        return await self.fetchall(
-            "SELECT * FROM chat_messages ORDER BY id ASC "
-            "LIMIT ? OFFSET MAX(0, (SELECT COUNT(*) FROM chat_messages) - ?)",
-            (limit, limit),
+        rows = await self.fetchall(
+            "SELECT * FROM chat_messages ORDER BY id DESC LIMIT ?",
+            (limit,),
         )
+        rows.reverse()
+        return rows
 
     # -- Documents -------------------------------------------------------------
 

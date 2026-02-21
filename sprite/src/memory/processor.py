@@ -189,21 +189,21 @@ class ObservationProcessor:
 
         obs_ids = [obs["id"] for obs in observations]
 
-        # Store learnings
+        # Store learnings (batch insert for atomicity)
         now = time.time()
-        for learning in learnings:
-            await self._memory.execute(
+        if learnings:
+            await self._memory.executemany(
                 "INSERT INTO learnings (created_at, session_id, type, content, source_observation_id, confidence) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (now, None, learning["type"], learning["content"], obs_ids[0], 1.0),
+                [(now, None, l["type"], l["content"], obs_ids[0], 1.0) for l in learnings],
             )
 
-        # Store actions — insert as pending_action, then link via source_learning_id
-        for action in actions:
-            await self._memory.execute(
+        # Store actions (batch insert)
+        if actions:
+            await self._memory.executemany(
                 "INSERT INTO pending_actions (created_at, content, priority, status, source_learning_id) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (now, action["content"], 1, "pending", None),
+                [(now, a["content"], 1, "pending", None) for a in actions],
             )
 
         # Write file updates

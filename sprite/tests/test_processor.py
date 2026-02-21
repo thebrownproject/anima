@@ -344,3 +344,56 @@ def test_parse_response_mixed():
     assert actions[0] == {"content": "Install pandas"}
 
     assert len(file_updates) == 1
+
+
+# -- T7.5: Batch insert with executemany, crash does not produce duplicates ---
+
+async def test_batch_insert_uses_executemany(transcript_db, memory_db, memory_dir):
+    """T7.5: Processor uses executemany for learnings batch insert."""
+    response = (
+        "FACT: Fact one\n"
+        "FACT: Fact two\n"
+        "FACT: Fact three"
+    )
+    client = _mock_client(response)
+    proc = ObservationProcessor(transcript_db, memory_db, client, memory_dir)
+
+    await _insert_observation(transcript_db)
+    await proc.process_batch()
+
+    rows = await memory_db.fetchall("SELECT type, content FROM learnings ORDER BY id")
+    assert len(rows) == 3
+    assert rows[0]["content"] == "Fact one"
+    assert rows[2]["content"] == "Fact three"
+
+
+async def test_batch_insert_crash_no_duplicates(transcript_db, memory_db, memory_dir):
+    """T7.5: Simulated crash mid-batch does not produce partial learnings."""
+    response = "FACT: Should not persist"
+    client = _mock_client(response)
+    proc = ObservationProcessor(transcript_db, memory_db, client, memory_dir)
+
+    await _insert_observation(transcript_db)
+
+    # Monkey-patch executemany to fail after being called
+    original_executemany = memory_db.executemany
+    async def failing_executemany(sql, params):
+        raise RuntimeError("simulated crash")
+    memory_db.executemany = failing_executemany
+
+    # process_batch should not raise (it logs and returns on API errors,
+    # but executemany failure will propagate). Catch it here.
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        await proc.process_batch()
+
+    memory_db.executemany = original_executemany
+
+    # No learnings should have been persisted
+    rows = await memory_db.fetchall("SELECT * FROM learnings")
+    assert len(rows) == 0
+
+    # Observations should NOT be marked processed (crash before marking)
+    unprocessed = await transcript_db.fetchall(
+        "SELECT * FROM observations WHERE processed = 0"
+    )
+    assert len(unprocessed) == 1

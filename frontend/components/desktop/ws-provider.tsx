@@ -11,7 +11,6 @@ import {
   type RefObject,
 } from 'react'
 import { useAuth } from '@clerk/nextjs'
-import { toast } from 'sonner'
 import { WebSocketManager, type ConnectionStatus } from '@/lib/websocket'
 import type { SpriteToBrowserMessage, BrowserToSpriteMessage, ChatMessageInfo } from '@/types/ws-protocol'
 import { useDesktopStore, type DesktopCard } from '@/lib/stores/desktop-store'
@@ -250,9 +249,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         pushDebug('status', 'connection', `Status: ${s}${err ? ` — ${err}` : ''}`, { status: s, error: err })
         setStatus(s)
         setError(err ?? null)
-        if (s === 'error' && err) {
-          toast.error(err, { id: 'ws-connection-error' })
-        }
       },
       onMessage: handleMessage,
     })

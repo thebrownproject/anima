@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     message_count INTEGER,
     observation_count INTEGER
 );
+CREATE INDEX IF NOT EXISTS idx_observations_processed ON observations(processed);
 """)
 t_conn.close()
 
