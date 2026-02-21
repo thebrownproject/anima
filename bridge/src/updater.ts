@@ -76,6 +76,11 @@ export async function checkAndUpdate(spriteName: string): Promise<boolean> {
   // Create new directories that may not exist on older sprites
   await spriteExec(spriteName, 'mkdir -p /workspace/.os/src/tools')
 
+  // Install system packages needed by newer versions (idempotent, skips if present)
+  await spriteExec(spriteName,
+    'which pdftotext > /dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils 2>&1 | tail -1)',
+  )
+
   // Deploy new code
   await deployCode(spriteName)
   console.log(`[updater] Code deployed to ${spriteName}`)

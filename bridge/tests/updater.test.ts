@@ -10,7 +10,7 @@ vi.mock('../src/sprite-exec.js', () => ({
 }))
 
 vi.mock('../src/bootstrap.js', () => ({
-  CURRENT_VERSION: '0.3.1',
+  CURRENT_VERSION: '0.4.0',
   deployCode: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -117,6 +117,18 @@ describe('checkAndUpdate', () => {
     // "3" -> 0.0.3, which is < 0.3.1
     expect(updated).toBe(true)
     expect(mockDeployCode).toHaveBeenCalled()
+  })
+
+  it('installs poppler-utils if missing during update', async () => {
+    mockReadFile.mockResolvedValue('0.1.0')
+
+    await checkAndUpdate('test-sprite')
+
+    const popplerCall = mockSpriteExec.mock.calls.find(
+      (call) => typeof call[1] === 'string' && call[1].includes('poppler-utils')
+    )
+    expect(popplerCall).toBeDefined()
+    expect(popplerCall![1]).toContain('pdftotext')
   })
 
   it('cleans stale files from previous versions', async () => {

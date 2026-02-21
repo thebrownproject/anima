@@ -16,7 +16,7 @@ import { spriteExec } from './sprite-exec.js'
 
 // Current version — bump this when code or deps change.
 // The updater checks this against the sprite's /workspace/.os/VERSION file.
-export const CURRENT_VERSION = '0.3.1'
+export const CURRENT_VERSION = '0.4.0'
 
 // Resolve sprite directory: /app/sprite/ in Docker, ../../sprite/ locally
 function getSpriteDir(): string {
@@ -170,7 +170,7 @@ export async function bootstrapSprite(spriteName: string): Promise<void> {
 
   // 2. Install python3-venv (needed for venv creation)
   await spriteExec(spriteName,
-    'sudo apt-get update -qq && sudo apt-get install -y -qq python3-venv 2>&1 | tail -1',
+    'sudo apt-get update -qq && sudo apt-get install -y -qq python3-venv poppler-utils 2>&1 | tail -1',
   )
 
   // 3. Create venv and install packages
