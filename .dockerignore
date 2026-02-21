@@ -16,4 +16,4 @@
 !sprite/requirements.txt
 
 # Re-exclude Python cache
-sprite/src/__pycache__
+**/__pycache__
