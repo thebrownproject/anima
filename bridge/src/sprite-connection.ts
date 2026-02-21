@@ -115,6 +115,13 @@ export class SpriteConnection {
     })
   }
 
+  /** Swap the onMessage handler. Returns the previous handler for restoration. */
+  replaceMessageHandler(handler: (data: string) => void): (data: string) => void {
+    const prev = this.opts.onMessage
+    this.opts.onMessage = handler
+    return prev
+  }
+
   /** Send a message to the Sprite via TCP proxy as binary (newline-delimited). */
   send(data: string): boolean {
     if (this._state !== 'connected' || !this.ws || this.ws.readyState !== WebSocket.OPEN) {

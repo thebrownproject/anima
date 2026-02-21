@@ -1,16 +1,16 @@
 import { v4 as uuidv4 } from 'uuid'
-import { getSpriteConnection } from './proxy.js'
+import type { SpriteConnection } from './sprite-connection.js'
 
 const KEEPALIVE_INTERVAL_MS = 15_000
 
 const timers = new Map<string, ReturnType<typeof setInterval>>()
 
 /** Start keepalive pings for a user if not already running. */
-export function startKeepalive(userId: string): void {
+export function startKeepalive(userId: string, getConnection: () => SpriteConnection | undefined): void {
   if (timers.has(userId)) return
 
   const interval = setInterval(() => {
-    const conn = getSpriteConnection(userId)
+    const conn = getConnection()
     if (!conn || conn.state !== 'connected') return
     conn.send(JSON.stringify({ type: 'ping', id: uuidv4(), timestamp: Date.now() }))
   }, KEEPALIVE_INTERVAL_MS)

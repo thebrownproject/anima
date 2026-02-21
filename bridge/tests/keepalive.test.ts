@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock proxy module to control getSpriteConnection
-vi.mock('../src/proxy.js', () => ({
-  getSpriteConnection: vi.fn(),
-}))
-
-import { getSpriteConnection } from '../src/proxy.js'
 import {
   startKeepalive,
   stopKeepalive,
@@ -13,7 +7,9 @@ import {
   KEEPALIVE_INTERVAL_MS,
 } from '../src/keepalive.js'
 
-const mockGetSpriteConnection = vi.mocked(getSpriteConnection)
+function mockConn(send: ReturnType<typeof vi.fn>) {
+  return { state: 'connected', spriteName: 'test-sprite', send, close: vi.fn() } as any
+}
 
 describe('keepalive', () => {
   beforeEach(() => {
@@ -24,21 +20,12 @@ describe('keepalive', () => {
   afterEach(() => {
     resetKeepalives()
     vi.useRealTimers()
-    vi.restoreAllMocks()
   })
 
   it('sends keepalive pings every 15s while browser connected', () => {
     const mockSend = vi.fn().mockReturnValue(true)
-    mockGetSpriteConnection.mockReturnValue({
-      state: 'connected',
-      spriteName: 'test-sprite',
-      send: mockSend,
-      close: vi.fn(),
-    } as any)
+    startKeepalive('user-1', () => mockConn(mockSend))
 
-    startKeepalive('user-1')
-
-    // Advance by 15s — should trigger one ping
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)
     expect(mockSend).toHaveBeenCalledTimes(1)
     const ping = JSON.parse(mockSend.mock.calls[0][0])
@@ -46,77 +33,48 @@ describe('keepalive', () => {
     expect(typeof ping.id).toBe('string')
     expect(ping.id.length).toBeGreaterThan(0)
 
-    // Advance another 15s — second ping
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)
     expect(mockSend).toHaveBeenCalledTimes(2)
 
-    // Advance 30 more seconds — 2 more pings
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS * 2)
     expect(mockSend).toHaveBeenCalledTimes(4)
   })
 
   it('stops keepalive when browser disconnects', () => {
     const mockSend = vi.fn().mockReturnValue(true)
-    mockGetSpriteConnection.mockReturnValue({
-      state: 'connected',
-      spriteName: 'test-sprite',
-      send: mockSend,
-      close: vi.fn(),
-    } as any)
+    startKeepalive('user-1', () => mockConn(mockSend))
 
-    startKeepalive('user-1')
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)
     expect(mockSend).toHaveBeenCalledTimes(1)
 
-    // Stop keepalive (simulating last browser disconnect)
     stopKeepalive('user-1')
 
-    // Advance more time — no additional pings
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS * 3)
     expect(mockSend).toHaveBeenCalledTimes(1)
   })
 
   it('does not start duplicate keepalives for same user', () => {
     const mockSend = vi.fn().mockReturnValue(true)
-    mockGetSpriteConnection.mockReturnValue({
-      state: 'connected',
-      spriteName: 'test-sprite',
-      send: mockSend,
-      close: vi.fn(),
-    } as any)
-
-    startKeepalive('user-1')
-    startKeepalive('user-1') // duplicate call
+    const getter = () => mockConn(mockSend)
+    startKeepalive('user-1', getter)
+    startKeepalive('user-1', getter) // duplicate call
 
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)
-    // Should only have 1 ping, not 2
     expect(mockSend).toHaveBeenCalledTimes(1)
   })
 
   it('skips ping when sprite connection is not connected', () => {
-    mockGetSpriteConnection.mockReturnValue(undefined)
-
-    startKeepalive('user-1')
+    startKeepalive('user-1', () => undefined)
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)
-
-    // No connection, so no send call
-    // (getSpriteConnection returned undefined)
-    // This just verifies no error is thrown and no crash occurs
+    // No error thrown — verifies graceful handling of missing connection
   })
 
   it('manages multiple users independently', () => {
     const send1 = vi.fn().mockReturnValue(true)
     const send2 = vi.fn().mockReturnValue(true)
 
-    mockGetSpriteConnection.mockImplementation((userId: string) => {
-      const sends: Record<string, ReturnType<typeof vi.fn>> = { 'user-1': send1, 'user-2': send2 }
-      const s = sends[userId]
-      if (!s) return undefined
-      return { state: 'connected', spriteName: `sprite-${userId}`, send: s, close: vi.fn() } as any
-    })
-
-    startKeepalive('user-1')
-    startKeepalive('user-2')
+    startKeepalive('user-1', () => mockConn(send1))
+    startKeepalive('user-2', () => mockConn(send2))
 
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)
     expect(send1).toHaveBeenCalledTimes(1)

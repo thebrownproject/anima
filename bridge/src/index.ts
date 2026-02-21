@@ -17,13 +17,16 @@ import { handleApiProxy } from './api-proxy.js'
 import {
   isAuthConnect,
   isWebSocketMessage,
-  type SystemMessage,
 } from './protocol.js'
+import { createSystemMessage } from './system-message.js'
 import {
   ensureSpriteConnection,
   forwardToSprite,
   disconnectSprite,
+  resetSpriteConnections,
 } from './proxy.js'
+import { resetKeepalives } from './keepalive.js'
+import { resetReconnectState } from './reconnect.js'
 import {
   ensureSpriteProvisioned,
 } from './provisioning.js'
@@ -69,21 +72,6 @@ export function validateEnv(): void {
   if (missing.length > 0) {
     throw new Error(`Missing required env vars: ${missing.join(', ')}`)
   }
-}
-
-function createSystemMessage(
-  event: 'connected' | 'sprite_waking' | 'sprite_ready' | 'error',
-  message?: string,
-  requestId?: string,
-): string {
-  const msg: SystemMessage = {
-    type: 'system',
-    id: uuidv4(),
-    timestamp: Date.now(),
-    payload: { event, message },
-    ...(requestId ? { request_id: requestId } : {}),
-  }
-  return JSON.stringify(msg)
 }
 
 function sendError(ws: WebSocket, message: string, requestId?: string): void {
@@ -299,6 +287,18 @@ if (process.env.NODE_ENV !== 'test') {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down...')
+
+  // Force exit if graceful shutdown takes too long
+  const forceExit = setTimeout(() => {
+    console.error('Forced exit after timeout')
+    process.exit(1)
+  }, 5_000)
+  forceExit.unref()
+
+  resetKeepalives()
+  resetReconnectState()
+  resetSpriteConnections()
+
   for (const conn of allConnections()) {
     conn.ws.close(1001, 'Server shutting down')
   }

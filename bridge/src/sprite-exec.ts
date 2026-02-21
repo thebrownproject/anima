@@ -24,8 +24,11 @@ export async function spriteExec(
     { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 },
   )
 
-  if (stderr && !stderr.includes('WARNING') && !stderr.includes('notice')) {
-    console.warn(`[sprite-exec] stderr from ${spriteName}: ${stderr.slice(0, 200)}`)
+  if (stderr) {
+    const isNoise = stderr.includes('WARNING') || stderr.includes('notice')
+    if (!isNoise) {
+      console.warn(`[sprite-exec] stderr from ${spriteName}: ${stderr.slice(0, 200)}`)
+    }
   }
 
   return stdout

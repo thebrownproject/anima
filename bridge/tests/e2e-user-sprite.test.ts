@@ -184,13 +184,7 @@ function connectBrowser(): Promise<WebSocket> {
 }
 
 function nextMessage(ws: WebSocket, timeoutMs = 5000): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Message timeout')), timeoutMs)
-    ws.once('message', (data) => {
-      clearTimeout(timer)
-      resolve(JSON.parse(data.toString()))
-    })
-  })
+  return collectMessages(ws, 1, timeoutMs).then((msgs) => msgs[0])
 }
 
 function createAuthMsg(token = 'valid-token'): string {

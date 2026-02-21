@@ -104,7 +104,7 @@ export async function ensureSpriteConnection(
     }
   }
   spriteConnections.set(userId, conn)
-  startKeepalive(userId)
+  startKeepalive(userId, () => getSpriteConnection(userId))
   return conn
 }
 

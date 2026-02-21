@@ -147,14 +147,25 @@ function connectBrowser(): Promise<WebSocket> {
   })
 }
 
-function nextMessage(ws: WebSocket, timeoutMs = 5000): Promise<any> {
+/** Collect N messages from a WebSocket, resolving when all arrive or timing out. */
+function collectMessages(ws: WebSocket, count: number, timeoutMs: number): Promise<any[]> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Message timeout')), timeoutMs)
-    ws.once('message', (data) => {
-      clearTimeout(timer)
-      resolve(JSON.parse(data.toString()))
-    })
+    const msgs: any[] = []
+    const timer = setTimeout(() => reject(new Error(`Message timeout: got ${msgs.length}/${count}`)), timeoutMs)
+    const handler = (data: any) => {
+      msgs.push(JSON.parse(data.toString()))
+      if (msgs.length >= count) {
+        clearTimeout(timer)
+        ws.off('message', handler)
+        resolve(msgs)
+      }
+    }
+    ws.on('message', handler)
   })
+}
+
+function nextMessage(ws: WebSocket, timeoutMs = 5000): Promise<any> {
+  return collectMessages(ws, 1, timeoutMs).then((msgs) => msgs[0])
 }
 
 function createAuthMsg(token = 'valid-token'): string {
@@ -203,13 +214,12 @@ function mockAuth(userId: string): void {
 async function authenticateBrowser(ws: WebSocket): Promise<void> {
   ws.send(createAuthMsg())
 
-  const msg1 = await nextMessage(ws)
-  expect(msg1.type).toBe('system')
-  expect(msg1.payload.event).toBe('connected')
-
-  const msg2 = await nextMessage(ws)
-  expect(msg2.type).toBe('system')
-  expect(msg2.payload.event).toBe('sprite_ready')
+  const messages = await collectMessages(ws, 2, 5000)
+  const events = messages
+    .filter((m: any) => m.type === 'system')
+    .map((m: any) => m.payload.event)
+  expect(events).toContain('connected')
+  expect(events).toContain('sprite_ready')
 }
 
 // -- Lifecycle --

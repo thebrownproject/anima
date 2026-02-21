@@ -117,10 +117,12 @@ function connectWs(): Promise<WebSocket> {
 function nextMessage(ws: WebSocket, timeoutMs: number = 5000): Promise<any> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Message timeout')), timeoutMs)
-    ws.once('message', (data) => {
+    const handler = (data: any) => {
       clearTimeout(timer)
+      ws.off('message', handler)
       resolve(JSON.parse(data.toString()))
-    })
+    }
+    ws.on('message', handler)
   })
 }
 
@@ -148,10 +150,12 @@ function collectMessages(ws: WebSocket, waitMs: number = 2000): Promise<any[]> {
 function waitForClose(ws: WebSocket, timeoutMs: number = 5000): Promise<{ code: number; reason: string }> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Close timeout')), timeoutMs)
-    ws.once('close', (code, reason) => {
+    const handler = (code: number, reason: Buffer) => {
       clearTimeout(timer)
+      ws.off('close', handler)
       resolve({ code, reason: reason.toString() })
-    })
+    }
+    ws.on('close', handler)
   })
 }
 

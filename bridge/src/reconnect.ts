@@ -4,7 +4,7 @@ import { getSprite } from './sprites-client.js'
 import { SpriteConnection } from './sprite-connection.js'
 import { getConnectionsByUser } from './connection-store.js'
 import { startSpriteServer } from './provisioning.js'
-import type { SystemMessage } from './protocol.js'
+import { createSystemMessage } from './system-message.js'
 
 const MAX_BUFFER = 50
 const BUFFER_TTL_MS = 60_000
@@ -59,13 +59,7 @@ function drainBuffer(userId: string): string[] {
 }
 
 function broadcastSystem(userId: string, event: 'sprite_waking' | 'sprite_ready' | 'reconnect_failed', message?: string): void {
-  const msg: SystemMessage = {
-    type: 'system',
-    id: uuidv4(),
-    timestamp: Date.now(),
-    payload: { event, message },
-  }
-  const data = JSON.stringify(msg)
+  const data = createSystemMessage(event, message)
   for (const browser of getConnectionsByUser(userId)) {
     if (browser.ws.readyState === WebSocket.OPEN) {
       browser.ws.send(data)
@@ -85,26 +79,28 @@ async function waitForRunning(spriteName: string): Promise<boolean> {
 /** Default: verify server by sending a ping and waiting for pong through TCP Proxy. */
 function defaultVerifyServer(conn: SpriteConnection): Promise<boolean> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(false), SERVER_PING_TIMEOUT_MS)
-    const origHandler = conn['opts'].onMessage
+    const timer = setTimeout(() => {
+      conn.replaceMessageHandler(origHandler)
+      resolve(false)
+    }, SERVER_PING_TIMEOUT_MS)
 
-    conn['opts'].onMessage = (data: string) => {
+    const origHandler = conn.replaceMessageHandler((data: string) => {
       try {
         const parsed = JSON.parse(data)
         if (parsed.type === 'pong') {
           clearTimeout(timer)
-          conn['opts'].onMessage = origHandler
+          conn.replaceMessageHandler(origHandler)
           resolve(true)
           return
         }
       } catch { /* forward normally */ }
       origHandler(data)
-    }
+    })
 
     const sent = conn.send(JSON.stringify({ type: 'ping', id: uuidv4(), timestamp: Date.now() }))
     if (!sent) {
       clearTimeout(timer)
-      conn['opts'].onMessage = origHandler
+      conn.replaceMessageHandler(origHandler)
       resolve(false)
     }
   })
@@ -174,6 +170,12 @@ export async function handleDisconnect(userId: string, deps: ReconnectDeps): Pro
       return false
     }
 
+    // Abort if all browsers disconnected during wake
+    if (getConnectionsByUser(userId).length === 0) {
+      console.log(`[reconnect:${userId}] No browsers connected, aborting reconnect`)
+      return false
+    }
+
     let conn = await connectWithRetry(userId, deps)
 
     // All connection attempts failed — start server and try once more
@@ -181,6 +183,13 @@ export async function handleDisconnect(userId: string, deps: ReconnectDeps): Pro
       console.warn(`[reconnect:${userId}] Server not running after ${MAX_CONNECT_ATTEMPTS} attempts, starting via exec...`)
       await restart(deps.spriteName, deps.token)
       conn = await deps.createConnection(deps.spriteName, deps.token)
+    }
+
+    // Abort if all browsers disconnected during connect retries
+    if (getConnectionsByUser(userId).length === 0) {
+      console.log(`[reconnect:${userId}] No browsers connected after connect, aborting`)
+      conn.close()
+      return false
     }
 
     state.connection = conn

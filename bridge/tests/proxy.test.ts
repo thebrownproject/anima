@@ -61,20 +61,24 @@ function stopMockSpriteProxy(): Promise<void> {
 function nextMessage(ws: WebSocket, timeoutMs = 3000): Promise<string> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Message timeout')), timeoutMs)
-    ws.once('message', (data) => {
+    const handler = (data: any) => {
       clearTimeout(timer)
+      ws.off('message', handler)
       resolve(data.toString())
-    })
+    }
+    ws.on('message', handler)
   })
 }
 
 function waitForClose(ws: WebSocket, timeoutMs = 3000): Promise<number> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Close timeout')), timeoutMs)
-    ws.once('close', (code) => {
+    const handler = (code: number) => {
       clearTimeout(timer)
+      ws.off('close', handler)
       resolve(code)
-    })
+    }
+    ws.on('close', handler)
   })
 }
 
