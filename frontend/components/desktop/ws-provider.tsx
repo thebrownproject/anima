@@ -13,7 +13,7 @@ import {
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
 import { WebSocketManager, type ConnectionStatus, type SendResult } from '@/lib/websocket'
-import type { SpriteToBrowserMessage, BrowserToSpriteMessage, ChatMessageInfo } from '@/types/ws-protocol'
+import type { SpriteToBrowserMessage, BrowserToSpriteMessage, ChatMessageInfo, CardInfo } from '@/types/ws-protocol'
 import { useDesktopStore, type DesktopCard } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { getAutoPosition } from './auto-placer'
@@ -34,6 +34,29 @@ export function useWebSocket(): WebSocketContextValue {
   const ctx = useContext(WebSocketContext)
   if (!ctx) throw new Error('useWebSocket must be used within WebSocketProvider')
   return ctx
+}
+
+/** Map snake_case CardInfo fields to camelCase DesktopCard fields. */
+function mapCardFields(c: Partial<CardInfo>): Partial<Omit<DesktopCard, 'id' | 'position' | 'zIndex'>> {
+  const mapped: Partial<Omit<DesktopCard, 'id' | 'position' | 'zIndex'>> = {}
+  if (c.stack_id !== undefined) mapped.stackId = c.stack_id
+  if (c.title !== undefined) mapped.title = c.title
+  if (c.blocks !== undefined) mapped.blocks = c.blocks
+  if (c.size !== undefined) mapped.size = c.size
+  if (c.card_type !== undefined) mapped.cardType = c.card_type
+  if (c.summary !== undefined) mapped.summary = c.summary
+  if (c.tags !== undefined) mapped.tags = c.tags
+  if (c.color !== undefined) mapped.color = c.color
+  if (c.type_badge !== undefined) mapped.typeBadge = c.type_badge
+  if (c.date !== undefined) mapped.date = c.date
+  if (c.value !== undefined) mapped.value = c.value
+  if (c.trend !== undefined) mapped.trend = c.trend
+  if (c.trend_direction !== undefined) mapped.trendDirection = c.trend_direction
+  if (c.author !== undefined) mapped.author = c.author
+  if (c.read_time !== undefined) mapped.readTime = c.read_time
+  if (c.headers !== undefined) mapped.headers = c.headers
+  if (c.preview_rows !== undefined) mapped.previewRows = c.preview_rows
+  return mapped
 }
 
 function summarizeInbound(msg: SpriteToBrowserMessage): string {
@@ -83,7 +106,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const managerRef = useRef<WebSocketManager | null>(null)
   const getTokenRef = useRef(getToken)
-  getTokenRef.current = getToken
+  useEffect(() => { getTokenRef.current = getToken }, [getToken])
   const debugLogRef = useRef<DebugLogEntry[]>([])
 
   const pushDebug = useCallback((
@@ -103,56 +126,24 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     switch (message.type) {
       case 'canvas_update': {
-        const {
-          command, card_id, title, blocks, size, stack_id,
-          card_type, summary, tags, color, type_badge, date,
-          value, trend, trend_direction, author, read_time, headers, preview_rows,
-        } = message.payload
+        const { command, card_id } = message.payload
         const store = useDesktopStore.getState()
+        const fields = mapCardFields(message.payload)
 
         if (command === 'create_card') {
           const position = getAutoPosition(store.cards, store.view)
           store.addCard({
             id: card_id,
-            stackId: stack_id ?? store.activeStackId,
-            title: title ?? 'Untitled',
-            blocks: blocks ?? [],
-            size: size ?? 'medium',
+            stackId: fields.stackId ?? store.activeStackId,
+            title: fields.title ?? 'Untitled',
+            blocks: fields.blocks ?? [],
+            size: fields.size ?? 'medium',
             position,
             zIndex: store.maxZIndex + 1,
-            cardType: card_type,
-            summary,
-            tags,
-            color,
-            typeBadge: type_badge,
-            date,
-            value,
-            trend,
-            trendDirection: trend_direction,
-            author,
-            readTime: read_time,
-            headers,
-            previewRows: preview_rows,
+            ...fields,
           })
         } else if (command === 'update_card') {
-          const updates: Partial<Omit<DesktopCard, 'id'>> = {}
-          if (title !== undefined) updates.title = title
-          if (blocks !== undefined) updates.blocks = blocks
-          if (size !== undefined) updates.size = size
-          if (card_type !== undefined) updates.cardType = card_type
-          if (summary !== undefined) updates.summary = summary
-          if (tags !== undefined) updates.tags = tags
-          if (color !== undefined) updates.color = color
-          if (type_badge !== undefined) updates.typeBadge = type_badge
-          if (date !== undefined) updates.date = date
-          if (value !== undefined) updates.value = value
-          if (trend !== undefined) updates.trend = trend
-          if (trend_direction !== undefined) updates.trendDirection = trend_direction
-          if (author !== undefined) updates.author = author
-          if (read_time !== undefined) updates.readTime = read_time
-          if (headers !== undefined) updates.headers = headers
-          if (preview_rows !== undefined) updates.previewRows = preview_rows
-          store.updateCard(card_id, updates)
+          store.updateCard(card_id, fields)
         } else if (command === 'close_card') {
           store.removeCard(card_id)
         }
@@ -199,32 +190,15 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         let idx = 0
         for (const c of cards) {
           const needsPosition = c.position.x === 0 && c.position.y === 0
-          // Build a temporary cards record for position calculation
           const position = needsPosition
             ? getAutoPosition(cardRecord, store.view)
             : c.position
           cardRecord[c.id] = {
             id: c.id,
-            stackId: c.stack_id,
-            title: c.title,
-            blocks: c.blocks,
-            size: c.size,
             position,
             zIndex: c.z_index || idx + 1,
-            cardType: c.card_type,
-            summary: c.summary,
-            tags: c.tags,
-            color: c.color,
-            typeBadge: c.type_badge,
-            date: c.date,
-            value: c.value,
-            trend: c.trend,
-            trendDirection: c.trend_direction,
-            author: c.author,
-            readTime: c.read_time,
-            headers: c.headers,
-            previewRows: c.preview_rows,
-          }
+            ...mapCardFields(c),
+          } as DesktopCard
           idx++
         }
         store.mergeCards(cardRecord)
@@ -259,7 +233,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       case 'system':
         break
     }
-  }, [])
+  }, [pushDebug])
 
   const connect = useCallback(() => {
     managerRef.current?.destroy()
@@ -277,7 +251,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     })
     managerRef.current = manager
     manager.connect()
-  }, [handleMessage])
+  }, [handleMessage, pushDebug])
 
   const disconnect = useCallback(() => {
     managerRef.current?.destroy()

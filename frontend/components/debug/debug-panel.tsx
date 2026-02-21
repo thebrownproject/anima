@@ -73,15 +73,15 @@ export function DebugPanel() {
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
   }, [])
 
-  const clearLog = useCallback(() => {
-    if (debugLog.current) debugLog.current.length = 0
+  const clearLog = () => {
+    debugLog.current?.splice(0)
     setExpandedIds(new Set())
-  }, [debugLog])
+  }
 
   if (!isOpen) return null
 

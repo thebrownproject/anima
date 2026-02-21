@@ -1,16 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
 const STORAGE_KEY = 'stackdocs:debug'
 
 export function useDebugPanel() {
-  const [isOpen, setIsOpen] = useState(false)
-
-  // Read persisted state on mount
-  useEffect(() => {
-    setIsOpen(localStorage.getItem(STORAGE_KEY) === 'true')
-  }, [])
+  const [isOpen, setIsOpen] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY) === 'true'
+  )
 
   const toggle = useCallback(() => {
     setIsOpen((prev) => {

@@ -64,17 +64,13 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
   const sharpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSettled = useRef(true)
 
-  // Seed from Zustand on mount — clamp any persisted out-of-bounds position
-  useEffect(() => {
-    const v = useDesktopStore.getState().view
-    const clamped = clampView(v.x, v.y, v.scale)
-    const seeded = { x: clamped.x, y: clamped.y, scale: v.scale }
-    current.current = { ...seeded }
-    target.current = { ...seeded }
-    applySharpMode(seeded)
+  const updateHud = useCallback((v: ViewSnapshot) => {
+    if (hudRef.current) {
+      hudRef.current.textContent = `POS: ${Math.round(v.x)}, ${Math.round(v.y)}  ZM: ${Math.round(v.scale * 100)}%`
+    }
   }, [])
 
-  const applyAnimationMode = (v: ViewSnapshot) => {
+  const applyAnimationMode = useCallback((v: ViewSnapshot) => {
     if (!transformRef.current) return
     const el = transformRef.current
     ;(el.style as unknown as Record<string, string>).zoom = ''
@@ -82,9 +78,9 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
     setWallpaperTransform(v.x, v.y, v.scale)
     isSettled.current = false
     updateHud(v)
-  }
+  }, [updateHud])
 
-  const applySharpMode = (v: ViewSnapshot) => {
+  const applySharpMode = useCallback((v: ViewSnapshot) => {
     if (!transformRef.current) return
     const el = transformRef.current
     ;(el.style as unknown as Record<string, string>).zoom = `${v.scale}`
@@ -92,13 +88,17 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
     setWallpaperTransform(v.x, v.y, v.scale)
     isSettled.current = true
     updateHud(v)
-  }
+  }, [updateHud])
 
-  const updateHud = (v: ViewSnapshot) => {
-    if (hudRef.current) {
-      hudRef.current.textContent = `POS: ${Math.round(v.x)}, ${Math.round(v.y)}  ZM: ${Math.round(v.scale * 100)}%`
-    }
-  }
+  // Seed from Zustand on mount -- clamp any persisted out-of-bounds position
+  useEffect(() => {
+    const v = useDesktopStore.getState().view
+    const clamped = clampView(v.x, v.y, v.scale)
+    const seeded = { x: clamped.x, y: clamped.y, scale: v.scale }
+    current.current = { ...seeded }
+    target.current = { ...seeded }
+    applySharpMode(seeded)
+  }, [applySharpMode])
 
   const scheduleSync = useCallback(() => {
     if (syncTimer.current) clearTimeout(syncTimer.current)
@@ -114,34 +114,39 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
       applySharpMode(current.current)
       scheduleSync()
     }, SHARP_DELAY)
-  }, [scheduleSync])
+  }, [scheduleSync, applySharpMode])
 
-  // Zoom lerp loop — smooths discrete mouse wheel jumps
-  const animateZoom = useCallback(() => {
-    const c = current.current
-    const t = target.current
+  // Zoom lerp loop -- smooths discrete mouse wheel jumps
+  const animateZoomRef = useRef<() => void>()
+  useEffect(() => {
+    animateZoomRef.current = () => {
+      const c = current.current
+      const t = target.current
 
-    const dx = t.x - c.x
-    const dy = t.y - c.y
-    const ds = t.scale - c.scale
+      const dx = t.x - c.x
+      const dy = t.y - c.y
+      const ds = t.scale - c.scale
 
-    if (Math.abs(dx) < SETTLE_THRESHOLD && Math.abs(dy) < SETTLE_THRESHOLD && Math.abs(ds) < SETTLE_THRESHOLD) {
-      c.x = t.x
-      c.y = t.y
-      c.scale = t.scale
+      if (Math.abs(dx) < SETTLE_THRESHOLD && Math.abs(dy) < SETTLE_THRESHOLD && Math.abs(ds) < SETTLE_THRESHOLD) {
+        c.x = t.x
+        c.y = t.y
+        c.scale = t.scale
+        applyAnimationMode(c)
+        scheduleSharp()
+        zoomRafId.current = 0
+        return
+      }
+
+      c.x += dx * LERP_SPEED
+      c.y += dy * LERP_SPEED
+      c.scale += ds * LERP_SPEED
       applyAnimationMode(c)
-      scheduleSharp()
-      zoomRafId.current = 0
-      return
+
+      zoomRafId.current = requestAnimationFrame(() => animateZoomRef.current?.())
     }
+  })
 
-    c.x += dx * LERP_SPEED
-    c.y += dy * LERP_SPEED
-    c.scale += ds * LERP_SPEED
-    applyAnimationMode(c)
-
-    zoomRafId.current = requestAnimationFrame(animateZoom)
-  }, [scheduleSharp])
+  const animateZoom = useCallback(() => animateZoomRef.current?.(), [])
 
   const startZoomAnimation = useCallback(() => {
     if (!zoomRafId.current) {
@@ -265,7 +270,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
 
       applyAnimationMode(current.current)
     },
-    [isPanning, momentum],
+    [isPanning, momentum, applyAnimationMode],
   )
 
   const handlePointerUp = useCallback(
@@ -280,7 +285,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
         scheduleSync()
       }
     },
-    [isPanning, momentum, scheduleSync],
+    [isPanning, momentum, scheduleSync, applySharpMode],
   )
 
   // Safety net: if pointer capture is lost (tab switch, DevTools, touch cancel),

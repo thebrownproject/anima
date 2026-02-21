@@ -39,8 +39,10 @@ export function useMomentum({ onFrame, onStop }: MomentumCallbacks): MomentumCon
   // Store callbacks in refs so the RAF loop always sees the latest version
   const onFrameRef = useRef(onFrame)
   const onStopRef = useRef(onStop)
-  onFrameRef.current = onFrame
-  onStopRef.current = onStop
+  useEffect(() => {
+    onFrameRef.current = onFrame
+    onStopRef.current = onStop
+  })
 
   const stopAnimation = useCallback(() => {
     if (rafId.current) {
@@ -49,20 +51,25 @@ export function useMomentum({ onFrame, onStop }: MomentumCallbacks): MomentumCon
     }
   }, [])
 
-  const animate = useCallback(() => {
-    const v = velocity.current
-    v.x *= MOMENTUM_DECAY
-    v.y *= MOMENTUM_DECAY
+  const animateRef = useRef<() => void>()
+  useEffect(() => {
+    animateRef.current = () => {
+      const v = velocity.current
+      v.x *= MOMENTUM_DECAY
+      v.y *= MOMENTUM_DECAY
 
-    if (Math.abs(v.x) < MOMENTUM_MIN && Math.abs(v.y) < MOMENTUM_MIN) {
-      rafId.current = 0
-      onStopRef.current()
-      return
+      if (Math.abs(v.x) < MOMENTUM_MIN && Math.abs(v.y) < MOMENTUM_MIN) {
+        rafId.current = 0
+        onStopRef.current()
+        return
+      }
+
+      onFrameRef.current(v.x, v.y)
+      rafId.current = requestAnimationFrame(() => animateRef.current?.())
     }
+  })
 
-    onFrameRef.current(v.x, v.y)
-    rafId.current = requestAnimationFrame(animate)
-  }, [])
+  const animate = useCallback(() => animateRef.current?.(), [])
 
   // Cleanup RAF on unmount
   useEffect(() => {

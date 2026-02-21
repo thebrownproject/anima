@@ -201,7 +201,8 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
 
       removeCard: (id) =>
         set((state) => {
-          const { [id]: _, ...rest } = state.cards
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructure to omit
+          const { [id]: _removed, ...rest } = state.cards
           return { cards: rest }
         }),
 

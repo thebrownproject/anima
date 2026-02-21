@@ -1,15 +1,17 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
+import React from 'react'
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => {
-      const { initial, animate, exit, transition, ...rest } = props
-      return <div {...rest}>{children}</div>
+    div: (props: Record<string, unknown>) => {
+      const { children, initial, animate, exit, transition, ...rest } = props
+      void initial; void animate; void exit; void transition
+      return <div {...rest}>{children as React.ReactNode}</div>
     },
   },
-  AnimatePresence: ({ children }: any) => children,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 vi.mock('../ws-provider', () => ({

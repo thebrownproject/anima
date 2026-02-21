@@ -63,17 +63,19 @@ const originalWebSocket = globalThis.WebSocket
 
 function installMockWebSocket() {
   wsInstances = []
-  ;(globalThis as any).WebSocket = class extends MockWebSocket {
+  const MockWS = class extends MockWebSocket {
     constructor(url: string) {
       super(url)
       wsInstances.push(this)
     }
   }
-  // Copy static properties
-  ;(globalThis as any).WebSocket.OPEN = MockWebSocket.OPEN
-  ;(globalThis as any).WebSocket.CONNECTING = MockWebSocket.CONNECTING
-  ;(globalThis as any).WebSocket.CLOSING = MockWebSocket.CLOSING
-  ;(globalThis as any).WebSocket.CLOSED = MockWebSocket.CLOSED
+  Object.assign(MockWS, {
+    OPEN: MockWebSocket.OPEN,
+    CONNECTING: MockWebSocket.CONNECTING,
+    CLOSING: MockWebSocket.CLOSING,
+    CLOSED: MockWebSocket.CLOSED,
+  })
+  globalThis.WebSocket = MockWS as unknown as typeof WebSocket
 }
 
 function getLastWs(): MockWebSocket {

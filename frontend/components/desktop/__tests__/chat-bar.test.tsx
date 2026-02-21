@@ -30,9 +30,9 @@ vi.mock('../../voice/voice-provider', () => ({
 }))
 
 vi.mock('next/dynamic', () => ({
-  default: (_loader: () => Promise<any>) => {
-    const MockPersona = (props: any) => (
-      <div data-testid="persona" data-state={props.state} className={props.className} />
+  default: () => {
+    const MockPersona = (props: Record<string, unknown>) => (
+      <div data-testid="persona" data-state={props.state as string} className={props.className as string} />
     )
     MockPersona.displayName = 'MockPersona'
     return MockPersona

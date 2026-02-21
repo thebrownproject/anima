@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useWebSocket } from '@/components/desktop/ws-provider'
 
-const MAX_SIZE = 25 * 1024 * 1024
+const MAX_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg'])
 const ALLOWED_EXTS = /\.(pdf|png|jpg|jpeg)$/i
 
@@ -17,7 +17,7 @@ export function useFileUpload() {
       return false
     }
     if (file.size > MAX_SIZE) {
-      toast.error('File too large. Maximum size is 25MB.')
+      toast.error('File too large. Maximum size is 10MB.')
       return false
     }
 

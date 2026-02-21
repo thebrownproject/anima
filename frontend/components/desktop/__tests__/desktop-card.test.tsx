@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
+import React from 'react'
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 
@@ -16,9 +17,9 @@ vi.mock('../ws-provider', () => ({
 }))
 
 vi.mock('@/hooks/use-momentum', () => ({
-  useMomentum: ({ onStop }: { onFrame: Function; onStop: Function }) => ({
+  useMomentum: () => ({
     trackVelocity: vi.fn(),
-    releaseWithFlick: () => false, // No momentum — syncToStore called directly
+    releaseWithFlick: () => false,
     cancel: vi.fn(),
     isAnimating: () => false,
   }),
@@ -26,12 +27,13 @@ vi.mock('@/hooks/use-momentum', () => ({
 
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => {
-      const { initial, animate, exit, transition, ...rest } = props
-      return <div {...rest}>{children}</div>
+    div: (props: Record<string, unknown>) => {
+      const { children, initial, animate, exit, transition, ...rest } = props
+      void initial; void animate; void exit; void transition
+      return <div {...rest}>{children as React.ReactNode}</div>
     },
   },
-  AnimatePresence: ({ children }: any) => children,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 // jsdom lacks pointer capture APIs
@@ -42,11 +44,11 @@ beforeAll(() => {
 
 // Mock template components so tests don't need to render their full trees
 vi.mock('@/components/desktop/cards', () => ({
-  DocumentCard: ({ card }: { card: any }) => <div data-testid="document-card">{card.title}</div>,
-  MetricCard: ({ card }: { card: any }) => <div data-testid="metric-card">{card.title}</div>,
-  TableCard: ({ card }: { card: any }) => <div data-testid="table-card">{card.title}</div>,
-  ArticleCard: ({ card }: { card: any }) => <div data-testid="article-card">{card.title}</div>,
-  DataCard: ({ card }: { card: any }) => <div data-testid="data-card">{card.title}</div>,
+  DocumentCard: ({ card }: { card: { title: string } }) => <div data-testid="document-card">{card.title}</div>,
+  MetricCard: ({ card }: { card: { title: string } }) => <div data-testid="metric-card">{card.title}</div>,
+  TableCard: ({ card }: { card: { title: string } }) => <div data-testid="table-card">{card.title}</div>,
+  ArticleCard: ({ card }: { card: { title: string } }) => <div data-testid="article-card">{card.title}</div>,
+  DataCard: ({ card }: { card: { title: string } }) => <div data-testid="data-card">{card.title}</div>,
 }))
 
 import { DesktopCard } from '../desktop-card'

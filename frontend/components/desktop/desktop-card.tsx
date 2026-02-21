@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
 import { useDesktopStore, clampCardPosition, snapToGrid, CARD_WIDTHS, TEMPLATE_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
-import type { CardSize, CardType } from '@/types/ws-protocol'
+import type { CardSize } from '@/types/ws-protocol'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
@@ -120,7 +120,7 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
       momentum.trackVelocity(e.movementX, e.movementY)
       applyPosition()
     },
-    [isDragging, momentum, applyPosition],
+    [isDragging, momentum, applyPosition, cardWidth, getCardHeight],
   )
 
   const handlePointerUp = useCallback(
@@ -194,7 +194,7 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
         left: card.position.x,
         top: card.position.y,
         zIndex: card.zIndex,
-        width: card.cardType ? TEMPLATE_WIDTHS[card.cardType] : CARD_WIDTHS[card.size],
+        width: cardWidth,
       }}
     >
       <div
