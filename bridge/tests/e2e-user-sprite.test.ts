@@ -114,7 +114,7 @@ function startMockSprite(): Promise<void> {
                       { id: 'msg-2', role: 'assistant', content: 'Hello!', timestamp: Date.now() - 59000 },
                     ],
                   },
-                }))
+                }) + '\n')
               }, 50)
             }
           } catch { /* ignore malformed init */ }
@@ -140,7 +140,7 @@ function startMockSprite(): Promise<void> {
                 title: 'Agent Response',
                 blocks: [{ id: 'b1', type: 'text', data: { content: `Processed: ${msg.payload.text}` } }],
               },
-            }))
+            }) + '\n')
           } else if (msg.type === 'canvas_interaction') {
             ws.send(JSON.stringify({
               type: 'system',
@@ -148,7 +148,7 @@ function startMockSprite(): Promise<void> {
               timestamp: Date.now(),
               request_id: msg.id,
               payload: { event: 'connected', message: 'canvas_interaction_received' },
-            }))
+            }) + '\n')
           }
         } catch { /* ignore */ }
       })
@@ -230,17 +230,37 @@ function mockAuth(userId: string): void {
   })
 }
 
-/** Authenticate and wait for connected + sprite_ready. */
+/**
+ * Authenticate and wait for connected + sprite_ready.
+ * Collects both messages without assuming order -- avoids race where
+ * sprite_ready arrives before the second ws.once listener is attached.
+ */
 async function authenticateBrowser(ws: WebSocket): Promise<void> {
   ws.send(createAuthMsg())
 
-  const msg1 = await nextMessage(ws)
-  expect(msg1.type).toBe('system')
-  expect(msg1.payload.event).toBe('connected')
+  const messages = await collectMessages(ws, 2, 5000)
+  const events = messages
+    .filter((m: any) => m.type === 'system')
+    .map((m: any) => m.payload.event)
+  expect(events).toContain('connected')
+  expect(events).toContain('sprite_ready')
+}
 
-  const msg2 = await nextMessage(ws)
-  expect(msg2.type).toBe('system')
-  expect(msg2.payload.event).toBe('sprite_ready')
+/** Collect N messages from a WebSocket, resolving when all arrive or timing out. */
+function collectMessages(ws: WebSocket, count: number, timeoutMs: number): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const msgs: any[] = []
+    const timer = setTimeout(() => reject(new Error(`Message timeout: got ${msgs.length}/${count}`)), timeoutMs)
+    const handler = (data: any) => {
+      msgs.push(JSON.parse(data.toString()))
+      if (msgs.length >= count) {
+        clearTimeout(timer)
+        ws.off('message', handler)
+        resolve(msgs)
+      }
+    }
+    ws.on('message', handler)
+  })
 }
 
 /** Close a WebSocket and wait for it to fully close. */

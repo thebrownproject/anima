@@ -38,6 +38,7 @@ function makeDeps(overrides?: Partial<ReconnectDeps>): ReconnectDeps {
       send: vi.fn().mockReturnValue(true),
       close: vi.fn(),
     }),
+    registerConnection: vi.fn(),
     sendToSprite: vi.fn().mockReturnValue(true),
     verifyServer: vi.fn().mockResolvedValue(true),
     restartServer: vi.fn().mockResolvedValue(undefined),
@@ -229,5 +230,82 @@ describe('reconnect', () => {
     const lastMsg = JSON.parse(calls[calls.length - 1][0])
     expect(lastMsg.type).toBe('system')
     expect(lastMsg.payload.event).toBe('reconnect_failed')
+  })
+
+  it('calls registerConnection after successful verify', async () => {
+    const registerConnection = vi.fn()
+    const mockConn = {
+      state: 'connected' as const,
+      spriteName: 'test-sprite',
+      send: vi.fn().mockReturnValue(true),
+      close: vi.fn(),
+    }
+
+    const deps = makeDeps({
+      registerConnection,
+      createConnection: vi.fn().mockResolvedValue(mockConn),
+      verifyServer: vi.fn().mockResolvedValue(true),
+    })
+
+    await handleDisconnect('user-1', deps)
+    expect(registerConnection).toHaveBeenCalledWith(mockConn)
+  })
+
+  it('calls registerConnection with retry connection after verify fails', async () => {
+    const registerConnection = vi.fn()
+    const firstConn = {
+      state: 'connected' as const,
+      spriteName: 'test-sprite',
+      send: vi.fn().mockReturnValue(true),
+      close: vi.fn(),
+    }
+    const retryConn = {
+      state: 'connected' as const,
+      spriteName: 'test-sprite',
+      send: vi.fn().mockReturnValue(true),
+      close: vi.fn(),
+    }
+
+    const deps = makeDeps({
+      registerConnection,
+      createConnection: vi.fn()
+        .mockResolvedValueOnce(firstConn)
+        .mockResolvedValueOnce(retryConn),
+      verifyServer: vi.fn().mockResolvedValue(false),
+      restartServer: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await handleDisconnect('user-1', deps)
+    // First connection was closed after verify failed
+    expect(firstConn.close).toHaveBeenCalled()
+    // registerConnection called with the retry connection, not the first
+    expect(registerConnection).toHaveBeenCalledWith(retryConn)
+    expect(registerConnection).not.toHaveBeenCalledWith(firstConn)
+  })
+
+  it('drains buffer through sendToSprite after reconnect completes', async () => {
+    const sendToSprite = vi.fn().mockReturnValue(true)
+    const registerConnection = vi.fn()
+
+    let resolveWake!: () => void
+    mockGetSprite.mockImplementation(async () => {
+      await new Promise<void>((r) => { resolveWake = r })
+      return spriteRunning
+    })
+
+    const deps = makeDeps({ sendToSprite, registerConnection })
+    const reconnectPromise = handleDisconnect('user-1', deps)
+
+    bufferMessage('user-1', '{"type":"mission","id":"m1"}')
+    bufferMessage('user-1', '{"type":"mission","id":"m2"}')
+
+    resolveWake()
+    await reconnectPromise
+
+    // registerConnection called before buffer drain
+    expect(registerConnection).toHaveBeenCalled()
+    // Messages forwarded via sendToSprite
+    expect(sendToSprite).toHaveBeenCalledWith('{"type":"mission","id":"m1"}')
+    expect(sendToSprite).toHaveBeenCalledWith('{"type":"mission","id":"m2"}')
   })
 })

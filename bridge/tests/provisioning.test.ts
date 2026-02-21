@@ -28,6 +28,7 @@ import { resetSupabaseClient } from '../src/auth.js'
 import {
   provisionSprite,
   ensureSpriteProvisioned,
+  startSpriteServer,
 } from '../src/provisioning.js'
 
 // -- Setup --
@@ -157,5 +158,17 @@ describe('ensureSpriteProvisioned', () => {
 
     expect(createSprite).toHaveBeenCalled()
     expect(result.spriteStatus).toBe('active')
+  })
+})
+
+// -- startSpriteServer --
+
+describe('startSpriteServer', () => {
+  it('rejects when exec WS does not open within timeout', async () => {
+    // Point to a port with nothing listening -- connection will fail
+    vi.mocked(buildExecUrl).mockReturnValue('ws://localhost:1')
+
+    await expect(startSpriteServer('test-sprite', 'test-token'))
+      .rejects.toThrow()
   })
 })

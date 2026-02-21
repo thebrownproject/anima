@@ -147,7 +147,7 @@ export async function startSpriteServer(spriteName: string, token: string): Prom
   const url = buildExecUrl(spriteName, DEFAULT_SERVER_CMD, envVars)
   const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` } })
   await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => { ws.close(); resolve() }, 3_000)
+    const timer = setTimeout(() => { ws.close(); reject(new Error('startSpriteServer timeout: exec WS did not open')) }, 3_000)
     ws.on('open', () => { clearTimeout(timer); setTimeout(() => { ws.close(); resolve() }, 1_000) })
     ws.on('error', (err) => { clearTimeout(timer); reject(err) })
   })

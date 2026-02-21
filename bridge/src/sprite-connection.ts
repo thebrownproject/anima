@@ -19,6 +19,7 @@ export class SpriteConnection {
   private ws: WebSocket | null = null
   private _state: SpriteConnectionState = 'connecting'
   private opts: SpriteConnectionOptions
+  private _lineBuffer = ''
 
   get state(): SpriteConnectionState {
     return this._state
@@ -75,10 +76,14 @@ export class SpriteConnection {
           return
         }
 
-        // After init, proxy sends binary frames — decode to string lines
+        // After init, proxy sends binary frames -- decode to string lines.
+        // TCP frames can split mid-line, so buffer incomplete segments.
         const text = Buffer.isBuffer(raw) ? raw.toString('utf-8') : raw.toString()
-        // Sprite sends newline-delimited JSON — may contain multiple lines
-        for (const line of text.split('\n')) {
+        const combined = this._lineBuffer + text
+        const segments = combined.split('\n')
+        // Last segment is incomplete if text didn't end with newline
+        this._lineBuffer = segments.pop()!
+        for (const line of segments) {
           if (line.trim()) {
             this.opts.onMessage(line)
           }
@@ -92,6 +97,8 @@ export class SpriteConnection {
           initDone = true
           this._state = 'closed'
           reject(err)
+        } else {
+          this.close()
         }
       })
 

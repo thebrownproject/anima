@@ -13,28 +13,32 @@ export function getSpriteConnection(userId: string): SpriteConnection | undefine
   return spriteConnections.get(userId)
 }
 
+/** Register a connection in the Map. Used by ensureSpriteConnection and reconnect. */
+export function registerSpriteConnection(userId: string, conn: SpriteConnection): void {
+  spriteConnections.set(userId, conn)
+}
+
 /**
- * Create a SpriteConnection, register it, and wire up reconnection on close.
- * Extracted so reconnect.ts can call the same logic for re-establishment.
+ * Create a SpriteConnection, connect it, and wire up reconnection on close.
+ * Does NOT register in spriteConnections -- caller must call registerSpriteConnection
+ * (or pass it as registerConnection in ReconnectDeps) after any verification step.
  */
-async function createAndRegister(userId: string, spriteName: string, token: string): Promise<SpriteConnection> {
+async function createSpriteConnection(userId: string, spriteName: string, token: string): Promise<SpriteConnection> {
   const conn = new SpriteConnection({
     spriteName,
     token,
     onMessage: (data) => broadcastToBrowsers(userId, data),
     onClose: (_code, _reason) => {
       // Guard: only act if this connection is still the active one for this user.
-      // Prevents race where an old connection's delayed close event removes
-      // a newer replacement connection (e.g. during verify-fail reconnect).
       if (spriteConnections.get(userId) !== conn) return
 
       spriteConnections.delete(userId)
-      // Only attempt reconnection if browsers are still connected
       if (getConnectionsByUser(userId).length > 0) {
         handleDisconnect(userId, {
           spriteName,
           token,
-          createConnection: (sn, tk) => createAndRegister(userId, sn, tk),
+          createConnection: (sn, tk) => createSpriteConnection(userId, sn, tk),
+          registerConnection: (c) => registerSpriteConnection(userId, c),
           sendToSprite: (data) => forwardToSprite(userId, data),
         }).catch((err) => {
           console.error(`[reconnect:${userId}] Unhandled error:`, err)
@@ -47,7 +51,6 @@ async function createAndRegister(userId: string, spriteName: string, token: stri
   })
 
   await conn.connect()
-  spriteConnections.set(userId, conn)
   return conn
 }
 
@@ -88,18 +91,19 @@ export async function ensureSpriteConnection(
 
   let conn: SpriteConnection
   try {
-    conn = await createAndRegister(userId, spriteName, token)
+    conn = await createSpriteConnection(userId, spriteName, token)
   } catch (err) {
     // If server isn't running (1011 = nothing listening on port), start it and retry once
     const msg = err instanceof Error ? err.message : ''
     if (msg.includes('TCP Proxy closed during init')) {
       console.warn(`[proxy:${spriteName}] Server not running, starting via exec...`)
       await startSpriteServer(spriteName, token)
-      conn = await createAndRegister(userId, spriteName, token)
+      conn = await createSpriteConnection(userId, spriteName, token)
     } else {
       throw err
     }
   }
+  spriteConnections.set(userId, conn)
   startKeepalive(userId)
   return conn
 }

@@ -119,6 +119,8 @@ export interface ReconnectDeps {
   spriteName: string
   token: string
   createConnection: (spriteName: string, token: string) => Promise<SpriteConnection>
+  /** Register a verified connection in the proxy's spriteConnections Map. */
+  registerConnection: (conn: SpriteConnection) => void
   sendToSprite: (data: string) => boolean
   /** Override for testing. Default sends ping, waits for pong. */
   verifyServer?: (conn: SpriteConnection) => Promise<boolean>
@@ -188,9 +190,12 @@ export async function handleDisconnect(userId: string, deps: ReconnectDeps): Pro
       console.warn(`[reconnect:${userId}] Server unresponsive, attempting exec restart`)
       conn.close()
       await restart(deps.spriteName, deps.token)
-      const retryConn = await deps.createConnection(deps.spriteName, deps.token)
-      state.connection = retryConn
+      conn = await deps.createConnection(deps.spriteName, deps.token)
+      state.connection = conn
     }
+
+    // Register in proxy's spriteConnections Map only after verify succeeds
+    deps.registerConnection(conn)
 
     broadcastSystem(userId, 'sprite_ready', 'Sprite reconnected')
 

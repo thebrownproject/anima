@@ -132,7 +132,7 @@ describe('SpriteConnection', () => {
     // Send a message from mock Sprite to Bridge
     const spriteWs = mockSpriteClients[mockSpriteClients.length - 1]
     const testMsg = JSON.stringify({ type: 'agent_event', id: uuidv4(), timestamp: Date.now(), payload: { event_type: 'text', content: 'hello' } })
-    spriteWs.send(testMsg)
+    spriteWs.send(testMsg + '\n')
 
     // Wait for callback
     await new Promise((r) => setTimeout(r, 100))
@@ -276,6 +276,19 @@ describe('proxy module', () => {
 
     proxyModule.disconnectSprite('user-1')
     expect(proxyModule.getSpriteConnection('user-1')).toBeUndefined()
+  })
+
+  it('does not register connection when connect() fails', async () => {
+    // Override to point at a port where nothing is listening
+    vi.spyOn(await import('../src/sprites-client.js'), 'buildProxyUrl')
+      .mockReturnValue('ws://localhost:1')
+
+    await expect(
+      proxyModule.ensureSpriteConnection('user-fail', 'sprite-fail', 'token'),
+    ).rejects.toThrow()
+
+    // Connection should NOT be in the Map after failure
+    expect(proxyModule.getSpriteConnection('user-fail')).toBeUndefined()
   })
 
   it('stale onClose from replaced connection does not remove newer connection', async () => {

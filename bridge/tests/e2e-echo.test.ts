@@ -97,14 +97,14 @@ function startMockSprite(): Promise<void> {
               timestamp: Date.now(),
               payload: { event: 'connected', message: `${msg.type}_received` },
               request_id: msg.id,
-            }))
+            }) + '\n')
           } else {
             ws.send(JSON.stringify({
               type: 'system',
               id: uuidv4(),
               timestamp: Date.now(),
               payload: { event: 'error', message: `unknown message type: ${msg.type}` },
-            }))
+            }) + '\n')
           }
         } catch {
           ws.send(JSON.stringify({
@@ -112,7 +112,7 @@ function startMockSprite(): Promise<void> {
             id: uuidv4(),
             timestamp: Date.now(),
             payload: { event: 'error', message: 'invalid JSON from browser' },
-          }))
+          }) + '\n')
         }
       })
     })
