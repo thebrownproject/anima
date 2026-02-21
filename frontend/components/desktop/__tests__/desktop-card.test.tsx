@@ -257,9 +257,9 @@ describe('DesktopCard template dispatch', () => {
     expect(screen.queryByRole('heading', { name: /Test Card/i })).toBeNull()
   })
 
-  it('card with no cardType renders legacy GlassCard', () => {
+  it('card with no cardType renders default Card fallback', () => {
     render(<DesktopCard card={TEST_CARD} />)
-    // Legacy path: title bar h-11 with card title text (GlassCard)
+    // Default path: title bar h-11 with card title text
     expect(screen.getByText('Test Card')).toBeDefined()
     expect(screen.queryByTestId('document-card')).toBeNull()
     expect(screen.queryByTestId('base-card')).toBeNull()
