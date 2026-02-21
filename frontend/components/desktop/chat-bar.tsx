@@ -4,7 +4,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/lib/stores/chat-store'
-import { GlassIconButton } from '@/components/ui/glass-icon-button'
+import { IconButton } from '@/components/ui/icon-button'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useWebSocket } from './ws-provider'
 import { isVoiceEnabled } from '@/lib/voice-config'
@@ -264,7 +264,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
             <div className="flex items-center px-3 py-2.5">
               {/* Left — upload button */}
               <div className="mr-1.5">
-                <GlassIconButton
+                <IconButton
                   icon={<Icons.Plus />}
                   tooltip="Upload file"
                   tooltipSide="top"
@@ -303,7 +303,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                         : 'pointer-events-none w-0 translate-x-6 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
                   >
-                    <GlassIconButton
+                    <IconButton
                       icon={ttsEnabled ? <Icons.Volume /> : <Icons.VolumeOff />}
                       tooltip={ttsEnabled ? 'Mute speaker' : 'Unmute speaker'}
                       tooltipSide="top"
@@ -320,7 +320,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                         : 'pointer-events-none w-0 translate-x-4 overflow-hidden opacity-0 duration-150 delay-0',
                     )}
                   >
-                    <GlassIconButton
+                    <IconButton
                       icon={<Icons.PlayerStop className="size-3.5" />}
                       tooltip={isSpeaking ? 'Stop speaking' : 'Stop recording'}
                       tooltipSide="top"
@@ -346,7 +346,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5" data-testid="mic-button">
-                  <GlassIconButton
+                  <IconButton
                     icon={<Icons.Microphone />}
                     tooltip="Voice input"
                     tooltipSide="left"

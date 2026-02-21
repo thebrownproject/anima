@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import * as Icons from '@/components/icons'
 import { cn } from '@/lib/utils'
-import { GlassIconButton } from '@/components/ui/glass-icon-button'
+import { IconButton } from '@/components/ui/icon-button'
 
 interface GlassSidePanelProps {
   isOpen: boolean
@@ -72,7 +72,7 @@ export function GlassSidePanel({
             <div className="flex items-center">
               {headerActions}
               {showClose && (
-                <GlassIconButton
+                <IconButton
                   icon={closeIcon ?? <Icons.X />}
                   tooltip={closeTooltip}
                   onClick={onClose}

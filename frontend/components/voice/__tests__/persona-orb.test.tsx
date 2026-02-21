@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } 
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { useVoiceStore } from '@/lib/stores/voice-store'
-import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const { mockStartVoice, mockStopRecordingOnly, mockInterruptTTS } = vi.hoisted(() => ({
   mockStartVoice: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('../voice-provider', () => ({
 import { PersonaOrb, orbTooltip } from '../persona-orb'
 
 function Wrapper({ children }: { children: ReactNode }) {
-  return <GlassTooltipProvider>{children}</GlassTooltipProvider>
+  return <TooltipProvider>{children}</TooltipProvider>
 }
 
 function renderOrb(props?: Parameters<typeof PersonaOrb>[0]) {

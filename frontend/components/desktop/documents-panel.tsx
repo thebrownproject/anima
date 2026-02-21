@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import * as Icons from '@/components/icons'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
-import { GlassIconButton } from '@/components/ui/glass-icon-button'
+import { IconButton } from '@/components/ui/icon-button'
 import { GlassSidePanel } from './glass-side-panel'
 import {
   FileTree,
@@ -25,11 +25,11 @@ export function DocumentsPanel() {
       width="w-[280px]"
       headerActions={
         <>
-          <GlassIconButton
+          <IconButton
             icon={<Icons.Upload  />}
             tooltip="Upload files"
           />
-          <GlassIconButton
+          <IconButton
             icon={<Icons.Search  />}
             tooltip="Search files"
           />

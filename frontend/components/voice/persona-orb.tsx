@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { useVoiceStore, type PersonaState } from '@/lib/stores/voice-store'
 import type { PersonaState as RivePersonaState } from '@/components/ai-elements/persona'
 import { useVoice } from './voice-provider'
-import { GlassTooltip, GlassTooltipTrigger, GlassTooltipContent } from '@/components/ui/glass-tooltip'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 // SSR-safe dynamic import — WebGL2 requires browser APIs
 const Persona = dynamic(
@@ -76,8 +76,8 @@ export function PersonaOrb({ hasText, onSendMessage }: PersonaOrbProps): React.J
   }
 
   return (
-    <GlassTooltip>
-      <GlassTooltipTrigger asChild>
+    <Tooltip>
+      <TooltipTrigger asChild>
         <button
           data-testid="persona-orb"
           onClick={handleTap}
@@ -86,7 +86,7 @@ export function PersonaOrb({ hasText, onSendMessage }: PersonaOrbProps): React.J
             personaState === 'asleep' && 'pointer-events-none'
           )}
         >
-          {/* Placeholder — visible until Rive animation is playing */}
+          {/* Placeholder -- visible until Rive animation is playing */}
           {!riveReady && (
             <div
               data-testid="persona-placeholder"
@@ -101,10 +101,10 @@ export function PersonaOrb({ hasText, onSendMessage }: PersonaOrbProps): React.J
             />
           </div>
         </button>
-      </GlassTooltipTrigger>
-      <GlassTooltipContent side="top">
+      </TooltipTrigger>
+      <TooltipContent side="top">
         {orbTooltip(personaState, hasText)}
-      </GlassTooltipContent>
-    </GlassTooltip>
+      </TooltipContent>
+    </Tooltip>
   )
 }

@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { useVoiceStore } from '@/lib/stores/voice-store'
 import { useChatStore } from '@/lib/stores/chat-store'
-import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const { mockStopRecordingOnly, mockStopRecordingForSend } = vi.hoisted(() => ({
   mockStopRecordingOnly: vi.fn(),
@@ -57,7 +57,7 @@ vi.mock('../../voice/voice-bars', () => ({
 import { ChatBar } from '../chat-bar'
 
 function Wrapper({ children }: { children: ReactNode }) {
-  return <GlassTooltipProvider>{children}</GlassTooltipProvider>
+  return <TooltipProvider>{children}</TooltipProvider>
 }
 
 const VOICE_STORE_DEFAULTS = {

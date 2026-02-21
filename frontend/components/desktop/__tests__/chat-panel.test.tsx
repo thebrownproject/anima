@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { useChatStore } from '@/lib/stores/chat-store'
-import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 // jsdom lacks scrollIntoView
 Element.prototype.scrollIntoView = vi.fn()
@@ -42,7 +42,7 @@ vi.mock('../../voice/voice-bars', () => ({
 import { ChatPanel } from '../chat-panel'
 
 function Wrapper({ children }: { children: ReactNode }) {
-  return <GlassTooltipProvider>{children}</GlassTooltipProvider>
+  return <TooltipProvider>{children}</TooltipProvider>
 }
 
 function addMessage(role: 'user' | 'agent' | 'system', content: string) {

@@ -16,7 +16,7 @@ import { ConnectionStatus } from '@/components/desktop/connection-status'
 import { DebugPanel } from '@/components/debug/debug-panel'
 import { useCardsForActiveStack } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
-import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { MaybeVoiceProvider } from '@/components/voice/voice-provider'
 import { CardOverlayProvider, useCardOverlay } from '@/components/desktop/card-overlay'
 
@@ -45,7 +45,7 @@ export default function DesktopPage() {
   return (
     <WebSocketProvider>
     <MaybeVoiceProvider>
-    <GlassTooltipProvider delayDuration={800}>
+    <TooltipProvider delayDuration={800}>
     <CardOverlayProvider overlayCardId={overlayCardId} setOverlayCardId={setOverlayCardId}>
       <div className="relative h-svh w-full overflow-hidden">
         <WallpaperLayer />
@@ -66,7 +66,7 @@ export default function DesktopPage() {
         <DebugPanel />
       </div>
     </CardOverlayProvider>
-    </GlassTooltipProvider>
+    </TooltipProvider>
     </MaybeVoiceProvider>
     </WebSocketProvider>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { GlassTabSwitcher } from '@/components/desktop/glass-tab-switcher'
-import { GlassIconButton } from '@/components/ui/glass-icon-button'
+import { IconButton } from '@/components/ui/icon-button'
 import { GlassPill } from '@/components/ui/glass-pill'
 import * as Icons from '@/components/icons'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
@@ -26,18 +26,18 @@ export function DesktopTopBar() {
     <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-4 pt-4">
       {/* Left — App launcher circles */}
       <div className="pointer-events-auto flex items-center gap-2">
-        <GlassIconButton
+        <IconButton
           icon={<Icons.FileText  />}
           tooltip="Documents"
           onClick={() => toggleLeftPanel('documents')}
           className={launcherClass}
         />
-        <GlassIconButton
+        <IconButton
           icon={<Icons.LayoutGrid  />}
           tooltip="Apps"
           className={launcherClass}
         />
-        <GlassIconButton
+        <IconButton
           icon={<Icons.SlidersHorizontal  />}
           tooltip="Settings"
           className={launcherClass}
@@ -46,7 +46,7 @@ export function DesktopTopBar() {
 
       {/* Center — Back + Workspace Tabs + Add (absolute for true page centering) */}
       <div className="pointer-events-auto absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2">
-        <GlassIconButton
+        <IconButton
           icon={<Icons.ChevronLeft />}
           tooltip="Back"
           className={launcherClass}
@@ -68,7 +68,7 @@ export function DesktopTopBar() {
             <span className="text-sm text-white/40">Stackdocs</span>
           </div>
         )}
-        <GlassIconButton
+        <IconButton
           icon={<Icons.Plus  />}
           tooltip="New stack"
           className={launcherClass}
@@ -83,22 +83,22 @@ export function DesktopTopBar() {
 
       {/* Right — System tray */}
       <GlassPill className="h-10 pointer-events-auto [&>div]:flex [&>div]:items-center">
-        <GlassIconButton
+        <IconButton
           icon={<Icons.Search  />}
           tooltip="Search"
           className="size-8"
         />
-        <GlassIconButton
+        <IconButton
           icon={<Icons.Bell  />}
           tooltip="Notifications"
           className="size-8"
         />
-        <GlassIconButton
+        <IconButton
           icon={<Icons.User  />}
           tooltip="Account"
           className="size-8"
         />
-        <GlassIconButton
+        <IconButton
           icon={chatMode === 'panel' ? <Icons.LayoutBottombar /> : <Icons.PanelRight />}
           tooltip={chatMode === 'panel' ? 'Dock to bottom' : 'Chat panel'}
           className="size-8"
