@@ -18,9 +18,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
 
   if (message.role === 'system') {
+    const isError = message.content.startsWith('[error]')
     return (
       <div className="py-1">
-        <p className="text-center font-mono text-[11px] text-white/25">{message.content}</p>
+        <p className={cn(
+          'text-center font-mono text-xs',
+          isError ? 'text-red-400/80' : 'text-white/40',
+        )}>
+          {message.content}
+        </p>
       </div>
     )
   }
