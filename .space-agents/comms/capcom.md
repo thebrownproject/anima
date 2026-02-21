@@ -4674,3 +4674,38 @@ Orchestrated execution on feature `stackdocs-m7b.15` (Demo Readiness -- Turn On,
 Push to remote. Deploy Bridge v13 to Fly.io. The product is now demoable: auth works, chat renders markdown, extraction creates table cards, cards persist across reconnection, CSV/JSON export works, welcome message greets new users.
 
 ---
+
+## [2026-02-22 00:15] Session 197
+
+**Branch:** main | **Git:** uncommitted (new beads + staged exploration folder)
+
+### What Happened
+
+Brainstorm + planning session for UI redesign. No code changes -- pure exploration and planning.
+
+**Brainstorm:** User wants to move from dark glassmorphism to light mode with standard shadcn/ui styling. Spawned research agent that mapped all 108 hardcoded dark-mode patterns (`bg-white/10`, `text-white/70`, `backdrop-blur-xl`) across 17 chrome files in `frontend/components/desktop/` and `frontend/components/ui/glass-*.tsx`. Key finding: shadcn CSS variables already exist in `globals.css` with light-mode `:root` values, but glass components ignore them entirely.
+
+**Spec created:** `.space-agents/mission/staged/m7b.16-light-mode-shadcn-chrome/spec.md`. Two-pronged approach: replace 5 glass components with real shadcn equivalents (Button, Card, Tooltip, ContextMenu, IconButton), restyle 3 custom components (TabSwitcher, SidePanel, Pill) to match shadcn aesthetic. Cards stay untouched. Glass files archived to `_archived-glass/` (not deleted until user confirms).
+
+**Planning council:** Task planner broke into 9 tasks. Sequencer corrected a dependency (Task 3 parallel with Task 2, not dependent), identified 4-wave structure with full parallelism in Waves 2 and 3. Implementer provided step-by-step TDD breakdown, discovered 3 missing shadcn components (card, tooltip, context-menu need installing) and 2 dead glass files (glass-input.tsx, glass-tabs.tsx with zero consumers).
+
+**Beads created:** Feature `stackdocs-m7b.16` with 9 tasks, all dependencies set:
+- Wave 1: m7b.16.1 (install shadcn primitives, archive dead files)
+- Wave 2: m7b.16.2 (replace Button/IconButton/Tooltip) + m7b.16.3 (replace Card/ContextMenu) -- parallel
+- Wave 3: m7b.16.4-8 (restyle tab switcher, side panel, chat bar, documents, supporting) -- all parallel
+- Wave 4: m7b.16.9 (final cleanup, remove Ein UI CSS vars)
+
+### Decisions Made
+
+- **Light mode only** (no dark mode toggle for now). Background: zinc-50 via wallpaper store.
+- **Replace glass with real shadcn** where equivalents exist, restyle custom components where they don't.
+- **Archive, don't delete** glass files -- user wants to review before permanent removal.
+- **Cards untouched** -- they already have solid fills and work on any background.
+- **New IconButton wrapper** -- thin component wrapping shadcn Button + Tooltip, preserves GlassIconButton prop interface for drop-in replacement.
+- **Ein UI CSS vars safe to remove** -- confirmed zero component consumers (only defined in globals.css).
+
+### Next Action
+
+Run `/mission` on `stackdocs-m7b.16` to execute the 9-task light mode migration. Start with Task 1 (install shadcn primitives).
+
+---
