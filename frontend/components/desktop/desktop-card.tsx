@@ -178,8 +178,12 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
     (e: React.MouseEvent) => {
       e.stopPropagation()
       useDesktopStore.getState().removeCard(card.id)
+      send({
+        type: 'canvas_interaction',
+        payload: { card_id: card.id, action: 'archive_card', data: {} },
+      })
     },
-    [card.id],
+    [card.id, send],
   )
 
   return (

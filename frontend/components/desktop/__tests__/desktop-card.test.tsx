@@ -187,6 +187,49 @@ describe('DesktopCard click discrimination', () => {
   })
 })
 
+describe('DesktopCard close behavior', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useDesktopStore.setState({
+      cards: { [TEST_CARD.id]: TEST_CARD },
+      maxZIndex: 3,
+      view: { x: 0, y: 0, scale: 1 },
+      activeStackId: 'default',
+      stacks: [],
+      archivedStackIds: [],
+      leftPanel: 'none',
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('removes card from store immediately on close (optimistic)', () => {
+    render(<DesktopCard card={TEST_CARD} />)
+    const closeBtn = screen.getByTitle('Close')
+
+    act(() => { fireEvent.click(closeBtn) })
+
+    expect(useDesktopStore.getState().cards[TEST_CARD.id]).toBeUndefined()
+  })
+
+  it('sends canvas_interaction with archive_card on close', () => {
+    render(<DesktopCard card={TEST_CARD} />)
+    const closeBtn = screen.getByTitle('Close')
+
+    act(() => { fireEvent.click(closeBtn) })
+
+    expect(mockSend).toHaveBeenCalledTimes(1)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sentMsg: any = (mockSend.mock.calls as any[][])[0][0]
+    expect(sentMsg.type).toBe('canvas_interaction')
+    expect(sentMsg.payload.card_id).toBe(TEST_CARD.id)
+    expect(sentMsg.payload.action).toBe('archive_card')
+    expect(sentMsg.payload.data).toEqual({})
+  })
+})
+
 describe('DesktopCard template dispatch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
