@@ -132,12 +132,20 @@ describe('useSTT', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/voice/deepgram-token', expect.any(Object))
   })
 
-  it('uses cached token then pre-fetches replacement in background', async () => {
-    const { result } = await renderSTTHook()
-    mockMicStream()
-    mockTokenResponse('refresh-tok') // for the background refresh
+  it('uses cached token then pre-fetches replacement when near expiry', async () => {
+    // Pre-fetch with short TTL so background refresh triggers
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: 'short-tok', expires_in: 50 }), // 40s remaining < 55s threshold
+    })
+    const hook = renderHook(() => useSTT())
+    await act(async () => {})
+    mockFetch.mockClear()
 
-    await act(() => result.current.startListening())
+    mockMicStream()
+    mockTokenResponse('refresh-tok')
+
+    await act(() => hook.result.current.startListening())
 
     // startListening used cache for Deepgram, then triggered background refresh
     expect(mockFetch).toHaveBeenCalledTimes(1)

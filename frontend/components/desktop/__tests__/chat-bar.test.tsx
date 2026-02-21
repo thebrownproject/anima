@@ -249,14 +249,17 @@ describe('ChatBar voice controls', () => {
     expect(firstChild.className).toContain('opacity-0')
   })
 
-  it('shows speaker+stop+bars during recording', () => {
+  it('shows stop+bars during recording (speaker hidden unless hover)', () => {
     useVoiceStore.setState({ personaState: 'listening' })
     render(<ChatBar />, { wrapper: Wrapper })
 
     const controls = screen.getByTestId('voice-controls')
-    const firstChild = controls.children[0] as HTMLElement
-    expect(firstChild.className).toContain('opacity-100')
-    expect(screen.getByTestId('stop-recording-button')).toBeTruthy()
+    // Speaker toggle uses hoverOnly, so hidden during recording without hover
+    const speakerToggle = controls.children[0] as HTMLElement
+    expect(speakerToggle.className).toContain('opacity-0')
+    // Stop button uses controlsVisible which includes isVoiceActive
+    const stopBtn = screen.getByTestId('stop-recording-button')
+    expect(stopBtn.className).toContain('opacity-100')
   })
 
   it('stop button calls stopRecordingOnly', () => {
@@ -307,9 +310,9 @@ describe('ChatBar voice controls', () => {
     useVoiceStore.setState({ personaState: 'listening' })
     render(<ChatBar embedded />, { wrapper: Wrapper })
 
-    const controls = screen.getByTestId('voice-controls')
-    const firstChild = controls.children[0] as HTMLElement
-    expect(firstChild.className).toContain('opacity-100')
+    // Stop button visible during recording (controlsVisible=true via isVoiceActive)
+    const stopBtn = screen.getByTestId('stop-recording-button')
+    expect(stopBtn.className).toContain('opacity-100')
   })
 })
 
@@ -374,23 +377,23 @@ describe('ChatBar connecting state', () => {
     expect(textarea.value).toBe('')
   })
 
-  it('linger triggers on connecting → idle (cancel)', () => {
+  it('linger triggers on connecting -> idle (cancel)', () => {
     vi.useFakeTimers()
     render(<ChatBar />, { wrapper: Wrapper })
 
-    // Cancel: connecting → idle
+    // Cancel: connecting -> idle
     act(() => {
       useVoiceStore.setState({ personaState: 'idle' })
     })
 
-    // Controls should still be visible (linger period)
+    // Speaker toggle uses hoverOnly which includes lingerVisible
     const controls = screen.getByTestId('voice-controls')
-    const firstChild = controls.children[0] as HTMLElement
-    expect(firstChild.className).toContain('opacity-100')
+    const speakerToggle = controls.children[0] as HTMLElement
+    expect(speakerToggle.className).toContain('opacity-100')
 
-    // After LINGER_DELAY (1000ms), controls should hide
-    act(() => { vi.advanceTimersByTime(1000) })
-    expect(firstChild.className).toContain('opacity-0')
+    // After POST_STT_DELAY (2000ms), linger ends
+    act(() => { vi.advanceTimersByTime(2000) })
+    expect(speakerToggle.className).toContain('opacity-0')
 
     vi.useRealTimers()
   })
