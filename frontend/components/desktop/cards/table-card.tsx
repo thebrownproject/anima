@@ -12,6 +12,7 @@ export function TableCard({ card, onCardClick }: Props) {
   const color = getCardColor('table', card.color)
   const headers = card.headers ?? []
   const rows = (card.previewRows ?? []) as string[][]
+  const isEmpty = headers.length === 0 && rows.length === 0
 
   return (
     <BaseCard color={color} className="w-[600px]">
@@ -26,34 +27,39 @@ export function TableCard({ card, onCardClick }: Props) {
           </button>
         </div>
 
-        <div className="w-full overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-white/10">
-                {headers.map((h, i) => (
-                  <th key={i} className="py-3 px-2 text-xs font-mono uppercase opacity-50 tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={i} className="group hover:bg-white/5 transition-colors">
-                  {row.map((cell, j) => (
-                    <td key={j} className="py-4 px-2 text-sm border-b border-white/5 font-medium group-last:border-none">
-                      {String(cell)}
-                    </td>
+        {isEmpty ? (
+          <div className="flex-1 flex items-center justify-center py-12 text-sm opacity-40">
+            No data yet
+          </div>
+        ) : (
+          <div className="w-full overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-white/10">
+                  {headers.map((h, i) => (
+                    <th key={i} className="py-3 px-2 text-xs font-mono uppercase opacity-50 tracking-wider">
+                      {h}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} className="group hover:bg-white/5 transition-colors">
+                    {row.map((cell, j) => (
+                      <td key={j} className="py-4 px-2 text-sm border-b border-white/5 font-medium group-last:border-none">
+                        {String(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="mt-6 flex justify-between items-center text-xs opacity-40 font-mono">
           <span>{rows.length} entries</span>
-          {/* decorative: placeholder sync status, no timestamp field on DesktopCard yet */}
           <span>Synced just now</span>
         </div>
       </div>
