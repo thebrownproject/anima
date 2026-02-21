@@ -148,6 +148,7 @@ def create_extraction_tools(
                 blocks=blocks,
                 size="large",
                 card_type="table",
+                type_badge="Invoice",
                 summary=summary,
                 tags=["invoice", vendor.lower()],
                 headers=TABLE_COLUMNS,
@@ -174,7 +175,8 @@ def create_extraction_tools(
             ]
             await workspace_db.upsert_card(
                 card_id, current_stack_id, title, blocks_dicts, "large",
-                card_type="table", summary=summary, tags=["invoice", vendor.lower()],
+                card_type="table", type_badge="Invoice",
+                summary=summary, tags=["invoice", vendor.lower()],
                 headers=TABLE_COLUMNS, preview_rows=preview_rows,
             )
 

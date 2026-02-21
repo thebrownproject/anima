@@ -151,8 +151,9 @@ function Table({ columns, rows, theme }: TableBlock & { theme: Theme }) {
 
 function Badge({ text, variant, theme }: BadgeBlock & { theme: Theme }) {
   const styles = theme === 'editorial' ? BADGE_STYLES_EDITORIAL : BADGE_STYLES_GLASS
+  const isProcessing = variant === 'default' && text.toLowerCase().includes('processing')
   return (
-    <span className={`inline-flex items-center rounded-lg px-3.5 py-1.5 text-[13px] ${styles[variant] ?? styles.default}`}>
+    <span className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-[13px] ${isProcessing ? 'animate-pulse' : ''} ${styles[variant] ?? styles.default}`}>
       {text}
     </span>
   )

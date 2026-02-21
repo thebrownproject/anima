@@ -1,6 +1,7 @@
 import * as Icons from '@/components/icons'
 import { BaseCard } from './base-card'
 import { getCardColor } from './colors'
+import { exportAsCSV, exportAsJSON } from '@/lib/export'
 import type { DesktopCard } from '@/lib/stores/desktop-store'
 
 interface Props {
@@ -18,7 +19,14 @@ export function TableCard({ card, onCardClick }: Props) {
     <BaseCard color={color} className="w-[600px]">
       <div className="flex flex-col h-full">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold tracking-tight">{card.title}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold tracking-tight">{card.title}</h2>
+            {card.typeBadge && (
+              <span className="px-2.5 py-1 bg-white/10 rounded-md text-xs font-semibold uppercase tracking-wider text-white/60">
+                {card.typeBadge}
+              </span>
+            )}
+          </div>
           <button
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             onClick={(e) => { e.stopPropagation(); onCardClick?.(card) }}
@@ -58,9 +66,26 @@ export function TableCard({ card, onCardClick }: Props) {
           </div>
         )}
 
-        <div className="mt-6 flex justify-between items-center text-xs opacity-40 font-mono">
-          <span>{rows.length} entries</span>
-          <span>Synced just now</span>
+        <div className="mt-6 flex justify-between items-center">
+          <span className="text-xs opacity-40 font-mono">{rows.length} entries</span>
+          <div className="flex gap-2">
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              disabled={isEmpty}
+              onClick={(e) => { e.stopPropagation(); exportAsCSV(headers, rows, card.title) }}
+            >
+              <Icons.Csv size={14} />
+              CSV
+            </button>
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              disabled={isEmpty}
+              onClick={(e) => { e.stopPropagation(); exportAsJSON(headers, rows, card.title) }}
+            >
+              <Icons.Json size={14} />
+              JSON
+            </button>
+          </div>
         </div>
       </div>
     </BaseCard>

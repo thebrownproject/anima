@@ -275,11 +275,12 @@ class SpriteGateway:
 
         except Exception as e:
             logger.error("Extraction failed for %s: %s", filename, e)
+            user_msg = f"We couldn't process {filename}. Please try again or use a different format."
             try:
                 if self._workspace_db:
                     await self._workspace_db.update_document_status(doc_id, "failed")
-                    await self._update_card_badge(doc_id, "Failed", "destructive", str(e))
-                await self._send_error(f"Extraction failed for {filename}: {e}")
+                    await self._update_card_badge(doc_id, "Failed", "destructive", user_msg)
+                await self._send_error(user_msg)
             except Exception as send_err:
                 logger.warning("Could not send extraction error (connection dead?): %s", send_err)
 

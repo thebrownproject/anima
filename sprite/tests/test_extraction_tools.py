@@ -247,6 +247,44 @@ async def test_extract_invoice_protocol_parseable(extract_invoice, mock_send):
 
 
 @pytest.mark.asyncio
+async def test_extract_invoice_sets_type_badge(extract_invoice, mock_send):
+    """extract_invoice sets type_badge='Invoice' on payload and DB."""
+    result = await extract_invoice({
+        "file_path": "/workspace/uploads/invoice.pdf",
+        "vendor": "Badge Co",
+        "line_items": [
+            {"description": "Item", "quantity": 1, "unit_price": 10.00, "total": 10.00},
+        ],
+    })
+
+    assert "is_error" not in result
+    sent_json = mock_send.call_args[0][0]
+    sent_msg = json.loads(sent_json)
+    assert sent_msg["payload"]["type_badge"] == "Invoice"
+
+
+@pytest.mark.asyncio
+async def test_extract_invoice_persists_type_badge(extract_invoice, mock_send, workspace_db):
+    """extract_invoice persists type_badge to workspace.db."""
+    result = await extract_invoice({
+        "file_path": "/workspace/uploads/invoice.pdf",
+        "vendor": "DB Badge Co",
+        "line_items": [
+            {"description": "Item", "quantity": 1, "unit_price": 10.00, "total": 10.00},
+        ],
+    })
+
+    assert "is_error" not in result
+    sent_json = mock_send.call_args[0][0]
+    sent_msg = json.loads(sent_json)
+    card_id = sent_msg["payload"]["card_id"]
+
+    row = await workspace_db.fetchone("SELECT type_badge FROM cards WHERE card_id = ?", (card_id,))
+    assert row is not None
+    assert row["type_badge"] == "Invoice"
+
+
+@pytest.mark.asyncio
 async def test_tool_registration_count(extraction_tools):
     """Verify extract_invoice tool is registered."""
     assert len(extraction_tools) == 1
