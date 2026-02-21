@@ -5,6 +5,11 @@ import { useDesktopStore } from '@/lib/stores/desktop-store'
 import type { DesktopCard } from '@/lib/stores/desktop-store'
 import type { TableBlock } from '@/types/ws-protocol'
 
+vi.mock('@/lib/export', () => ({
+  exportAsCSV: vi.fn(),
+  exportAsJSON: vi.fn(),
+}))
+
 vi.mock('framer-motion', () => ({
   motion: {
     div: (props: Record<string, unknown>) => {
@@ -132,6 +137,32 @@ describe('TableCard empty state', () => {
 
     expect(screen.getByText('No data yet')).toBeDefined()
     expect(screen.queryByRole('table')).toBeNull()
+  })
+})
+
+describe('TableCard export buttons', () => {
+  afterEach(cleanup)
+
+  it('renders CSV and JSON buttons when data exists', () => {
+    render(<TableCard card={TABLE_CARD} />)
+    expect(screen.getByText('CSV')).toBeDefined()
+    expect(screen.getByText('JSON')).toBeDefined()
+  })
+
+  it('disables export buttons when table is empty', () => {
+    render(<TableCard card={EMPTY_TABLE_CARD} />)
+    const csvBtn = screen.getByText('CSV').closest('button')!
+    const jsonBtn = screen.getByText('JSON').closest('button')!
+    expect(csvBtn.disabled).toBe(true)
+    expect(jsonBtn.disabled).toBe(true)
+  })
+
+  it('enables export buttons when table has data', () => {
+    render(<TableCard card={TABLE_CARD} />)
+    const csvBtn = screen.getByText('CSV').closest('button')!
+    const jsonBtn = screen.getByText('JSON').closest('button')!
+    expect(csvBtn.disabled).toBe(false)
+    expect(jsonBtn.disabled).toBe(false)
   })
 })
 
