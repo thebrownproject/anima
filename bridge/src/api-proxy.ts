@@ -7,6 +7,7 @@
  */
 
 import { IncomingMessage, ServerResponse } from 'node:http'
+import { timingSafeEqual } from 'node:crypto'
 import { Readable } from 'node:stream'
 
 interface ProxyTarget {
@@ -34,13 +35,35 @@ const STRIPPED_HEADERS = new Set([
   'transfer-encoding', 'content-length',
 ])
 
+export const MAX_BODY_BYTES = 10 * 1024 * 1024 // 10MB
+
+class BodyTooLargeError extends Error {
+  constructor() { super('Request body too large') }
+}
+
 function collectBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
-    req.on('data', (chunk: Buffer) => chunks.push(chunk))
-    req.on('end', () => resolve(Buffer.concat(chunks)))
-    req.on('error', reject)
+    let totalBytes = 0
+    let rejected = false
+    req.on('data', (chunk: Buffer) => {
+      if (rejected) return
+      totalBytes += chunk.length
+      if (totalBytes > MAX_BODY_BYTES) {
+        rejected = true
+        reject(new BodyTooLargeError())
+        return
+      }
+      chunks.push(chunk)
+    })
+    req.on('end', () => { if (!rejected) resolve(Buffer.concat(chunks)) })
+    req.on('error', (err) => { if (!rejected) reject(err) })
   })
+}
+
+function firstString(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0]
+  return value
 }
 
 function parseRoute(url: string): { provider: string; path: string } | null {
@@ -63,12 +86,11 @@ export async function handleApiProxy(
 
   // Validate proxy token — accept via x-api-key (Anthropic SDK) or Authorization: Bearer (Mistral SDK)
   const proxyToken = process.env.SPRITES_PROXY_TOKEN
-  const xApiKey = req.headers['x-api-key'] as string | undefined
-  const authHeader = req.headers['authorization']
+  const xApiKey = firstString(req.headers['x-api-key'])
+  const authHeader = firstString(req.headers['authorization'])
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
   const token = xApiKey ?? bearerToken
 
-  const { timingSafeEqual } = await import('node:crypto')
   if (!proxyToken || !token || Buffer.byteLength(token) !== Buffer.byteLength(proxyToken) || !timingSafeEqual(Buffer.from(token), Buffer.from(proxyToken))) {
     res.writeHead(401, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ error: 'Invalid or missing proxy token' }))
@@ -93,7 +115,18 @@ export async function handleApiProxy(
   target.injectAuth(outHeaders, apiKey)
 
   // Collect request body and forward
-  const body = await collectBody(req)
+  let body: Buffer
+  try {
+    body = await collectBody(req)
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      res.writeHead(413, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Request body too large' }))
+      req.destroy()
+      return
+    }
+    throw err
+  }
   const upstream = `${target.baseUrl}${route.path}`
 
   let fetchRes: Response

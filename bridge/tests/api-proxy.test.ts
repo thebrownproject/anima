@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import http from 'node:http'
+import fs from 'node:fs'
+import path from 'node:path'
 
 // Import after env setup
 process.env.NODE_ENV = 'test'
@@ -7,7 +9,7 @@ process.env.SPRITES_PROXY_TOKEN = 'test-proxy-token'
 process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key'
 process.env.MISTRAL_API_KEY = 'mistral-test-key'
 
-import { handleApiProxy } from '../src/api-proxy.js'
+import { handleApiProxy, MAX_BODY_BYTES } from '../src/api-proxy.js'
 
 // -- Test HTTP Server --
 
@@ -370,5 +372,156 @@ describe('upstream errors', () => {
     } finally {
       globalThis.fetch = originalFetch
     }
+  })
+})
+
+// -- Body Size Limit --
+
+describe('body size limit', () => {
+  it('returns 413 for payloads over 10MB', async () => {
+    const url = new URL(`${baseUrl}/v1/proxy/anthropic/v1/messages`)
+    const totalSize = MAX_BODY_BYTES + (1024 * 1024) // 11MB
+    const res = await new Promise<{ status: number; body: string }>((resolve) => {
+      const req = http.request({
+        hostname: url.hostname,
+        port: Number(url.port),
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer test-proxy-token',
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(totalSize),
+        },
+      }, (res) => {
+        let data = ''
+        res.on('data', (chunk: Buffer) => { data += chunk.toString() })
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body: data }))
+      })
+
+      // Ignore write errors (server may close socket after rejecting)
+      req.on('error', () => {})
+
+      // Write in chunks -- server rejects after accumulating >10MB
+      const chunkSize = 1024 * 1024
+      let written = 0
+      function writeNext() {
+        while (written < totalSize) {
+          const size = Math.min(chunkSize, totalSize - written)
+          const ok = req.write(Buffer.alloc(size, 0x41))
+          written += size
+          if (!ok) {
+            req.once('drain', writeNext)
+            return
+          }
+        }
+        req.end()
+      }
+      writeNext()
+    })
+
+    expect(res.status).toBe(413)
+    expect(JSON.parse(res.body).error).toMatch(/too large/i)
+  }, 30_000)
+
+  it('accepts payloads under 10MB', async () => {
+    const smallBody = Buffer.alloc(1024, 0x41).toString()
+    const res = await fetch(`${baseUrl}/v1/proxy/anthropic/v1/messages`, {
+      method: 'POST',
+      headers: validHeaders,
+      body: smallBody,
+    })
+    expect(res.status).not.toBe(413)
+  })
+})
+
+// -- Duplicate Headers (string[] values) --
+// Node.js HTTP parser joins most duplicate headers with ", " (x-api-key)
+// or keeps only the first (authorization). The `firstString()` guard in
+// api-proxy.ts defends against the TypeScript string[] union type even
+// though the HTTP parser rarely produces actual arrays for these headers.
+
+describe('duplicate headers', () => {
+  it('handles duplicate x-api-key via raw socket without crashing', async () => {
+    // Duplicate x-api-key gets joined as "test-proxy-token, dup" by Node.js parser.
+    // This won't match the proxy token, so expect 401 (not a TypeError crash).
+    const url = new URL(`${baseUrl}/v1/proxy/anthropic/v1/messages`)
+    const res = await new Promise<{ status: number; body: string }>((resolve) => {
+      const net = require('node:net') as typeof import('node:net')
+      const sock = net.createConnection(Number(url.port), url.hostname, () => {
+        sock.write(
+          `POST ${url.pathname} HTTP/1.1\r\n` +
+          `Host: ${url.hostname}\r\n` +
+          'Connection: close\r\n' +
+          'x-api-key: test-proxy-token\r\n' +
+          'x-api-key: duplicate-value\r\n' +
+          'Content-Type: application/json\r\n' +
+          'Content-Length: 2\r\n' +
+          '\r\n' +
+          '{}'
+        )
+      })
+      let raw = ''
+      sock.on('data', (chunk: Buffer) => { raw += chunk.toString() })
+      sock.on('end', () => {
+        const statusMatch = raw.match(/HTTP\/1\.1 (\d+)/)
+        const bodyStart = raw.indexOf('\r\n\r\n')
+        resolve({
+          status: statusMatch ? parseInt(statusMatch[1]) : 0,
+          body: bodyStart >= 0 ? raw.slice(bodyStart + 4) : '',
+        })
+      })
+    })
+
+    expect(res.status).toBe(401)
+  })
+
+  it('handles duplicate authorization via raw socket without crashing', async () => {
+    // Node.js keeps only the first Authorization header.
+    // Even with duplicates, the server should respond without crashing.
+    const url = new URL(`${baseUrl}/v1/proxy/anthropic/v1/messages`)
+    const res = await new Promise<{ status: number; body: string }>((resolve) => {
+      const net = require('node:net') as typeof import('node:net')
+      const sock = net.createConnection(Number(url.port), url.hostname, () => {
+        sock.write(
+          `POST ${url.pathname} HTTP/1.1\r\n` +
+          `Host: ${url.hostname}\r\n` +
+          'Connection: close\r\n' +
+          'Authorization: Bearer wrong-token-1\r\n' +
+          'Authorization: Bearer wrong-token-2\r\n' +
+          'Content-Type: application/json\r\n' +
+          'Content-Length: 2\r\n' +
+          '\r\n' +
+          '{}'
+        )
+      })
+      let raw = ''
+      sock.on('data', (chunk: Buffer) => { raw += chunk.toString() })
+      sock.on('end', () => {
+        const statusMatch = raw.match(/HTTP\/1\.1 (\d+)/)
+        const bodyStart = raw.indexOf('\r\n\r\n')
+        resolve({
+          status: statusMatch ? parseInt(statusMatch[1]) : 0,
+          body: bodyStart >= 0 ? raw.slice(bodyStart + 4) : '',
+        })
+      })
+    })
+
+    // Should get 401 (wrong tokens), not a process crash
+    expect(res.status).toBe(401)
+  })
+})
+
+// -- Static Import --
+
+describe('static import', () => {
+  it('imports node:crypto statically (not dynamic per-request)', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../src/api-proxy.ts'),
+      'utf-8',
+    )
+    // Should have static import at top
+    expect(source).toMatch(/^import\s+\{[^}]*timingSafeEqual[^}]*\}\s+from\s+'node:crypto'/m)
+    // Should NOT have dynamic await import
+    expect(source).not.toMatch(/await\s+import\s*\(\s*['"]node:crypto['"]\s*\)/)
   })
 })
