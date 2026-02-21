@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid'
 import { getSpriteConnection } from './proxy.js'
 
 const KEEPALIVE_INTERVAL_MS = 15_000
@@ -11,7 +12,7 @@ export function startKeepalive(userId: string): void {
   const interval = setInterval(() => {
     const conn = getSpriteConnection(userId)
     if (!conn || conn.state !== 'connected') return
-    conn.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }))
+    conn.send(JSON.stringify({ type: 'ping', id: uuidv4(), timestamp: Date.now() }))
   }, KEEPALIVE_INTERVAL_MS)
 
   timers.set(userId, interval)

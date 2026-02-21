@@ -354,9 +354,13 @@ export const MESSAGE_TYPES = [
   'auth',
   'agent_event',
   'canvas_update',
+  'heartbeat',
+  'ping',
+  'pong',
   'status',
   'system',
   'state_sync',
+  'state_sync_request',
 ] as const
 
 export type MessageType = (typeof MESSAGE_TYPES)[number]

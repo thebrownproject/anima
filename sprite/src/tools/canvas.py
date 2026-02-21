@@ -196,7 +196,7 @@ def create_canvas_tools(
         "- author (str, optional): Author name for article cards.\n"
         "- read_time (str, optional): Estimated read time e.g. '5 min'.\n"
         "- headers (list[str], optional): Column headers for table cards.\n"
-        "- preview_rows (list[list[str]], optional): Preview row data for table cards.\n"
+        "- preview_rows (list[list[Any]], optional): Preview row data for table cards.\n"
         "- blocks (list[dict]): Array of block objects. Each block needs a 'type' field "
         "(do NOT include 'id' — it is auto-generated). Valid block types:\n"
         "  - heading: {type: 'heading', text: str, subtitle?: str}\n"

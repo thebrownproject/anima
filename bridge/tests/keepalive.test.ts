@@ -43,6 +43,8 @@ describe('keepalive', () => {
     expect(mockSend).toHaveBeenCalledTimes(1)
     const ping = JSON.parse(mockSend.mock.calls[0][0])
     expect(ping.type).toBe('ping')
+    expect(typeof ping.id).toBe('string')
+    expect(ping.id.length).toBeGreaterThan(0)
 
     // Advance another 15s — second ping
     vi.advanceTimersByTime(KEEPALIVE_INTERVAL_MS)

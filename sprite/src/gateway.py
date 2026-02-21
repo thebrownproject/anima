@@ -11,7 +11,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Awaitable, TYPE_CHECKING
 
-from .protocol import SystemMessage, SystemPayload, _new_id, to_json, is_websocket_message
+from .protocol import SystemMessage, SystemPayload, _new_id, _now_ms, to_json, is_websocket_message
 from .runtime import AgentRuntime
 from .state_sync import send_state_sync
 
@@ -142,8 +142,14 @@ class SpriteGateway:
             await self._send_error("Invalid message structure")
             return
 
-        # Silently handle keepalive pings (no id field, just type+timestamp)
+        # Respond to keepalive pings with pong (Bridge uses this to verify server)
         if parsed.get("type") == "ping":
+            pong = json.dumps({
+                "type": "pong",
+                "id": parsed.get("id") or _new_id(),
+                "timestamp": _now_ms(),
+            })
+            await self.send(pong)
             return
 
         if not is_websocket_message(parsed):

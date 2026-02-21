@@ -43,9 +43,13 @@ MESSAGE_TYPES = (
     "auth",
     "agent_event",
     "canvas_update",
+    "heartbeat",
+    "ping",
+    "pong",
     "status",
     "system",
     "state_sync",
+    "state_sync_request",
 )
 
 # Type aliases matching TypeScript literal unions
@@ -55,7 +59,8 @@ BlockType = Literal[
 ]
 MessageType = Literal[
     "mission", "file_upload", "canvas_interaction", "auth",
-    "agent_event", "canvas_update", "status", "system", "state_sync",
+    "agent_event", "canvas_update", "heartbeat", "ping", "pong",
+    "status", "system", "state_sync", "state_sync_request",
 ]
 CanvasAction = Literal[
     "edit_cell", "resize", "move", "close",
@@ -83,6 +88,12 @@ def _new_id() -> str:
 def _now_ms() -> int:
     """Current time as Unix epoch milliseconds."""
     return int(time.time() * 1000)
+
+
+def _snake_to_camel(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    parts = name.split("_")
+    return parts[0] + "".join(p.capitalize() for p in parts[1:])
 
 
 # =============================================================================
@@ -330,7 +341,7 @@ class CanvasUpdatePayload:
     author: Optional[str] = None
     read_time: Optional[str] = None
     headers: Optional[list[str]] = None
-    preview_rows: Optional[list[list[str]]] = None
+    preview_rows: Optional[list[list[Any]]] = None
 
 
 @dataclass
@@ -398,7 +409,7 @@ class CardInfo:
     author: Optional[str] = None
     read_time: Optional[str] = None
     headers: Optional[list[str]] = None
-    preview_rows: Optional[list[list[str]]] = None
+    preview_rows: Optional[list[list[Any]]] = None
 
 
 @dataclass
@@ -492,10 +503,15 @@ def is_mission_message(value: Any) -> bool:
     """Validate a MissionMessage dict."""
     if not is_websocket_message(value) or not _has_payload(value):
         return False
-    return (
-        value["type"] == "mission"
-        and isinstance(value["payload"].get("text"), str)
-    )
+    if value["type"] != "mission" or not isinstance(value["payload"].get("text"), str):
+        return False
+    context = value["payload"].get("context")
+    if context is not None:
+        if not isinstance(context, dict):
+            return False
+        if not isinstance(context.get("stack_id"), str):
+            return False
+    return True
 
 
 def is_file_upload_message(value: Any) -> bool:
@@ -675,18 +691,14 @@ def to_dict(message: ProtocolMessage) -> dict[str, Any]:
             _serialize_block(b) for b in message.payload.blocks
         ]
 
-    # Convert AgentEventMeta field names from snake_case to camelCase
-    # to match the TypeScript interface (extractionId, sessionId)
-    # WARNING: Always use to_json()/to_dict() for serialization, never dataclasses.asdict() —
-    # asdict() would emit snake_case field names which the frontend cannot parse.
-    if message.type == "agent_event" and result["payload"].get("meta"):
+    # Convert AgentEventMeta from snake_case to camelCase (matches TS interface)
+    if message.type == "agent_event" and "meta" in result["payload"]:
         meta = result["payload"]["meta"]
-        new_meta: dict[str, Any] = {}
-        if "extraction_id" in meta and meta["extraction_id"] is not None:
-            new_meta["extractionId"] = meta["extraction_id"]
-        if "session_id" in meta and meta["session_id"] is not None:
-            new_meta["sessionId"] = meta["session_id"]
-        result["payload"]["meta"] = new_meta if new_meta else None
+        if isinstance(meta, dict):
+            converted = {
+                _snake_to_camel(k): v for k, v in meta.items() if v is not None
+            }
+            result["payload"]["meta"] = converted if converted else None
 
     # Final cleanup of None values after transformations
     _strip_none(result)
