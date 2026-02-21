@@ -211,6 +211,9 @@ function handleConnection(ws: WebSocket): void {
             console.error(`[${connectionId}] Sprite connection failed:`, msg)
             sendError(ws, `Sprite connection failed: ${msg}`, parsed.id)
           }
+        } else if (spriteName) {
+          console.error(`[${connectionId}] Unexpected sprite_status='${spriteStatus}' for sprite=${spriteName}`)
+          sendError(ws, `Unexpected sprite status: ${spriteStatus}. Please contact support.`, parsed.id)
         }
         return
       }

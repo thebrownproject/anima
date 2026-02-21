@@ -12,7 +12,7 @@ configureSpritesClient({ token: TOKEN })
 
 async function startServer(): Promise<WebSocket> {
   console.log('[1] Starting server...')
-  const url = buildExecUrl(SPRITE, ['bash', '-c', 'cd /workspace && /workspace/.venv/bin/python3 -m src.server 2>&1'], {
+  const url = buildExecUrl(SPRITE, ['bash', '-c', 'cd /workspace/.os && /workspace/.venv/bin/python3 -m src.server 2>&1'], {
     ANTHROPIC_BASE_URL: 'https://ws.stackdocs.io/v1/proxy/anthropic',
     ANTHROPIC_API_KEY: PROXY_TOKEN,
     MISTRAL_BASE_URL: 'https://ws.stackdocs.io/v1/proxy/mistral',

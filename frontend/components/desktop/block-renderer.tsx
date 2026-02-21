@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import type {
   Block,
   HeadingBlock,
@@ -225,15 +226,15 @@ function Separator({ theme }: { theme: Theme }) {
 
 function renderBlock(block: Block, theme: Theme) {
   switch (block.type) {
-    case 'heading':   return <Heading key={block.id} {...block} theme={theme} />
-    case 'stat':      return <Stat key={block.id} {...block} theme={theme} />
-    case 'key-value': return <KeyValue key={block.id} {...block} theme={theme} />
-    case 'table':     return <Table key={block.id} {...block} theme={theme} />
-    case 'badge':     return <Badge key={block.id} {...block} theme={theme} />
-    case 'progress':  return <Progress key={block.id} {...block} theme={theme} />
-    case 'text':      return <Text key={block.id} {...block} theme={theme} />
-    case 'document':  return <Document key={block.id} {...block} theme={theme} />
-    case 'separator': return <Separator key={block.id} theme={theme} />
+    case 'heading':   return <Heading {...block} theme={theme} />
+    case 'stat':      return <Stat {...block} theme={theme} />
+    case 'key-value': return <KeyValue {...block} theme={theme} />
+    case 'table':     return <Table {...block} theme={theme} />
+    case 'badge':     return <Badge {...block} theme={theme} />
+    case 'progress':  return <Progress {...block} theme={theme} />
+    case 'text':      return <Text {...block} theme={theme} />
+    case 'document':  return <Document {...block} theme={theme} />
+    case 'separator': return <Separator theme={theme} />
     default:          return null
   }
 }
@@ -253,7 +254,9 @@ export function BlockRenderer({ blocks, theme = 'glass' }: BlockRendererProps) {
   }
   return (
     <div className={theme === 'editorial' ? 'space-y-7 px-7 pb-8 pt-4' : 'space-y-3 px-5 py-4'}>
-      {blocks.map((block) => renderBlock(block, theme))}
+      {blocks.map((block, index) => (
+        <Fragment key={block.id ?? index}>{renderBlock(block, theme)}</Fragment>
+      ))}
     </div>
   )
 }
