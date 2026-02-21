@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -33,6 +34,9 @@ logger = logging.getLogger(__name__)
 SendFn = Callable[[str], Awaitable[None]]
 
 MAX_TURNS = 15
+SDK_QUERY_TIMEOUT = 30  # seconds -- initial query to Anthropic API
+SDK_MSG_TIMEOUT = 120   # seconds -- per-message timeout during receive_response
+SDK_TURN_TIMEOUT = 600  # seconds -- total turn timeout (query + all responses)
 
 
 
@@ -55,6 +59,8 @@ class AgentRuntime:
         workspace_db: WorkspaceDB | None = None,
     ) -> None:
         self._send = send_fn
+        self._is_connected: bool = False
+        self._send_generation: int = 0
         self.last_session_id: str | None = None
         self._client: ClaudeSDKClient | None = None
         self._buffer = TurnBuffer()
@@ -79,6 +85,9 @@ class AgentRuntime:
     async def _indirect_send(self, data: str) -> None:
         """Delegate to the current send_fn. Canvas tools capture this method
         instead of the raw send_fn so they survive TCP reconnections."""
+        if not self._is_connected:
+            logger.warning("Dropping indirect send -- not connected")
+            return
         await self._send(data)
 
     def _build_hooks_dict(self) -> dict | None:
@@ -133,8 +142,15 @@ class AgentRuntime:
         Called when a new TCP connection arrives (reconnect after sleep/wake).
         The SDK client and conversation context are preserved.
         """
+        self._send_generation += 1
         self._send = send_fn
-        logger.info("Runtime send_fn updated (new connection)")
+        self._is_connected = True
+        logger.info("Runtime send_fn updated (gen=%d)", self._send_generation)
+
+    def mark_disconnected(self) -> None:
+        """Mark runtime as disconnected. Called from server on connection close."""
+        self._is_connected = False
+        logger.info("Runtime marked disconnected")
 
     async def handle_message(
         self,
@@ -249,9 +265,16 @@ class AgentRuntime:
 
     async def _query_and_stream(self, prompt: str, request_id: str | None) -> None:
         """Send a query to the persistent client and stream responses."""
-        await self._client.query(prompt)
+        await asyncio.wait_for(self._client.query(prompt), timeout=SDK_QUERY_TIMEOUT)
         msg_count = 0
-        async for message in self._client.receive_response():
+        response_iter = self._client.receive_response().__aiter__()
+        while True:
+            try:
+                message = await asyncio.wait_for(
+                    response_iter.__anext__(), timeout=SDK_MSG_TIMEOUT,
+                )
+            except StopAsyncIteration:
+                break
             msg_count += 1
             logger.info("SDK message #%d: %s", msg_count, type(message).__name__)
             await self._handle_sdk_message(message, request_id)
@@ -311,6 +334,10 @@ class AgentRuntime:
         meta: AgentEventMeta | None = None,
     ) -> None:
         """Build and send an AgentEvent message."""
+        if not self._is_connected:
+            logger.warning("Dropping %s event -- not connected", event_type)
+            return
+        gen = self._send_generation
         event = AgentEvent(
             type="agent_event",
             payload=AgentEventPayload(
@@ -321,3 +348,5 @@ class AgentRuntime:
             request_id=request_id,
         )
         await self._send(to_json(event))
+        if self._send_generation != gen:
+            logger.warning("send_fn changed mid-send (gen %d->%d)", gen, self._send_generation)

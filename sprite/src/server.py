@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 HOST = "0.0.0.0"
 PORT = 8765
 MEMORY_DIR = Path("/workspace/.os/memory")
+READLINE_TIMEOUT = 120  # seconds -- detect half-open TCP connections
 
 
 async def handle_connection(
@@ -33,6 +34,7 @@ async def handle_connection(
     writer: asyncio.StreamWriter,
     runtime: AgentRuntime,
     workspace_db: WorkspaceDB,
+    mission_lock: asyncio.Lock | None = None,
 ) -> None:
     """Handle a single TCP connection from the Bridge (via Sprites TCP Proxy).
 
@@ -49,13 +51,20 @@ async def handle_connection(
     # Point the runtime at the new connection's send_fn
     runtime.update_send_fn(send_fn)
 
-    gateway = SpriteGateway(send_fn=send_fn, runtime=runtime, workspace_db=workspace_db)
+    gateway = SpriteGateway(
+        send_fn=send_fn, runtime=runtime, workspace_db=workspace_db,
+        mission_lock=mission_lock,
+    )
 
     await send_state_sync(workspace_db, send_fn)
 
     try:
         while True:
-            line = await reader.readline()
+            try:
+                line = await asyncio.wait_for(reader.readline(), timeout=READLINE_TIMEOUT)
+            except asyncio.TimeoutError:
+                logger.warning("readline timeout (%ds) -- closing connection", READLINE_TIMEOUT)
+                break
             if not line:
                 break
             raw = line.decode("utf-8", errors="replace").strip()
@@ -66,6 +75,8 @@ async def handle_connection(
     except Exception:
         logger.exception("Unhandled error in connection handler")
     finally:
+        await gateway.cancel_tasks()
+        runtime.mark_disconnected()
         writer.close()
         logger.info("Connection ended: %s", remote)
 
@@ -76,7 +87,9 @@ async def main() -> None:
 
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, lambda: stop.set_result(None))
+        loop.add_signal_handler(
+            sig, lambda: stop.set_result(None) if not stop.done() else None
+        )
 
     # Initialize databases
     transcript_db = TranscriptDB()
@@ -97,6 +110,9 @@ async def main() -> None:
         memory_dir=MEMORY_DIR,
     )
 
+    # Shared lock: one per server, serializes missions across reconnections
+    mission_lock = asyncio.Lock()
+
     # Runtime scoped to server — survives TCP reconnections
     runtime = AgentRuntime(
         send_fn=_noop_send,
@@ -106,12 +122,29 @@ async def main() -> None:
         workspace_db=workspace_db,
     )
 
-    handler = lambda r, w: handle_connection(r, w, runtime=runtime, workspace_db=workspace_db)
-    # 50MB limit for StreamReader — file_upload messages carry base64 data (25MB file ≈ 33MB base64)
-    server = await asyncio.start_server(handler, HOST, PORT, limit=50 * 1024 * 1024)
+    _handlers: set[asyncio.Task] = set()
+
+    def _on_connect(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
+        task = asyncio.create_task(
+            handle_connection(r, w, runtime=runtime, workspace_db=workspace_db,
+                              mission_lock=mission_lock)
+        )
+        _handlers.add(task)
+        task.add_done_callback(_handlers.discard)
+
+    # 50MB limit for StreamReader -- file_upload messages carry base64 data (25MB file ~ 33MB base64)
+    server = await asyncio.start_server(_on_connect, HOST, PORT, limit=50 * 1024 * 1024)
     logger.info("Sprite server listening on tcp://%s:%d", HOST, PORT)
     await stop
+
+    # Cancel active connection handlers
+    for task in list(_handlers):
+        task.cancel()
+    if _handlers:
+        await asyncio.gather(*_handlers, return_exceptions=True)
+
     server.close()
+    await server.wait_closed()
     await runtime.cleanup()
     await transcript_db.close()
     await memory_db.close()

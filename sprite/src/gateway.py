@@ -121,12 +121,22 @@ class SpriteGateway:
         send_fn: SendFn,
         runtime: AgentRuntime | None = None,
         workspace_db: WorkspaceDB | None = None,
+        mission_lock: asyncio.Lock | None = None,
     ) -> None:
         self.send = send_fn
-        self.mission_lock = asyncio.Lock()
+        self.mission_lock = mission_lock or asyncio.Lock()
+        self._tasks: set[asyncio.Task] = set()
         self._workspace_db = workspace_db
         # Use provided runtime (server-scoped) or create one (tests)
         self.runtime = runtime or AgentRuntime(send_fn=send_fn)
+
+    async def cancel_tasks(self) -> None:
+        """Cancel all tracked background tasks (called on disconnect/shutdown)."""
+        for task in list(self._tasks):
+            task.cancel()
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
 
     async def route(self, raw: str) -> None:
         """Parse a raw WS message and dispatch to the correct handler."""
@@ -236,9 +246,11 @@ class SpriteGateway:
         await self._send_canvas_processing_card(doc_id, filename, data_b64, mime_type)
         await self._send_ack("file_upload_received", req_id)
 
-        asyncio.create_task(
+        task = asyncio.create_task(
             self._run_extraction(doc_id, filename, mime_type, str(file_path))
         )
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     async def _send_canvas_processing_card(
         self, doc_id: str, filename: str, data_b64: str = "", mime_type: str = "",

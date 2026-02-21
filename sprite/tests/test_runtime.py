@@ -88,7 +88,9 @@ def send_fn(sent):
 @pytest.fixture
 def runtime(send_fn):
     with patch("src.runtime.ensure_templates"):
-        return AgentRuntime(send_fn=send_fn)
+        rt = AgentRuntime(send_fn=send_fn)
+    rt._is_connected = True
+    return rt
 
 
 # -- Test: Agent invocation streams agent_event messages ---------------------
@@ -193,6 +195,7 @@ async def test_mission_lock_serialization(send_fn):
 
     with patch("src.runtime.ensure_templates"):
         runtime = AgentRuntime(send_fn=send_fn)
+    runtime._is_connected = True
 
     with _mock_sdk_generator(slow_messages):
         await asyncio.gather(
@@ -343,6 +346,9 @@ async def test_indirect_send_survives_send_fn_swap(send_fn):
 
     with patch("src.runtime.ensure_templates"):
         rt = AgentRuntime(send_fn=old_send)
+
+    # Connect with old_send first (sets _is_connected=True)
+    rt.update_send_fn(old_send)
 
     # _indirect_send should use old_send initially
     await rt._indirect_send("msg1")
