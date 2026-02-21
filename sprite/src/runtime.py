@@ -29,7 +29,32 @@ from .memory.hooks import TurnBuffer, create_hook_callbacks
 from .database import TranscriptDB, MemoryDB, WorkspaceDB
 from .memory.processor import ObservationProcessor
 
+try:
+    from anthropic import RateLimitError, AuthenticationError, APIConnectionError
+except ImportError:  # pragma: no cover
+    RateLimitError = AuthenticationError = APIConnectionError = None  # type: ignore[misc,assignment]
+
 logger = logging.getLogger(__name__)
+
+
+def _classify_error(exc: Exception) -> str:
+    """Return a user-friendly message based on exception type or message patterns."""
+    # Direct anthropic SDK exceptions
+    if RateLimitError and isinstance(exc, RateLimitError):
+        return "Rate limited, please wait a moment before trying again."
+    if AuthenticationError and isinstance(exc, AuthenticationError):
+        return "API key issue -- check configuration."
+    if APIConnectionError and isinstance(exc, APIConnectionError):
+        return "Connection error -- retrying."
+    # String-based fallback for subprocess-wrapped SDK errors
+    msg = str(exc).lower()
+    if "rate_limit" in msg or "rate limit" in msg or "overloaded" in msg:
+        return "Rate limited, please wait a moment before trying again."
+    if "authentication" in msg or "api key" in msg or "unauthorized" in msg:
+        return "API key issue -- check configuration."
+    if "connection" in msg and ("refused" in msg or "reset" in msg or "timeout" in msg):
+        return "Connection error -- retrying."
+    return str(exc)
 
 SendFn = Callable[[str], Awaitable[None]]
 
@@ -244,9 +269,10 @@ class AgentRuntime:
             logger.info("SDK session started (new client)")
             await self._query_and_stream(text, request_id)
         except Exception as exc:
-            logger.error("Agent error starting session: %s", exc)
+            user_msg = _classify_error(exc)
+            logger.error("Agent error starting session: %s (user sees: %s)", exc, user_msg)
             await self._cleanup_client()
-            await self._send_event("error", str(exc), request_id)
+            await self._send_event("error", user_msg, request_id)
 
     async def _continue_session(
         self,
