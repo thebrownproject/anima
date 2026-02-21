@@ -10,6 +10,14 @@ export const CARD_WIDTHS: Record<CardSize, number> = {
   full: 800,
 }
 
+export const TEMPLATE_WIDTHS: Record<CardType, number> = {
+  document: 400,
+  metric: 300,
+  table: 600,
+  article: 500,
+  data: 400,
+}
+
 // World bounds — cards and viewport are clamped to this area (16:9 for widescreen monitors)
 export const WORLD_WIDTH = 8000
 export const WORLD_HEIGHT = 4000
@@ -55,6 +63,7 @@ export interface DesktopCard {
   readTime?: string
   headers?: string[]
   previewRows?: unknown[][]
+  userPositioned?: boolean
 }
 
 export interface ViewState {
@@ -90,7 +99,7 @@ interface DesktopActions {
   addCard: (card: DesktopCard) => void
   updateCard: (id: string, updates: Partial<Omit<DesktopCard, 'id'>>) => void
   removeCard: (id: string) => void
-  moveCard: (id: string, position: { x: number; y: number }, cardHeight?: number) => void
+  moveCard: (id: string, position: { x: number; y: number }, cardHeight?: number, cardWidth?: number) => void
   bringToFront: (id: string) => void
 
   // View actions
@@ -164,9 +173,8 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
           let maxZ = 0
           for (const [id, card] of Object.entries(incoming)) {
             const existing = state.cards[id]
-            const hasPosition = existing && (existing.position.x !== 0 || existing.position.y !== 0)
-            merged[id] = hasPosition
-              ? { ...card, position: existing.position, zIndex: existing.zIndex }
+            merged[id] = existing?.userPositioned
+              ? { ...card, position: existing.position, zIndex: existing.zIndex, userPositioned: true }
               : card
             if (merged[id].zIndex > maxZ) maxZ = merged[id].zIndex
           }
@@ -174,10 +182,13 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
         }),
 
       addCard: (card) =>
-        set((state) => ({
-          cards: { ...state.cards, [card.id]: { ...card, position: clampCardPosition(card.position.x, card.position.y) } },
-          maxZIndex: Math.max(state.maxZIndex, card.zIndex),
-        })),
+        set((state) => {
+          const width = card.cardType ? TEMPLATE_WIDTHS[card.cardType] : CARD_WIDTHS[card.size]
+          return {
+            cards: { ...state.cards, [card.id]: { ...card, position: clampCardPosition(card.position.x, card.position.y, undefined, width) } },
+            maxZIndex: Math.max(state.maxZIndex, card.zIndex),
+          }
+        }),
 
       updateCard: (id, updates) =>
         set((state) => {
@@ -194,12 +205,12 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
           return { cards: rest }
         }),
 
-      moveCard: (id, position, cardHeight?) =>
+      moveCard: (id, position, cardHeight?, cardWidth?) =>
         set((state) => {
           const existing = state.cards[id]
           if (!existing) return state
           return {
-            cards: { ...state.cards, [id]: { ...existing, position: clampCardPosition(position.x, position.y, cardHeight) } },
+            cards: { ...state.cards, [id]: { ...existing, position: clampCardPosition(position.x, position.y, cardHeight, cardWidth), userPositioned: true } },
           }
         }),
 
@@ -227,7 +238,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
     }),
     {
       name: 'stackdocs-desktop',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>
         if (version === 0 || version === undefined) {
@@ -245,7 +256,15 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
             cards: migratedCards,
           }
         }
-        // v1 -> v2: all new template fields are optional — no transformation needed
+        if (version <= 2) {
+          // v2 -> v3: add userPositioned flag (default false for existing cards)
+          const oldCards = (state.cards ?? {}) as Record<string, Record<string, unknown>>
+          const migratedCards: Record<string, unknown> = {}
+          for (const [id, card] of Object.entries(oldCards)) {
+            migratedCards[id] = { ...card, userPositioned: card.userPositioned ?? false }
+          }
+          return { ...state, cards: migratedCards }
+        }
         return state
       },
     }

@@ -49,6 +49,8 @@ function summarizeInbound(msg: SpriteToBrowserMessage): string {
       return `Canvas: ${msg.payload.command} ${msg.payload.card_id}`
     case 'state_sync':
       return `Sync: ${msg.payload.stacks.length} stacks, ${msg.payload.cards.length} cards, ${msg.payload.chat_history.length} msgs`
+    case 'status':
+      return `Status: ${msg.payload.document_id} ${msg.payload.status}`
     case 'system':
       return `System: ${msg.payload.event}${msg.payload.message ? ` — ${msg.payload.message}` : ''}`
     default:
@@ -180,9 +182,16 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         const store = useDesktopStore.getState()
         const chat = useChatStore.getState()
 
-        // Populate stacks
+        // State sync means fresh server state; any in-flight stream is stale
+        chat.setAgentStreaming(false)
+
+        // Populate stacks and reconcile archived IDs against server truth
         store.setStacks(stacks)
         store.setActiveStackId(active_stack_id)
+        const serverStackIds = new Set(stacks.map((s: { id: string }) => s.id))
+        useDesktopStore.setState((prev) => ({
+          archivedStackIds: prev.archivedStackIds.filter((id) => serverStackIds.has(id)),
+        }))
 
         // Map CardInfo (snake_case) -> DesktopCard (camelCase)
         // Use getAutoPosition for cards with default (0,0) position
@@ -233,7 +242,17 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           content: m.content,
           timestamp: m.timestamp,
         }))
-        chat.setMessages(mapped)
+        chat.mergeMessages(mapped, message.timestamp)
+        break
+      }
+
+      case 'status': {
+        const { status, message: statusMessage } = message.payload
+        if (status === 'failed') {
+          toast.error(statusMessage ?? 'Document processing failed', { id: `doc-status-${message.payload.document_id}` })
+        } else if (status === 'completed') {
+          toast.success(statusMessage ?? 'Document ready', { id: `doc-status-${message.payload.document_id}` })
+        }
         break
       }
 

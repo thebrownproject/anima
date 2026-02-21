@@ -13,7 +13,7 @@ import { DocumentsPanel } from '@/components/desktop/documents-panel'
 import { BlockRenderer } from '@/components/desktop/block-renderer'
 import { DesktopContextMenu } from '@/components/desktop/desktop-context-menu'
 import { DebugPanel } from '@/components/debug/debug-panel'
-import { useDesktopStore } from '@/lib/stores/desktop-store'
+import { useDesktopStore, useCardsForActiveStack } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import { useWallpaperStore } from '@/lib/stores/wallpaper-store'
 import { GlassTooltipProvider } from '@/components/ui/glass-tooltip'
@@ -21,7 +21,7 @@ import { MaybeVoiceProvider } from '@/components/voice/voice-provider'
 import { CardOverlayProvider, useCardOverlay } from '@/components/desktop/card-overlay'
 
 function CardLayer() {
-  const cards = useDesktopStore((s) => s.cards)
+  const cards = useCardsForActiveStack()
   const { setOverlayCardId } = useCardOverlay()
 
   const handleCardClick = (card: DesktopCardType) => {
@@ -30,7 +30,7 @@ function CardLayer() {
 
   return (
     <AnimatePresence>
-      {Object.values(cards).map((card) => (
+      {cards.map((card) => (
         <DesktopCard key={card.id} card={card} onCardClick={handleCardClick}>
           <BlockRenderer blocks={card.blocks} />
         </DesktopCard>
@@ -54,12 +54,14 @@ export default function DesktopPage() {
 
   useEffect(() => {
     setWallpaper('solid-white')
-    const seeded: Record<string, DesktopCardType> = {}
-    DEMO_CARDS.forEach(({ position, ...rest }, i) => {
-      const card: DesktopCardType = { ...rest, stackId: 'default', size: 'medium', zIndex: i + 1, blocks: [], position }
-      seeded[card.id] = card
-    })
-    setCards(seeded)
+    if (process.env.NODE_ENV === 'development') {
+      const seeded: Record<string, DesktopCardType> = {}
+      DEMO_CARDS.forEach(({ position, ...rest }, i) => {
+        const card: DesktopCardType = { ...rest, stackId: 'default', size: 'medium', zIndex: i + 1, blocks: [], position }
+        seeded[card.id] = card
+      })
+      setCards(seeded)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

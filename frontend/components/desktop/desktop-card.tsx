@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
-import { useDesktopStore, clampCardPosition, snapToGrid, CARD_WIDTHS } from '@/lib/stores/desktop-store'
+import { useDesktopStore, clampCardPosition, snapToGrid, CARD_WIDTHS, TEMPLATE_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import type { CardSize, CardType } from '@/types/ws-protocol'
 import * as Icons from '@/components/icons'
@@ -20,14 +20,6 @@ interface DesktopCardProps {
 
 const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
 const SIZE_CYCLE: CardSize[] = ['small', 'medium', 'large', 'full']
-const TEMPLATE_WIDTHS: Record<CardType, number> = {
-  document: 400,
-  metric: 300,
-  table: 600,
-  article: 500,
-  data: 400,
-}
-
 export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const positionRef = useRef<HTMLDivElement>(null)
@@ -37,6 +29,8 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
 
   // Ref (not state) to avoid re-renders during drag
   const localPos = useRef({ x: card.position.x, y: card.position.y })
+
+  const cardWidth = card.cardType ? TEMPLATE_WIDTHS[card.cardType] : CARD_WIDTHS[card.size]
 
   const applyPosition = useCallback(() => {
     if (positionRef.current) {
@@ -50,7 +44,7 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
     const snapped = snapToGrid(localPos.current.x, localPos.current.y)
     localPos.current = snapped
     applyPosition()
-    useDesktopStore.getState().moveCard(card.id, snapped, height)
+    useDesktopStore.getState().moveCard(card.id, snapped, height, cardWidth)
     send({
       type: 'canvas_interaction',
       payload: {
@@ -63,7 +57,7 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
         },
       },
     })
-  }, [card.id, send, applyPosition])
+  }, [card.id, send, applyPosition, cardWidth])
 
   const getCardHeight = useCallback(() => positionRef.current?.offsetHeight ?? undefined, [])
 
@@ -74,6 +68,7 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
         localPos.current.x + vx / view.scale,
         localPos.current.y + vy / view.scale,
         getCardHeight(),
+        cardWidth,
       )
       applyPosition()
     },
@@ -118,6 +113,7 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
         localPos.current.x + e.movementX / view.scale,
         localPos.current.y + e.movementY / view.scale,
         getCardHeight(),
+        cardWidth,
       )
       localPos.current = clamped
 

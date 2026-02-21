@@ -31,6 +31,7 @@ type ChatMessageInput = Omit<ChatMessage, 'id'> & { id?: string }
 interface ChatActions {
   addMessage: (message: ChatMessageInput) => void
   setMessages: (messages: ChatMessage[]) => void
+  mergeMessages: (serverMessages: ChatMessage[], syncTimestamp: number) => void
   appendToLastAgent: (content: string) => void
   setChips: (chips: SuggestionChip[]) => void
   setMode: (mode: 'bar' | 'panel') => void
@@ -63,6 +64,16 @@ export const useChatStore = create<ChatState & ChatActions>()(
         })),
 
       setMessages: (messages) => set({ messages, chips: [] }),
+
+      mergeMessages: (serverMessages, syncTimestamp) =>
+        set((state) => {
+          const serverIds = new Set(serverMessages.map((m) => m.id))
+          // Keep local optimistic messages that are newer than the sync and not already on server
+          const localNewer = state.messages.filter(
+            (m) => m.timestamp > syncTimestamp && !serverIds.has(m.id)
+          )
+          return { messages: [...serverMessages, ...localNewer], chips: [] }
+        }),
 
       appendToLastAgent: (content) =>
         set((state) => {
