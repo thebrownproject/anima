@@ -3,10 +3,10 @@
 import { type ReactNode } from 'react'
 import * as Icons from '@/components/icons'
 import {
-  GlassContextMenu,
-  GlassContextMenuTrigger,
-  GlassContextMenuContent,
-} from '@/components/ui/glass-context-menu'
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+} from '@/components/ui/context-menu'
 import { WALLPAPERS, useWallpaperStore } from '@/lib/stores/wallpaper-store'
 import { WallpaperThumbnail } from '@/components/desktop/wallpaper-thumbnail'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
@@ -26,62 +26,62 @@ export function DesktopMenuBody() {
   return (
     <>
       {/* Stack */}
-      <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
+      <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         Stack
       </p>
       <button
         disabled
-        className="flex w-full cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 opacity-40 transition-colors"
+        className="flex w-full cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground opacity-40 transition-colors"
       >
         <Icons.Edit className="size-4" />
         <span>Rename Stack</span>
       </button>
       <button
         disabled
-        className="flex w-full cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 opacity-40 transition-colors"
+        className="flex w-full cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground opacity-40 transition-colors"
       >
         <Icons.Settings className="size-4" />
         <span>Stack Settings</span>
       </button>
 
-      <div className="mx-2 my-1 h-px bg-white/10" />
+      <div className="mx-2 my-1 h-px bg-border" />
 
       {/* View */}
-      <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
+      <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         View
       </p>
       <div className="grid grid-cols-3 gap-1 px-1 pb-1">
         <button
           onClick={() => dispatchZoom(currentScale - ZOOM_STEP)}
-          className="flex items-center justify-center rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <Icons.ZoomOut className="size-4" />
         </button>
         <button
           onClick={() => dispatchZoom(1)}
-          className="flex items-center justify-center rounded-lg p-2 text-xs font-medium text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex items-center justify-center rounded-lg p-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           {Math.round(currentScale * 100)}%
         </button>
         <button
           onClick={() => dispatchZoom(currentScale + ZOOM_STEP)}
-          className="flex items-center justify-center rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <Icons.ZoomIn className="size-4" />
         </button>
       </div>
       <button
         disabled
-        className="flex w-full cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/70 opacity-40 transition-colors"
+        className="flex w-full cursor-default items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground opacity-40 transition-colors"
       >
         <Icons.LayoutGrid className="size-4" />
         <span>Clean Up By Name</span>
       </button>
 
-      <div className="mx-2 my-1 h-px bg-white/10" />
+      <div className="mx-2 my-1 h-px bg-border" />
 
       {/* Environment */}
-      <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
+      <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         Environment
       </p>
       <div className="grid grid-cols-3 place-items-center gap-3 px-1 py-2">
@@ -100,13 +100,13 @@ export function DesktopMenuBody() {
 
 export function DesktopContextMenu({ children }: { children: ReactNode }) {
   return (
-    <GlassContextMenu>
-      <GlassContextMenuTrigger asChild>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
         {children}
-      </GlassContextMenuTrigger>
-      <GlassContextMenuContent>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="min-w-[14rem] rounded-xl p-1.5">
         <DesktopMenuBody />
-      </GlassContextMenuContent>
-    </GlassContextMenu>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }

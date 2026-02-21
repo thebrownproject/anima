@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { GlassCard } from '@/components/ui/glass-card'
+import { Card } from '@/components/ui/card'
 import { useDesktopStore, clampCardPosition, snapToGrid, CARD_WIDTHS, TEMPLATE_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import type { CardSize } from '@/types/ws-protocol'
@@ -235,35 +235,35 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
               return <DataCard card={card} onCardClick={onCardClick} />
             default:
               return (
-                <GlassCard glowEffect={false}>
-                  <div className="flex h-11 items-center border-b border-white/[0.08] px-4">
-                    <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-white/90">
+                <Card className="gap-0 overflow-hidden rounded-2xl p-0">
+                  <div className="flex h-11 items-center border-b border-border px-4">
+                    <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-card-foreground">
                       {card.title}
                     </span>
                     <div className="flex items-center gap-0.5">
                       <button
                         type="button"
                         onClick={handleEdit}
-                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
                         title="Edit"
                       >
-                        <Icons.Edit className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+                        <Icons.Edit className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
                       </button>
                       <button
                         type="button"
                         onClick={handleResize}
-                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
                         title={`Resize (${card.size})`}
                       >
-                        <Icons.ArrowsMaximize className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+                        <Icons.ArrowsMaximize className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
                       </button>
                       <button
                         type="button"
                         onClick={handleClose}
-                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white/10"
+                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
                         title="Close"
                       >
-                        <Icons.X className="size-3.5 text-white/40 transition-colors hover:text-white/70" />
+                        <Icons.X className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
                       </button>
                     </div>
                   </div>
@@ -272,7 +272,7 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
                   <div onPointerDown={(e) => e.stopPropagation()}>
                     {children}
                   </div>
-                </GlassCard>
+                </Card>
               )
           }
         })()}
