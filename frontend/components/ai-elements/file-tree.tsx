@@ -141,26 +141,26 @@ export const FileTreeFolder = ({
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                "flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/10",
-                isSelected && "bg-white/15"
+                "flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent",
+                isSelected && "bg-accent"
               )}
               onClick={handleSelect}
               type="button"
             >
               <Icons.ChevronRight
                 className={cn(
-                  "size-3.5 shrink-0 text-white/40 transition-transform",
+                  "size-3.5 shrink-0 text-muted-foreground transition-transform",
                   isExpanded && "rotate-90"
                 )}
               />
               <FileTreeIcon>
-                <Icons.Folder className="size-3.5 text-white/50" />
+                <Icons.Folder className="size-3.5 text-muted-foreground" />
               </FileTreeIcon>
               <FileTreeName>{name}</FileTreeName>
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="ml-4 border-l border-white/10 pl-2">{children}</div>
+            <div className="ml-4 border-l border-border pl-2">{children}</div>
           </CollapsibleContent>
         </div>
       </Collapsible>
@@ -214,8 +214,8 @@ export const FileTreeFile = ({
     <FileTreeFileContext.Provider value={fileContextValue}>
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/10",
-          isSelected && "bg-white/15",
+          "flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent",
+          isSelected && "bg-accent",
           className
         )}
         onClick={handleClick}
@@ -230,7 +230,7 @@ export const FileTreeFile = ({
             {/* Spacer for alignment with folder chevron */}
             <span className="size-3.5" />
             <FileTreeIcon>
-              {icon ?? <Icons.FileText className="size-3.5 text-white/50" />}
+              {icon ?? <Icons.FileText className="size-3.5 text-muted-foreground" />}
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
           </>
@@ -259,7 +259,7 @@ export const FileTreeName = ({
   children,
   ...props
 }: FileTreeNameProps) => (
-  <span className={cn("truncate font-medium text-white/70", className)} {...props}>
+  <span className={cn("truncate font-medium text-foreground", className)} {...props}>
     {children}
   </span>
 );
