@@ -117,7 +117,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
   }, [scheduleSync, applySharpMode])
 
   // Zoom lerp loop -- smooths discrete mouse wheel jumps
-  const animateZoomRef = useRef<() => void>()
+  const animateZoomRef = useRef<() => void>(undefined)
   useEffect(() => {
     animateZoomRef.current = () => {
       const c = current.current

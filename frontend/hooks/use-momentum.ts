@@ -51,7 +51,7 @@ export function useMomentum({ onFrame, onStop }: MomentumCallbacks): MomentumCon
     }
   }, [])
 
-  const animateRef = useRef<() => void>()
+  const animateRef = useRef<() => void>(undefined)
   useEffect(() => {
     animateRef.current = () => {
       const v = velocity.current
