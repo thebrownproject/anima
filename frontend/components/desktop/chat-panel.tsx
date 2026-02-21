@@ -12,10 +12,6 @@ function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-// =============================================================================
-// Message bubble
-// =============================================================================
-
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
 
@@ -25,7 +21,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="py-1">
         <p className={cn(
           'text-center font-mono text-xs',
-          isError ? 'text-red-400/80' : 'text-white/40',
+          isError ? 'text-destructive' : 'text-muted-foreground',
         )}>
           {message.content}
         </p>
@@ -39,44 +35,36 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         className={cn(
           'max-w-[85%] rounded-2xl border px-4 py-2.5 text-[13px] leading-relaxed',
           isUser
-            ? 'rounded-tr-sm border-white/20 bg-white/15 text-white'
-            : 'rounded-tl-sm border-white/10 bg-white/5 text-white/90'
+            ? 'rounded-tr-sm border-primary/20 bg-primary text-primary-foreground'
+            : 'rounded-tl-sm border-border bg-muted text-foreground'
         )}
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <div className="prose prose-invert prose-sm max-w-none break-words [&_pre]:overflow-x-auto [&_code]:text-[12px]">
+          <div className="prose prose-sm max-w-none break-words [&_pre]:overflow-x-auto [&_code]:text-[12px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {message.content}
             </ReactMarkdown>
           </div>
         )}
       </div>
-      <span className="mt-1 px-1 text-[10px] text-white/25">{formatTime(message.timestamp)}</span>
+      <span className="mt-1 px-1 text-[10px] text-muted-foreground">{formatTime(message.timestamp)}</span>
     </div>
   )
 }
-
-// =============================================================================
-// Typing indicator
-// =============================================================================
 
 function TypingIndicator() {
   return (
     <div className="flex items-start">
-      <div className="flex gap-1 rounded-2xl rounded-tl-sm border border-white/10 bg-white/5 px-4 py-3">
-        <div className="size-1.5 animate-pulse rounded-full bg-white/40" />
-        <div className="size-1.5 animate-pulse rounded-full bg-white/40 [animation-delay:150ms]" />
-        <div className="size-1.5 animate-pulse rounded-full bg-white/40 [animation-delay:300ms]" />
+      <div className="flex gap-1 rounded-2xl rounded-tl-sm border border-border bg-muted px-4 py-3">
+        <div className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
+        <div className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:150ms]" />
+        <div className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:300ms]" />
       </div>
     </div>
   )
 }
-
-// =============================================================================
-// Chat panel
-// =============================================================================
 
 export function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -100,12 +88,12 @@ export function ChatPanel() {
         showClose={false}
         className="top-16 z-30"
         containerClassName={cn(
-          isAgentStreaming && isOpen && 'border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_20px_rgba(6,182,212,0.06)]',
+          isAgentStreaming && isOpen && 'border-primary/20 shadow-[0_8px_32px_rgba(0,0,0,0.08),0_0_20px_rgba(6,182,212,0.04)]',
         )}
       >
         {/* Agent streaming ambient glow */}
         {isAgentStreaming && (
-          <div className="pointer-events-none absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-b from-cyan-500/5 via-transparent to-purple-500/5" />
+          <div className="pointer-events-none absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-b from-cyan-500/3 via-transparent to-purple-500/3" />
         )}
 
         {/* Messages — scroll area with bottom padding for chat bar */}
