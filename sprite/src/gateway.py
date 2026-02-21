@@ -385,8 +385,38 @@ class SpriteGateway:
         logger.info("State sync requested")
         if self._workspace_db:
             await send_state_sync(self._workspace_db, self.send)
+            await self.check_and_send_welcome()
         else:
             await self._send_error("WorkspaceDB not available for state sync")
+
+    async def check_and_send_welcome(self) -> None:
+        """Fire a welcome message for new users (empty chat history).
+
+        Non-blocking: spawns a background task that acquires mission_lock.
+        Safe to call on every connect -- existing users (non-empty history) are skipped.
+        """
+        if not self._workspace_db or not self.runtime:
+            return
+        history = await self._workspace_db.get_chat_history(limit=1)
+        if history:
+            return
+        task = asyncio.create_task(self._send_welcome_message())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def _send_welcome_message(self) -> None:
+        """Background task: greet new user via the agent runtime."""
+        try:
+            prompt = (
+                "The user just connected for the first time. Send a brief welcome message "
+                "(2-3 sentences) introducing yourself as their Stackdocs agent. Mention you can "
+                "help organize documents, extract data from invoices and PDFs, and answer questions "
+                "about their files. Keep it friendly and concise. Do NOT create any cards."
+            )
+            async with self.mission_lock:
+                await self.runtime.handle_message(prompt)
+        except Exception as e:
+            logger.error("Welcome message failed: %s", e)
 
     # -- Outbound helpers ----------------------------------------------------
 

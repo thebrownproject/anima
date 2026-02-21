@@ -57,6 +57,7 @@ async def handle_connection(
     )
 
     await send_state_sync(workspace_db, send_fn)
+    await gateway.check_and_send_welcome()
 
     try:
         while True:
