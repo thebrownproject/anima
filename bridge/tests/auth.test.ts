@@ -147,7 +147,7 @@ describe('authenticateConnection', () => {
     expect(mockFrom).toHaveBeenCalledWith('users')
   })
 
-  it('returns code 4001 on invalid JWT', async () => {
+  it('returns code 4001 on invalid JWT (auth error)', async () => {
     const mockVerify = vi.mocked(verifyToken)
     mockVerify.mockRejectedValue(new Error('Invalid'))
 
@@ -160,7 +160,7 @@ describe('authenticateConnection', () => {
     }
   })
 
-  it('returns code 4003 when user not found', async () => {
+  it('returns code 4003 when user not found (auth error)', async () => {
     const mockVerify = vi.mocked(verifyToken)
     mockVerify.mockResolvedValue({ sub: 'user_123' } as any)
     mockSingle.mockResolvedValue({ data: null, error: { message: 'not found' } })
@@ -172,6 +172,51 @@ describe('authenticateConnection', () => {
       expect(result.code).toBe(4003)
       expect(result.reason).toContain('User not found')
     }
+  })
+
+  it('returns code 1011 when JWT verification has network failure (infra error)', async () => {
+    const mockVerify = vi.mocked(verifyToken)
+    const networkErr = new TypeError('fetch failed')
+    mockVerify.mockRejectedValue(networkErr)
+
+    const result = await authenticateConnection('valid-token')
+
+    expect(isAuthError(result)).toBe(true)
+    if (isAuthError(result)) {
+      expect(result.code).toBe(1011)
+      expect(result.reason).toContain('service unavailable')
+    }
+  })
+
+  it('returns code 1011 when Supabase lookup has network failure (infra error)', async () => {
+    const mockVerify = vi.mocked(verifyToken)
+    mockVerify.mockResolvedValue({ sub: 'user_123' } as any)
+
+    // Supabase client throws a network error instead of returning {data, error}
+    mockSingle.mockRejectedValue(new Error('ECONNREFUSED'))
+
+    const result = await authenticateConnection('valid-token')
+
+    expect(isAuthError(result)).toBe(true)
+    if (isAuthError(result)) {
+      expect(result.code).toBe(1011)
+      expect(result.reason).toContain('service unavailable')
+    }
+  })
+
+  it('returns 4001 for auth errors, 1011 for infra errors (not same code)', async () => {
+    const mockVerify = vi.mocked(verifyToken)
+
+    // Auth error: plain Error (not network-related)
+    mockVerify.mockRejectedValue(new Error('Token expired'))
+    const authResult = await authenticateConnection('expired-token')
+    expect(isAuthError(authResult) && authResult.code).toBe(4001)
+
+    // Infra error: network-related error
+    const fetchErr = new TypeError('fetch failed')
+    mockVerify.mockRejectedValue(fetchErr)
+    const infraResult = await authenticateConnection('valid-token')
+    expect(isAuthError(infraResult) && infraResult.code).toBe(1011)
   })
 })
 

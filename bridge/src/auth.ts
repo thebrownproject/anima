@@ -15,7 +15,7 @@ export interface AuthResult {
 }
 
 export interface AuthError {
-  code: number  // WebSocket close code (4001 = auth failed, 4003 = unauthorized)
+  code: number  // 4001 = auth failed, 4003 = unauthorized, 1011 = infra error
   reason: string
 }
 
@@ -97,8 +97,30 @@ export async function lookupUser(userId: string): Promise<UserRow> {
 }
 
 /**
+ * Heuristic: errors from network failures (fetch, DNS, TLS, timeout) vs auth logic.
+ * Network errors bubble up as Error with characteristic messages.
+ */
+function isInfraError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const msg = err.message.toLowerCase()
+  return (
+    msg.includes('fetch') ||
+    msg.includes('econnrefused') ||
+    msg.includes('enotfound') ||
+    msg.includes('etimedout') ||
+    msg.includes('network') ||
+    msg.includes('socket') ||
+    msg.includes('abort') ||
+    msg.includes('econnreset') ||
+    err.name === 'TypeError' // fetch() throws TypeError on network failure
+  )
+}
+
+/**
  * Full auth flow: validate JWT + look up user's Sprite.
  * Returns AuthResult on success, AuthError on failure.
+ * Auth errors: 4001 (bad JWT), 4003 (user not found).
+ * Infra errors: 1011 (network/service unavailable).
  */
 export async function authenticateConnection(
   token: string,
@@ -106,14 +128,20 @@ export async function authenticateConnection(
   let userId: string
   try {
     userId = await verifyClerkToken(token)
-  } catch {
+  } catch (err) {
+    if (isInfraError(err)) {
+      return { code: 1011, reason: 'Authentication service unavailable' }
+    }
     return { code: 4001, reason: 'Invalid or expired JWT' }
   }
 
   let user: UserRow
   try {
     user = await lookupUser(userId)
-  } catch {
+  } catch (err) {
+    if (isInfraError(err)) {
+      return { code: 1011, reason: 'User lookup service unavailable' }
+    }
     return { code: 4003, reason: 'User not found' }
   }
 

@@ -1,5 +1,5 @@
 /**
- * Bridge Service — WebSocket proxy between browsers and Sprites.
+ * Bridge Service -- WebSocket proxy between browsers and Sprites.
  *
  * Lightweight Node.js server on Fly.io. Accepts browser WebSocket
  * connections on /ws, validates Clerk JWT on first message, looks up
@@ -25,6 +25,9 @@ import {
   disconnectSprite,
 } from './proxy.js'
 import {
+  ensureSpriteProvisioned,
+} from './provisioning.js'
+import {
   type Connection,
   getConnection,
   setConnection,
@@ -42,7 +45,31 @@ import {
 // Re-export for consumers that previously imported from index
 export { type Connection, getConnection, getConnectionsByUser, getConnectionCount, getPendingCount } from './connection-store.js'
 
-const AUTH_TIMEOUT_MS = 10_000
+const AUTH_TIMEOUT_MS = 30_000
+
+const REQUIRED_ENV_VARS = [
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_KEY',
+  'SPRITES_TOKEN',
+]
+
+/**
+ * Validate required env vars at startup. Fails fast with a descriptive error
+ * listing all missing vars. Skipped in test environment.
+ */
+export function validateEnv(): void {
+  const clerkKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_JWT_KEY
+  const missing: string[] = []
+
+  if (!clerkKey) missing.push('CLERK_SECRET_KEY or CLERK_JWT_KEY')
+  for (const key of REQUIRED_ENV_VARS) {
+    if (!process.env[key]) missing.push(key)
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required env vars: ${missing.join(', ')}`)
+  }
+}
 
 function createSystemMessage(
   event: 'connected' | 'sprite_waking' | 'sprite_ready' | 'error',
@@ -84,98 +111,137 @@ function handleConnection(ws: WebSocket): void {
     const conn = getConnection(connectionId)
     removePending(connectionId)
     removeConnection(connectionId)
-    // Disconnect Sprite if this was the last browser for the user
     if (conn && getConnectionsByUser(conn.userId).length === 0) {
       disconnectSprite(conn.userId)
     }
   })
 
-  // Handle incoming messages
+  // T2.7: Top-level try/catch wrapping entire async message handler
   ws.on('message', async (data) => {
-    const raw = data.toString()
-
-    // Parse as JSON
-    let parsed: unknown
     try {
-      parsed = JSON.parse(raw)
-    } catch {
-      sendError(ws, 'Invalid JSON')
-      return
-    }
+      const raw = data.toString()
 
-    // Validate base message structure
-    if (!isWebSocketMessage(parsed)) {
-      sendError(ws, 'Invalid message format: missing id, type, or timestamp')
-      return
-    }
-
-    // If not yet authenticated, first message MUST be auth
-    if (hasPending(connectionId)) {
-      if (!isAuthConnect(parsed)) {
-        sendError(ws, 'First message must be type: auth', parsed.id)
-        ws.close(4001, 'First message must be auth')
-        removePending(connectionId)
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(raw)
+      } catch {
+        sendError(ws, 'Invalid JSON')
         return
       }
 
-      const result = await authenticateConnection(parsed.payload.token)
-
-      if (isAuthError(result)) {
-        sendError(ws, result.reason, parsed.id)
-        ws.close(result.code, result.reason)
-        removePending(connectionId)
+      if (!isWebSocketMessage(parsed)) {
+        sendError(ws, 'Invalid message format: missing id, type, or timestamp')
         return
       }
 
-      removePending(connectionId)
-      const conn: Connection = {
-        id: connectionId,
-        ws,
-        userId: result.userId,
-        spriteName: result.spriteName,
-        spriteStatus: result.spriteStatus,
-        connectedAt: Date.now(),
-      }
-      setConnection(connectionId, conn)
+      // Auth flow for pending connections
+      if (hasPending(connectionId)) {
+        if (!isAuthConnect(parsed)) {
+          sendError(ws, 'First message must be type: auth', parsed.id)
+          ws.close(4001, 'First message must be auth')
+          removePending(connectionId)
+          return
+        }
 
-      ws.send(createSystemMessage('connected', `Authenticated as ${result.userId}`, parsed.id))
+        const result = await authenticateConnection(parsed.payload.token)
 
-      console.log(
-        `[${connectionId}] Authenticated: user=${result.userId} sprite=${result.spriteName ?? 'none'}`,
-      )
+        if (isAuthError(result)) {
+          sendError(ws, result.reason, parsed.id)
+          ws.close(result.code, result.reason)
+          removePending(connectionId)
+          return
+        }
 
-      // Establish Sprite connection if a sprite is assigned
-      if (result.spriteName) {
-        const token = process.env.SPRITES_TOKEN
-        if (token) {
+        // T2.5: Check socket is still open after async auth
+        if (ws.readyState !== WebSocket.OPEN) {
+          removePending(connectionId)
+          return
+        }
+
+        removePending(connectionId)
+        const conn: Connection = {
+          id: connectionId,
+          ws,
+          userId: result.userId,
+          spriteName: result.spriteName,
+          spriteStatus: result.spriteStatus,
+          connectedAt: Date.now(),
+        }
+        setConnection(connectionId, conn)
+
+        ws.send(createSystemMessage('connected', `Authenticated as ${result.userId}`, parsed.id))
+
+        console.log(
+          `[${connectionId}] Authenticated: user=${result.userId} sprite=${result.spriteName ?? 'none'}`,
+        )
+
+        // T2.1: Wire provisioning for new users or failed/pending Sprites
+        let spriteName = result.spriteName
+        let spriteStatus = result.spriteStatus
+
+        if (!spriteName || spriteStatus === 'pending' || spriteStatus === 'failed') {
           try {
-            await ensureSpriteConnection(result.userId, result.spriteName, token)
-            ws.send(createSystemMessage('sprite_ready', `Sprite ${result.spriteName} connected`, parsed.id))
+            const provision = await ensureSpriteProvisioned(result.userId, spriteStatus, spriteName)
+            spriteName = provision.spriteName
+            spriteStatus = provision.spriteStatus
+            conn.spriteName = spriteName
+            conn.spriteStatus = spriteStatus
+
+            if (provision.error) {
+              sendError(ws, `Sprite provisioning failed: ${provision.error}`, parsed.id)
+              return
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Provisioning failed'
+            console.error(`[${connectionId}] Provisioning failed:`, msg)
+            sendError(ws, `Sprite provisioning failed: ${msg}`, parsed.id)
+            return
+          }
+        }
+
+        // T2.3: Explicit error when SPRITES_TOKEN is missing
+        const token = process.env.SPRITES_TOKEN
+        if (!token) {
+          sendError(ws, 'Server configuration error: missing SPRITES_TOKEN', parsed.id)
+          return
+        }
+
+        // T2.5: Check socket still open after provisioning
+        if (ws.readyState !== WebSocket.OPEN) return
+
+        if (spriteName && spriteStatus === 'active') {
+          try {
+            await ensureSpriteConnection(result.userId, spriteName, token)
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(createSystemMessage('sprite_ready', `Sprite ${spriteName} connected`, parsed.id))
+            }
           } catch (err) {
             const msg = err instanceof Error ? err.message : 'Sprite connection failed'
             console.error(`[${connectionId}] Sprite connection failed:`, msg)
-            ws.send(createSystemMessage('error', `Sprite connection failed: ${msg}`, parsed.id))
+            sendError(ws, `Sprite connection failed: ${msg}`, parsed.id)
           }
         }
+        return
       }
-      return
-    }
 
-    // Authenticated connection — forward messages to Sprite
-    const conn = getConnection(connectionId)
-    if (!conn) {
-      sendError(ws, 'Connection not found')
-      return
-    }
+      // Authenticated connection -- forward messages to Sprite
+      const conn = getConnection(connectionId)
+      if (!conn) {
+        sendError(ws, 'Connection not found')
+        return
+      }
 
-    if (!forwardToSprite(conn.userId, raw)) {
-      sendError(ws, 'Sprite not connected', parsed.request_id ?? parsed.id)
+      if (!forwardToSprite(conn.userId, raw)) {
+        sendError(ws, 'Sprite not connected', parsed.request_id ?? parsed.id)
+      }
+    } catch (err) {
+      console.error(`[${connectionId}] Unhandled message handler error:`, err)
+      sendError(ws, 'Internal error')
     }
   })
 }
 
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-  // Health check endpoint for Fly.io
   if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({
@@ -187,7 +253,6 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     return
   }
 
-  // API proxy for Sprites (Anthropic, Mistral)
   if (req.url?.startsWith('/v1/proxy/')) {
     handleApiProxy(req, res)
     return
@@ -216,6 +281,10 @@ server.on('upgrade', (request: IncomingMessage, socket, head) => {
 const PORT = parseInt(process.env.PORT ?? '8080', 10)
 
 export function startServer(port: number = PORT): ReturnType<typeof server.listen> {
+  // T2.2: Validate env before starting (skip in test)
+  if (process.env.NODE_ENV !== 'test') {
+    validateEnv()
+  }
   return server.listen(port, () => {
     console.log(`Bridge listening on port ${port}`)
     console.log(`WebSocket endpoint: ws://localhost:${port}/ws`)
@@ -240,6 +309,11 @@ process.on('SIGTERM', () => {
     console.log('Bridge shut down')
     process.exit(0)
   })
+})
+
+// T2.6: Catch unhandled promise rejections (log only, don't crash)
+process.on('unhandledRejection', (reason) => {
+  console.error('[bridge] Unhandled rejection:', reason)
 })
 
 // Export for testing
