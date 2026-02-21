@@ -1,6 +1,8 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { useChatStore, type ChatMessage } from '@/lib/stores/chat-store'
 import { ChatBar } from './chat-bar'
@@ -41,7 +43,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             : 'rounded-tl-sm border-white/10 bg-white/5 text-white/90'
         )}
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap">{message.content}</p>
+        ) : (
+          <div className="prose prose-invert prose-sm max-w-none break-words [&_pre]:overflow-x-auto [&_code]:text-[12px]">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        )}
       </div>
       <span className="mt-1 px-1 text-[10px] text-white/25">{formatTime(message.timestamp)}</span>
     </div>
