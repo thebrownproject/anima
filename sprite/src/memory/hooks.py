@@ -92,11 +92,10 @@ def create_hook_callbacks(
             snap = buffer.snapshot()
             await transcript_db.execute(
                 "INSERT INTO observations "
-                "(timestamp, session_id, sequence_num, user_message, tool_calls_json, agent_response) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "(timestamp, sequence_num, user_message, tool_calls_json, agent_response) "
+                "VALUES (?, ?, ?, ?, ?)",
                 (
                     time.time(),
-                    None,  # session_id set later via ResultMessage
                     sequence_num,
                     snap["user_message"],
                     json.dumps(snap["tool_calls"]),

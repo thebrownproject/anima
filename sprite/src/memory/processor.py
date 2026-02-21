@@ -193,9 +193,9 @@ class ObservationProcessor:
         now = time.time()
         if learnings:
             await self._memory.executemany(
-                "INSERT INTO learnings (created_at, session_id, type, content, source_observation_id, confidence) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                [(now, None, l["type"], l["content"], obs_ids[0], 1.0) for l in learnings],
+                "INSERT INTO learnings (created_at, type, content, source_observation_id, confidence) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [(now, l["type"], l["content"], obs_ids[0], 1.0) for l in learnings],
             )
 
         # Store actions (batch insert)

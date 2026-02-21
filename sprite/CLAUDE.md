@@ -88,7 +88,7 @@ Wraps Claude Agent SDK, streams `agent_event` messages back.
 - **Session lifecycle:** `_start_session()` creates client + loads memory → `_continue_session()` reuses client.
 - **Streaming:** Maps SDK messages (AssistantMessage, ResultMessage) to `agent_event` WebSocket messages.
 - **Tool registration:** Canvas + memory tools registered via single MCP server (`sprite`).
-- **Hooks:** TurnBuffer captures observations → written to TranscriptDB → triggers batch processing every 25 turns.
+- **Hooks:** TurnBuffer captures observations → written to TranscriptDB → triggers batch processing every 10 turns.
 - **SDK config:** `permission_mode="bypassPermissions"` and `cwd="/workspace"` required for headless operation.
 
 ### protocol.py (671 lines)
@@ -140,11 +140,11 @@ Stacks, cards, and chat messages.
 
 ### Memory Files
 - **Deploy-managed:** `soul.md`, `os.md` — set by Bridge bootstrap, never changed by daemon.
-- **Daemon-managed:** `tools.md`, `files.md`, `user.md`, `context.md` — auto-updated by ObservationProcessor every 25 turns.
+- **Daemon-managed:** `tools.md`, `files.md`, `user.md`, `context.md` — auto-updated by ObservationProcessor every 10 turns.
 
 ### Memory Pipeline
 1. **Hooks capture observations** (user message → tool calls → agent response) → written to `transcript.db`.
-2. **Every 25 turns:** `on_pre_compact` hook triggers batch processing.
+2. **Every 10 turns:** `on_stop` hook triggers batch processing.
 3. **ObservationProcessor** reads unprocessed observations → calls Haiku to extract learnings → writes to `memory.db`.
 4. **Daemon updates markdown files** (`tools.md`, `files.md`, `user.md`, `context.md`) from learnings.
 5. **Next session:** `loader.py` loads all 6 markdown files into system prompt.
@@ -152,7 +152,7 @@ Stacks, cards, and chat messages.
 ### Hooks (`memory/hooks.py`)
 - **TurnBuffer:** Captures user messages + tool calls + agent responses (cleared on Stop hook).
 - **Hooks:** `on_user_prompt_submit`, `on_post_tool_use`, `on_stop`, `on_pre_compact`.
-- **Batch threshold:** 25 turns (configurable).
+- **Batch threshold:** 10 turns (configurable).
 
 ### Processor (`memory/processor.py`)
 - **ObservationProcessor:** Stateless per batch.

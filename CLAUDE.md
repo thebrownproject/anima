@@ -85,7 +85,7 @@ Python agent runtime on each Sprite VM. One per user.
 - `src/database.py` — three async SQLite databases (TranscriptDB, MemoryDB, WorkspaceDB)
 - `src/tools/canvas.py` — create/update/close Canvas windows
 - `src/tools/memory.py` — memory read/write tools
-- `src/memory/processor.py` — ObservationProcessor (Haiku-powered, runs every 25 turns)
+- `src/memory/processor.py` — ObservationProcessor (Haiku-powered, runs every 10 turns)
 - `src/memory/hooks.py` — TurnBuffer + SDK hook callbacks
 - `src/memory/loader.py` — load memory files into system prompt
 
@@ -135,7 +135,7 @@ Python agent runtime on each Sprite VM. One per user.
 
 **Canvas architecture:** Agent creates/updates/closes windows via `canvas_update` messages. Custom viewport with momentum physics (not React Flow). Zustand desktop-store + localStorage persistence.
 
-**Memory system:** 6 markdown files loaded into system prompt. ObservationProcessor (Haiku) runs every 25 turns to extract learnings and update daemon-managed files. TurnBuffer captures user messages + tool calls + agent responses via SDK hooks.
+**Memory system:** 6 markdown files loaded into system prompt. ObservationProcessor (Haiku) runs every 10 turns to extract learnings and update daemon-managed files. TurnBuffer captures user messages + tool calls + agent responses via SDK hooks.
 
 **Sprites.dev behavior:** Processes frozen on sleep (CRIU checkpoint, same PID on wake). TCP connections die on sleep — Bridge reconnects. 30s auto-sleep, keepalive prevents during active sessions.
 

@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from src.gateway import SpriteGateway
-from src.database import WorkspaceDB, MemoryDB
+from src.database import WorkspaceDB
 from src.protocol import _new_id, _now_ms
 
 
@@ -36,15 +36,6 @@ def mock_send():
 async def workspace_db(tmp_path):
     path = str(tmp_path / "workspace.db")
     db = WorkspaceDB(db_path=path)
-    await db.connect()
-    yield db
-    await db.close()
-
-
-@pytest.fixture
-async def memory_db(tmp_path):
-    path = str(tmp_path / "memory.db")
-    db = MemoryDB(db_path=path)
     await db.connect()
     yield db
     await db.close()
@@ -173,59 +164,6 @@ async def test_correction_updates_card_via_update_card(mock_send, workspace_db):
     assert update_msg["type"] == "canvas_update"
     assert update_msg["payload"]["command"] == "update_card"
     assert update_msg["payload"]["card_id"] == card_id
-
-
-# -- Test: soul.md updated after 3+ corrections on same field pattern --------
-
-
-@pytest.mark.asyncio
-async def test_soul_md_updated_after_correction_threshold(memory_db, tmp_path):
-    """After 3+ CORRECTION learnings on same pattern, soul.md gets updated."""
-    from src.gateway import _check_correction_threshold
-
-    # Create a temp soul.md
-    soul_path = tmp_path / "soul.md"
-    soul_path.write_text("# Stackdocs Agent\n\nYou are a personal assistant.\n")
-
-    # Insert 3 CORRECTION learnings with the same pattern (vendor field)
-    import time
-    now = time.time()
-    for i in range(3):
-        await memory_db.execute(
-            "INSERT INTO learnings (created_at, session_id, type, content, source_observation_id, confidence) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (now + i, None, "CORRECTION", "vendor field: always use 'Acme Corp' not 'Acme Inc'", None, 1.0),
-        )
-
-    await _check_correction_threshold(memory_db, soul_path)
-
-    updated = soul_path.read_text()
-    assert "Learned Rules" in updated
-    assert "vendor" in updated.lower()
-
-
-@pytest.mark.asyncio
-async def test_soul_md_not_updated_below_threshold(memory_db, tmp_path):
-    """With fewer than 3 corrections on same pattern, soul.md is NOT updated."""
-    from src.gateway import _check_correction_threshold
-
-    soul_path = tmp_path / "soul.md"
-    soul_path.write_text("# Stackdocs Agent\n\nYou are a personal assistant.\n")
-
-    # Only 2 corrections
-    import time
-    now = time.time()
-    for i in range(2):
-        await memory_db.execute(
-            "INSERT INTO learnings (created_at, session_id, type, content, source_observation_id, confidence) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (now + i, None, "CORRECTION", "vendor field: use Acme Corp", None, 1.0),
-        )
-
-    await _check_correction_threshold(memory_db, soul_path)
-
-    updated = soul_path.read_text()
-    assert "Learned Rules" not in updated
 
 
 # -- Test: format_canvas_context helper --------------------------------------

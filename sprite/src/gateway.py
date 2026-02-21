@@ -7,7 +7,6 @@ import base64
 import json
 import logging
 import time
-from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Awaitable, TYPE_CHECKING
 
@@ -26,9 +25,6 @@ _ROUTED_TYPES = frozenset({
     "mission", "file_upload", "canvas_interaction",
     "heartbeat", "auth", "system", "state_sync_request",
 })
-
-CORRECTION_THRESHOLD = 3
-
 
 def _format_canvas_context(canvas_state: list[dict[str, Any]]) -> str:
     """Format canvas state into a readable text block for the agent."""
@@ -63,50 +59,6 @@ def _format_canvas_context(canvas_state: list[dict[str, Any]]) -> str:
                 lines.append(f"    [document] {block.get('filename', '')}")
 
     return "\n".join(lines)
-
-
-async def _check_correction_threshold(
-    memory_db: "MemoryDB", soul_path: Path
-) -> None:
-    """If 3+ CORRECTION learnings share a common pattern, append a rule to soul.md."""
-    corrections = await memory_db.fetchall(
-        "SELECT content FROM learnings WHERE type = 'CORRECTION' ORDER BY created_at DESC LIMIT 50"
-    )
-    if len(corrections) < CORRECTION_THRESHOLD:
-        return
-
-    # Group by first word of content (field name heuristic)
-    field_counts: Counter[str] = Counter()
-    field_contents: dict[str, list[str]] = {}
-    for row in corrections:
-        content = row["content"]
-        key = content.split(":")[0].strip().lower() if ":" in content else content.split()[0].lower()
-        field_counts[key] += 1
-        field_contents.setdefault(key, []).append(content)
-
-    # Find patterns that meet threshold
-    rules_to_add = []
-    for field, count in field_counts.items():
-        if count >= CORRECTION_THRESHOLD:
-            # Use the most recent correction as the rule text
-            rules_to_add.append(field_contents[field][0])
-
-    if not rules_to_add:
-        return
-
-    # Read current soul.md and append learned rules section
-    current = soul_path.read_text() if soul_path.exists() else ""
-    if "## Learned Rules" in current:
-        # Append to existing section
-        for rule in rules_to_add:
-            if rule not in current:
-                current += f"\n- {rule}"
-    else:
-        current += "\n\n## Learned Rules\n"
-        for rule in rules_to_add:
-            current += f"\n- {rule}"
-
-    soul_path.write_text(current)
 
 
 class SpriteGateway:
