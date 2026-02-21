@@ -8,7 +8,7 @@ import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
 import { useWebSocket } from './ws-provider'
 
-const launcherClass = 'border border-white/20 bg-white/10 backdrop-blur-2xl'
+const launcherClass = 'bg-card border-border shadow-sm'
 
 export function DesktopTopBar() {
   const stacks = useDesktopStore((s) => s.stacks)
@@ -64,8 +64,8 @@ export function DesktopTopBar() {
             tabs={visibleStacks.map((s) => ({ value: s.id, label: s.name, dot: s.color ?? undefined }))}
           />
         ) : (
-          <div className="flex h-10 items-center rounded-full border border-white/20 bg-white/10 px-4 backdrop-blur-2xl">
-            <span className="text-sm text-white/40">Stackdocs</span>
+          <div className="flex h-10 items-center rounded-full bg-card border border-border px-4 shadow-sm">
+            <span className="text-sm text-muted-foreground">Stackdocs</span>
           </div>
         )}
         <IconButton
