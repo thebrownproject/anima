@@ -18,14 +18,14 @@ interface StatusConfig {
 
 const STATUS_CONFIG: Partial<Record<ConnectionStatus, StatusConfig>> = {
   connecting: {
-    icon: <Spinner className="size-3.5 text-white/70" />,
+    icon: <Spinner className="size-3.5 text-muted-foreground" />,
     label: 'Connecting...',
-    className: 'border-white/20 bg-white/10',
+    className: 'border-border bg-card',
   },
   authenticating: {
-    icon: <Spinner className="size-3.5 text-white/70" />,
+    icon: <Spinner className="size-3.5 text-muted-foreground" />,
     label: 'Authenticating...',
-    className: 'border-white/20 bg-white/10',
+    className: 'border-border bg-card',
   },
   sprite_waking: {
     icon: <Spinner className="size-3.5 text-cyan-400/80" />,
@@ -35,12 +35,12 @@ const STATUS_CONFIG: Partial<Record<ConnectionStatus, StatusConfig>> = {
   disconnected: {
     icon: <Icons.WifiOff className="size-3.5" />,
     label: 'Reconnecting...',
-    className: 'border-amber-400/30 bg-amber-400/10 text-amber-300/90',
+    className: 'border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400',
   },
   error: {
     icon: <Icons.AlertCircle className="size-3.5" />,
     label: 'Connection lost',
-    className: 'border-red-400/30 bg-red-400/10 text-red-300/90',
+    className: 'border-red-200 bg-red-50 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400',
   },
 }
 
@@ -96,7 +96,7 @@ export function ConnectionStatus() {
       className={cn(
         'pointer-events-auto fixed left-1/2 top-16 z-50 -translate-x-1/2',
         'flex items-center gap-2 rounded-full border px-3 py-1.5',
-        'text-xs font-medium text-white/80 shadow-lg backdrop-blur-2xl',
+        'text-xs font-medium text-foreground shadow-lg backdrop-blur-2xl',
         'animate-in fade-in slide-in-from-top-2 duration-300',
         config.className,
       )}
