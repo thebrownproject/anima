@@ -4520,3 +4520,50 @@ Orchestrated execution on feature `stackdocs-m7b.14` (Connection Stability and C
 Run `/mission orchestrated` on `stackdocs-m7b.14` to complete final 4 P3 cleanup tasks (Wave 5). All are unblocked. Consider fixing the `bd hook` -> `bd hooks` pre-commit hook before starting.
 
 ---
+
+## [2026-02-21 18:30] Session 194
+
+**Branch:** main | **Git:** uncommitted (beads JSONL + new spec/plan folder)
+
+### What Happened
+
+Brainstorm + planning session. Two external Codex agents had reviewed the codebase and recommended enterprise infrastructure as next priority (observability/SLOs, chaos testing, canary deploys, etc.). Reframed priorities based on actual project stage.
+
+**Brainstorm phase:**
+- Filtered Codex recommendations through demo + portfolio lens (not enterprise-at-scale)
+- Sent research agent to audit all 5 product flows: auth, chat, Canvas, memory, document extraction
+- Key finding: most flows are architecturally complete. Single blocker is API keys not deployed to Fly.io
+- Agreed on 3 phases: A (turn it on), B1 (extraction core), B2 (polish), C (impressive engineering, deferred)
+
+**Spec creation:**
+- Created spec.md at `.space-agents/mission/staged/m7b.15-demo-readiness-roadmap/spec.md`
+- Reviewed by 2 external agents (APPROVE WITH CHANGES)
+- Applied 5 changes: deployment preflight checklist, Phase B split, security baseline, request_id reframe, extraction scope narrowing
+- Resolved open questions: TypeScript as codegen source, schema-guided extraction for v1
+
+**Planning council (3 sequential agents):**
+- Task planner: 12 tasks across Phases A, B1, B2
+- Sequencer: 6-wave execution model, critical path through extraction pipeline (Tasks 1-5-6-7-8)
+- Implementer: TDD guidance per task, caught preview_rows gap in extraction tool
+
+**Beads created:**
+- Feature: `stackdocs-m7b.15` (Demo Readiness -- Turn On, Make Work, Make Impressive)
+- 12 tasks: `stackdocs-m7b.15.1` through `stackdocs-m7b.15.12`
+- 9 dependency links set
+- Plan at `.space-agents/mission/staged/m7b.15-demo-readiness-roadmap/plan.md`
+
+### Decisions Made
+
+- Enterprise infra (observability, chaos, canary, idempotency) deferred to Phase D+ when users exist
+- Extraction approach: schema-guided for v1 (invoice schema), not free-form summarization
+- Protocol codegen: TypeScript as source of truth, generate Python (Phase C)
+- request_id already exists across all 3 layers -- Phase C is structured logging, not adding the field
+- Card close: optimistic UI removal, no ack wait
+- Phase B split into B1 (extraction core) and B2 (polish) per reviewer feedback
+- Phase A includes security baseline (not just config): fail-fast secrets, no debug routes, no secret logging
+
+### Next Action
+
+Finish m7b.14 (Connection Stability), then run `/mission orchestrated` on m7b.15. Wave 1 has 3 parallel-ready tasks: Deploy API Keys (m7b.15.1), Security Baseline (m7b.15.2), Fix Card Close (m7b.15.3).
+
+---
