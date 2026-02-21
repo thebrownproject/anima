@@ -198,7 +198,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
             <button
               key={chip.action}
               onClick={() => sendMessage(chip.action)}
-              className="rounded-full border border-white/15 bg-white/8 px-4 py-2 text-[13px] font-medium text-white/70 backdrop-blur-xl transition-all duration-200 hover:scale-105 hover:bg-white/12 hover:text-white/90 active:scale-95"
+              className="rounded-full border border-border bg-card px-4 py-2 text-[13px] font-medium text-muted-foreground shadow-sm transition-all duration-200 hover:scale-105 hover:bg-accent active:scale-95"
             >
               {chip.label}
             </button>
@@ -210,13 +210,13 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
       <div className={cn('relative', embedded ? 'w-full' : 'pointer-events-auto w-[500px]')}>
         <div
           className={cn(
-            'relative overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-300',
-            isAgentStreaming && 'border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_20px_rgba(6,182,212,0.08)]',
+            'relative overflow-hidden rounded-3xl border border-border bg-card shadow-lg transition-all duration-300',
+            isAgentStreaming && 'border-primary/20 shadow-[0_8px_32px_rgba(0,0,0,0.08),0_0_15px_rgba(6,182,212,0.04)]',
           )}
         >
           {/* Agent streaming glow */}
           {isAgentStreaming && (
-            <div className="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-r from-cyan-500/5 via-blue-500/5 to-purple-500/5" />
+            <div className="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-r from-cyan-500/3 via-blue-500/3 to-purple-500/3" />
           )}
 
           <div className="relative">
@@ -243,7 +243,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                     onBlur={handleBlur}
                     rows={1}
                     className={cn(
-                      'w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-white outline-none [field-sizing:content] placeholder:text-white/30',
+                      'w-full max-h-[120px] resize-none bg-transparent text-[15px] leading-snug text-foreground outline-none [field-sizing:content] placeholder:text-muted-foreground',
                       (isVoiceActive) && 'caret-transparent',
                     )}
                   />
@@ -276,10 +276,10 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
               {!inputActive ? (
                 <button
                   onClick={activateInput}
-                  className="mr-3 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-white/10"
+                  className="mr-3 flex h-9 flex-1 cursor-text items-center rounded-full px-4 transition-colors hover:bg-accent"
                 >
                   {!isSpeaking && (
-                    <span className="text-[15px] leading-none text-white/30">Ask anything...</span>
+                    <span className="text-[15px] leading-none text-muted-foreground">Ask anything...</span>
                   )}
                 </button>
               ) : (
@@ -338,7 +338,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
                     )}
                   >
                     {(isConnecting || (lingerVisible && !isListening && !isSpeaking))
-                      ? <Spinner className="size-5 text-white/70" />
+                      ? <Spinner className="size-5 text-muted-foreground" />
                       : <VoiceBars analyser={voice?.analyser ?? null} />
                     }
                   </div>
