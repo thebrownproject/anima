@@ -75,6 +75,9 @@ process.env.CLERK_SECRET_KEY = 'test-secret-key'
 process.env.SUPABASE_URL = 'https://test.supabase.co'
 process.env.SUPABASE_SERVICE_KEY = 'test-service-key'
 process.env.SPRITES_TOKEN = 'test-sprites-token'
+process.env.ANTHROPIC_API_KEY = 'test-anthropic-key'
+process.env.MISTRAL_API_KEY = 'test-mistral-key'
+process.env.SPRITES_PROXY_TOKEN = 'test-proxy-token'
 
 import {
   startServer,
@@ -476,6 +479,45 @@ describe('Bridge WebSocket Server', () => {
 
       process.env.CLERK_JWT_KEY = savedJwt
       process.env.CLERK_SECRET_KEY = savedSecret
+    })
+
+    it('throws when ANTHROPIC_API_KEY is missing', () => {
+      const saved = process.env.ANTHROPIC_API_KEY
+      delete process.env.ANTHROPIC_API_KEY
+
+      expect(() => validateEnv()).toThrow('Missing required env vars')
+      expect(() => validateEnv()).toThrow('ANTHROPIC_API_KEY')
+
+      process.env.ANTHROPIC_API_KEY = saved
+    })
+
+    it('throws when MISTRAL_API_KEY is missing', () => {
+      const saved = process.env.MISTRAL_API_KEY
+      delete process.env.MISTRAL_API_KEY
+
+      expect(() => validateEnv()).toThrow('Missing required env vars')
+      expect(() => validateEnv()).toThrow('MISTRAL_API_KEY')
+
+      process.env.MISTRAL_API_KEY = saved
+    })
+
+    it('lists ALL missing vars, not just the first', () => {
+      const savedAnth = process.env.ANTHROPIC_API_KEY
+      const savedMist = process.env.MISTRAL_API_KEY
+      delete process.env.ANTHROPIC_API_KEY
+      delete process.env.MISTRAL_API_KEY
+
+      try {
+        validateEnv()
+        expect.unreachable('should have thrown')
+      } catch (err) {
+        const msg = (err as Error).message
+        expect(msg).toContain('ANTHROPIC_API_KEY')
+        expect(msg).toContain('MISTRAL_API_KEY')
+      }
+
+      process.env.ANTHROPIC_API_KEY = savedAnth
+      process.env.MISTRAL_API_KEY = savedMist
     })
 
     it('passes when all required vars are present', () => {
