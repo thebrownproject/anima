@@ -54,7 +54,7 @@ export function GlassSidePanel({
       )}
     >
       <div className={cn(
-        'flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl',
+        'flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lg',
         containerClassName,
       )}>
         {/* Header */}
@@ -66,7 +66,7 @@ export function GlassSidePanel({
             {title && (
               <div className="flex items-center gap-2.5">
                 {icon}
-                <span className="text-base font-semibold tracking-wide text-white/90">{title}</span>
+                <span className="text-base font-semibold tracking-wide text-foreground">{title}</span>
               </div>
             )}
             <div className="flex items-center">
