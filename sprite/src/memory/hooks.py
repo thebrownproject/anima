@@ -104,6 +104,8 @@ def create_hook_callbacks(
                 ),
             )
             buffer.clear()
+            # Prune old processed observations to keep table bounded
+            await transcript_db.prune_observations()
             # Count unprocessed observations from DB (survives process restarts)
             row = await transcript_db.fetchone(
                 "SELECT COUNT(*) as c FROM observations WHERE processed = 0"
