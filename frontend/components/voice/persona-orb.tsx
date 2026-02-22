@@ -82,7 +82,7 @@ export function PersonaOrb({ hasText, onSendMessage }: PersonaOrbProps): React.J
           data-testid="persona-orb"
           onClick={handleTap}
           className={cn(
-            'relative flex size-10 items-center justify-center overflow-visible rounded-full',
+            'relative flex size-14 items-center justify-center overflow-visible rounded-full',
             personaState === 'asleep' && 'pointer-events-none'
           )}
         >
@@ -95,6 +95,7 @@ export function PersonaOrb({ hasText, onSendMessage }: PersonaOrbProps): React.J
           )}
           <div className="absolute inset-[-13%]">
             <Persona
+              variant="halo"
               state={toRiveState(personaState)}
               onReady={() => setRiveReady(true)}
               className="size-full"

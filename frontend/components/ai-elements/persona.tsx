@@ -11,6 +11,7 @@ import {
   useViewModelInstance,
   useViewModelInstanceColor,
 } from "@rive-app/react-webgl2";
+import { useTheme as useNextTheme } from "next-themes";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 export type PersonaState =
@@ -132,9 +133,12 @@ interface PersonaWithModelProps {
   children: React.ReactNode;
 }
 
+const OPAQUE_BLACK = 0xFF000000;
+const OPAQUE_WHITE = 0xFFFFFFFF;
+
 const PersonaWithModel = memo(
   ({ rive, source, children }: PersonaWithModelProps) => {
-    const theme = useTheme(source.dynamicColor);
+    const { resolvedTheme } = useNextTheme();
     const viewModel = useViewModel(rive, { useDefault: true });
     const viewModelInstance = useViewModelInstance(viewModel, {
       rive,
@@ -150,9 +154,9 @@ const PersonaWithModel = memo(
         return;
       }
 
-      const [r, g, b] = theme === "dark" ? [255, 255, 255] : [0, 0, 0];
-      viewModelInstanceColor.setRgb(r, g, b);
-    }, [viewModelInstanceColor, theme, source.dynamicColor]);
+      const color = resolvedTheme === "dark" ? OPAQUE_WHITE : OPAQUE_BLACK;
+      viewModelInstanceColor.setValue(color);
+    }, [viewModelInstanceColor, resolvedTheme, source.dynamicColor]);
 
     return children;
   }

@@ -4709,3 +4709,56 @@ Brainstorm + planning session for UI redesign. No code changes -- pure explorati
 Run `/mission` on `stackdocs-m7b.16` to execute the 9-task light mode migration. Start with Task 1 (install shadcn primitives).
 
 ---
+
+## [2026-02-22 13:20] Session 198
+
+**Branch:** main | **Git:** uncommitted (13 modified files)
+
+### What Happened
+
+**m7b.16 Light Mode + shadcn Chrome Migration — COMPLETE (9/9 tasks)**
+Executed full feature via orchestrated mode (Pathfinder/Builder/Inspector per task). 4 waves:
+- Wave 1: Installed shadcn card/tooltip/context-menu primitives, archived 2 dead glass files (glass-input.tsx, glass-tabs.tsx)
+- Wave 2: Replaced GlassButton/IconButton/Tooltip + GlassCard/ContextMenu with shadcn equivalents. Created new `icon-button.tsx` wrapper. 5 glass files archived.
+- Wave 3: Restyled all 5 remaining chrome components (tab switcher, side panel, chat panel, chat bar, documents panel, file tree, pill, viewport, wallpaper, connection status, voice) — all in parallel worktrees.
+- Wave 4: Removed Ein UI CSS variables from globals.css, dead SVG filter from layout.tsx, @einui registry from components.json, fixed straggler backdrop-blur in connection-status.tsx and error.tsx.
+
+**Post-migration UI polish:**
+- Added theme toggle (sun/moon) to top-right system tray pill in `desktop-top-bar.tsx` using next-themes `useTheme`.
+- Fixed Persona orb color for light mode in `persona.tsx`. Root cause: custom `useTheme` MutationObserver hook wasn't syncing with next-themes, and `setRgb(0,0,0)` may have had alpha issues. Fix: switched to next-themes `resolvedTheme` + `setValue(0xFF000000)` raw ARGB integer.
+- Changed persona orb variant from "obsidian" to "halo" in `persona-orb.tsx`.
+- Enlarged orb from size-10 to size-14, positioned `bottom-[3px] right-1` in chat bar.
+- Set icon stroke-width to 2 (Tabler default) with `!important` in globals.css.
+- Tuned system tray pill: gap-0, px-1, button size-9, icon size-5.
+- Chat bar width adjusted from 500px to 450px.
+- Agent chat bubbles: removed box/border for ChatGPT-style plain text display. Added `dark:prose-invert` for dark mode markdown readability.
+- Chat panel dark mode background set to `rgb(10,10,10)`.
+- Debug panel forced dark with solid `bg-[rgb(10,10,10)]` background (always readable).
+- Hidden HUD position display in viewport.
+
+**In-canvas card expansion (replaced fullscreen overlay):**
+- Added `expandedCardId` to desktop-store (non-persisted).
+- Modified `desktop-card.tsx`: when expanded, card animates to 650px wide with max-h-[600px] scrollable editorial content. Drag disabled while expanded. z-index bumped to 9999. Close via X button or Escape key.
+- Removed `CardOverlayProvider` from page.tsx. CardLayer now calls `setExpandedCardId` directly from store.
+- card-overlay.tsx still exists but is no longer imported — can be deleted in cleanup.
+
+### Decisions Made
+
+- **next-themes `resolvedTheme` over custom MutationObserver** for Rive persona color — single source of truth for theme state.
+- **Raw ARGB integer `setValue(0xFF000000)`** over `setRgb(0,0,0)` — bypasses potential SDK argument parsing bugs.
+- **In-canvas expansion over fullscreen overlay** — cards expand in-place at 650px wide, all chrome stays visible.
+- **Debug panel always dark** — developer tool with hardcoded white/ classes, forcing dark avoids full light-mode port.
+- **Agent messages without bubble** — ChatGPT-style plain text on background, user messages keep bubble.
+
+### Gotchas
+
+- Tabler icons set `stroke-width` as an SVG attribute (not CSS), so `!important` needed in CSS override.
+- `[&_svg]:size-[22px]` in icon-button.tsx had higher specificity than parent overrides — needed `!important` (`[&_svg]:!size-5`).
+- `setRgb(0,0,0)` on Rive SDK may not set alpha correctly — use `setRgba` or `setValue` with packed ARGB.
+- `prose-invert` was removed during m7b.16 migration — needed `dark:prose-invert` added back for dark mode markdown.
+
+### Next Action
+
+Clean up: delete `card-overlay.tsx` (no longer imported), update `frontend/CLAUDE.md` Ein UI references. Then continue with remaining Canvas UI bugs or Phase 5 Memory work.
+
+---

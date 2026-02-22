@@ -207,7 +207,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
       )}
 
       {/* Glass bar + orb wrapper */}
-      <div className={cn('relative', embedded ? 'w-full' : 'pointer-events-auto w-[500px]')}>
+      <div className={cn('relative', embedded ? 'w-full' : 'pointer-events-auto w-[450px]')}>
         <div
           className={cn(
             'relative overflow-hidden rounded-3xl border border-border bg-card shadow-lg transition-all duration-300',
@@ -360,7 +360,7 @@ export function ChatBar({ embedded = false }: ChatBarProps) {
         {/* Persona orb + voice bars — outside overflow-hidden so they aren't clipped */}
         {voiceActive && (
           <div
-            className="absolute bottom-2.5 right-3 flex flex-col items-center gap-1.5"
+            className="absolute bottom-[3px] right-1 flex flex-col items-center gap-1.5"
             onMouseEnter={handleControlsMouseEnter}
             onMouseLeave={handleControlsMouseLeave}
           >

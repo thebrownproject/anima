@@ -31,7 +31,7 @@ export function IconButton({
           variant="ghost"
           size="icon-lg"
           onClick={onClick}
-          className={cn('rounded-full text-muted-foreground [&_svg]:size-[22px]', className)}
+          className={cn('rounded-full text-muted-foreground [&_svg]:!size-5', className)}
         >
           {icon}
         </Button>

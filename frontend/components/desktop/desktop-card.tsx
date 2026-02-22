@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Card } from '@/components/ui/card'
+import { BlockRenderer } from '@/components/desktop/block-renderer'
 import { useDesktopStore, clampCardPosition, snapToGrid, CARD_WIDTHS, TEMPLATE_WIDTHS } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import type { CardSize } from '@/types/ws-protocol'
@@ -11,6 +12,8 @@ import { cn } from '@/lib/utils'
 import { useMomentum } from '@/hooks/use-momentum'
 import { useWebSocket } from './ws-provider'
 import { DocumentCard, MetricCard, TableCard, ArticleCard, DataCard } from '@/components/desktop/cards'
+import { getCardColor, COLOR_STYLES } from '@/components/desktop/cards/colors'
+import { IconButton } from '@/components/ui/icon-button'
 
 interface DesktopCardProps {
   card: DesktopCardType
@@ -20,6 +23,8 @@ interface DesktopCardProps {
 
 const APPLE_EASE = [0.2, 0.8, 0.2, 1] as const
 const SIZE_CYCLE: CardSize[] = ['small', 'medium', 'large', 'full']
+const EXPANDED_WIDTH = 650
+
 export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const positionRef = useRef<HTMLDivElement>(null)
@@ -27,10 +32,22 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const { send } = useWebSocket()
 
+  const isExpanded = useDesktopStore((s) => s.expandedCardId === card.id)
+  const setExpandedCardId = useDesktopStore((s) => s.setExpandedCardId)
+
+  // Close on Escape when expanded
+  useEffect(() => {
+    if (!isExpanded) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpandedCardId(null) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [isExpanded, setExpandedCardId])
+
   // Ref (not state) to avoid re-renders during drag
   const localPos = useRef({ x: card.position.x, y: card.position.y })
 
-  const cardWidth = card.cardType ? TEMPLATE_WIDTHS[card.cardType] : CARD_WIDTHS[card.size]
+  const baseWidth = card.cardType ? TEMPLATE_WIDTHS[card.cardType] : CARD_WIDTHS[card.size]
+  const cardWidth = isExpanded ? Math.max(baseWidth, EXPANDED_WIDTH) : baseWidth
 
   const applyPosition = useCallback(() => {
     if (positionRef.current) {
@@ -186,19 +203,30 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
     [card.id, send],
   )
 
+  // Center expansion: offset position so growth is from center, not top-left
+  const expandOffset = isExpanded ? (cardWidth - baseWidth) / 2 : 0
+
+  // Card colors for expanded state
+  const cardColor = card.cardType ? getCardColor(card.cardType, card.color) : 'white'
+  const colorStyle = COLOR_STYLES[cardColor]
+
   return (
     <motion.div
       ref={positionRef}
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        width: cardWidth,
+        x: -expandOffset,
+      }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.35, ease: APPLE_EASE }}
+      transition={{ duration: 0.4, ease: APPLE_EASE }}
       className="pointer-events-auto absolute"
       style={{
         left: card.position.x,
         top: card.position.y,
-        zIndex: card.zIndex,
-        width: cardWidth,
+        zIndex: isExpanded ? 9999 : card.zIndex,
       }}
     >
       <div
@@ -217,65 +245,89 @@ export function DesktopCard({ card, children, onCardClick }: DesktopCardProps) {
           WebkitUserSelect: isDragging ? 'none' : undefined,
         }}
         className={cn(
-          'rounded-2xl',
-          isDragging ? 'shadow-[0_16px_48px_rgba(0,0,0,0.5)]' : 'shadow-none',
+          'rounded-[40px]',
+          isDragging ? 'shadow-[0_16px_48px_rgba(0,0,0,0.5)]' : isExpanded ? 'shadow-[0_32px_80px_rgba(0,0,0,0.25)]' : 'shadow-none',
         )}
       >
-        {(() => {
-          switch (card.cardType) {
-            case 'document':
-              return <DocumentCard card={card} onCardClick={onCardClick} />
-            case 'metric':
-              return <MetricCard card={card} onCardClick={onCardClick} />
-            case 'table':
-              return <TableCard card={card} onCardClick={onCardClick} />
-            case 'article':
-              return <ArticleCard card={card} onCardClick={onCardClick} />
-            case 'data':
-              return <DataCard card={card} onCardClick={onCardClick} />
-            default:
-              return (
-                <Card className="gap-0 overflow-hidden rounded-2xl p-0">
-                  <div className="flex h-11 items-center border-b border-border px-4">
-                    <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-card-foreground">
-                      {card.title}
-                    </span>
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        onClick={handleEdit}
-                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
-                        title="Edit"
-                      >
-                        <Icons.Edit className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleResize}
-                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
-                        title={`Resize (${card.size})`}
-                      >
-                        <Icons.ArrowsMaximize className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleClose}
-                        className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
-                        title="Close"
-                      >
-                        <Icons.X className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
-                      </button>
+        {isExpanded ? (
+          <div
+            className="flex flex-col overflow-hidden rounded-[40px]"
+            style={{ backgroundColor: colorStyle.bg, color: colorStyle.text }}
+          >
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-3">
+              <h2 className="text-xl font-extrabold tracking-tight">{card.title}</h2>
+              <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                <IconButton
+                  icon={<Icons.ChevronDown />}
+                  tooltip="Minimise"
+                  tooltipSide="left"
+                  onClick={() => setExpandedCardId(null)}
+                />
+              </div>
+            </div>
+            {/* Full content */}
+            <div>
+              <BlockRenderer blocks={card.blocks} theme="editorial" />
+            </div>
+          </div>
+        ) : (
+          (() => {
+            switch (card.cardType) {
+              case 'document':
+                return <DocumentCard card={card} onCardClick={onCardClick} />
+              case 'metric':
+                return <MetricCard card={card} onCardClick={onCardClick} />
+              case 'table':
+                return <TableCard card={card} onCardClick={onCardClick} />
+              case 'article':
+                return <ArticleCard card={card} onCardClick={onCardClick} />
+              case 'data':
+                return <DataCard card={card} onCardClick={onCardClick} />
+              default:
+                return (
+                  <Card className="gap-0 overflow-hidden rounded-2xl p-0">
+                    <div className="flex h-11 items-center border-b border-border px-4">
+                      <span className="flex-1 truncate text-[13px] font-medium tracking-tight text-card-foreground">
+                        {card.title}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={handleEdit}
+                          className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
+                          title="Edit"
+                        >
+                          <Icons.Edit className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResize}
+                          className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
+                          title={`Resize (${card.size})`}
+                        >
+                          <Icons.ArrowsMaximize className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleClose}
+                          className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent"
+                          title="Close"
+                        >
+                          <Icons.X className="size-3.5 text-muted-foreground transition-colors hover:text-foreground" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* stopPropagation so clicks inside don't trigger drag */}
-                  <div onPointerDown={(e) => e.stopPropagation()}>
-                    {children}
-                  </div>
-                </Card>
-              )
-          }
-        })()}
+                    {/* stopPropagation so clicks inside don't trigger drag */}
+                    <div onPointerDown={(e) => e.stopPropagation()}>
+                      {children}
+                    </div>
+                  </Card>
+                )
+            }
+          })()
+        )}
       </div>
     </motion.div>
   )

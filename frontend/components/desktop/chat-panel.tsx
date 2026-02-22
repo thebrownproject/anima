@@ -31,24 +31,19 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
   return (
     <div className={cn('flex flex-col', isUser ? 'items-end' : 'items-start')}>
-      <div
-        className={cn(
-          'max-w-[85%] rounded-2xl border px-4 py-2.5 text-[13px] leading-relaxed',
-          isUser
-            ? 'rounded-tr-sm border-primary/20 bg-primary text-primary-foreground'
-            : 'rounded-tl-sm border-border bg-muted text-foreground'
-        )}
-      >
-        {isUser ? (
+      {isUser ? (
+        <div className="max-w-[85%] rounded-2xl rounded-tr-sm border border-border bg-secondary px-4 py-2.5 text-[13px] leading-relaxed text-secondary-foreground">
           <p className="whitespace-pre-wrap">{message.content}</p>
-        ) : (
-          <div className="prose prose-sm max-w-none break-words [&_pre]:overflow-x-auto [&_code]:text-[12px]">
+        </div>
+      ) : (
+        <div className="w-full text-[13px] leading-relaxed text-foreground">
+          <div className="prose prose-sm dark:prose-invert max-w-none break-words [&_pre]:overflow-x-auto [&_code]:text-[12px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {message.content}
             </ReactMarkdown>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       <span className="mt-1 px-1 text-[10px] text-muted-foreground">{formatTime(message.timestamp)}</span>
     </div>
   )
@@ -88,6 +83,7 @@ export function ChatPanel() {
         showClose={false}
         className="top-16 z-30"
         containerClassName={cn(
+          'dark:bg-[rgb(10,10,10)]',
           isAgentStreaming && isOpen && 'border-primary/20 shadow-[0_8px_32px_rgba(0,0,0,0.08),0_0_20px_rgba(6,182,212,0.04)]',
         )}
       >

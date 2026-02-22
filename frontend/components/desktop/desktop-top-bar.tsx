@@ -6,6 +6,7 @@ import { GlassPill } from '@/components/ui/glass-pill'
 import * as Icons from '@/components/icons'
 import { useDesktopStore } from '@/lib/stores/desktop-store'
 import { useChatStore } from '@/lib/stores/chat-store'
+import { useTheme } from 'next-themes'
 import { useWebSocket } from './ws-provider'
 
 const launcherClass = 'border bg-card border-border shadow-sm'
@@ -19,6 +20,7 @@ export function DesktopTopBar() {
   const chatMode = useChatStore((s) => s.mode)
   const setMode = useChatStore((s) => s.setMode)
   const { send } = useWebSocket()
+  const { theme, setTheme } = useTheme()
 
   const visibleStacks = stacks.filter((s) => !archivedStackIds.includes(s.id))
 
@@ -82,26 +84,27 @@ export function DesktopTopBar() {
       </div>
 
       {/* Right — System tray */}
-      <GlassPill className="h-10 pointer-events-auto [&>div]:flex [&>div]:items-center">
+      <GlassPill className="h-10 gap-0 px-1 pointer-events-auto [&>div]:flex [&>div]:items-center [&_button]:size-9">
+        <IconButton
+          icon={theme === 'dark' ? <Icons.Sun /> : <Icons.Moon />}
+          tooltip={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        />
         <IconButton
           icon={<Icons.Search  />}
           tooltip="Search"
-          className="size-8"
         />
         <IconButton
           icon={<Icons.Bell  />}
           tooltip="Notifications"
-          className="size-8"
         />
         <IconButton
           icon={<Icons.User  />}
           tooltip="Account"
-          className="size-8"
         />
         <IconButton
           icon={chatMode === 'panel' ? <Icons.LayoutBottombar /> : <Icons.PanelRight />}
           tooltip={chatMode === 'panel' ? 'Dock to bottom' : 'Chat panel'}
-          className="size-8"
           onClick={() => setMode(chatMode === 'panel' ? 'bar' : 'panel')}
         />
       </GlassPill>

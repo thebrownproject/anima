@@ -329,7 +329,7 @@ export function DesktopViewport({ children, className, ...rest }: ViewportProps)
 
       <div
         ref={hudRef}
-        className="pointer-events-none absolute bottom-5 right-4 z-10 text-right font-mono text-xs text-muted-foreground"
+        className="pointer-events-none absolute bottom-5 right-4 z-10 text-right font-mono text-xs text-muted-foreground hidden"
       />
     </div>
   )

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { WallpaperLayer } from '@/components/wallpaper/wallpaper-layer'
 import { DesktopViewport } from '@/components/desktop/desktop-viewport'
@@ -14,18 +13,19 @@ import { BlockRenderer } from '@/components/desktop/block-renderer'
 import { DesktopContextMenu } from '@/components/desktop/desktop-context-menu'
 import { ConnectionStatus } from '@/components/desktop/connection-status'
 import { DebugPanel } from '@/components/debug/debug-panel'
-import { useCardsForActiveStack } from '@/lib/stores/desktop-store'
+import { useCardsForActiveStack, useDesktopStore } from '@/lib/stores/desktop-store'
 import type { DesktopCard as DesktopCardType } from '@/lib/stores/desktop-store'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { MaybeVoiceProvider } from '@/components/voice/voice-provider'
-import { CardOverlayProvider, useCardOverlay } from '@/components/desktop/card-overlay'
 
 function CardLayer() {
   const cards = useCardsForActiveStack()
-  const { setOverlayCardId } = useCardOverlay()
+  const setExpandedCardId = useDesktopStore((s) => s.setExpandedCardId)
+
+  const expandedCardId = useDesktopStore((s) => s.expandedCardId)
 
   const handleCardClick = (card: DesktopCardType) => {
-    if (card.cardType) setOverlayCardId(card.id)
+    if (card.cardType) setExpandedCardId(expandedCardId === card.id ? null : card.id)
   }
 
   return (
@@ -40,13 +40,10 @@ function CardLayer() {
 }
 
 export default function DesktopPage() {
-  const [overlayCardId, setOverlayCardId] = useState<string | null>(null)
-
   return (
     <WebSocketProvider>
     <MaybeVoiceProvider>
     <TooltipProvider delayDuration={800}>
-    <CardOverlayProvider overlayCardId={overlayCardId} setOverlayCardId={setOverlayCardId}>
       <div className="relative h-svh w-full overflow-hidden">
         <WallpaperLayer />
 
@@ -65,7 +62,6 @@ export default function DesktopPage() {
         <ChatBar />
         <DebugPanel />
       </div>
-    </CardOverlayProvider>
     </TooltipProvider>
     </MaybeVoiceProvider>
     </WebSocketProvider>

@@ -5,7 +5,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-svg.tabler-icon { stroke-width: 1.25; }
+svg.tabler-icon { stroke-width: 2 !important; }
 
 @theme inline {
   --color-background: var(--background);

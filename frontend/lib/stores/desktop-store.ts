@@ -82,6 +82,7 @@ interface DesktopState {
   activeStackId: string
   maxZIndex: number
   leftPanel: LeftPanel
+  expandedCardId: string | null
 }
 
 interface DesktopActions {
@@ -106,6 +107,9 @@ interface DesktopActions {
   setView: (view: Partial<ViewState>) => void
   setLeftPanel: (panel: LeftPanel) => void
   toggleLeftPanel: (panel: LeftPanel) => void
+
+  // Expansion
+  setExpandedCardId: (id: string | null) => void
 }
 
 export const useDesktopStore = create<DesktopState & DesktopActions>()(
@@ -118,6 +122,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
       activeStackId: 'default',
       maxZIndex: 0,
       leftPanel: 'none' as LeftPanel,
+      expandedCardId: null,
 
       // Stack actions
       setStacks: (stacks) => set({ stacks }),
@@ -203,7 +208,10 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
         set((state) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructure to omit
           const { [id]: _removed, ...rest } = state.cards
-          return { cards: rest }
+          return {
+            cards: rest,
+            expandedCardId: state.expandedCardId === id ? null : state.expandedCardId,
+          }
         }),
 
       moveCard: (id, position, cardHeight?, cardWidth?) =>
@@ -236,6 +244,8 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
         set((state) => ({
           leftPanel: state.leftPanel === panel ? 'none' : panel,
         })),
+
+      setExpandedCardId: (id) => set({ expandedCardId: id }),
     }),
     {
       name: 'stackdocs-desktop',

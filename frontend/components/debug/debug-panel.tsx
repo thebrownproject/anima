@@ -109,8 +109,9 @@ export function DebugPanel() {
 
   return (
     <div className={cn(
+      'dark',
       'fixed left-4 top-16 bottom-6 z-50 w-[420px]',
-      'rounded-2xl border border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl',
+      'rounded-2xl border border-white/20 bg-[rgb(10,10,10)] shadow-[0_8px_32px_rgba(0,0,0,0.3)]',
       'flex flex-col overflow-hidden',
       'transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
     )}>
