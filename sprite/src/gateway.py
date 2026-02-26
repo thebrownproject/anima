@@ -410,7 +410,7 @@ class SpriteGateway:
         try:
             prompt = (
                 "The user just connected for the first time. Send a brief welcome message "
-                "(2-3 sentences) introducing yourself as their Stackdocs agent. Mention you can "
+                "(2-3 sentences) introducing yourself as their Anima agent. Mention you can "
                 "help organize documents, extract data from invoices and PDFs, and answer questions "
                 "about their files. Keep it friendly and concise. Do NOT create any cards."
             )

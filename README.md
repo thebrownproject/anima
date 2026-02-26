@@ -1,4 +1,4 @@
-# Stackdocs
+# Anima
 
 ![Status](https://img.shields.io/badge/status-in_development-yellow)
 ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
@@ -13,7 +13,7 @@
 
 ## Overview
 
-Stackdocs is a startup idea I'm building to automate manual data entry from business documents. Users upload invoices or receipts, and the system uses AI to extract structured data (vendor names, dates, amounts, line items) into downloadable CSV/JSON formats.
+Anima is a startup idea I'm building to automate manual data entry from business documents. Users upload invoices or receipts, and the system uses AI to extract structured data (vendor names, dates, amounts, line items) into downloadable CSV/JSON formats.
 
 **Core Value:** Reduces manual data entry through automated extraction.
 

@@ -10,7 +10,7 @@ See root `CLAUDE.md` for project overview, tech stack, and development workflow.
 - **Auth**: Clerk JWT validation on connect only (trust connection after)
 - **Data**: Supabase `users` table for Sprite mapping (`sprite_name`, `sprite_status`)
 - **Testing**: Vitest 3.0 with real HTTP/WS servers + mock Sprite facade
-- **Deployment**: Fly.io app `stackdocs-bridge`, syd region, `wss://ws.stackdocs.io`
+- **Deployment**: Fly.io app `anima-bridge`, syd region, `wss://ws.stackdocs.io`
 
 ## What the Bridge Does
 
@@ -273,7 +273,7 @@ afterEach(() => {
 
 ## Deployment
 
-**Fly.io app:** `stackdocs-bridge`
+**Fly.io app:** `anima-bridge`
 **Region:** Sydney (`syd`)
 **Machine:** `shared-cpu-1x`, 256MB, auto-stop/start, min 0 running (~$2/mo)
 **URL:** `wss://ws.stackdocs.io/ws`

@@ -1,4 +1,4 @@
-# Stackdocs Planning
+# Anima Planning
 
 ## Space-Agents Workflow
 

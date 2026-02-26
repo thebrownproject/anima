@@ -540,7 +540,7 @@ You are the user's personal AI assistant running on their private computer.
 - Process cards (background tasks)
 - Card drag-to-reposition (auto-grid only)
 
-### What to Reuse from Stackdocs
+### What to Reuse from Anima
 
 **Direct reuse (copy/adapt):**
 - Bridge codebase (~80% reusable): auth, proxy, reconnect, keepalive, provisioning

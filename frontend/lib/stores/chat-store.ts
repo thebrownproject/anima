@@ -106,7 +106,7 @@ export const useChatStore = create<ChatState & ChatActions>()(
       setInputActive: (active) => set({ inputActive: active }),
     }),
     {
-      name: 'stackdocs-chat',
+      name: 'anima-chat',
       version: 1,
       partialize: (state) => ({ messages: state.messages }),
     }

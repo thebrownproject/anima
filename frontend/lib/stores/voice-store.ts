@@ -49,7 +49,7 @@ export const useVoiceStore = create<VoiceState & VoiceActions>()(
       clearTranscript: () => set({ transcript: '' }),
     }),
     {
-      name: 'stackdocs-voice',
+      name: 'anima-voice',
       partialize: (state) => ({ ttsEnabled: state.ttsEnabled }),
     }
   )

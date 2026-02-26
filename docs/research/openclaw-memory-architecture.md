@@ -107,7 +107,7 @@ OpenClaw uses multiple triggers. In order of criticality:
 Monitor token count. When context reaches ~80% capacity, trigger flush immediately. The agent needs enough remaining room to execute the summarization tool calls. If you wait until 100%, you can't summarize — you've already lost.
 
 ### 2. Session Boundary (disconnect/sleep)
-When the user disconnects (closes browser, walks away) and the agent is about to go idle. Natural moment to write notes. In Stackdocs: Bridge detects last browser disconnect → tells Sprite → flush before 30s auto-sleep.
+When the user disconnects (closes browser, walks away) and the agent is about to go idle. Natural moment to write notes. In Anima: Bridge detects last browser disconnect → tells Sprite → flush before 30s auto-sleep.
 
 ### 3. Inactivity Timeout
 No user message for N minutes (15-30). User has probably walked away. Flush while you still have context and are still awake. Safer than waiting for disconnect.
@@ -177,9 +177,9 @@ User reconnects (hours/days later):
 6. **Lane queue for memory writes.** Serial by default — prevents race conditions when updating memory files.
 7. **Hybrid search for retrieval.** Combine keyword and semantic search over memory files (post-MVP).
 
-## Comparison: OpenClaw vs Stackdocs (Current)
+## Comparison: OpenClaw vs Anima (Current)
 
-| Component | OpenClaw | Stackdocs (built) | Stackdocs (needed) |
+| Component | OpenClaw | Anima (built) | Anima (needed) |
 |-----------|----------|-------------------|-------------------|
 | soul.md | Yes | Yes | - |
 | user.md | Yes | Yes | - |

@@ -8,7 +8,7 @@ How new Sprites are created and kept up to date.
 
 Each stack gets its own Sprite VM. There is no cross-sprite checkpoint cloning — every new sprite is bootstrapped from scratch.
 
-**`stackdocs-golden`** is a reference sprite only. It was used to validate the environment (Ubuntu 25.04, Python 3.13.3, 99GB disk, 7.8GB RAM) and test the bootstrap procedure. It is NOT cloneable.
+**`anima-golden`** is a reference sprite only. It was used to validate the environment (Ubuntu 25.04, Python 3.13.3, 99GB disk, 7.8GB RAM) and test the bootstrap procedure. It is NOT cloneable.
 
 ---
 

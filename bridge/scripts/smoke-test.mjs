@@ -4,11 +4,11 @@
  * verifies auth timeout behavior (no real JWT needed for this check).
  *
  * Usage: node scripts/smoke-test.mjs [url]
- * Default URL: wss://stackdocs-bridge.fly.dev/ws/smoke-test
+ * Default URL: wss://anima-bridge.fly.dev/ws/smoke-test
  */
 import { WebSocket } from 'ws'
 
-const url = process.argv[2] || 'wss://stackdocs-bridge.fly.dev/ws/smoke-test'
+const url = process.argv[2] || 'wss://anima-bridge.fly.dev/ws/smoke-test'
 
 console.log(`Connecting to ${url}...`)
 

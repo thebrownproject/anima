@@ -1,8 +1,8 @@
 {
-  "name": "@stackdocs/bridge",
+  "name": "@anima/bridge",
   "version": "0.1.0",
   "private": true,
-  "description": "Stackdocs Bridge — WebSocket proxy between browsers and Sprites",
+  "description": "Anima Bridge — WebSocket proxy between browsers and Sprites",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",

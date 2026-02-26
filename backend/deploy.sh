@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Stackdocs Local Deployment Script
+# Anima Local Deployment Script
 # This script mimics what GitHub Actions will do on the server
 
 set -e  # Exit on any error
 
-echo "🚀 Stackdocs API - Local Deployment Script"
+echo "🚀 Anima API - Local Deployment Script"
 echo "============================================"
 
 # Check if .env.production exists
@@ -30,7 +30,7 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 CLAUDE_MODEL=claude-sonnet-4-20250514
 
 # Application
-APP_NAME=Stackdocs
+APP_NAME=Anima
 APP_VERSION=1.0.0
 ALLOWED_ORIGINS=https://www.stackdocs.io
 EOF
@@ -65,7 +65,7 @@ sleep 10
 echo ""
 echo "📊 Container status:"
 docker-compose ps
-docker ps -a | grep stackdocs || echo "No stackdocs containers found"
+docker ps -a | grep anima || echo "No anima containers found"
 
 echo ""
 echo "📋 Container logs:"

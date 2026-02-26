@@ -42,7 +42,7 @@ async def test_new_user_receives_welcome(gateway, workspace_db):
 
     gateway.runtime.handle_message.assert_called_once()
     prompt = gateway.runtime.handle_message.call_args[0][0]
-    assert "welcome" in prompt.lower() or "stackdocs" in prompt.lower()
+    assert "welcome" in prompt.lower() or "anima" in prompt.lower()
 
 
 @pytest.mark.asyncio

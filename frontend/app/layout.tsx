@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Stackdocs',
+  title: 'Anima',
   description: 'Document data extraction with AI',
 }
 

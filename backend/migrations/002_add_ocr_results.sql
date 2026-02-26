@@ -1,4 +1,4 @@
--- Stackdocs MVP - OCR Results Table
+-- Anima MVP - OCR Results Table
 -- Migration: 002
 -- Created: 2025-11-06
 -- Description: Create ocr_results table for caching Mistral OCR output

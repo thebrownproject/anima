@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Stackdocs** is a **personal AI computer** for document intelligence. Each user gets a persistent VM (Sprite) running a full Claude Code-equivalent agent that learns, remembers, and works autonomously.
+**Anima** is a **personal AI computer** for document intelligence. Each user gets a persistent VM (Sprite) running a full Claude Code-equivalent agent that learns, remembers, and works autonomously.
 
 **Core Value:** Talk to agent → AI extracts structured data from documents → Correct via chat → Agent learns → Export CSV/JSON
 
@@ -139,7 +139,7 @@ Python agent runtime on each Sprite VM. One per user.
 
 **Sprites.dev behavior:** Processes frozen on sleep (CRIU checkpoint, same PID on wake). TCP connections die on sleep — Bridge reconnects. 30s auto-sleep, keepalive prevents during active sessions.
 
-**Debug panel:** `Cmd+Shift+D` toggles left-side WS inspector. Shows connection status, all messages sent/received, agent tool calls. `localStorage.setItem('stackdocs:debug', 'true')` also works.
+**Debug panel:** `Cmd+Shift+D` toggles left-side WS inspector. Shows connection status, all messages sent/received, agent tool calls. `localStorage.setItem('anima:debug', 'true')` also works.
 
 ---
 

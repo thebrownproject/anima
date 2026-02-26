@@ -5,7 +5,7 @@
  * exec WebSocket for heavy operations (pip install, DB init) and the FS API
  * for deploying source code files.
  *
- * The golden sprite (stackdocs-golden) serves as the reference environment.
+ * The golden sprite (anima-golden) serves as the reference environment.
  * New sprites are bootstrapped from scratch to match it.
  */
 

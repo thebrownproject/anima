@@ -1,4 +1,4 @@
--- Stackdocs - Remove extraction_id from stack_table_rows
+-- Anima - Remove extraction_id from stack_table_rows
 -- Migration: 005
 -- Created: 2024-12-18
 -- Description: Simplify schema by removing redundant extraction_id FK.

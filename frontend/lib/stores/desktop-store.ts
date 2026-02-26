@@ -248,7 +248,7 @@ export const useDesktopStore = create<DesktopState & DesktopActions>()(
       setExpandedCardId: (id) => set({ expandedCardId: id }),
     }),
     {
-      name: 'stackdocs-desktop',
+      name: 'anima-desktop',
       version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>

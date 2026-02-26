@@ -1,4 +1,4 @@
--- Stackdocs MVP - Add Extraction Metadata Fields
+-- Anima MVP - Add Extraction Metadata Fields
 -- Migration: 003
 -- Created: 2025-11-10
 -- Description: Add model and processing_time_ms to extractions table for monitoring and debugging

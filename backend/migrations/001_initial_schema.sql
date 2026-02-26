@@ -1,4 +1,4 @@
--- Stackdocs MVP Initial Schema
+-- Anima MVP Initial Schema
 -- Migration: 001
 -- Created: 2025-11-03
 -- Description: Create core tables (users, documents, extractions) with RLS policies

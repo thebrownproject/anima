@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 
-const STORAGE_KEY = 'stackdocs:debug'
+const STORAGE_KEY = 'anima:debug'
 
 export function useDebugPanel() {
   const [isOpen, setIsOpen] = useState(

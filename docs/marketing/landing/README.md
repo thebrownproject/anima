@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a Linear/Raycast-style landing page for Stackdocs - dark mode, polished, modern SaaS aesthetic.
+Build a Linear/Raycast-style landing page for Anima - dark mode, polished, modern SaaS aesthetic.
 
 ## Aesthetic Reference
 
