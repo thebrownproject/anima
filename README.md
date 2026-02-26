@@ -17,7 +17,7 @@ Browser ──HTTPS──> Vercel (Next.js 16, Clerk auth, Canvas UI)
                 │
                 └──TCP Proxy──> Sprites.dev (one VM per user)
                                   - Claude Agent SDK (full tool access)
-                                  - Memory system (learns across sessions)
+                                  - Memory daemon (learns across sessions)
                                   - SQLite databases
                                   - 100GB persistent filesystem
 ```
@@ -31,12 +31,59 @@ Browser ──HTTPS──> Vercel (Next.js 16, Clerk auth, Canvas UI)
 | `sprite/` | Python, Claude Agent SDK, SQLite | Agent runtime, memory, extraction |
 | `backend/` | FastAPI (v1, being replaced) | Legacy endpoints |
 
+---
+
+## Canvas — Streamable UI
+
+The agent renders structured data to the user's desktop by streaming Canvas cards over WebSocket. Cards are not static templates — the agent creates, updates, and closes them in real-time as it works.
+
+Each card has a **type** (document, metric, table, data) and contains **blocks** — composable content units the agent assembles:
+
+| Block | Purpose |
+|-------|---------|
+| `heading` | Title + optional subtitle |
+| `stat` | Single metric with label and trend |
+| `key-value` | Extracted field pairs |
+| `table` | Columns + rows |
+| `text` | Freeform markdown content |
+| `badge` | Status indicators |
+| `progress` | Completion bars |
+
+The frontend renders these on a custom viewport with momentum physics and drag-to-arrange. Card state persists in SQLite on the Sprite and syncs on reconnect — the desktop survives browser refreshes, tab closes, and VM sleep/wake cycles.
+
+---
+
+## Memory Daemon
+
+Each Sprite runs a background memory daemon that watches conversations and builds a persistent understanding of the user over time. The agent doesn't just respond — it learns.
+
+**How it works:**
+
+1. **TurnBuffer** captures every user message, tool call, and agent response via Claude Agent SDK hooks
+2. Observations are written to `transcript.db` (append-only SQLite)
+3. Every 10 turns, the **ObservationProcessor** fires — a Haiku-powered batch job that reads unprocessed observations and extracts structured learnings
+4. Learnings are stored in `memory.db` (FTS5-indexed for search) and used to update 4 daemon-managed markdown files
+
+**Memory files** (loaded into the agent's system prompt every turn):
+
+| File | Managed by | Content |
+|------|------------|---------|
+| `soul.md` | Deploy | Agent identity and character |
+| `os.md` | Deploy | System rules and capabilities |
+| `tools.md` | Daemon | What tools the agent has used and learned about |
+| `files.md` | Daemon | What's on the user's filesystem |
+| `user.md` | Daemon | User preferences, corrections, patterns |
+| `context.md` | Daemon | Current project state, recent activity |
+
+The agent's system prompt is rebuilt on every turn from these files, so daemon updates take effect immediately. Deploy-managed files (`soul.md`, `os.md`) are overwritten on code updates. Daemon-managed files evolve autonomously — the agent literally gets smarter the more you use it.
+
+---
+
 ## Key Concepts
 
 - **One Sprite per user** — each user gets a dedicated VM with persistent storage, memory, and conversation history
-- **Canvas** — agent creates/updates/closes visual windows via WebSocket messages; custom viewport with momentum physics
-- **Memory** — 6 markdown files loaded into system prompt; observation processor (Haiku) runs every 10 turns to extract learnings
-- **Sleep/wake** — Sprite VMs freeze on idle (CRIU checkpoint), Bridge handles reconnection transparently
+- **Sleep/wake** — Sprite VMs freeze on idle via CRIU checkpoint (same PID on wake). Bridge handles TCP reconnection transparently. 30s auto-sleep, keepalive pings prevent it during active sessions.
+- **API key proxy** — Sprites never hold API keys. Bridge proxies Anthropic/Mistral calls, injecting keys server-side. Prevents prompt injection from stealing credentials.
 
 ## Development
 
