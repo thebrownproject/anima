@@ -79,6 +79,20 @@ The agent's system prompt is rebuilt on every turn from these files, so daemon u
 
 ---
 
+## Voice
+
+The agent supports real-time voice conversation — speak to it and hear it respond.
+
+**Speech-to-text:** Deepgram Nova-3 via WebSocket. Live transcription with interim results streamed to the chat input as the user speaks. Temporary API tokens generated server-side to avoid exposing credentials.
+
+**Text-to-speech:** OpenAI `gpt-4o-mini-tts` via streaming PCM. Audio is decoded and played through a shared 24kHz AudioContext singleton using an AudioWorklet processor — no `<audio>` elements or MP3 decoding.
+
+**Persona Orb:** A Rive-animated avatar that reflects the agent's state in real-time — idle, listening, thinking, speaking, or asleep. Sits at the center of the desktop and gives the agent a visual presence.
+
+Voice is feature-flagged via `NEXT_PUBLIC_VOICE_ENABLED` and requires Deepgram + OpenAI API keys.
+
+---
+
 ## Key Concepts
 
 - **One Sprite per user** — each user gets a dedicated VM with persistent storage, memory, and conversation history
