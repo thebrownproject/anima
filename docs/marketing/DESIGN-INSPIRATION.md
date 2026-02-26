@@ -2,7 +2,7 @@
 
 **Direction:** Linear-inspired - dark, crisp, dense-but-clean, restrained motion
 
-This doc captures design references for Stackdocs UI and landing page. Focus on *what to steal* from each site.
+This doc captures design references for Anima UI and landing page. Focus on *what to steal* from each site.
 
 ---
 
@@ -93,7 +93,7 @@ Directories to discover more examples:
 
 ---
 
-## Stackdocs-Specific Notes
+## Anima-Specific Notes
 
 **Already implemented:**
 - Linear-style resizable preview sidebar (Session 48-50)

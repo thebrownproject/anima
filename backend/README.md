@@ -1,6 +1,6 @@
-# Stackdocs Backend
+# Anima Backend
 
-FastAPI backend for Stackdocs MVP - document data extraction service.
+FastAPI backend for Anima MVP - document data extraction service.
 
 ## Tech Stack
 

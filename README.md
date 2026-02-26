@@ -1,178 +1,115 @@
-# Stackdocs
+# Anima
 
-![Status](https://img.shields.io/badge/status-in_development-yellow)
-![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
-![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white)
+A personal AI computer for document intelligence. Each user gets a persistent VM running a Claude-powered agent that learns, remembers, and works autonomously.
 
-> AI-powered document data extraction application for converting unstructured documents into structured CSV/JSON data using LangChain and Claude Haiku (In Development)
+**Core loop:** Talk to agent → AI extracts structured data from documents → Correct via chat → Agent learns → Export CSV/JSON
+
+**Mental model:** The agent IS the operating system. Users talk to it; it pulls up information, organizes data, and renders results to a visual Canvas.
 
 ---
 
-## Overview
+## Architecture
 
-Stackdocs is a startup idea I'm building to automate manual data entry from business documents. Users upload invoices or receipts, and the system uses AI to extract structured data (vendor names, dates, amounts, line items) into downloadable CSV/JSON formats.
+```
+Browser ──HTTPS──> Vercel (Next.js 16, Clerk auth, Canvas UI)
+   │
+   └──WSS──> Fly.io Bridge (Node.js WS proxy)
+                │
+                └──TCP Proxy──> Sprites.dev (one VM per user)
+                                  - Claude Agent SDK (full tool access)
+                                  - Memory daemon (learns across sessions)
+                                  - SQLite databases
+                                  - 100GB persistent filesystem
+```
 
-**Core Value:** Reduces manual data entry through automated extraction.
+## Codebases
 
-**Current Status:** Backend extraction engine complete (OCR + LLM integration working). About to commence Next.js frontend development.
-
----
-
-## Tech Stack
-
-**Frontend:** Next.js · TypeScript · TailwindCSS <br>
-**Backend:** Python · FastAPI · LangChain <br>
-**AI/ML:** Claude Haiku 4.5 (via OpenRouter) · Mistral OCR <br>
-**Database:** Supabase (PostgreSQL · Storage · Auth) <br>
-**Infrastructure:** Background Tasks · RLS Policies · Usage Tracking
-
----
-
-## Features
-
-### Implemented:
-
-- Document upload with file validation and Supabase Storage integration
-- Mistral OCR integration for fast, accurate text extraction (98.96% accuracy, <5s per document)
-- LangChain + Claude Haiku 4.5 structured output extraction with confidence scores
-- Auto mode (AI decides fields) and Custom mode (user specifies fields)
-- OCR result caching to minimise API costs on re-extraction
-- User authentication and usage limit tracking
-- Background task processing for async document handling
-
-### In Progress:
-
-- Next.js frontend (upload flow, document library, extraction results display)
-- CSV/JSON export functionality
-- Edit extraction results interface
-
-### Planned:
-
-- Production deployment (Railway backend, Vercel frontend)
-- Batch upload and saved templates
+| Directory | Stack | Purpose |
+|-----------|-------|---------|
+| `frontend/` | Next.js 16, Clerk, Zustand, shadcn/ui | Canvas UI, WebSocket client |
+| `bridge/` | Node.js, Fly.io | WS proxy, auth, provisioning, API key proxy |
+| `sprite/` | Python, Claude Agent SDK, SQLite | Agent runtime, memory, extraction |
+| `backend/` | FastAPI (v1, being replaced) | Legacy endpoints |
 
 ---
 
-## Architecture & Tech Decisions
+## Canvas — Streamable UI
 
-Built as monolithic FastAPI backend + Next.js frontend for rapid MVP delivery. Uses Supabase for auth, database, and file storage to minimise infrastructure complexity. Background task processing handles document extraction asynchronously while frontend polls for status updates.
+The agent renders structured data to the user's desktop by streaming Canvas cards over WebSocket. Cards are not static templates — the agent creates, updates, and closes them in real-time as it works.
 
-### Key Architectural Decisions
+Each card has a **type** (document, metric, table, data) and contains **blocks** — composable content units the agent assembles:
 
-**Mistral OCR Over Self-Hosted Solutions**
+| Block | Purpose |
+|-------|---------|
+| `heading` | Title + optional subtitle |
+| `stat` | Single metric with label and trend |
+| `key-value` | Extracted field pairs |
+| `table` | Columns + rows |
+| `text` | Freeform markdown content |
+| `badge` | Status indicators |
+| `progress` | Completion bars |
 
-Chose Mistral OCR Direct API over self-hosted Tesseract after discovering Docling (initial choice) was too slow (10-90s per document). Mistral OCR provides production-grade accuracy (98.96%), speed (5-10s per document), and cost-effectiveness (~$2 per 1,000 pages) with 128K context window for multi-page documents. This decision prioritized user experience and scalability over cost savings from self-hosting.
-
-**Claude Haiku 4.5 via OpenRouter**
-
-Using OpenRouter as model-agnostic LLM gateway allows swapping between providers (OpenAI, Anthropic, Google) without code changes. Currently using `anthropic/claude-haiku-4.5` for optimal cost/performance balance, with flexibility to experiment with other models based on accuracy requirements. This reduces vendor lock-in and enables rapid experimentation.
-
-**LangChain Structured Outputs**
-
-Using `with_structured_output()` with Pydantic schemas ensures type-safe extraction results with confidence scores per field. Temperature=0 for deterministic outputs. Supports both auto mode (AI decides relevant fields) and custom mode (user-specified fields), providing flexibility for different document types and use cases.
-
-**OCR Result Caching Strategy**
-
-Storing raw OCR text in `ocr_results` table allows re-extraction with different modes or custom fields without re-OCRing documents. This reduces API costs when users experiment with extraction settings and provides instant re-extraction (~2-3s vs 5-10s with OCR). Critical for user experience and cost optimization.
-
-**JSONB for Schema Flexibility**
-
-Storing `extracted_fields` as JSONB supports any document type without schema migrations. Invoices might have 10 fields, receipts might have 5, contracts might have 20 - JSONB handles all cases. Can normalize to relational tables post-MVP if query patterns require it, but flexibility is more valuable during validation phase.
-
-**FastAPI BackgroundTasks Over Celery**
-
-Using FastAPI's built-in `BackgroundTasks` for async processing instead of Celery/RabbitMQ reduces infrastructure complexity. For single-document uploads, BackgroundTasks handles 5-10s extraction times without queuing. Can migrate to Celery later if batch processing or high concurrency requires it.
+The frontend renders these on a custom viewport with momentum physics and drag-to-arrange. Card state persists in SQLite on the Sprite and syncs on reconnect — the desktop survives browser refreshes, tab closes, and VM sleep/wake cycles.
 
 ---
 
-## Development Status
+## Memory Daemon
 
-**Current Phase:** Week 1-2 - Backend Extraction Engine (85% Complete)
+Each Sprite runs a background memory daemon that watches conversations and builds a persistent understanding of the user over time. The agent doesn't just respond — it learns.
 
-**Completed:**
+**How it works:**
 
-- ✅ FastAPI project initialised with Supabase integration
-- ✅ Database schema (users, documents, ocr_results, extractions) with RLS policies
-- ✅ Document upload endpoint with usage limit enforcement
-- ✅ Mistral OCR integration with caching (replaced Docling for 10x speed improvement)
-- ✅ LangChain + Claude Haiku 4.5 structured extraction (auto + custom modes)
-- ✅ OCR result caching for cost-optimised re-extraction
-- ✅ Confidence scoring per extracted field
-- ✅ Test endpoints for OCR and extraction validation
+1. **TurnBuffer** captures every user message, tool call, and agent response via Claude Agent SDK hooks
+2. Observations are written to `transcript.db` (append-only SQLite)
+3. Every 10 turns, the **ObservationProcessor** fires — a Haiku-powered batch job that reads unprocessed observations and extracts structured learnings
+4. Learnings are stored in `memory.db` (FTS5-indexed for search) and used to update 4 daemon-managed markdown files
 
-**In Progress:**
+**Memory files** (loaded into the agent's system prompt every turn):
 
-- ⏳ Full extraction pipeline (upload → OCR → LLM → save results)
-- ⏳ Extraction status polling endpoint
-- ⏳ CSV/JSON export logic
+| File | Managed by | Content |
+|------|------------|---------|
+| `soul.md` | Deploy | Agent identity and character |
+| `os.md` | Deploy | System rules and capabilities |
+| `tools.md` | Daemon | What tools the agent has used and learned about |
+| `files.md` | Daemon | What's on the user's filesystem |
+| `user.md` | Daemon | User preferences, corrections, patterns |
+| `context.md` | Daemon | Current project state, recent activity |
 
-**Next Steps:**
-
-- Next.js frontend (upload flow, document library, extraction display)
-- Edit extraction results functionality
-- Production deployment (Railway + Vercel)
+The agent's system prompt is rebuilt on every turn from these files, so daemon updates take effect immediately. Deploy-managed files (`soul.md`, `os.md`) are overwritten on code updates. Daemon-managed files evolve autonomously — the agent literally gets smarter the more you use it.
 
 ---
 
-## Learnings & Challenges
+## Voice
 
-**Key Learnings:**
+The agent supports real-time voice conversation — speak to it and hear it respond.
 
-- Architecting flexible database schemas using JSONB for unknown field structures across document types
-- Evaluating OCR solutions for production (self-hosted vs API, speed vs accuracy vs cost tradeoffs)
-- Integrating multiple AI APIs (Mistral OCR, Claude Haiku via OpenRouter) with caching strategies
-- Designing background processing patterns for async document workflows with polling-based status updates
-- Prompt engineering for structured outputs with confidence scoring and field name consistency
+**Speech-to-text:** Deepgram Nova-3 via WebSocket. Live transcription with interim results streamed to the chat input as the user speaks. Temporary API tokens generated server-side to avoid exposing credentials.
 
-**Challenges Solved:**
+**Text-to-speech:** OpenAI `gpt-4o-mini-tts` via streaming PCM. Audio is decoded and played through a shared 24kHz AudioContext singleton using an AudioWorklet processor — no `<audio>` elements or MP3 decoding.
 
-- **OCR performance bottleneck:** Initially used Docling (10-90s per document), migrated to Mistral OCR (5-10s) after identifying speed as UX blocker
-- **Cost optimisation:** Implemented OCR result caching to enable re-extraction without duplicate API calls, reducing costs by ~70% for users experimenting with extraction modes
-- **Extraction accuracy:** Temperature=0 + detailed system prompts + confidence scores ensure >90% field accuracy and flag low-confidence results for user review
-- **Schema flexibility:** JSONB storage supports any document type without migrations, critical for validation with diverse document formats
+**Persona Orb:** A Rive-animated avatar that reflects the agent's state in real-time — idle, listening, thinking, speaking, or asleep. Sits at the center of the desktop and gives the agent a visual presence.
+
+Voice is feature-flagged via `NEXT_PUBLIC_VOICE_ENABLED` and requires Deepgram + OpenAI API keys.
 
 ---
 
-## Quick Start
+## Key Concepts
+
+- **One Sprite per user** — each user gets a dedicated VM with persistent storage, memory, and conversation history
+- **Sleep/wake** — Sprite VMs freeze on idle via CRIU checkpoint (same PID on wake). Bridge handles TCP reconnection transparently. 30s auto-sleep, keepalive pings prevent it during active sessions.
+- **API key proxy** — Sprites never hold API keys. Bridge proxies Anthropic/Mistral calls, injecting keys server-side. Prevents prompt injection from stealing credentials.
+
+## Development
 
 ```bash
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+# Frontend
+cd frontend && npm install && npm run dev
 
-# Frontend (coming soon)
-cd frontend
-npm install
-npm run dev
+# Bridge
+cd bridge && npm install && npm run dev
+
+# Bridge tests (186 passing)
+cd bridge && npm test
 ```
 
-**Environment Variables:**
-
-```env
-# Backend .env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-service-role-key
-OPENROUTER_API_KEY=your-key
-OPENROUTER_MODEL=anthropic/claude-haiku-4.5
-MISTRAL_API_KEY=your-key
-```
-
----
-
-## Why This Project?
-
-This project demonstrates my ability to build production-ready applications from scratch:
-
-- Architect full-stack applications (database design, API patterns, frontend UX)
-- Make technical decisions under constraints (OCR provider selection, caching strategies, JSONB flexibility)
-- Integrate cutting-edge AI APIs (LangChain, Claude Haiku, Mistral OCR) in production pipelines
-- Balance accuracy, speed, and cost in ML systems
-- Build complete features end-to-end (auth, storage, background processing, API design)
-
----
+See `CLAUDE.md` for detailed architecture, key patterns, and development workflow.

@@ -1,6 +1,6 @@
 # Sprites.dev API Reference
 
-Quick reference for the Sprites.dev APIs used by Stackdocs. Based on testing during Phase 0 pre-flight (2026-02-06, CLI v0.0.1-rc31).
+Quick reference for the Sprites.dev APIs used by Anima. Based on testing during Phase 0 pre-flight (2026-02-06, CLI v0.0.1-rc31).
 
 ---
 
@@ -205,7 +205,7 @@ sprite restore {checkpoint-id}        # Restore from checkpoint
 
 ---
 
-## Stackdocs Usage Pattern
+## Anima Usage Pattern
 
 ```
 Bridge (Fly.io)                        Sprite (sprites.dev)

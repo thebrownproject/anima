@@ -36,7 +36,7 @@ export const useWallpaperStore = create<WallpaperState>()(
       wallpaperId: 'solid-white',
       setWallpaper: (id) => set({ wallpaperId: id }),
     }),
-    { name: 'stackdocs-wallpaper' }
+    { name: 'anima-wallpaper' }
   )
 )
 

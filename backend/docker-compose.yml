@@ -1,10 +1,10 @@
 # Local development only - Production uses GHCR image via GitHub Actions
 services:
-  stackdocs-api:
+  anima-api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: stackdocs-api
+    container_name: anima-api
     ports:
       - "8000:8000"
     env_file:

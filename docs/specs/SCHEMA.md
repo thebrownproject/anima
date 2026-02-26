@@ -1,6 +1,6 @@
 # Database Schema
 
-**Product:** Stackdocs — Personal AI Computer for Document Intelligence
+**Product:** Anima — Personal AI Computer for Document Intelligence
 **Version:** 2.0
 **Last Updated:** 2026-02-13
 **Database:** Supabase PostgreSQL (platform) + Sprite SQLite (per-stack)
@@ -82,7 +82,7 @@ Stack metadata. Lightweight canvas layouts — all stacks share the user's singl
 
 ### Sprite SQLite (per-user, on-VM)
 
-Each Sprite VM has its own SQLite database at `/workspace/data/stackdocs.db`:
+Each Sprite VM has its own SQLite database at `/workspace/data/anima.db`:
 
 | Table | Purpose |
 |-------|---------|

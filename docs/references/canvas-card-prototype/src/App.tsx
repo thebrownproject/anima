@@ -124,7 +124,7 @@ export default function App() {
             readTime="5 min read"
             content={`In the early days of computing, documents were static artifacts. We printed them, filed them, and occasionally lost them. Then came digitization, which made documents searchable but not truly intelligent.
 
-Today, we stand on the precipice of a new era. AI agents like Stackdocs don't just read documents; they understand them. They can extract structured data from unstructured text, identify anomalies in financial reports, and even synthesize information across thousands of files.
+Today, we stand on the precipice of a new era. AI agents like Anima don't just read documents; they understand them. They can extract structured data from unstructured text, identify anomalies in financial reports, and even synthesize information across thousands of files.
 
 This shift from "document management" to "document intelligence" changes everything. It means that knowledge workers no longer need to spend hours manually entering data into spreadsheets. Instead, they can focus on high-level analysis and decision-making.
 

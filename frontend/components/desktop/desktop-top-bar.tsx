@@ -67,7 +67,7 @@ export function DesktopTopBar() {
           />
         ) : (
           <div className="flex h-10 items-center rounded-full bg-card border border-border px-4 shadow-sm">
-            <span className="text-sm text-muted-foreground">Stackdocs</span>
+            <span className="text-sm text-muted-foreground">Anima</span>
           </div>
         )}
         <IconButton

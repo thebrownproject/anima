@@ -1,6 +1,6 @@
-# Stackdocs Deployment Guide
+# Anima Deployment Guide
 
-This guide explains how to deploy the Stackdocs FastAPI backend to your DigitalOcean VPS using the GitHub Actions CI/CD pipeline.
+This guide explains how to deploy the Anima FastAPI backend to your DigitalOcean VPS using the GitHub Actions CI/CD pipeline.
 
 ## 📋 Overview
 
@@ -14,7 +14,7 @@ This guide explains how to deploy the Stackdocs FastAPI backend to your DigitalO
 
 ### 1. GitHub Repository Secrets
 
-Add these secrets to your Stackdocs GitHub repository:
+Add these secrets to your Anima GitHub repository:
 
 ```bash
 DROPLET_IP=your_droplet_ip_address
@@ -28,7 +28,7 @@ CLAUDE_MODEL=claude-sonnet-4-20250514
 ```
 
 **How to add secrets:**
-1. Go to your Stackdocs repository on GitHub
+1. Go to your Anima repository on GitHub
 2. Settings → Secrets and variables → Actions
 3. Click "New repository secret"
 4. Add each secret individually
@@ -65,8 +65,8 @@ For testing before pushing to main:
 
 ```bash
 # 1. Clone repository
-git clone <your-stackdocs-repo>
-cd stackdocs/backend
+git clone <your-anima-repo>
+cd anima/backend
 
 # 2. Create production environment file
 cp .env.production.example .env.production
@@ -101,10 +101,10 @@ backend/
 ssh your_user@your_droplet_ip
 
 # Check containers
-docker ps -a | grep stackdocs
+docker ps -a | grep anima
 
 # View logs
-docker-compose logs -f stackdocs-api
+docker-compose logs -f anima-api
 
 # Check system resources
 docker stats
@@ -153,7 +153,7 @@ If deployment fails, you can quickly rollback:
 ssh your_user@your_droplet_ip
 
 # Rollback to previous version
-cd /opt/stackdocs-api
+cd /opt/anima-api
 git log --oneline -5  # Find previous commit
 git checkout <previous_commit_hash>
 ./deploy.sh

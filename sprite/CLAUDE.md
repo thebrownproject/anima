@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with the Sprite runtime 
 
 ## What is the Sprite Runtime?
 
-Each Stackdocs user gets one persistent microVM (Sprite) running a Python WebSocket server. The server hosts a Claude Agent SDK-powered agent with:
+Each Anima user gets one persistent microVM (Sprite) running a Python WebSocket server. The server hosts a Claude Agent SDK-powered agent with:
 - Full tool access (Bash, Read, Write, Glob, Grep, WebSearch, etc.)
 - Canvas tools (create/update/close windows)
 - Memory system that learns from conversations

@@ -1,7 +1,7 @@
 # Fly.io deployment config for Bridge Service
 # https://fly.io/docs/reference/configuration/
 
-app = "stackdocs-bridge"
+app = "anima-bridge"
 primary_region = "syd"
 
 [build]

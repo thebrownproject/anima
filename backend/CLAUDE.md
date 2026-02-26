@@ -99,7 +99,7 @@ ALLOWED_ORIGINS=http://localhost:3000
 - **CI/CD**: GitHub Actions on push to `main` when `backend/**` changes
 
 ```bash
-docker logs stackdocs-api -f    # View logs
-docker restart stackdocs-api    # Restart
-docker ps | grep stackdocs      # Check status
+docker logs anima-api -f    # View logs
+docker restart anima-api    # Restart
+docker ps | grep anima      # Check status
 ```
